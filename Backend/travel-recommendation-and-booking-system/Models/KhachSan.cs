@@ -1,0 +1,30 @@
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
+
+namespace WebDuLich.Models
+{
+    [Table("KhachSan")]
+    public class KhachSan
+    {
+        [Key]
+        public int MaKhachSan { get; set; }
+        [Required]
+        [StringLength(255)]
+        public string TenKhachSan { get; set; }
+        public int SoSao { get; set; }
+        [StringLength(255)]
+        public string DiaChi { get; set; }
+        [StringLength(20)]
+        public string SoDienThoai { get; set; }
+        public string MoTa { get; set; }
+        public bool TrangThai { get; set; }
+        public DateTime NgayTao { get; set; } = DateTime.Now;
+        public DateTime NgayCapNhat { get; set; } = DateTime.Now;
+        public DateTime? NgayXoa { get; set; }
+
+        public virtual ICollection<HinhAnhSK> HinhAnhSKs { get; set; } = new List<HinhAnhSK>();
+        public virtual ICollection<KS_TN> KS_TNs { get; set; } = new List<KS_TN>();
+        public virtual ICollection<Tour_KhachSan> Tour_KhachSans { get; set; } = new List<Tour_KhachSan>();
+        public virtual ICollection<DonDatTour> DonDatTours { get; set; } = new List<DonDatTour>();
+    }
+}

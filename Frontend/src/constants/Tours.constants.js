@@ -1,0 +1,24 @@
+export const mockTours = [
+    { id: 1, name: 'Khám Phá Vịnh Hạ Long 3N2Đ', destination: 'Hạ Long', category: 'Biển', difficulty: 'Dễ', duration: '3 ngày 2 đêm', groupSize: 20, price: 2990000, originalPrice: 3500000, rating: 4.9, reviewCount: 312, featured: true, image: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?auto=format&fit=crop&w=800&q=80' },
+    { id: 2, name: 'Sapa Trekking Mùa Lúa Chín', destination: 'Sapa', category: 'Trekking', difficulty: 'Trung bình', duration: '4 ngày 3 đêm', groupSize: 12, price: 3490000, originalPrice: null, rating: 4.8, reviewCount: 204, featured: true, image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=800&q=80' },
+    { id: 3, name: 'Hội An – Đà Nẵng Cuối Tuần', destination: 'Đà Nẵng', category: 'Văn hóa', difficulty: 'Dễ', duration: '2 ngày 1 đêm', groupSize: 25, price: 1990000, originalPrice: 2400000, rating: 4.7, reviewCount: 178, featured: false, image: 'https://images.unsplash.com/photo-1571842761163-2cf91b1d9272?auto=format&fit=crop&w=800&q=80' },
+    { id: 4, name: 'Đà Lạt Ngàn Hoa – Tour Gia Đình', destination: 'Đà Lạt', category: 'Gia đình', difficulty: 'Dễ', duration: '3 ngày 2 đêm', groupSize: 30, price: 2590000, originalPrice: null, rating: 4.8, reviewCount: 256, featured: true, image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80' },
+    { id: 5, name: 'Phú Quốc Island Hopping 4N3Đ', destination: 'Phú Quốc', category: 'Biển', difficulty: 'Dễ', duration: '4 ngày 3 đêm', groupSize: 18, price: 4290000, originalPrice: 4990000, rating: 4.9, reviewCount: 389, featured: true, image: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?auto=format&fit=crop&w=800&q=80' },
+    { id: 6, name: 'Ninh Bình Tràng An Bái Đính', destination: 'Ninh Bình', category: 'Văn hóa', difficulty: 'Dễ', duration: '2 ngày 1 đêm', groupSize: 35, price: 1590000, originalPrice: null, rating: 4.6, reviewCount: 143, featured: false, image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=800&q=80' },
+    { id: 7, name: 'Chinh Phục Fansipan Cáp Treo', destination: 'Fansipan', category: 'Trekking', difficulty: 'Khó', duration: '3 ngày 2 đêm', groupSize: 10, price: 3890000, originalPrice: 4500000, rating: 4.7, reviewCount: 167, featured: false, image: 'https://images.unsplash.com/photo-1571842761163-2cf91b1d9272?auto=format&fit=crop&w=800&q=80' },
+    { id: 8, name: 'Mũi Né Dune Buggy & Biển', destination: 'Mũi Né', category: 'Phiêu lưu', difficulty: 'Trung bình', duration: '3 ngày 2 đêm', groupSize: 15, price: 2790000, originalPrice: null, rating: 4.5, reviewCount: 98, featured: false, image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80' },
+    { id: 9, name: 'Nha Trang Snorkeling & Diving', destination: 'Nha Trang', category: 'Biển', difficulty: 'Trung bình', duration: '4 ngày 3 đêm', groupSize: 16, price: 3690000, originalPrice: 4200000, rating: 4.8, reviewCount: 221, featured: true, image: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?auto=format&fit=crop&w=800&q=80' },
+    { id: 10, name: 'Huế Hoàng Cung & Ẩm Thực Cố Đô', destination: 'Huế', category: 'Văn hóa', difficulty: 'Dễ', duration: '2 ngày 1 đêm', groupSize: 28, price: 1890000, originalPrice: null, rating: 4.7, reviewCount: 134, featured: false, image: 'https://images.unsplash.com/photo-1571842761163-2cf91b1d9272?auto=format&fit=crop&w=800&q=80' },
+    { id: 11, name: 'Bali Sacred Temples & Rice Fields', destination: 'Bali', category: 'Văn hóa', difficulty: 'Dễ', duration: '5 ngày 4 đêm', groupSize: 20, price: 8990000, originalPrice: 10500000, rating: 4.9, reviewCount: 445, featured: true, image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=800&q=80' },
+    { id: 12, name: 'Tokyo – Kyoto Mùa Hoa Anh Đào', destination: 'Nhật Bản', category: 'Văn hóa', difficulty: 'Dễ', duration: '7 ngày 6 đêm', groupSize: 22, price: 18990000, originalPrice: 22000000, rating: 4.9, reviewCount: 512, featured: true, image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80' },
+];
+
+export const CATEGORIES = ['Tất cả', 'Biển', 'Trekking', 'Văn hóa', 'Gia đình', 'Phiêu lưu'];
+export const DURATIONS = ['Tất cả', '1-2 ngày', '3-4 ngày', '5+ ngày'];
+export const SORTS = [
+    { value: 'featured', label: 'Nổi bật' },
+    { value: 'price_asc', label: 'Giá tăng dần' },
+    { value: 'price_desc', label: 'Giá giảm dần' },
+    { value: 'rating', label: 'Đánh giá cao' },
+];
+export const PAGE_SIZE = 8;
