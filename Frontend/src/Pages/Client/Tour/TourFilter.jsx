@@ -43,7 +43,7 @@ export default function TourFilter({
         ((maxPrice - 1000000) / (50000000 - 1000000)) * 100;
 
     return (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div className="rounded-3xl border border-slate-200 bg-white p-9 shadow-xl">
 
             {/* Header */}
             <h2 className="mb-6 flex items-center justify-center gap-2 text-[22px] font-semibold text-slate-800">
@@ -176,7 +176,7 @@ export default function TourFilter({
                                         />
                                     ))}
                                     {value === 4 && (
-                                        <Star size={12} fill="transparent" stroke="#FEF3C7" />
+                                        <Star size={12} fill="transparent" stroke="" />
                                     )}
                                     <span className="ml-1">{label}</span>
                                 </div>
@@ -271,6 +271,7 @@ export default function TourFilter({
                     }))}
                     onChange={setCategory}
                     fullWidth
+                    className="text-[13px]"
                 />
             </div>
         </div>

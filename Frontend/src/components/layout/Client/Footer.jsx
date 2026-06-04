@@ -49,7 +49,7 @@ function FooterColumn({ title, links }) {
 export default function Footer() {
     return (
         <footer className="bg-[#0F172A] text-slate-400">
-            <div className="mx-auto max-w-7xl px-6 py-12 md:px-12 lg:py-16">
+            <div className="mx-auto max-w-[1440px] px-6 py-12 md:px-12 lg:py-16">
                 {/* Grid Hệ thống phân chia theo mẫu ảnh */}
                 <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-[1.5fr_1fr_1fr_1fr_2fr] items-start">
                     

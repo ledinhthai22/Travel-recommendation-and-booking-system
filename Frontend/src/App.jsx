@@ -10,6 +10,7 @@ import {
   ContactPage,
   TourDetail,
   HomePage,
+  HotelDetail,
   NotFound,
   ToursPage,
   CheckoutPage,
@@ -27,10 +28,7 @@ import {
   BookingManager,
   Webinfo,
   ContactManager,
-  RevenueByTour,
-  ReviewManager,
-  CustomerChatManager,
-  BlogManager,
+  RevenueByTour
 } from './Pages/admin';
 
 function App() {
@@ -55,26 +53,24 @@ function App() {
             <Route index element={<HomePage />} />
             <Route path="Cac-Chuyen-Di" element={<ToursPage />} />
             <Route path="Cac-Chuyen-Di/:name" element={<TourDetail />} />
+            <Route path="/Khach-san/:name" element={<HotelDetail />} />
             <Route path="Lien-He" element={<ContactPage />} />
-            <Route path="checkout" element={<CheckoutPage />} />
+            <Route path="Thanh-Toan" element={<CheckoutPage />} />
             <Route path="profile" element={<Profile />} />
           </Route>
 
-          <Route path="/admin" element={<AdminLayout />}>
+          <Route path="/Quan-ly" element={<AdminLayout />}>
             <Route index element={<DashBoard />} />
-            <Route path="users" element={<UserManager />} />
-            <Route path="tours" element={<TourManager />} />
-            <Route path="locations" element={<LocationManager />} />
-            <Route path="hotels" element={<HotelManager />} />
-            <Route path="staff" element={<EmployeeManager />} />
-            <Route path="tourists" element={<TouristManager />} />
-            <Route path="booking" element={<BookingManager />} />
-            <Route path="blog" element={<BlogManager />} />
-            <Route path="review" element={<ReviewManager />} />
-            <Route path="contact" element={<ContactManager />} />
-            <Route path="webinfo" element={<Webinfo />} />
-            <Route path="chat" element={<CustomerChatManager />} />
-            <Route path="report" element={<RevenueByTour />} />
+            <Route path="Nguoi-dung" element={<UserManager />} />
+            <Route path="Cac-chuyen-di" element={<TourManager />} />
+            <Route path="Dia-diem" element={<LocationManager />} />
+            <Route path="Khach-san" element={<HotelManager />} />
+            <Route path="Nhan-vien" element={<EmployeeManager />} />
+            <Route path="Khach-du-lich" element={<TouristManager />} />
+            <Route path="Don-dat-cac-chuyen-di" element={<BookingManager />} />
+            <Route path="Lien-he" element={<ContactManager />} />
+            <Route path="Thong-tin-trang" element={<Webinfo />} />
+            <Route path="Thong-doanh-thu-theo-cac-chuyen-di" element={<RevenueByTour />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
