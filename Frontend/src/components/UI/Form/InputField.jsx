@@ -15,6 +15,7 @@ const InputField = ({
     Icon,
     rightAction,
     autoComplete = 'off',
+    className = '',
     ...rest
 }) => {
     return (

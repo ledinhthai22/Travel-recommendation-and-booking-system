@@ -24,15 +24,6 @@ export default function HomePage() {
                     <SectionTitle
                         title="Bạn muốn đi đâu?"
                         description="Khám phá các điểm đến được nhiều du khách yêu thích nhất."
-                        action={
-                            <Link
-                                to="/destinations"
-                                className="inline-flex items-center rounded-full  px-5 py-2.5 text-sm font-bold text-slate-600 hover:text-white transition hover:border-[#0EA5E5] hover:bg-[#0EA5E5]"
-                            >
-                                Xem tất cả
-                                <ChevronRight size={17} />
-                            </Link>
-                        }
                     />
                     <FeaturedCarousel
                         items={destinations.slice(0, 4)}
@@ -61,7 +52,7 @@ export default function HomePage() {
                         description="Các tour có mức giá tốt, lịch trình dễ chọn và phù hợp với nhiều nhóm khách."
                         action={
                             <Link
-                                to="/tours"
+                                to="/Cac-Chuyen-Di"
                                 className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-bold text-slate-600 transition hover:border-[#0EA5E5] hover:bg-[#0EA5E5] hover:text-white"
                             >
                                 Xem thêm
@@ -85,7 +76,7 @@ export default function HomePage() {
                         description="Các tour có mức giá tốt, lịch trình dễ chọn và phù hợp với nhiều nhóm khách."
                         action={
                             <Link
-                                to="/tours"
+                                to="/Cac-Chuyen-Di"
                                 className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-bold text-slate-600 transition hover:border-[#0EA5E5] hover:bg-[#0EA5E5] hover:text-white"
                             >
                                 Xem thêm

@@ -1,715 +1,634 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import {
-    ArrowLeft,
-    ArrowRight,
-    CheckCircle2,
-    CalendarDays,
-    Users,
-    MapPin,
-    Clock,
-    Phone,
-    Mail,
-    User,
-    CreditCard,
-    Wallet,
-    Banknote,
-    LockKeyhole,
-    Send,
-} from 'lucide-react';
-import InputField from '~/components/UI/Form/InputField';
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { CheckCircle2 } from "lucide-react";
 
-const formatCurrency = (value) =>
-    new Intl.NumberFormat('vi-VN', {
-        style: 'currency',
-        currency: 'VND',
-    }).format(value || 0);
-
-const formatDate = (value) => {
-    if (!value) return '';
-
-    const [year, month, day] = value.split('-');
-    return `${day}/${month}/${year}`;
-};
-
-function CheckoutStep({ step }) {
-    const steps = [
-        {
-            number: 1,
-            label: 'Kiểm tra tour',
-            description: 'Xác nhận lịch trình',
-        },
-        {
-            number: 2,
-            label: 'Thông tin khách',
-            description: 'Người liên hệ',
-        },
-        {
-            number: 3,
-            label: 'Thanh toán',
-            description: 'Hoàn tất đặt chỗ',
-        },
-    ];
-
-    return (
-        <div className="rounded-[2rem] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
-            <div className="grid grid-cols-3 gap-2">
-                {steps.map((item, index) => {
-                    const active = step === item.number;
-                    const completed = step > item.number;
-
-                    return (
-                        <div key={item.number} className="relative">
-                            {index !== 0 && (
-                                <div
-                                    className={`absolute right-1/2 top-5 h-0.5 w-full -translate-y-1/2 ${completed || active
-                                        ? 'bg-emerald-600'
-                                        : 'bg-slate-200'
-                                        }`}
-                                />
-                            )}
-
-                            <div className="relative z-10 flex flex-col items-center text-center">
-                                <div
-                                    className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition ${completed
-                                        ? 'bg-emerald-500 text-white'
-                                        : active
-                                            ? 'bg-emerald-600 text-white shadow-lg shadow-blue-200'
-                                            : 'bg-slate-100 text-slate-400'
-                                        }`}
-                                >
-                                    {completed ? <CheckCircle2 size={18} /> : item.number}
-                                </div>
-
-                                <p
-                                    className={`mt-2 text-xs font-bold md:text-sm ${active
-                                        ? 'text-emerald-600'
-                                        : completed
-                                            ? 'text-emerald-600'
-                                            : 'text-slate-500'
-                                        }`}
-                                >
-                                    {item.label}
-                                </p>
-
-                                <p className="mt-0.5 hidden text-[11px] text-slate-400 sm:block">
-                                    {item.description}
-                                </p>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
-
-function SummaryCard({ bookingData }) {
-    const depositAmount = Math.round(bookingData.totalPrice * 0.3);
-
-    return (
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-            <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-xl shadow-slate-200/60">
-                <img
-                    src={bookingData.image}
-                    alt={bookingData.tourName}
-                    className="h-48 w-full object-cover"
-                />
-
-                <div className="p-5">
-                    <h3 className="line-clamp-2 text-lg font-bold text-slate-900">
-                        {bookingData.tourName}
-                    </h3>
-
-                    <div className="mt-4 space-y-3 text-sm text-slate-500">
-                        <div className="flex items-center gap-2">
-                            <MapPin size={16} className="text-blue-600" />
-                            {bookingData.destination}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <Clock size={16} className="text-blue-600" />
-                            {bookingData.duration}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <CalendarDays size={16} className="text-blue-600" />
-                            {formatDate(bookingData.selectedDate)}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <Users size={16} className="text-blue-600" />
-                            {bookingData.totalGuests} khách
-                        </div>
-                    </div>
-
-                    <div className="my-5 h-px bg-slate-100" />
-
-                    <div className="space-y-2 text-sm">
-                        <div className="flex justify-between text-slate-500">
-                            <span>Người lớn x {bookingData.adults}</span>
-                            <span>
-                                {formatCurrency(bookingData.price * bookingData.adults)}
-                            </span>
-                        </div>
-
-                        {bookingData.children > 0 && (
-                            <div className="flex justify-between text-slate-500">
-                                <span>Trẻ em x {bookingData.children}</span>
-                                <span>
-                                    {formatCurrency(
-                                        bookingData.childPrice * bookingData.children
-                                    )}
-                                </span>
-                            </div>
-                        )}
-
-                        <div className="my-3 h-px bg-slate-200" />
-
-                        <div className="flex justify-between">
-                            <span className="font-semibold text-slate-700">
-                                Tổng cộng
-                            </span>
-                            <span className="text-xl font-bold text-blue-600">
-                                {formatCurrency(bookingData.totalPrice)}
-                            </span>
-                        </div>
-
-                        <div className="flex justify-between text-sm text-slate-500">
-                            <span>Giữ chỗ 30%</span>
-                            <span>{formatCurrency(depositAmount)}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </aside>
-    );
-}
-
+import CheckoutStep from "~/components/Checkout/CheckoutStep";
+import ContactForm from "~/components/Checkout/ContactForm";
+import PassengerForm from "~/components/Checkout/PassengerForm";
+import PassengerDetailsForm from "~/components/Checkout/PassengerDetailsForm";
+import TourSummaryCard from "~/components/Checkout/TourSummaryCard";
+import InputField from "~/components/UI/Form/InputField";
+import Loading from "~/components/Common/Loading";
 
 export default function CheckoutPage() {
-    const navigate = useNavigate();
-
-    const [bookingData, setBookingData] = useState(null);
     const [step, setStep] = useState(1);
-    const [submitted, setSubmitted] = useState(false);
     const [success, setSuccess] = useState(false);
 
-    const [customer, setCustomer] = useState({
-        fullName: '',
-        phone: '',
-        email: '',
-        note: '',
+    const [bookingData, setBookingData] = useState(null);
+    const [passengerDetails, setPassengerDetails] = useState({});
+    const [singleRooms, setSingleRooms] = useState({});
+
+    const [contact, setContact] = useState({
+        fullName: "",
+        phone: "",
+        email: "",
+        address: "",
     });
 
-    const [paymentMethod, setPaymentMethod] = useState('pay_later');
+    const [passengers, setPassengers] = useState({
+        adults: 1,
+        children: 0,
+        toddlers: 0,
+    });
 
+    const [promoCode, setPromoCode] = useState("");
+    const [note, setNote] = useState("");
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState("ewallet");
+    function formatDate(dateString) {
+        return new Date(dateString).toLocaleDateString("vi-VN");
+    }
     useEffect(() => {
-        const raw = sessionStorage.getItem('bookingData');
+        const data = sessionStorage.getItem("bookingData");
 
-        if (!raw) {
-            navigate('/tours');
-            return;
+        if (data) {
+            const parsed = JSON.parse(data);
+
+            setBookingData(parsed);
+
+            setPassengers({
+                adults: 1,
+                children: 0,
+                toddlers: 0,
+            });
         }
+    }, []);
+    const passengerList = Object.entries(passengerDetails).map(
+        ([key, passenger]) => ({
+            key,
+            ...passenger,
+            singleRoom: singleRooms[key] || false
+        })
+    );
+    const handleToggleSingleRoom = (key) => {
+        setSingleRooms((prev) => ({
+            ...prev,
+            [key]: !prev[key],
+        }));
+    };
 
-        setBookingData(JSON.parse(raw));
-    }, [navigate]);
+    const handleContactChange = (e) => {
+        const { name, value } = e.target;
 
-    const depositAmount = useMemo(() => {
-        if (!bookingData) return 0;
-        return Math.round(bookingData.totalPrice * 0.3);
-    }, [bookingData]);
-
-    const paymentMethods = [
-        {
-            value: 'pay_later',
-            title: 'Thanh toán sau',
-            description:
-                'Gửi yêu cầu đặt tour. Nhân viên tư vấn sẽ liên hệ xác nhận trước khi thanh toán.',
-            icon: Wallet,
-        },
-        {
-            value: 'bank_transfer',
-            title: 'Chuyển khoản ngân hàng',
-            description:
-                'Thanh toán giữ chỗ 30% giá trị tour qua chuyển khoản.',
-            icon: Banknote,
-        },
-        {
-            value: 'card',
-            title: 'Thẻ thanh toán',
-            description:
-                'Thanh toán online bằng thẻ nội địa hoặc quốc tế.',
-            icon: CreditCard,
-        },
-    ];
-
-    const handleCustomerChange = (event) => {
-        const { name, value } = event.target;
-
-        setCustomer((prev) => ({
+        setContact((prev) => ({
             ...prev,
             [name]: value,
         }));
     };
 
-    const isCustomerValid =
-        customer.fullName.trim() &&
-        customer.phone.trim() &&
-        customer.email.trim();
+    const handlePassengerChange = (type, value) => {
+        setPassengers((prev) => ({
+            ...prev,
+            [type]: value,
+        }));
+    };
+    const formatCurrency = (value) =>
+        new Intl.NumberFormat("vi-VN", {
+            style: "currency",
+            currency: "VND",
+            maximumFractionDigits: 0,
+        }).format(value || 0);
+    const singleRoomCount = Object.values(singleRooms).filter(Boolean).length;
 
-    const goNext = () => {
-        setSubmitted(true);
+    const totalPrice = useMemo(() => {
+        if (!bookingData) return 0;
 
-        if (step === 2 && !isCustomerValid) {
+        const adultPrice =
+            bookingData?.gia?.giaNguoiLon || 0;
+
+        const childPrice =
+            bookingData?.gia?.giaTreEm || 0;
+
+        const singleRoomFee = bookingData?.gia?.phuThuPhongDon || 0;
+        const toddlerPrice = bookingData?.gia?.giaEmBe || 0;
+
+        return (
+            passengers.adults * adultPrice +
+            passengers.children * childPrice +
+            passengers.toddlers * toddlerPrice +
+            singleRoomCount * singleRoomFee
+        );
+    }, [
+        bookingData,
+        passengers,
+        singleRoomCount,
+    ]);
+    useEffect(() => {
+        setSingleRooms((prev) => {
+            const cleaned = {};
+
+            for (let i = 0; i < passengers.adults; i++) {
+                const key = `adults-${i}`;
+                if (prev[key]) cleaned[key] = true;
+            }
+
+            for (let i = 0; i < passengers.children; i++) {
+                const key = `children-${i}`;
+                if (prev[key]) cleaned[key] = true;
+            }
+
+            for (let i = 0; i < passengers.toddlers; i++) {
+                const key = `toddlers-${i}`;
+                if (prev[key]) cleaned[key] = true;
+            }
+
+            return cleaned;
+        });
+    }, [passengers]);
+    console.log("singleRooms:", singleRooms);
+    console.log("singleRoomCount:", singleRoomCount);
+    const handleSubmit = () => {
+        if (step === 1) {
+            if (
+                !contact.fullName ||
+                !contact.phone ||
+                !contact.email
+            ) {
+                alert("Vui lòng nhập đầy đủ thông tin");
+                return;
+            }
+
+            setStep(2);
             return;
         }
 
-        setSubmitted(false);
-        setStep((prev) => Math.min(3, prev + 1));
-    };
-
-    const goBack = () => {
-        setSubmitted(false);
-        setStep((prev) => Math.max(1, prev - 1));
-    };
-
-    const handleConfirmBooking = () => {
-        setSubmitted(true);
-
-        if (!isCustomerValid || !paymentMethod) return;
-
-        const payload = {
-            ...bookingData,
-            customer,
-            paymentMethod,
-            depositAmount,
-            status:
-                paymentMethod === 'pay_later'
-                    ? 'pending_consultation'
-                    : 'pending_payment',
+        const orderData = {
+            bookingData,
+            contact,
+            passengers,
+            singleRooms,
+            promoCode,
+            note,
+            totalPrice,
         };
 
-        console.log('Checkout payload:', payload);
+        console.log(orderData);
 
-        /**
-         * Sau này gọi API:
-         *
-         * await bookingApi.create(payload)
-         * hoặc tạo payment URL:
-         * await paymentApi.createPayment(payload)
-         */
-
-        sessionStorage.removeItem('bookingData');
+        // await bookingApi.create(orderData);
+        console.log(passengerDetails);
         setSuccess(true);
     };
+    const handleConfirmPayment = async () => {
+        const orderData = {
+            bookingData,
+            contact,
+            passengers,
+            singleRooms,
+            promoCode,
+            note,
+            totalPrice,
+        };
 
+        if (paymentMethod === "cash") {
+            console.log(orderData);
+
+            // await bookingApi.create(orderData);
+
+            setShowPaymentModal(false);
+            setSuccess(true);
+        }
+
+        if (paymentMethod === "ewallet") {
+            alert("Tính năng thanh toán MoMo đang phát triển");
+
+            // Sau này:
+            // const paymentUrl = await momoApi.create(orderData);
+            // window.location.href = paymentUrl;
+        }
+    };
     if (!bookingData) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-white">
-                <p className="text-sm text-slate-400">Đang tải thông tin đặt tour...</p>
-            </div>
+            <Loading />
         );
     }
 
     if (success) {
         return (
-            <div className="min-h-screen bg-slate-50 pt-24">
-                <div className="mx-auto max-w-2xl px-4 py-16 text-center md:px-8">
-                    <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-sm">
-                        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
-                            <CheckCircle2 size={42} />
-                        </div>
-
-                        <h1 className="mt-6 text-3xl font-bold text-slate-900">
-                            Đặt tour thành công
-                        </h1>
-
-                        <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-slate-500">
-                            Yêu cầu đặt tour của bạn đã được ghi nhận. Nhân viên tư vấn sẽ liên hệ để xác nhận thông tin và hướng dẫn thanh toán.
-                        </p>
-
-                        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                            <Link
-                                to="/"
-                                className="rounded-2xl border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-600 transition hover:border-blue-500 hover:text-blue-600"
-                            >
-                                Về trang chủ
-                            </Link>
-
-                            <Link
-                                to="/tours"
-                                className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                            >
-                                Xem thêm tour
-                            </Link>
-                        </div>
+            <div className="flex min-h-screen items-center justify-center">
+                <div className="text-center">
+                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
+                        <CheckCircle2
+                            size={40}
+                            className="text-green-600"
+                        />
                     </div>
+
+                    <h2 className="mt-5 text-3xl font-bold">
+                        Đặt tour thành công
+                    </h2>
+
+                    <p className="mt-3 text-slate-500">
+                        Chúng tôi sẽ liên hệ với bạn sớm nhất.
+                    </p>
+
+                    <Link
+                        to="/"
+                        className="mt-6 inline-block rounded-xl bg-sky-500 px-6 py-3 text-white"
+                    >
+                        Về trang chủ
+                    </Link>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 pt-24">
-            <div className="mx-auto max-w-7xl px-4 pb-16 md:px-8">
-                <div className="mb-6">
-                    <div className="mb-4 flex items-center justify-between gap-4">
-                        <Link
-                            to={`/tours/${bookingData.tourId}`}
-                            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-blue-600"
-                        >
-                            <ArrowLeft size={16} />
-                            Quay lại chi tiết tour
-                        </Link>
+        <div className="min-h-screen ">
+            <div className="mx-auto max-w-[1440px] px-7">
+                <CheckoutStep step={step} />
 
-                        <div className="hidden rounded-full bg-blue-50 px-4 py-2 text-xs font-bold text-blue-600 sm:block">
-                            Đặt tour an toàn
-                        </div>
-                    </div>
-
-                    <CheckoutStep step={step} />
-                </div>
-
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
-                    <main className="space-y-6">
-
-
+                <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12">
+                    <div className="space-y-6 lg:col-span-8">
                         {step === 1 && (
-                            <section className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-sm">
-                                <div className="border-b border-slate-100 px-5 py-5 md:px-6">
-                                    <h2 className="mt-2 text-2xl font-bold text-slate-900">
-                                        Kiểm tra thông tin tour
+                            <>
+                                <ContactForm
+                                    contact={contact}
+                                    onChange={handleContactChange}
+                                />
+
+                                <PassengerForm
+                                    passengers={passengers}
+                                    onChange={handlePassengerChange}
+                                />
+
+                                <PassengerDetailsForm
+                                    passengers={passengers}
+                                    singleRooms={singleRooms}
+                                    onToggleSingleRoom={handleToggleSingleRoom}
+                                    bookingData={bookingData}
+                                    details={passengerDetails}
+                                    setDetails={setPassengerDetails}
+                                />
+
+                                <div className="rounded-3xl bg-white p-6 shadow-sm">
+                                    <h2 className="mb-4 text-xl font-bold text-slate-900">
+                                        Mã ưu đãi
                                     </h2>
 
-                                    <p className="mt-2 text-sm leading-6 text-slate-500">
-                                        Vui lòng kiểm tra lại ngày khởi hành, điểm đến và số lượng khách trước khi tiếp tục.
-                                    </p>
+                                    <div className="flex items-center gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <InputField
+                                                value={promoCode}
+                                                onChange={(e) =>
+                                                    setPromoCode(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                placeholder="Nhập mã giảm giá"
+                                            />
+                                        </div>
+
+                                        <button className="rounded-2xl bg-sky-500 px-8 py-3 font-medium text-white">
+                                            Áp dụng
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div className="p-5 md:p-6">
-                                    <div className="grid gap-5 lg:grid-cols-[290px_1fr]">
-                                        <div className="overflow-hidden rounded-3xl bg-slate-100">
-                                            <img
-                                                src={bookingData.image}
-                                                alt={bookingData.tourName}
-                                                className="h-64 w-full object-cover lg:h-full"
-                                            />
+                                <div className="mb-10 rounded-3xl bg-white p-6 shadow-sm">
+                                    <h2 className="mb-4 text-xl font-bold text-slate-900">
+                                        Ghi chú
+                                    </h2>
+
+                                    <textarea
+                                        rows={4}
+                                        value={note}
+                                        onChange={(e) =>
+                                            setNote(
+                                                e.target.value
+                                            )
+                                        }
+                                        placeholder="Nhập ghi chú cho đơn hàng..."
+                                        className="w-full rounded-2xl border border-slate-300 p-4 outline-none"
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        {step === 2 && (
+                            <div>
+                                <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+
+                                    <h2 className="mb-5 text-xl font-bold">
+                                        Thông tin liên lạc
+                                    </h2>
+
+                                    <div className="grid grid-cols-3 gap-6">
+
+                                        <div>
+                                            <p className="text-sm text-slate-500">
+                                                Họ tên
+                                            </p>
+
+                                            <p className="font-medium">
+                                                {contact.fullName}
+                                            </p>
                                         </div>
 
                                         <div>
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600">
-                                                    Tour đang chọn
-                                                </span>
+                                            <p className="text-sm text-slate-500">
+                                                Email
+                                            </p>
 
-                                                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-600">
-                                                    Còn chỗ
-                                                </span>
-                                            </div>
-
-                                            <h3 className="mt-4 text-2xl font-bold leading-tight text-slate-900">
-                                                {bookingData.tourName}
-                                            </h3>
-
-                                            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                                                <div className="rounded-2xl bg-slate-50 p-4">
-                                                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                                                        <MapPin size={16} className="text-blue-600" />
-                                                        Điểm đến
-                                                    </div>
-                                                    <p className="mt-2 text-sm text-slate-500">
-                                                        {bookingData.destination}
-                                                    </p>
-                                                </div>
-
-                                                <div className="rounded-2xl bg-slate-50 p-4">
-                                                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                                                        <Clock size={16} className="text-blue-600" />
-                                                        Thời gian
-                                                    </div>
-                                                    <p className="mt-2 text-sm text-slate-500">
-                                                        {bookingData.duration}
-                                                    </p>
-                                                </div>
-
-                                                <div className="rounded-2xl bg-slate-50 p-4">
-                                                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                                                        <CalendarDays size={16} className="text-blue-600" />
-                                                        Ngày khởi hành
-                                                    </div>
-                                                    <p className="mt-2 text-sm text-slate-500">
-                                                        {formatDate(bookingData.selectedDate)}
-                                                    </p>
-                                                </div>
-
-                                                <div className="rounded-2xl bg-slate-50 p-4">
-                                                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                                                        <Users size={16} className="text-blue-600" />
-                                                        Số khách
-                                                    </div>
-                                                    <p className="mt-2 text-sm text-slate-500">
-                                                        {bookingData.adults} người lớn
-                                                        {bookingData.children > 0
-                                                            ? `, ${bookingData.children} trẻ em`
-                                                            : ''}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                                                <p className="text-sm leading-6 text-blue-700">
-                                                    Sau khi gửi yêu cầu, nhân viên tư vấn sẽ xác nhận lại lịch khởi hành, tình trạng chỗ và thông tin thanh toán trước khi hoàn tất booking.
-                                                </p>
-                                            </div>
+                                            <p className="font-medium">
+                                                {contact.email}
+                                            </p>
                                         </div>
+
+                                        <div>
+                                            <p className="text-sm text-slate-500">
+                                                Số điện thoại
+                                            </p>
+
+                                            <p className="font-medium">
+                                                {contact.phone}
+                                            </p>
+                                        </div>
+
                                     </div>
+
+                                    <div className="mt-4">
+                                        <p className="text-sm text-slate-500">
+                                            Ghi chú
+                                        </p>
+
+                                        <p>
+                                            {note || "Không có"}
+                                        </p>
+                                    </div>
+
                                 </div>
-                            </section>
-                        )}
-                        {step === 2 && (
-                            <section className="rounded-[2rem] border border-slate-100 bg-white shadow-sm">
-                                <div className="border-b border-slate-100 px-5 py-5 md:px-6">
-                                    <h2 className="mt-2 text-2xl font-bold text-slate-900">
-                                        Thông tin khách hàng
+                                <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+
+                                    <h2 className="mb-5 text-xl font-bold">
+                                        Chi tiết đơn đặt tour
                                     </h2>
 
-                                    <p className="mt-2 text-sm leading-6 text-slate-500">
-                                        Thông tin này dùng để xác nhận booking, gửi thông tin tour và hỗ trợ khi cần thiết.
-                                    </p>
-                                </div>
+                                    <div className="space-y-3">
 
-                                <div className="p-5 md:p-6">
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        <InputField
-                                            label="Họ và tên"
-                                            name="fullName"
-                                            value={customer.fullName}
-                                            onChange={handleCustomerChange}
-                                            placeholder="Nhập họ và tên"
-                                            icon={User}
-                                            error={
-                                                submitted && !customer.fullName.trim()
-                                                    ? 'Vui lòng nhập họ và tên.'
-                                                    : ''
-                                            }
-                                        />
+                                        <div>
+                                            <span className="text-slate-500">
+                                                Mã đặt chỗ:
+                                            </span>
 
-                                        <InputField
-                                            label="Số điện thoại"
-                                            name="phone"
-                                            value={customer.phone}
-                                            onChange={handleCustomerChange}
-                                            placeholder="Nhập số điện thoại"
-                                            icon={Phone}
-                                            error={
-                                                submitted && !customer.phone.trim()
-                                                    ? 'Vui lòng nhập số điện thoại.'
-                                                    : ''
-                                            }
-                                        />
-
-                                        <div className="md:col-span-2">
-                                            <InputField
-                                                label="Email"
-                                                name="email"
-                                                type="email"
-                                                value={customer.email}
-                                                onChange={handleCustomerChange}
-                                                placeholder="Nhập email"
-                                                icon={Mail}
-                                                error={
-                                                    submitted && !customer.email.trim()
-                                                        ? 'Vui lòng nhập email.'
-                                                        : ''
-                                                }
-                                            />
+                                            <span className="ml-2 font-medium">
+                                                {bookingData.tenTour}
+                                            </span>
                                         </div>
 
-                                        <div className="md:col-span-2">
-                                            <label className="text-sm font-semibold text-slate-700">
-                                                Ghi chú thêm
-                                            </label>
+                                        <div>
+                                            <span className="text-slate-500">
+                                                Ngày tạo:
+                                            </span>
 
-                                            <textarea
-                                                name="note"
-                                                value={customer.note}
-                                                onChange={handleCustomerChange}
-                                                rows={4}
-                                                placeholder="Ví dụ: cần phòng gần nhau, ăn chay, có trẻ nhỏ, yêu cầu đón riêng..."
-                                                className="mt-2 w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                                            />
+                                            <span className="ml-2 font-medium">
+                                                {formatDate(bookingData.ngayTao)}
+                                            </span>
                                         </div>
+
+                                        <div>
+                                            <span className="text-slate-500">
+                                                Trị giá đơn đặt:
+                                            </span>
+
+                                            <span className="ml-2 font-medium">
+                                                {formatCurrency(
+                                                    bookingData.totalPrice
+                                                )}
+                                            </span>
+                                        </div>
+
+                                        <div>
+                                            <span className="text-slate-500">
+                                                Số tiền đã thanh toán:
+                                            </span>
+
+                                            <span className="ml-2 font-medium">
+                                                {/* {formatCurrency(
+                                                    booking.soTienDaThanhToan
+                                                )} */}   adssdaf
+                                            </span>
+                                        </div>
+
+                                        <div>
+                                            <span className="text-slate-500">
+                                                Số tiền còn lại:
+                                            </span>
+
+                                            <span className="ml-2 font-medium">
+                                                {/* {formatCurrency(
+                                                    booking.soTienConLai
+                                                )} */}  dsasdf
+                                            </span>
+                                        </div>
+
+                                        <div>
+                                            <span className="text-slate-500">
+                                                Tình trạng:
+                                            </span>
+
+                                            <span className="ml-2 font-medium">
+                                                {/* {booking.trangThai} */}  sadfsdaf
+                                            </span>
+                                        </div>
+
+                                        <div>
+                                            <span className="text-slate-500">
+                                                Thời hạn thanh toán:
+                                            </span>
+
+                                            <span className="ml-2 font-medium">
+                                                {/* {booking.hanThanhToan} */}   sdafsadf
+                                            </span>
+                                        </div>
+
+                                        <div>
+                                            <span className="text-slate-500">
+                                                Hình thức thanh toán:
+                                            </span>
+
+                                            <span className="ml-2 font-medium">
+                                                {/* {booking.hinhThucThanhToan} */}  ádfasdf
+                                            </span>
+                                        </div>
+
                                     </div>
 
-                                    <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                                        <div className="rounded-2xl bg-slate-50 p-4">
-                                            <p className="text-sm font-bold text-slate-800">
-                                                Bảo mật thông tin
-                                            </p>
-                                            <p className="mt-1 text-xs leading-5 text-slate-500">
-                                                Thông tin chỉ dùng cho xác nhận đặt tour.
-                                            </p>
-                                        </div>
-
-                                        <div className="rounded-2xl bg-slate-50 p-4">
-                                            <p className="text-sm font-bold text-slate-800">
-                                                Tư vấn nhanh
-                                            </p>
-                                            <p className="mt-1 text-xs leading-5 text-slate-500">
-                                                Nhân viên sẽ liên hệ sau khi bạn gửi yêu cầu.
-                                            </p>
-                                        </div>
-
-                                        <div className="rounded-2xl bg-slate-50 p-4">
-                                            <p className="text-sm font-bold text-slate-800">
-                                                Không phát sinh
-                                            </p>
-                                            <p className="mt-1 text-xs leading-5 text-slate-500">
-                                                Chi phí được xác nhận rõ trước thanh toán.
-                                            </p>
-                                        </div>
-                                    </div>
                                 </div>
-                            </section>
-                        )}
+                                <div className="rounded-3xl mb-20 border border-slate-200 bg-white p-6 shadow-sm">
 
-                        {step === 3 && (
-                            <section className="rounded-[2rem] border border-slate-100 bg-white shadow-sm">
-                                <div className="border-b border-slate-100 px-5 py-5 md:px-6">
-                                    <h2 className="mt-2 text-2xl font-bold text-slate-900">
-                                        Chọn phương thức thanh toán
+                                    <h2 className="mb-5 text-xl font-bold">
+                                        Danh sách hành khách
                                     </h2>
 
-                                    <p className="mt-2 text-sm leading-6 text-slate-500">
-                                        Bạn có thể gửi yêu cầu trước hoặc thanh toán giữ chỗ để được ưu tiên xác nhận.
-                                    </p>
-                                </div>
+                                    <table className="w-full">
 
-                                <div className="p-5 md:p-6">
-                                    <div className="grid gap-4">
-                                        {paymentMethods.map((method) => {
-                                            const Icon = method.icon;
-                                            const active = paymentMethod === method.value;
+                                        <thead>
+                                            <tr className="text-left text-slate-500">
+                                                <th>#</th>
+                                                <th>Họ tên</th>
+                                                <th>Ngày sinh</th>
+                                                <th>Giới tính</th>
+                                                <th>Phòng đơn</th>
+                                            </tr>
+                                        </thead>
 
-                                            return (
-                                                <button
-                                                    key={method.value}
-                                                    type="button"
-                                                    onClick={() => setPaymentMethod(method.value)}
-                                                    className={`flex w-full items-start gap-4 rounded-3xl border p-5 text-left transition ${active
-                                                        ? 'border-blue-500 bg-blue-50 shadow-sm'
-                                                        : 'border-slate-200 bg-white hover:border-blue-300'
-                                                        }`}
+                                        <tbody>
+
+                                            {passengerList.map((passenger, index) => (
+                                                <tr
+                                                    key={passenger.key}
+                                                    className="border-t border-slate-100"
                                                 >
-                                                    <div
-                                                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${active
-                                                            ? 'bg-blue-600 text-white'
-                                                            : 'bg-slate-50 text-slate-500'
-                                                            }`}
-                                                    >
-                                                        <Icon size={22} />
-                                                    </div>
+                                                    <td className="py-3">
+                                                        #{index + 1}
+                                                    </td>
 
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center justify-between gap-3">
-                                                            <p
-                                                                className={`font-bold ${active ? 'text-blue-700' : 'text-slate-900'
-                                                                    }`}
-                                                            >
-                                                                {method.title}
-                                                            </p>
+                                                    <td>{passenger.fullName}</td>
 
-                                                            <span
-                                                                className={`h-5 w-5 rounded-full border-2 ${active
-                                                                    ? 'border-blue-600 bg-blue-600 ring-4 ring-blue-100'
-                                                                    : 'border-slate-300'
-                                                                    }`}
-                                                            />
-                                                        </div>
+                                                    <td>
+                                                        {passenger.dob
+                                                            ? formatDate(passenger.dob)
+                                                            : "-"}
+                                                    </td>
 
-                                                        <p className="mt-1 text-sm leading-6 text-slate-500">
-                                                            {method.description}
-                                                        </p>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
+                                                    <td>{passenger.gender}</td>
+
+                                                    <td>
+                                                        {passenger.singleRoom
+                                                            ? "Có"
+                                                            : "Không"}
+                                                    </td>
+                                                </tr>
+                                            ))}
+
+                                        </tbody>
+
+                                    </table>
+
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    {
+                        showPaymentModal && (
+                            <div className="fixed inset-0 z-[9999] bg-black/40 flex items-center justify-center">
+                                <div className="w-full max-w-3xl rounded-3xl bg-white shadow-xl">
+
+                                    {/* Header */}
+                                    <div className="flex items-center justify-between p-6">
+                                        <h2 className="text-2xl font-bold">
+                                            Các hình thức thanh toán
+                                        </h2>
+
+                                        <button
+                                            onClick={() => setShowPaymentModal(false)}
+                                            className="text-3xl"
+                                        >
+                                            ×
+                                        </button>
                                     </div>
 
-                                    {paymentMethod !== 'pay_later' && (
-                                        <div className="mt-5 rounded-3xl border border-blue-100 bg-blue-50 p-5">
-                                            <div className="flex items-start gap-3">
-                                                <LockKeyhole
-                                                    size={20}
-                                                    className="mt-0.5 shrink-0 text-blue-600"
-                                                />
-                                                <div>
-                                                    <p className="text-sm font-bold text-blue-800">
-                                                        Thanh toán giữ chỗ
-                                                    </p>
-                                                    <p className="mt-1 text-sm leading-6 text-blue-700">
-                                                        Bạn cần thanh toán trước{' '}
-                                                        <b>{formatCurrency(depositAmount)}</b>, tương đương 30% giá trị tour. Phần còn lại sẽ được thanh toán theo hướng dẫn của tư vấn viên.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
+                                    {/* Nội dung */}
+                                    <div className="p-6 space-y-5">
 
-                                    {paymentMethod === 'pay_later' && (
-                                        <div className="mt-5 rounded-3xl border border-emerald-100 bg-emerald-50 p-5">
-                                            <div className="flex items-start gap-3">
-                                                <CheckCircle2
-                                                    size={20}
-                                                    className="mt-0.5 shrink-0 text-emerald-600"
+                                        {/* Ví điện tử */}
+                                        <div
+                                            onClick={() =>
+                                                setPaymentMethod("ewallet")
+                                            }
+                                            className={`cursor-pointer rounded-2xl border p-5
+                                                ${paymentMethod === "ewallet"
+                                                    ? "border-sky-500 bg-sky-50"
+                                                    : "border-slate-200"
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="radio"
+                                                    checked={
+                                                        paymentMethod ===
+                                                        "ewallet"
+                                                    }
+                                                    readOnly
                                                 />
-                                                <p className="text-sm leading-6 text-emerald-700">
-                                                    Bạn chưa cần thanh toán ngay. Hệ thống sẽ gửi yêu cầu đặt tour và nhân viên tư vấn sẽ liên hệ xác nhận.
-                                                </p>
+
+                                                <span className="font-medium">
+                                                    Ví điện tử MoMo
+                                                </span>
+                                            </div>
+
+                                            {/* <div className="mt-4 flex gap-5">
+                                                <img
+                                                    src="/images/momo.png"
+                                                    alt="MoMo"
+                                                    className="h-8"
+                                                />
+
+                                                <img
+                                                    src="/images/zalopay.png"
+                                                    alt="ZaloPay"
+                                                    className="h-8"
+                                                />
+                                            </div> */}
+                                        </div>
+
+                                        {/* Tiền mặt */}
+                                        <div
+                                            onClick={() =>
+                                                setPaymentMethod("cash")
+                                            }
+                                            className={`cursor-pointer rounded-2xl border p-5
+                                                ${paymentMethod === "cash"
+                                                    ? "border-sky-500 bg-sky-50"
+                                                    : "border-slate-200"
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="radio"
+                                                    checked={
+                                                        paymentMethod ===
+                                                        "cash"
+                                                    }
+                                                    readOnly
+                                                />
+
+                                                <span className="font-medium">
+                                                    Tiền mặt
+                                                </span>
                                             </div>
                                         </div>
-                                    )}
+
+                                    </div>
+
+                                    {/* Footer */}
+                                    <div className="flex justify-end  p-6">
+                                        <button
+                                            onClick={handleConfirmPayment}
+                                            className="rounded-full bg-sky-500 px-10 py-3 font-semibold text-white"
+                                        >
+                                            Xác nhận
+                                        </button>
+                                    </div>
+
                                 </div>
-                            </section>
-                        )}
+                            </div>
+                        )
+                    }
+                    <div className="lg:col-span-4">
+                        <TourSummaryCard
+                            bookingData={{
+                                ...bookingData,
+                                totalPrice,
+                            }}
+                            passengers={passengers}
+                            singleRoomCount={singleRoomCount}
+                            step={step}
+                            setShowPaymentModal={setShowPaymentModal}
+                            onSubmit={handleSubmit}
+                        />
 
-                        <div className="flex gap-3 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
-                            {step > 1 && (
-                                <button
-                                    type="button"
-                                    onClick={goBack}
-                                    className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-blue-500 hover:text-blue-600"
-                                >
-                                    Quay lại
-                                </button>
-                            )}
-
-                            {step < 3 ? (
-                                <button
-                                    type="button"
-                                    onClick={goNext}
-                                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                                >
-                                    Tiếp tục
-                                    <ArrowRight size={17} />
-                                </button>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={handleConfirmBooking}
-                                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                                >
-                                    {paymentMethod === 'pay_later'
-                                        ? 'Gửi yêu cầu đặt tour'
-                                        : 'Xác nhận thanh toán'}
-                                    <Send size={17} />
-                                </button>
-                            )}
-                        </div>
-                    </main>
-
-                    <SummaryCard bookingData={bookingData} />
+                    </div>
                 </div>
             </div>
         </div>

@@ -12,6 +12,7 @@ export default function Dropdown({
     clearable = false,
     placeholder = 'Chọn',
     fullWidth = true,
+    className = ""
 }) {
     const [open, setOpen] = useState(false);
     const [keyword, setKeyword] = useState('');
