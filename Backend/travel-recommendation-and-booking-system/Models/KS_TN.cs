@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 
-namespace WebDuLich.Models
+namespace travel_recommendation_and_booking_system.Models
 {
     [Table("KS_TN")]
     public class KS_TN

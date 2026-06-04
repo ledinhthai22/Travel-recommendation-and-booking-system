@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
-namespace WebDuLich.Models
+namespace travel_recommendation_and_booking_system.Models
 {
     [Table("HinhAnhSK")]
     public class HinhAnhSK

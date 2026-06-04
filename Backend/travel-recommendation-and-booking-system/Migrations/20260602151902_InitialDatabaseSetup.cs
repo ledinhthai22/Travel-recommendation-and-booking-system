@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace WebDuLich.Migrations
+namespace travelrecommendationandbookingsystem.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreateV2 : Migration
+    public partial class InitialDatabaseSetup : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -299,10 +299,10 @@ namespace WebDuLich.Migrations
                     MaVaiTro = table.Column<int>(type: "int", nullable: false),
                     HoTen = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     Email = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    DiaChi = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    DiaChi = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     MatKhau = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     SoDienThoai = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    NgaySinh = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    NgaySinh = table.Column<DateTime>(type: "datetime2", nullable: true),
                     NgayTao = table.Column<DateTime>(type: "datetime2", nullable: false),
                     NgayCapNhat = table.Column<DateTime>(type: "datetime2", nullable: false),
                     NgayXoa = table.Column<DateTime>(type: "datetime2", nullable: true),

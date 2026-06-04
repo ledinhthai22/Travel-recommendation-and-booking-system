@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using travel_recommendation_and_booking_system.Data;
 
@@ -11,9 +12,11 @@ using travel_recommendation_and_booking_system.Data;
 namespace travelrecommendationandbookingsystem.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260602151902_InitialDatabaseSetup")]
+    partial class InitialDatabaseSetup
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -531,11 +534,8 @@ namespace travelrecommendationandbookingsystem.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("GioiTinh")
                         .HasMaxLength(100)
-                        .HasColumnType("bit");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("HoTen")
                         .IsRequired()
@@ -698,10 +698,6 @@ namespace travelrecommendationandbookingsystem.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("SoDienThoai")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<bool>("TrangThai")
                         .HasColumnType("bit");
 
@@ -743,9 +739,6 @@ namespace travelrecommendationandbookingsystem.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("DuongDanAnh")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -755,9 +748,6 @@ namespace travelrecommendationandbookingsystem.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("MaOtp")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("MaVaiTro")
                         .HasColumnType("int");
@@ -784,45 +774,14 @@ namespace travelrecommendationandbookingsystem.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<DateTime?>("ThoiGianHetHanOtp")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("TrangThai")
-                        .HasColumnType("int");
+                    b.Property<bool>("TrangThai")
+                        .HasColumnType("bit");
 
                     b.HasKey("MaNguoiDung");
 
                     b.HasIndex("MaVaiTro");
 
                     b.ToTable("NguoiDung");
-                });
-
-            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.PhienDangNhap", b =>
-                {
-                    b.Property<int>("MaPhien")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaPhien"));
-
-                    b.Property<string>("DiaChiIp")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("MaNguoiDung")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("NgayHetHan")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("RefreshToken")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("MaPhien");
-
-                    b.HasIndex("MaNguoiDung");
-
-                    b.ToTable("PhienDangNhaps");
                 });
 
             modelBuilder.Entity("travel_recommendation_and_booking_system.Models.PhuongTien", b =>
@@ -1324,17 +1283,6 @@ namespace travelrecommendationandbookingsystem.Migrations
                     b.Navigation("VaiTro");
                 });
 
-            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.PhienDangNhap", b =>
-                {
-                    b.HasOne("travel_recommendation_and_booking_system.Models.NguoiDung", "NguoiDung")
-                        .WithMany("PhienDangNhaps")
-                        .HasForeignKey("MaNguoiDung")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("NguoiDung");
-                });
-
             modelBuilder.Entity("travel_recommendation_and_booking_system.Models.SoThichNguoiDung", b =>
                 {
                     b.HasOne("travel_recommendation_and_booking_system.Models.CLoaiHinhTour", "LoaiHinhTour")
@@ -1446,8 +1394,6 @@ namespace travelrecommendationandbookingsystem.Migrations
                     b.Navigation("DanhSachYeuThichs");
 
                     b.Navigation("DonDatTours");
-
-                    b.Navigation("PhienDangNhaps");
 
                     b.Navigation("SoThichNguoiDungs");
                 });

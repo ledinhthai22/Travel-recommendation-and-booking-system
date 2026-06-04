@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace WebDuLich.Models
+namespace travel_recommendation_and_booking_system.Models
 {
     [Table("VaiTro")]
     public class VaiTro
