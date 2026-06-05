@@ -5,73 +5,179 @@ import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
 
 const BOOKING_DATA = [
     {
-        id: 1001,
-        bookingCode: "BK-20260412-001",
-        customerName: "Nguyễn Thị Lan",
+        maDonDatTour: 1001,
+        maNguoiDung: 201,
+        maChuyen: 301,
+        maKhachSan: 101,
+        maUuDai: 1,
+
+        soNguoiLon: 2,
+        soTreEm: 1,
+        soEmBe: 0,
+
+        ngayDat: "2026-04-10T09:30:00",
+        tongTien: 14550000,
+
+        trangThaiThanhToan: true,
+        trangThaiDon: 2,
+
+        ngayCapNhat: "2026-04-10T10:00:00",
+
+        // Thông tin hiển thị
+        tenKhachHang: "Nguyễn Thị Lan",
         email: "lan.nguyen@gmail.com",
-        phone: "0912 345 678",
+        soDienThoai: "0912345678",
         avatar: "https://i.pravatar.cc/150?u=lan",
-        tourName: "Vịnh Hạ Long 3N2Đ",
-        tourCode: "HL-20260415",
-        bookingDate: "10/04/2026",
-        departureDate: "15/04/2026",
-        passengers: 3,
-        totalAmount: "14.550.000đ",
-        status: "Đã xác nhận",
-        statusColor: "bg-emerald-100 text-emerald-700 border-emerald-200",
-        paymentStatus: "Đã thanh toán"
+
+        // Tour
+        tour: {
+            maTour: 1,
+            tenTour: "Vịnh Hạ Long 3N2Đ",
+            thoiGianTour: "3 Ngày 2 Đêm",
+            diemKhoiHanh: "Hà Nội",
+            trangThai: true
+        },
+
+        // Chuyến khởi hành
+        chuyen: {
+            maChuyen: 301,
+            maChuyenCode: "HL-20260415",
+            tenChuyen: "Hạ Long tháng 4",
+            diemDen: "Quảng Ninh",
+            ngayKhoiHanh: "2026-04-15",
+            ngayKetThuc: "2026-04-17",
+            soLuongCho: 40
+        }
     },
+
     {
-        id: 1002,
-        bookingCode: "BK-20260412-009",
-        customerName: "Trần Minh Quân",
+        maDonDatTour: 1002,
+        maNguoiDung: 202,
+        maChuyen: 302,
+        maKhachSan: null,
+        maUuDai: null,
+
+        soNguoiLon: 2,
+        soTreEm: 0,
+        soEmBe: 0,
+
+        ngayDat: "2026-04-11T13:00:00",
+        tongTien: 12900000,
+
+        trangThaiThanhToan: false,
+        trangThaiDon: 1,
+
+        ngayCapNhat: "2026-04-11T13:00:00",
+
+        tenKhachHang: "Trần Minh Quân",
         email: "quan.tran@yahoo.com",
-        phone: "0987 654 321",
+        soDienThoai: "0987654321",
         avatar: "https://i.pravatar.cc/150?u=quan",
-        tourName: "Phú Quốc Beach Resort 4N3Đ",
-        tourCode: "PQ-20260520",
-        bookingDate: "11/04/2026",
-        departureDate: "20/05/2026",
-        passengers: 2,
-        totalAmount: "12.900.000đ",
-        status: "Chờ xác nhận",
-        statusColor: "bg-amber-100 text-amber-700 border-amber-200",
-        paymentStatus: "Chưa thanh toán"
+
+        tour: {
+            maTour: 2,
+            tenTour: "Phú Quốc Beach Resort 4N3Đ",
+            thoiGianTour: "4 Ngày 3 Đêm",
+            diemKhoiHanh: "TP.HCM",
+            trangThai: true
+        },
+
+        chuyen: {
+            maChuyen: 302,
+            maChuyenCode: "PQ-20260520",
+            tenChuyen: "Phú Quốc mùa hè",
+            diemDen: "Kiên Giang",
+            ngayKhoiHanh: "2026-05-20",
+            ngayKetThuc: "2026-05-23",
+            soLuongCho: 30
+        }
     },
+
     {
-        id: 1003,
-        bookingCode: "BK-20260409-006",
-        customerName: "Lê Hoàng Nam",
+        maDonDatTour: 1003,
+        maNguoiDung: 203,
+        maChuyen: 303,
+        maKhachSan: null,
+        maUuDai: 2,
+
+        soNguoiLon: 1,
+        soTreEm: 0,
+        soEmBe: 0,
+
+        ngayDat: "2026-04-09T08:15:00",
+        tongTien: 2790000,
+
+        trangThaiThanhToan: true,
+        trangThaiDon: 4,
+
+        ngayCapNhat: "2026-04-12T09:00:00",
+
+        tenKhachHang: "Lê Hoàng Nam",
         email: "nam.le@hotmail.com",
-        phone: "0934 567 890",
+        soDienThoai: "0934567890",
         avatar: "https://i.pravatar.cc/150?u=nam",
-        tourName: "Fansipan Sapa 2N1Đ",
-        tourCode: "SP-20260418",
-        bookingDate: "09/04/2026",
-        departureDate: "18/04/2026",
-        passengers: 1,
-        totalAmount: "2.790.000đ",
-        status: "Đã huỷ",
-        statusColor: "bg-red-100 text-red-700 border-red-200",
-        paymentStatus: "Đã hoàn tiền"
+
+        tour: {
+            maTour: 3,
+            tenTour: "Fansipan Sapa 2N1Đ",
+            thoiGianTour: "2 Ngày 1 Đêm",
+            diemKhoiHanh: "Hà Nội",
+            trangThai: true
+        },
+
+        chuyen: {
+            maChuyen: 303,
+            maChuyenCode: "SP-20260418",
+            tenChuyen: "Fansipan cuối tuần",
+            diemDen: "Lào Cai",
+            ngayKhoiHanh: "2026-04-18",
+            ngayKetThuc: "2026-04-19",
+            soLuongCho: 25
+        }
     },
+
     {
-        id: 1004,
-        bookingCode: "BK-20260412-005",
-        customerName: "Phạm Thu Hà",
+        maDonDatTour: 1004,
+        maNguoiDung: 204,
+        maChuyen: 304,
+        maKhachSan: 102,
+        maUuDai: null,
+
+        soNguoiLon: 2,
+        soTreEm: 2,
+        soEmBe: 0,
+
+        ngayDat: "2026-04-12T15:00:00",
+        tongTien: 11200000,
+
+        trangThaiThanhToan: true,
+        trangThaiDon: 3,
+
+        ngayCapNhat: "2026-04-25T18:00:00",
+
+        tenKhachHang: "Phạm Thu Hà",
         email: "hapham@gmail.com",
-        phone: "0978 123 456",
+        soDienThoai: "0978123456",
         avatar: "https://i.pravatar.cc/150?u=ha",
-        tourName: "Đà Lạt mùa hoa 3N2Đ",
-        tourCode: "DL-20260422",
-        bookingDate: "12/04/2026",
-        departureDate: "22/04/2026",
-        passengers: 4,
-        totalAmount: "11.200.000đ",
-        status: "Đã xác nhận",
-        statusColor: "bg-emerald-100 text-emerald-700 border-emerald-200",
-        paymentStatus: "Đã thanh toán"
-    },
+
+        tour: {
+            maTour: 4,
+            tenTour: "Đà Lạt mùa hoa 3N2Đ",
+            thoiGianTour: "3 Ngày 2 Đêm",
+            diemKhoiHanh: "TP.HCM",
+            trangThai: true
+        },
+
+        chuyen: {
+            maChuyen: 304,
+            maChuyenCode: "DL-20260422",
+            tenChuyen: "Đà Lạt tháng 4",
+            diemDen: "Lâm Đồng",
+            ngayKhoiHanh: "2026-04-22",
+            ngayKetThuc: "2026-04-24",
+            soLuongCho: 35
+        }
+    }
 ];
 
 export default function BookingManager() {
@@ -84,20 +190,51 @@ export default function BookingManager() {
 
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
+
             data = data.filter(item =>
-                item.customerName.toLowerCase().includes(term) ||
-                item.bookingCode.toLowerCase().includes(term) ||
-                item.tourName.toLowerCase().includes(term)
+                item.tenKhachHang.toLowerCase().includes(term) ||
+                item.maDonDatTour.toString().includes(term) ||
+                item.tour.tenTour.toLowerCase().includes(term)
             );
         }
 
         if (statusFilter !== 'all') {
-            data = data.filter(item => item.status === statusFilter);
+            data = data.filter(
+                item => item.trangThaiDon === Number(statusFilter)
+            );
         }
 
         return data;
     }, [searchTerm, statusFilter]);
-
+    const getOrderStatus = (status) => {
+        switch (status) {
+            case 1:
+                return {
+                    text: 'Chờ xác nhận',
+                    color: 'bg-amber-100 text-amber-700 border-amber-200'
+                };
+            case 2:
+                return {
+                    text: 'Đã duyệt',
+                    color: 'bg-blue-100 text-blue-700 border-blue-200'
+                };
+            case 3:
+                return {
+                    text: 'Hoàn tất',
+                    color: 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                };
+            case 4:
+                return {
+                    text: 'Đã hủy',
+                    color: 'bg-red-100 text-red-700 border-red-200'
+                };
+            default:
+                return {
+                    text: 'Không xác định',
+                    color: 'bg-slate-100 text-slate-700 border-slate-200'
+                };
+        }
+    };
     const handleEdit = (row) => {
         console.log('Edit booking:', row);
     };
@@ -112,63 +249,142 @@ export default function BookingManager() {
 
     const columns = useMemo(() => [
         {
-            name: 'Mã đặt tour',
+            name: 'Mã đơn',
             sortable: true,
-            selector: row => row.bookingCode,
-            cell: (row) => (
-                <span className="font-mono text-sm font-medium text-slate-600">{row.bookingCode}</span>
-            ),
+            selector: row => row.maDonDatTour,
+            cell: row => (
+                <span className="font-mono font-semibold text-slate-700">
+                    {row.maDonDatTour}
+                </span>
+            )
         },
+
         {
             name: 'Khách hàng',
             sortable: true,
-            selector: row => row.customerName,
-            cell: (row) => (
+            selector: row => row.tenKhachHang,
+            cell: row => (
                 <div className="flex items-center gap-3">
                     <img
                         src={row.avatar}
-                        alt={row.customerName}
-                        className="w-10 h-10 rounded-full border border-slate-200"
+                        alt={row.tenKhachHang}
+                        className="w-10 h-10 rounded-full border"
                     />
+
                     <div>
-                        <p className="font-semibold text-slate-900 text-sm">{row.customerName}</p>
-                        <p className="text-xs text-slate-500">{row.email}</p>
+                        <p className="font-semibold text-sm">
+                            {row.tenKhachHang}
+                        </p>
+
+                        <p className="text-xs text-slate-500">
+                            {row.email}
+                        </p>
                     </div>
                 </div>
-            ),
+            )
         },
+
         {
             name: 'Tour',
-            selector: row => row.tourName,
-            cell: (row) => (
+            sortable: true,
+            selector: row => row.tour.tenTour,
+            cell: row => (
                 <div>
-                    <p className="font-medium text-slate-800">{row.tourName}</p>
-                    <p className="text-xs text-slate-400">{row.tourCode}</p>
+                    <p className="font-medium">
+                        {row.tour.tenTour}
+                    </p>
+
+                    <p className="text-xs text-slate-400">
+                        {row.chuyen.maChuyenCode}
+                    </p>
                 </div>
-            ),
+            )
         },
+
+        {
+            name: 'Khởi hành',
+            sortable: true,
+            selector: row => row.chuyen.ngayKhoiHanh,
+            cell: row => (
+                <div>
+                    <p className="font-medium">
+                        {row.chuyen.ngayKhoiHanh}
+                    </p>
+
+                    <p className="text-xs text-slate-400">
+                        {row.tour.diemKhoiHanh}
+                    </p>
+                </div>
+            )
+        },
+
+        {
+            name: 'Số khách',
+            center: true,
+            cell: row => (
+                row.soNguoiLon +
+                row.soTreEm +
+                row.soEmBe
+            )
+        },
+
+        {
+            name: 'Tổng tiền',
+            sortable: true,
+            selector: row => row.tongTien,
+            cell: row => (
+                <span className="font-semibold ">
+                    {row.tongTien.toLocaleString('vi-VN')}đ
+                </span>
+            )
+        },
+
+        {
+            name: 'Thanh toán',
+            center: true,
+            cell: row => (
+                <span
+                    className={`px-3 py-1 rounded-full text-xs font-bold
+                ${row.trangThaiThanhToan
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-orange-100 text-orange-700'
+                        }`}
+                >
+                    {row.trangThaiThanhToan
+                        ? 'Đã thanh toán'
+                        : 'Chưa thanh toán'}
+                </span>
+            )
+        },
+
         {
             name: 'Trạng thái',
-            cell: (row) => (
-                <span className={`inline-block px-4 py-1.5 text-xs font-bold rounded-2xl border ${row.statusColor}`}>
-                    {row.status}
-                </span>
-            ),
+            center: true,
+            cell: row => {
+                const status = getOrderStatus(row.trangThaiDon);
+
+                return (
+                    <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold border ${status.color}`}
+                    >
+                        {status.text}
+                    </span>
+                );
+            }
         },
+
         {
             name: 'Thao tác',
             width: '150px',
-            cell: (row) => (
+            cell: row => (
                 <RowActionsButton
-                    selectableRows
-                    selectableRowsHighlight
                     row={row}
                     onView={handleView}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                 />
-            ),
-        },
+            )
+        }
     ], []);
 
     return (
@@ -179,16 +395,26 @@ export default function BookingManager() {
                 onSearchChange={setSearchTerm}
                 addButtonText="Tạo đặt tour mới"
                 showCategoryFilter={false}
+                showImportExcel = {false}
             />
             <CustomDataTable
                 columns={columns}
                 data={filteredData}
                 paginationPerPage={10}
+                paginationComponentOptions={{
+                    rowsPerPageText: 'Số dòng:',
+                    rangeSeparatorText: 'trên',
+                    noRowsPerPage: false,
+                    selectAllRowsItem: true,
+                    selectAllRowsItemText: 'Tất cả',
+                }}
                 highlightOnHover
                 pointerOnHover
                 noDataComponent={
-                    <div className="py-12 text-center text-slate-400">
-                        Không tìm thấy đặt tour nào theo bộ lọc
+                    <div className="py-8 text-center">
+                        <p className="text-slate-400 text-sm">
+                            Không có dữ liệu
+                        </p>
                     </div>
                 }
             />

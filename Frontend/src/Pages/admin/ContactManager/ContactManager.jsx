@@ -56,7 +56,7 @@ const CONTACT_DATA = [
 
 export default function ContactManager() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); 
+  const [statusFilter, setStatusFilter] = useState('all');
   const filteredData = useMemo(() => {
     let data = CONTACT_DATA;
 
@@ -138,8 +138,8 @@ export default function ContactManager() {
       name: 'Trạng thái',
       cell: (row) => (
         <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-2xl border 
-          ${row.status === 'chưa đọc' 
-            ? 'bg-blue-100 text-blue-700 border-blue-200' 
+          ${row.status === 'chưa đọc'
+            ? 'bg-blue-100 text-blue-700 border-blue-200'
             : 'bg-emerald-100 text-emerald-700 border-emerald-200'
           }`}>
           {row.status === 'chưa đọc' && <span className="w-2 h-2 bg-blue-500 rounded-full" />}
@@ -167,7 +167,7 @@ export default function ContactManager() {
         onSearchChange={setSearchTerm}
         showCategoryFilter={false}
         showAddButton={false}
-        showExcel ={false}
+        showExcel={false}
       />
       <CustomDataTable
         columns={columns}
@@ -175,8 +175,20 @@ export default function ContactManager() {
         paginationPerPage={10}
         highlightOnHover
         pointerOnHover
-        selectableRows
-        selectableRowsHighlight
+        paginationComponentOptions={{
+          rowsPerPageText: 'Số dòng:',
+          rangeSeparatorText: 'trên',
+          noRowsPerPage: false,
+          selectAllRowsItem: true,
+          selectAllRowsItemText: 'Tất cả',
+        }}
+        noDataComponent={
+          <div className="py-8 text-center">
+            <p className="text-slate-400 text-sm">
+              Không có dữ liệu
+            </p>
+          </div>
+        }
       />
     </div>
   );

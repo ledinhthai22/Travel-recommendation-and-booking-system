@@ -23,9 +23,9 @@ const SUPPORT_LINKS = [
 function FooterColumn({ title, links }) {
     return (
         <div className="flex flex-col gap-3">
-            <h3 
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-                className="text-sm font-bold text-white"
+            <h3
+                
+                className="text-sm font-bold text-white uppercase"
             >
                 {title}
             </h3>
@@ -34,8 +34,7 @@ function FooterColumn({ title, links }) {
                     <li key={index}>
                         <Link
                             to={link.href}
-                            style={{ fontFamily: "'Inter', sans-serif" }}
-                            className="text-xs text-slate-400 transition hover:text-[#0EA5E5]"
+                            className="text-[12px] text-slate-400 transition hover:text-[#0EA5E5]"
                         >
                             {link.label}
                         </Link>
@@ -52,7 +51,7 @@ export default function Footer() {
             <div className="mx-auto max-w-[1440px] px-6 py-12 md:px-12 lg:py-16">
                 {/* Grid Hệ thống phân chia theo mẫu ảnh */}
                 <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-[1.5fr_1fr_1fr_1fr_2fr] items-start">
-                    
+
                     {/* Cột 1: Thông tin thương hiệu & MXH */}
                     <div className="flex flex-col gap-4">
                         <Link to="/" className="flex items-center gap-2.5">
@@ -61,15 +60,15 @@ export default function Footer() {
                                 alt="Lối Riêng Travel"
                                 className="h-8 w-auto object-contain"
                             />
-                            <span 
+                            <span
                                 style={{ fontFamily: "'Poppins', sans-serif" }}
                                 className="text-base font-bold text-white tracking-wide"
                             >
                                 Lối Riêng Travel
                             </span>
                         </Link>
-                        
-                        <p 
+
+                        <p
                             style={{ fontFamily: "'Inter', sans-serif" }}
                             className="text-[11px] leading-relaxed text-slate-400 max-w-[200px]"
                         >
@@ -97,16 +96,16 @@ export default function Footer() {
 
                     {/* Cột 5: Đăng ký nhận tin bên phải */}
                     <div className="flex flex-col gap-3 lg:pl-4">
-                        <h3 
-                            style={{ fontFamily: "'Poppins', sans-serif" }}
-                            className="text-sm font-bold text-white"
+                        <h3
+
+                            className="text-sm font-bold text-white uppercase"
                         >
                             Nhận ưu đãi du lịch
                         </h3>
-                        
-                        <p 
-                            style={{ fontFamily: "'Inter', sans-serif" }}
-                            className="text-xs text-slate-400 leading-normal"
+
+                        <p
+
+                            className="text-[12px] text-slate-400 leading-normal"
                         >
                             Đăng ký để nhận thông tin về các tour mới, ưu đãi.
                         </p>
@@ -116,7 +115,6 @@ export default function Footer() {
                             <input
                                 type="email"
                                 placeholder="Email của bạn"
-                                style={{ fontFamily: "'Inter', sans-serif" }}
                                 className="w-full rounded-xl bg-white px-4 py-3 text-xs text-slate-800 outline-none placeholder:text-slate-400"
                             />
 

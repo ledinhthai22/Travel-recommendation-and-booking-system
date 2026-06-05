@@ -22,7 +22,7 @@ export default function HomePage() {
             <section className="py-16 md:py-20">
                 <div className="mx-auto max-w-[1440px] px-4 md:px-8">
                     <SectionTitle
-                        title="Bạn muốn đi đâu?"
+                        title="Bạn muốn đi đâu ?"
                         description="Khám phá các điểm đến được nhiều du khách yêu thích nhất."
                     />
                     <FeaturedCarousel

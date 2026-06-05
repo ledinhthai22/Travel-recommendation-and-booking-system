@@ -173,7 +173,23 @@ export default function UserManager() {
                 selectableRowsHighlight
                 columns={columns}
                 data={filteredData}
-                paginationPerPage={8}         
+                paginationPerPage={8}  
+                paginationComponentOptions={{
+                    rowsPerPageText: 'Số dòng:',
+                    rangeSeparatorText: 'trên',
+                    noRowsPerPage: false,
+                    selectAllRowsItem: true,
+                    selectAllRowsItemText: 'Tất cả',
+                }}
+                highlightOnHover
+                pointerOnHover
+                noDataComponent={
+                    <div className="py-8 text-center">
+                        <p className="text-slate-400 text-sm">
+                            Không có dữ liệu
+                        </p>
+                    </div>
+                }       
             />
         </div>
     );
