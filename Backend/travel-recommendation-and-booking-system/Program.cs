@@ -1,11 +1,11 @@
 ﻿
-using Microsoft.EntityFrameworkCore;
 using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 
 namespace travel_recommendation_and_booking_system
 {
@@ -79,7 +79,19 @@ namespace travel_recommendation_and_booking_system
                     ClockSkew = TimeSpan.Zero
                 };
             });
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("ReactPolicy",
+                    policy =>
+                    {
+                        policy.WithOrigins("http://localhost:5173")
+                              .AllowAnyHeader()
+                              .AllowAnyMethod()
+                              .AllowCredentials();
 
+
+                    });
+            });
             builder.Services.AddAuthorization();
             var app = builder.Build();
 
@@ -88,7 +100,7 @@ namespace travel_recommendation_and_booking_system
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-
+            app.UseCors("ReactPolicy");
             app.UseHttpsRedirection();
 
             app.UseAuthentication();
