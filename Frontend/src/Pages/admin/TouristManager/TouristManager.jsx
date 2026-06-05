@@ -197,11 +197,20 @@ export default function TourParticipantsManager() {
         selectableRowsHighlight
         paginationPerPage={10}
         paginationRowsPerPageOptions={[8, 10, 15, 20]}
+        paginationComponentOptions={{
+          rowsPerPageText: 'Số dòng:',
+          rangeSeparatorText: 'trên',
+          noRowsPerPage: false,
+          selectAllRowsItem: true,
+          selectAllRowsItemText: 'Tất cả',
+        }}
         highlightOnHover
         pointerOnHover
         noDataComponent={
-          <div className="py-12 text-center text-slate-400">
-            Không tìm thấy khách hàng nào theo bộ lọc
+          <div className="py-8 text-center">
+            <p className="text-slate-400 text-sm">
+              Không có dữ liệu
+            </p>
           </div>
         }
       />

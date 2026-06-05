@@ -28,8 +28,11 @@ import {
   BookingManager,
   Webinfo,
   ContactManager,
-  RevenueByTour
+  RevenueByTour,
+  ActivityLogManager,
+  NewlettersManager,
 } from './Pages/admin';
+
 
 function App() {
   return (
@@ -70,6 +73,8 @@ function App() {
             <Route path="Don-dat-cac-chuyen-di" element={<BookingManager />} />
             <Route path="Lien-he" element={<ContactManager />} />
             <Route path="Thong-tin-trang" element={<Webinfo />} />
+            <Route path="Newletter" element={<NewlettersManager />} />
+            <Route path="Hoat-dong-he-thong" element={<ActivityLogManager />} />
             <Route path="Thong-doanh-thu-theo-cac-chuyen-di" element={<RevenueByTour />} />
           </Route>
 

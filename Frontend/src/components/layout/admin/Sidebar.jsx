@@ -4,17 +4,20 @@ import Logo from '~/assets/svg/Icon.svg';
 import {
     LayoutDashboard,
     BarChart3,
-    Map,
     User,
-    Settings,
     Building2,
-    Calendar,
-    Plane,
-    Contact,
-    UsersRound,
-    IdCardLanyard,
     Users,
-    ChevronDown
+    ChevronDown,
+    Mailbox,
+    UserPlus2,
+    Columns3Cog,
+    FileClock,
+    MapPin,
+    MapPinned,
+    Luggage,
+    UserPen,
+    Ticket,
+    ContactRound
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -27,13 +30,13 @@ export default function Sidebar() {
         "flex items-center gap-3 px-4 py-3 text-slate-600 font-medium hover:bg-[#0EA5E5]/10 hover:text-[#0EA5E5] rounded-2xl transition-all duration-200 group text-[13px]";
 
     const activeLinkClass =
-        "flex items-center gap-3 px-4 py-3 text-[#0EA5E5] font-medium  bg-[#0EA5E5]/10 rounded-2xl transition-all duration-200 text-[13px]";
+        "flex items-center gap-3 px-4 py-3 text-[#0EA5E5] font-medium  rounded-2xl transition-all duration-200 text-[13px]";
 
     const activeSubmenuLinkClass =
-        "flex items-center gap-3 px-4 py-2.5 text-[#0EA5E5] font-medium  bg-[#0EA5E5]/10 rounded-xl transition-all pl-12 text-[13px]";
+        "flex items-center gap-3 px-4 py-2.5 text-[#0EA5E5] font-medium  rounded-xl transition-all pl-12 text-[12px]";
 
     const submenuLinkClass =
-        "flex items-center gap-1 px-4 py-2.5 text-slate-600 hover:bg-[#0EA5E5]/10 hover:text-[#0EA5E5] rounded-xl transition-all pl-12 text-[13px]";
+        "flex items-center gap-3 px-4 py-2.5 text-slate-600 hover:bg-[#0EA5E5]/10 hover:text-[#0EA5E5] rounded-xl transition-all pl-8 text-[12px]";
 
 
 
@@ -66,12 +69,12 @@ export default function Sidebar() {
                 <nav className="flex-1 space-y-1">
 
                     <NavLink to="/Quan-ly" end className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <LayoutDashboard size={20} />
+                        <LayoutDashboard size={16} />
                         <span className="font-manrope tracking-tight">Dashboard</span>
                     </NavLink>
 
                     <NavLink to="/Quan-ly/Thong-doanh-thu-theo-cac-chuyen-di" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <BarChart3 size={20} />
+                        <BarChart3 size={16} />
                         <span className="font-manrope tracking-tight">Doanh thu theo tour</span>
                     </NavLink>
                     <div>
@@ -79,33 +82,33 @@ export default function Sidebar() {
                             onClick={() => toggleMenu('tour')}
                             className={`w-full flex items-center gap-2 px-4 py-3 text-slate-600 font-medium hover:bg-slate-100 hover:text-slate-900 rounded-2xl transition-all duration-200${openMenu.tour ? '' : ''} text-[13.8px]`}
                         >
-                            <Map size={20} />
-                            <span className="font-manrope tracking-tight flex-1 text-left">Quản lý tour & dịch vụ</span>
+                            <MapPinned size={16} />
+                            <span className="font-manrope tracking-tight flex-1 text-left">Quản lý chuyến đi & dịch vụ</span>
                             <span className={` transition-transform duration-300 ${openMenu.tour ? 'rotate-180' : ''}`}>
-                                <ChevronDown size={16} />
+                                <ChevronDown size={14} />
                             </span>
                         </button>
 
                         {openMenu.tour && (
                             <div className="mt-1 space-y-1">
                                 <NavLink to="/Quan-ly/Dia-diem" className={({ isActive }) => isActive ? activeSubmenuLinkClass : submenuLinkClass}>
-                                    <Map size={18} />
+                                    <MapPin size={16} />
                                     Quản lý địa điểm
                                 </NavLink>
                                 <NavLink to="/Quan-ly/Cac-chuyen-di" className={({ isActive }) => isActive ? activeSubmenuLinkClass : submenuLinkClass}>
-                                    <Plane size={18} />
-                                    Quản lý tour
+                                    <Luggage size={16} />
+                                    Quản lý các chuyến đi
                                 </NavLink>
                                 <NavLink to="/Quan-ly/Khach-san" className={({ isActive }) => isActive ? activeSubmenuLinkClass : submenuLinkClass}>
-                                    <Building2 size={18} />
+                                    <Building2 size={16} />
                                     Quản lý khách sạn
                                 </NavLink>
                                 <NavLink to="/Quan-ly/Don-dat-cac-chuyen-di" className={({ isActive }) => isActive ? activeSubmenuLinkClass : submenuLinkClass}>
-                                    <Calendar size={18} />
-                                    Quản lý đặt tour
+                                    <Ticket size={16} />
+                                    Quản lý đơn đặt các chuyến đi
                                 </NavLink>
                                 <NavLink to="/Quan-ly/Khach-du-lich" className={({ isActive }) => isActive ? activeSubmenuLinkClass : submenuLinkClass}>
-                                    <UsersRound size={18} />
+                                    <UserPen size={16} />
                                     Quản lý khách du lịch
                                 </NavLink>
                             </div>
@@ -114,37 +117,45 @@ export default function Sidebar() {
                     <div>
                         <button
                             onClick={() => toggleMenu('user')}
-                            className={`w-full flex items-center gap-2 px-2 py-2 text-slate-600 font-medium hover:bg-slate-100 hover:text-slate-900 rounded-2xl transition-all duration-200 ${openMenu.user ? '' : ''} text-[13.8px]`}
+                            className={`w-full flex items-center gap-2 px-4 py-3 text-slate-600 font-medium hover:bg-slate-100 hover:text-slate-900 rounded-2xl transition-all duration-200${openMenu.tour ? '' : ''} text-[13.8px]}`}
                         >
-                            <Users size={20} />
+                            <Users size={16} />
                             <span className="font-manrope tracking-tight flex-1 text-left">Quản lý người dùng</span>
                             <span className={`material-symbols-outlined transition-transform duration-300 ${openMenu.user ? 'rotate-180' : ''}`}>
-                                <ChevronDown size={16} />
+                                <ChevronDown size={14} />
                             </span>
                         </button>
 
                         {openMenu.user && (
-                            <div className="mt-1  space-y-1">
+                            <div className="mt-1 space-y-1">
 
                                 <NavLink to="/Quan-ly/Nhan-vien" className={({ isActive }) => isActive ? activeSubmenuLinkClass : submenuLinkClass}>
-                                    <IdCardLanyard size={18} />
+                                    <ContactRound size={16} />
                                     Quản lý nhân sự
                                 </NavLink>
                                 <NavLink to="/Quan-ly/Nguoi-dung" className={({ isActive }) => isActive ? activeSubmenuLinkClass : submenuLinkClass}>
-                                    <User size={18} />
-                                    Quản lý tài khoản & Nguoi dùng
+                                    <User size={16} />
+                                    Quản lý tài khoản
                                 </NavLink>
                             </div>
                         )}
                     </div>
                     <NavLink to="/Quan-ly/Lien-he" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <Contact size={20} />
+                        <Mailbox size={16} />
                         <span className="font-manrope tracking-tight">Quản lý liên hệ</span>
+                    </NavLink>
+                    <NavLink to="/Quan-ly/Newletter" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
+                        <UserPlus2 size={16} />
+                        <span className="font-manrope tracking-tight">Quản lý newletters</span>
                     </NavLink>
 
                     <NavLink to="/Quan-ly/Thong-tin-trang" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <Settings size={20} />
+                        <Columns3Cog size={16} />
                         <span className="font-manrope tracking-tight">Quản lý thông tin trang</span>
+                    </NavLink>
+                    <NavLink to="/Quan-ly/Hoat-dong-he-thong" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
+                        <FileClock size={16} />
+                        <span className="font-manrope tracking-tight">Nhật ký hoạt động</span>
                     </NavLink>
                 </nav>
             </div>

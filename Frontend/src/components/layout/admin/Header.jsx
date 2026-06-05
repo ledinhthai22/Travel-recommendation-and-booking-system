@@ -78,8 +78,8 @@ export default function Header() {
                                     </div>
                                 </div>
 
-                                <button className="w-full px-5 py-3.5 text-left flex items-center gap-3 hover:bg-slate-50 transition-colors">
-                                    <User size={20} /> Thông tin cá nhân
+                                <button className="w-full px-5 py-2 text-left text-[12px] flex items-center gap-3 hover:bg-slate-50 transition-colors">
+                                    <User size={16} /> Thông tin cá nhân
                                 </button>
 
                                 <div className="border-t border-slate-100 my-1 mx-2"></div>
@@ -89,9 +89,9 @@ export default function Header() {
                                         console.log("Đăng xuất");
                                         setIsProfileOpen(false);
                                     }}
-                                    className="w-full px-5 py-3.5 text-left flex items-center gap-3 hover:bg-red-50 text-red-600 transition-colors rounded-b-2xl"
+                                    className="w-full px-5 py-3 text-[12px] text-left flex items-center gap-3 hover:bg-red-50 text-red-600 transition-colors rounded-b-2xl"
                                 >
-                                    <LogOut size={20} /> Đăng xuất
+                                    <LogOut size={16} /> Đăng xuất
                                 </button>
                             </div>
                         )}

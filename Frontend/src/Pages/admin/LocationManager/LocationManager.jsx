@@ -4,18 +4,118 @@ import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
 import LocationModal from './LocationModal';
 
 const LOCATION_DATA = [
-  { id: 1, name: "Vịnh Hạ Long", province: "Quảng Ninh", status: "open", rating: 4.9, image: "https://images.unsplash.com/photo-1524230507669-5ff97982bb5e?q=80&w=600", category: "Du lịch Biển", activeTours: 12, revenue: "420M" },
-  { id: 2, name: "Fansipan Sapa", province: "Lào Cai", status: "maintenance", rating: 4.7, image: "https://images.unsplash.com/photo-1504457047772-27faf1c00561?q=80&w=600", category: "Vùng Núi", activeTours: 8, revenue: "120M" },
-  { id: 3, name: "Phố Cổ Hội An", province: "Quảng Nam", status: "open", rating: 4.8, image: "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?q=80&w=600", category: "Phố Cổ", activeTours: 10, revenue: "280M" },
-  { id: 4, name: "Đà Lạt", province: "Lâm Đồng", status: "open", rating: 4.6, image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=600", category: "Cao Nguyên", activeTours: 15, revenue: "310M"},
-  { id: 5, name: "Phú Quốc", province: "Kiên Giang", status: "open", rating: 4.8, image: "https://images.unsplash.com/photo-1589394815804-964ed0be2eb5?q=80&w=600", category: "Du lịch Biển", activeTours: 18, revenue: "520M" },
-  { id: 6, name: "Mũi Né", province: "Bình Thuận", status: "maintenance", rating: 4.5, image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=600", category: "Du lịch Biển", activeTours: 6, revenue: "95M" },
-  { id: 7, name: "Tràng An", province: "Ninh Bình", status: "open", rating: 4.7, image: "https://images.unsplash.com/photo-1599576315975-de2c8a4abbc3?q=80&w=600", category: "Di sản", activeTours: 9, revenue: "175M" },
-  { id: 8, name: "Côn Đảo", province: "Bà Rịa – VT", status: "open", rating: 4.9, image: "https://images.unsplash.com/photo-1573160813959-929af7b9d51e?q=80&w=600", category: "Du lịch Biển", activeTours: 7, revenue: "210M"},
-  { id: 9, name: "Bà Nà Hills", province: "Đà Nẵng", status: "open", rating: 4.6, image: "https://images.unsplash.com/photo-1570366583862-f91883984fde?q=80&w=600", category: "Vui chơi", activeTours: 11, revenue: "390M"},
-  { id: 10, name: "Mù Cang Chải", province: "Yên Bái", status: "maintenance", rating: 4.8, image: "https://images.unsplash.com/photo-1598514983318-2f64f8f4796c?q=80&w=600", category: "Vùng Núi", activeTours: 5, revenue: "88M"},
-  { id: 11, name: "Hang Sơn Đoòng", province: "Quảng Bình", status: "open", rating: 5.0, image: "https://images.unsplash.com/photo-1516790236240-72d3936cc631?q=80&w=600", category: "Khám phá", activeTours: 3, revenue: "650M"},
-  { id: 12, name: "Cần Thơ", province: "Cần Thơ", status: "open", rating: 4.5, image: "https://images.unsplash.com/photo-1583417319070-4a69db38a482?q=80&w=600", category: "Sông nước", activeTours: 14, revenue: "195M" },
+  {
+    maDiaDiem: 1,
+    tenDiaDiem: "Vịnh Hạ Long",
+    duongDanAnh: "https://images.unsplash.com/photo-1524230507669-5ff97982bb5e?q=80&w=600",
+    loaiDiaDiem: "Vịnh",
+    moTa: "Di sản thiên nhiên thế giới nổi tiếng với hàng nghìn đảo đá vôi.",
+    tinhThanh: "Quảng Ninh",
+    quocGia: "Việt Nam",
+    khuVuc: true,
+    ngayTao: "2026-01-10",
+    ngayCapNhat: "2026-01-15",
+    ngayXoa: null,
+    trangThai: true
+  },
+  {
+    maDiaDiem: 2,
+    tenDiaDiem: "Fansipan",
+    duongDanAnh: "https://images.unsplash.com/photo-1504457047772-27faf1c00561?q=80&w=600",
+    loaiDiaDiem: "Núi",
+    moTa: "Đỉnh núi cao nhất Đông Dương.",
+    tinhThanh: "Lào Cai",
+    quocGia: "Việt Nam",
+    khuVuc: true,
+    ngayTao: "2026-01-11",
+    ngayCapNhat: "2026-01-16",
+    ngayXoa: null,
+    trangThai: true
+  },
+  {
+    maDiaDiem: 3,
+    tenDiaDiem: "Phố Cổ Hội An",
+    duongDanAnh: "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?q=80&w=600",
+    loaiDiaDiem: "Di tích lịch sử",
+    moTa: "Đô thị cổ nổi tiếng của Việt Nam.",
+    tinhThanh: "Quảng Nam",
+    quocGia: "Việt Nam",
+    khuVuc: true,
+    ngayTao: "2026-01-12",
+    ngayCapNhat: "2026-01-17",
+    ngayXoa: null,
+    trangThai: true
+  },
+  {
+    maDiaDiem: 4,
+    tenDiaDiem: "Đà Lạt",
+    duongDanAnh: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=600",
+    loaiDiaDiem: "Thành phố",
+    moTa: "Thành phố ngàn hoa.",
+    tinhThanh: "Lâm Đồng",
+    quocGia: "Việt Nam",
+    khuVuc: true,
+    ngayTao: "2026-01-13",
+    ngayCapNhat: "2026-01-18",
+    ngayXoa: null,
+    trangThai: true
+  },
+  {
+    maDiaDiem: 5,
+    tenDiaDiem: "Phú Quốc",
+    duongDanAnh: "https://images.unsplash.com/photo-1589394815804-964ed0be2eb5?q=80&w=600",
+    loaiDiaDiem: "Đảo",
+    moTa: "Hòn đảo du lịch nổi tiếng phía Nam.",
+    tinhThanh: "Kiên Giang",
+    quocGia: "Việt Nam",
+    khuVuc: true,
+    ngayTao: "2026-01-14",
+    ngayCapNhat: "2026-01-19",
+    ngayXoa: null,
+    trangThai: true
+  },
+  {
+    maDiaDiem: 6,
+    tenDiaDiem: "Bangkok",
+    duongDanAnh: "https://images.unsplash.com/photo-1508009603885-50cf7c579365?q=80&w=600",
+    loaiDiaDiem: "Thành phố",
+    moTa: "Thủ đô của Thái Lan.",
+    tinhThanh: "Bangkok",
+    quocGia: "Thái Lan",
+    khuVuc: false,
+    ngayTao: "2026-01-15",
+    ngayCapNhat: "2026-01-20",
+    ngayXoa: null,
+    trangThai: true
+  },
+  {
+    maDiaDiem: 7,
+    tenDiaDiem: "Núi Phú Sĩ",
+    duongDanAnh: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=600",
+    loaiDiaDiem: "Núi",
+    moTa: "Biểu tượng nổi tiếng của Nhật Bản.",
+    tinhThanh: "Yamanashi",
+    quocGia: "Nhật Bản",
+    khuVuc: false,
+    ngayTao: "2026-01-16",
+    ngayCapNhat: "2026-01-21",
+    ngayXoa: null,
+    trangThai: true
+  },
+  {
+    maDiaDiem: 8,
+    tenDiaDiem: "Đảo Jeju",
+    duongDanAnh: "https://images.unsplash.com/photo-1527631746610-bca00a040d60?q=80&w=600",
+    loaiDiaDiem: "Đảo",
+    moTa: "Hòn đảo du lịch nổi tiếng của Hàn Quốc.",
+    tinhThanh: "Jeju",
+    quocGia: "Hàn Quốc",
+    khuVuc: false,
+    ngayTao: "2026-01-17",
+    ngayCapNhat: "2026-01-22",
+    ngayXoa: null,
+    trangThai: true
+  }
 ];
 
 const PAGE_SIZE = 8;
@@ -81,8 +181,8 @@ export default function LocationManager() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {pageData.map(item => (
           <ManagerCard
-            key={item.id}
-            item={item} 
+            key={item.maDiaDiem}
+            item={item}
             type="location"
             onView={handleView}
             onEdit={handleEdit}
@@ -111,8 +211,8 @@ export default function LocationManager() {
               key={page}
               onClick={() => setCurrentPage(page)}
               className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${currentPage === page
-                  ? 'bg-blue-600 text-white shadow'
-                  : 'text-slate-500 hover:bg-slate-100'
+                ? 'bg-[#0EA5E5] text-white shadow'
+                : 'text-slate-500 hover:bg-slate-100'
                 }`}
             >
               {page}
