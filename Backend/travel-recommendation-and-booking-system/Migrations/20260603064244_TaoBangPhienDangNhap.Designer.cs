@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using travel_recommendation_and_booking_system.Data;
 
@@ -11,9 +12,11 @@ using travel_recommendation_and_booking_system.Data;
 namespace travelrecommendationandbookingsystem.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260603064244_TaoBangPhienDangNhap")]
+    partial class TaoBangPhienDangNhap
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -531,11 +534,8 @@ namespace travelrecommendationandbookingsystem.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("GioiTinh")
                         .HasMaxLength(100)
-                        .HasColumnType("bit");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("HoTen")
                         .IsRequired()
@@ -698,10 +698,6 @@ namespace travelrecommendationandbookingsystem.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("SoDienThoai")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<bool>("TrangThai")
                         .HasColumnType("bit");
 
@@ -756,9 +752,6 @@ namespace travelrecommendationandbookingsystem.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("MaOtp")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("MaVaiTro")
                         .HasColumnType("int");
 
@@ -784,11 +777,8 @@ namespace travelrecommendationandbookingsystem.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<DateTime?>("ThoiGianHetHanOtp")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("TrangThai")
-                        .HasColumnType("int");
+                    b.Property<bool>("TrangThai")
+                        .HasColumnType("bit");
 
                     b.HasKey("MaNguoiDung");
 

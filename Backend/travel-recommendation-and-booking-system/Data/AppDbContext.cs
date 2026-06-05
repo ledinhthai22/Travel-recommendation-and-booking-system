@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
-using WebDuLich.Models;
+using travel_recommendation_and_booking_system.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection.Emit;
-namespace WebDuLich.Data
+namespace travel_recommendation_and_booking_system.Data
 {
     public class AppDbContext : DbContext
     {
@@ -35,6 +35,7 @@ namespace WebDuLich.Data
         public DbSet<Banner> Banners { get; set; }
         public DbSet<LienHe> LienHes { get; set; }
         public DbSet<Newsletter> Newsletters { get; set; }
+        public DbSet<PhienDangNhap> PhienDangNhaps { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -60,5 +61,6 @@ namespace WebDuLich.Data
                 .HasForeignKey(d => d.MaChuyen)
                 .OnDelete(DeleteBehavior.Restrict);
         }
+
     }
 }

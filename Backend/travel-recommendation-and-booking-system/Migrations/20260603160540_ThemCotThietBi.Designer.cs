@@ -5,15 +5,15 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using WebDuLich.Data;
+using travel_recommendation_and_booking_system.Data;
 
 #nullable disable
 
-namespace WebDuLich.Migrations
+namespace travelrecommendationandbookingsystem.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260531151648_InitialCreateV2")]
-    partial class InitialCreateV2
+    [Migration("20260603160540_ThemCotThietBi")]
+    partial class ThemCotThietBi
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,7 +25,7 @@ namespace WebDuLich.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("WebDuLich.Models.Banner", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.Banner", b =>
                 {
                     b.Property<int>("MaBanner")
                         .ValueGeneratedOnAdd()
@@ -60,7 +60,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("Banner");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.CLoaiHinhTour", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.CLoaiHinhTour", b =>
                 {
                     b.Property<int>("MaLoaiTour")
                         .ValueGeneratedOnAdd()
@@ -90,7 +90,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("LoaiHinhTour");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.CTLichTrinh", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.CTLichTrinh", b =>
                 {
                     b.Property<int>("MaCTLT")
                         .ValueGeneratedOnAdd()
@@ -123,7 +123,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("CTLichTrinh");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.ChuyenKhoiHanh", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.ChuyenKhoiHanh", b =>
                 {
                     b.Property<int>("MaChuyen")
                         .ValueGeneratedOnAdd()
@@ -199,7 +199,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("ChuyenKhoiHanh");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.DanhGia", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.DanhGia", b =>
                 {
                     b.Property<int>("MaDanhGia")
                         .ValueGeneratedOnAdd()
@@ -241,7 +241,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("DanhGia");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.DanhSachYeuThich", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.DanhSachYeuThich", b =>
                 {
                     b.Property<int>("MaNguoiDung")
                         .HasColumnType("int");
@@ -264,7 +264,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("DanhSachYeuThich");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.DiaDiem", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.DiaDiem", b =>
                 {
                     b.Property<int>("MaDiaDiem")
                         .ValueGeneratedOnAdd()
@@ -319,7 +319,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("DiaDiem");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.DonDatTour", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.DonDatTour", b =>
                 {
                     b.Property<int>("MaDonDatTour")
                         .ValueGeneratedOnAdd()
@@ -383,7 +383,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("DonDatTour");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.GiaChuyen", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.GiaChuyen", b =>
                 {
                     b.Property<int>("MaGia")
                         .ValueGeneratedOnAdd()
@@ -425,7 +425,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("GiaChuyen");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.HinhAnhSK", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.HinhAnhSK", b =>
                 {
                     b.Property<int>("MaAnhSK")
                         .ValueGeneratedOnAdd()
@@ -463,7 +463,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("HinhAnhSK");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.HinhAnhTour", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.HinhAnhTour", b =>
                 {
                     b.Property<int>("MaAnhTour")
                         .ValueGeneratedOnAdd()
@@ -501,7 +501,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("HinhAnhTour");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.KS_TN", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.KS_TN", b =>
                 {
                     b.Property<int>("MaKhachSan")
                         .HasColumnType("int");
@@ -524,7 +524,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("KS_TN");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.KhachHang", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.KhachHang", b =>
                 {
                     b.Property<int>("MaKhachHang")
                         .ValueGeneratedOnAdd()
@@ -534,8 +534,11 @@ namespace WebDuLich.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("GioiTinh")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("bit");
 
                     b.Property<string>("HoTen")
                         .IsRequired()
@@ -563,7 +566,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("KhachHang");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.KhachSan", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.KhachSan", b =>
                 {
                     b.Property<int>("MaKhachSan")
                         .ValueGeneratedOnAdd()
@@ -610,7 +613,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("KhachSan");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.LichTrinh", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.LichTrinh", b =>
                 {
                     b.Property<int>("MaLichTrinh")
                         .ValueGeneratedOnAdd()
@@ -667,7 +670,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("LichTrinh");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.LienHe", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.LienHe", b =>
                 {
                     b.Property<int>("MaLienHe")
                         .ValueGeneratedOnAdd()
@@ -698,6 +701,10 @@ namespace WebDuLich.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("SoDienThoai")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("TrangThai")
                         .HasColumnType("bit");
 
@@ -706,7 +713,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("LienHe");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.Newsletter", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.Newsletter", b =>
                 {
                     b.Property<int>("MaNewsletter")
                         .ValueGeneratedOnAdd()
@@ -727,7 +734,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("Newsletter");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.NguoiDung", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.NguoiDung", b =>
                 {
                     b.Property<int>("MaNguoiDung")
                         .ValueGeneratedOnAdd()
@@ -736,9 +743,11 @@ namespace WebDuLich.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaNguoiDung"));
 
                     b.Property<string>("DiaChi")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("DuongDanAnh")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -761,7 +770,7 @@ namespace WebDuLich.Migrations
                     b.Property<DateTime>("NgayCapNhat")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("NgaySinh")
+                    b.Property<DateTime?>("NgaySinh")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime>("NgayTao")
@@ -775,8 +784,8 @@ namespace WebDuLich.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<bool>("TrangThai")
-                        .HasColumnType("bit");
+                    b.Property<int>("TrangThai")
+                        .HasColumnType("int");
 
                     b.HasKey("MaNguoiDung");
 
@@ -785,7 +794,35 @@ namespace WebDuLich.Migrations
                     b.ToTable("NguoiDung");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.PhuongTien", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.PhienDangNhap", b =>
+                {
+                    b.Property<int>("MaPhien")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaPhien"));
+
+                    b.Property<string>("DiaChiIp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("MaNguoiDung")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("NgayHetHan")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RefreshToken")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("MaPhien");
+
+                    b.HasIndex("MaNguoiDung");
+
+                    b.ToTable("PhienDangNhaps");
+                });
+
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.PhuongTien", b =>
                 {
                     b.Property<int>("MaPhuongTien")
                         .ValueGeneratedOnAdd()
@@ -820,7 +857,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("PhuongTien");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.SoThichNguoiDung", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.SoThichNguoiDung", b =>
                 {
                     b.Property<int>("MaNguoiDung")
                         .HasColumnType("int");
@@ -846,7 +883,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("SoThichNguoiDung");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.ThanhToan", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.ThanhToan", b =>
                 {
                     b.Property<int>("MaThanhToan")
                         .ValueGeneratedOnAdd()
@@ -881,7 +918,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("ThanhToan");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.ThongTinTrang", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.ThongTinTrang", b =>
                 {
                     b.Property<int>("MaTTTrang")
                         .ValueGeneratedOnAdd()
@@ -908,7 +945,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("ThongTinTrang");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.TienNghi", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.TienNghi", b =>
                 {
                     b.Property<int>("MaTienNghi")
                         .ValueGeneratedOnAdd()
@@ -935,7 +972,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("TienNghi");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.Tour", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.Tour", b =>
                 {
                     b.Property<int>("MaTour")
                         .ValueGeneratedOnAdd()
@@ -993,7 +1030,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("Tour");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.Tour_KhachSan", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.Tour_KhachSan", b =>
                 {
                     b.Property<int>("MaTour")
                         .HasColumnType("int");
@@ -1016,7 +1053,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("Tour_KhachSan");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.UuDai", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.UuDai", b =>
                 {
                     b.Property<int>("MaUuDai")
                         .ValueGeneratedOnAdd()
@@ -1066,7 +1103,7 @@ namespace WebDuLich.Migrations
                     b.ToTable("UuDai");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.VaiTro", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.VaiTro", b =>
                 {
                     b.Property<int>("MaVaiTro")
                         .ValueGeneratedOnAdd()
@@ -1084,15 +1121,15 @@ namespace WebDuLich.Migrations
                     b.ToTable("VaiTro");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.CTLichTrinh", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.CTLichTrinh", b =>
                 {
-                    b.HasOne("WebDuLich.Models.DiaDiem", "DiaDiem")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.DiaDiem", "DiaDiem")
                         .WithMany("CTLichTrinhs")
                         .HasForeignKey("MaDiaDiem")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WebDuLich.Models.LichTrinh", "LichTrinh")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.LichTrinh", "LichTrinh")
                         .WithMany("CTLichTrinhs")
                         .HasForeignKey("MaLichTrinh")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1103,21 +1140,21 @@ namespace WebDuLich.Migrations
                     b.Navigation("LichTrinh");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.ChuyenKhoiHanh", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.ChuyenKhoiHanh", b =>
                 {
-                    b.HasOne("WebDuLich.Models.NguoiDung", "HuongDanVien")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.NguoiDung", "HuongDanVien")
                         .WithMany("ChuyenKhoiHanhs")
                         .HasForeignKey("MaHDV")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WebDuLich.Models.PhuongTien", "PhuongTien")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.PhuongTien", "PhuongTien")
                         .WithMany("ChuyenKhoiHanhs")
                         .HasForeignKey("MaPhuongTien")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WebDuLich.Models.Tour", "Tour")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.Tour", "Tour")
                         .WithMany("ChuyenKhoiHanhs")
                         .HasForeignKey("MaTour")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1130,15 +1167,15 @@ namespace WebDuLich.Migrations
                     b.Navigation("Tour");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.DanhGia", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.DanhGia", b =>
                 {
-                    b.HasOne("WebDuLich.Models.NguoiDung", "NguoiDung")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.NguoiDung", "NguoiDung")
                         .WithMany("DanhGias")
                         .HasForeignKey("MaNguoiDung")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WebDuLich.Models.Tour", "Tour")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.Tour", "Tour")
                         .WithMany("DanhGias")
                         .HasForeignKey("MaTour")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1149,15 +1186,15 @@ namespace WebDuLich.Migrations
                     b.Navigation("Tour");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.DanhSachYeuThich", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.DanhSachYeuThich", b =>
                 {
-                    b.HasOne("WebDuLich.Models.NguoiDung", "NguoiDung")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.NguoiDung", "NguoiDung")
                         .WithMany("DanhSachYeuThichs")
                         .HasForeignKey("NguoiDungMaNguoiDung")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WebDuLich.Models.Tour", "Tour")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.Tour", "Tour")
                         .WithMany("DanhSachYeuThichs")
                         .HasForeignKey("TourMaTour")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1168,25 +1205,25 @@ namespace WebDuLich.Migrations
                     b.Navigation("Tour");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.DonDatTour", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.DonDatTour", b =>
                 {
-                    b.HasOne("WebDuLich.Models.ChuyenKhoiHanh", "ChuyenKhoiHanh")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.ChuyenKhoiHanh", "ChuyenKhoiHanh")
                         .WithMany("DonDatTours")
                         .HasForeignKey("MaChuyen")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("WebDuLich.Models.KhachSan", "KhachSan")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.KhachSan", "KhachSan")
                         .WithMany("DonDatTours")
                         .HasForeignKey("MaKhachSan");
 
-                    b.HasOne("WebDuLich.Models.NguoiDung", "NguoiDung")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.NguoiDung", "NguoiDung")
                         .WithMany("DonDatTours")
                         .HasForeignKey("MaNguoiDung")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("WebDuLich.Models.UuDai", "UuDai")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.UuDai", "UuDai")
                         .WithMany("DonDatTours")
                         .HasForeignKey("MaUuDai");
 
@@ -1199,9 +1236,9 @@ namespace WebDuLich.Migrations
                     b.Navigation("UuDai");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.GiaChuyen", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.GiaChuyen", b =>
                 {
-                    b.HasOne("WebDuLich.Models.ChuyenKhoiHanh", "ChuyenKhoiHanh")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.ChuyenKhoiHanh", "ChuyenKhoiHanh")
                         .WithMany("GiaChuyens")
                         .HasForeignKey("Machuyen")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1210,9 +1247,9 @@ namespace WebDuLich.Migrations
                     b.Navigation("ChuyenKhoiHanh");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.HinhAnhSK", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.HinhAnhSK", b =>
                 {
-                    b.HasOne("WebDuLich.Models.KhachSan", "KhachSan")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.KhachSan", "KhachSan")
                         .WithMany("HinhAnhSKs")
                         .HasForeignKey("MaKhachSan")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1221,9 +1258,9 @@ namespace WebDuLich.Migrations
                     b.Navigation("KhachSan");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.HinhAnhTour", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.HinhAnhTour", b =>
                 {
-                    b.HasOne("WebDuLich.Models.Tour", "Tour")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.Tour", "Tour")
                         .WithMany("HinhAnhTours")
                         .HasForeignKey("MaTour")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1232,15 +1269,15 @@ namespace WebDuLich.Migrations
                     b.Navigation("Tour");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.KS_TN", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.KS_TN", b =>
                 {
-                    b.HasOne("WebDuLich.Models.KhachSan", "KhachSan")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.KhachSan", "KhachSan")
                         .WithMany("KS_TNs")
                         .HasForeignKey("KhachSanMaKhachSan")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WebDuLich.Models.TienNghi", "TienNghi")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.TienNghi", "TienNghi")
                         .WithMany("KS_TNs")
                         .HasForeignKey("TienNghiMaTienNghi")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1251,9 +1288,9 @@ namespace WebDuLich.Migrations
                     b.Navigation("TienNghi");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.KhachHang", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.KhachHang", b =>
                 {
-                    b.HasOne("WebDuLich.Models.DonDatTour", "DonDatTour")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.DonDatTour", "DonDatTour")
                         .WithMany("KhachHangs")
                         .HasForeignKey("MaDonDatTour")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1262,9 +1299,9 @@ namespace WebDuLich.Migrations
                     b.Navigation("DonDatTour");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.LichTrinh", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.LichTrinh", b =>
                 {
-                    b.HasOne("WebDuLich.Models.Tour", "Tour")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.Tour", "Tour")
                         .WithMany("LichTrinhs")
                         .HasForeignKey("MaTour")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1273,9 +1310,9 @@ namespace WebDuLich.Migrations
                     b.Navigation("Tour");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.NguoiDung", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.NguoiDung", b =>
                 {
-                    b.HasOne("WebDuLich.Models.VaiTro", "VaiTro")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.VaiTro", "VaiTro")
                         .WithMany("NguoiDungs")
                         .HasForeignKey("MaVaiTro")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1284,15 +1321,26 @@ namespace WebDuLich.Migrations
                     b.Navigation("VaiTro");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.SoThichNguoiDung", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.PhienDangNhap", b =>
                 {
-                    b.HasOne("WebDuLich.Models.CLoaiHinhTour", "LoaiHinhTour")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.NguoiDung", "NguoiDung")
+                        .WithMany("PhienDangNhaps")
+                        .HasForeignKey("MaNguoiDung")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("NguoiDung");
+                });
+
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.SoThichNguoiDung", b =>
+                {
+                    b.HasOne("travel_recommendation_and_booking_system.Models.CLoaiHinhTour", "LoaiHinhTour")
                         .WithMany("SoThichNguoiDungs")
                         .HasForeignKey("LoaiHinhTourMaLoaiTour")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WebDuLich.Models.NguoiDung", "NguoiDung")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.NguoiDung", "NguoiDung")
                         .WithMany("SoThichNguoiDungs")
                         .HasForeignKey("NguoiDungMaNguoiDung")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1303,9 +1351,9 @@ namespace WebDuLich.Migrations
                     b.Navigation("NguoiDung");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.ThanhToan", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.ThanhToan", b =>
                 {
-                    b.HasOne("WebDuLich.Models.DonDatTour", "DonDatTour")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.DonDatTour", "DonDatTour")
                         .WithMany("ThanhToans")
                         .HasForeignKey("MaDonDatTour")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1314,9 +1362,9 @@ namespace WebDuLich.Migrations
                     b.Navigation("DonDatTour");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.Tour", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.Tour", b =>
                 {
-                    b.HasOne("WebDuLich.Models.CLoaiHinhTour", "LoaiHinhTour")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.CLoaiHinhTour", "LoaiHinhTour")
                         .WithMany("Tours")
                         .HasForeignKey("MaLoaiTour")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1325,15 +1373,15 @@ namespace WebDuLich.Migrations
                     b.Navigation("LoaiHinhTour");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.Tour_KhachSan", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.Tour_KhachSan", b =>
                 {
-                    b.HasOne("WebDuLich.Models.KhachSan", "KhachSan")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.KhachSan", "KhachSan")
                         .WithMany("Tour_KhachSans")
                         .HasForeignKey("KhachSanMaKhachSan")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WebDuLich.Models.Tour", "Tour")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.Tour", "Tour")
                         .WithMany("Tour_KhachSans")
                         .HasForeignKey("TourMaTour")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1344,33 +1392,33 @@ namespace WebDuLich.Migrations
                     b.Navigation("Tour");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.CLoaiHinhTour", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.CLoaiHinhTour", b =>
                 {
                     b.Navigation("SoThichNguoiDungs");
 
                     b.Navigation("Tours");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.ChuyenKhoiHanh", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.ChuyenKhoiHanh", b =>
                 {
                     b.Navigation("DonDatTours");
 
                     b.Navigation("GiaChuyens");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.DiaDiem", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.DiaDiem", b =>
                 {
                     b.Navigation("CTLichTrinhs");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.DonDatTour", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.DonDatTour", b =>
                 {
                     b.Navigation("KhachHangs");
 
                     b.Navigation("ThanhToans");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.KhachSan", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.KhachSan", b =>
                 {
                     b.Navigation("DonDatTours");
 
@@ -1381,12 +1429,12 @@ namespace WebDuLich.Migrations
                     b.Navigation("Tour_KhachSans");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.LichTrinh", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.LichTrinh", b =>
                 {
                     b.Navigation("CTLichTrinhs");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.NguoiDung", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.NguoiDung", b =>
                 {
                     b.Navigation("ChuyenKhoiHanhs");
 
@@ -1396,20 +1444,22 @@ namespace WebDuLich.Migrations
 
                     b.Navigation("DonDatTours");
 
+                    b.Navigation("PhienDangNhaps");
+
                     b.Navigation("SoThichNguoiDungs");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.PhuongTien", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.PhuongTien", b =>
                 {
                     b.Navigation("ChuyenKhoiHanhs");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.TienNghi", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.TienNghi", b =>
                 {
                     b.Navigation("KS_TNs");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.Tour", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.Tour", b =>
                 {
                     b.Navigation("ChuyenKhoiHanhs");
 
@@ -1424,12 +1474,12 @@ namespace WebDuLich.Migrations
                     b.Navigation("Tour_KhachSans");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.UuDai", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.UuDai", b =>
                 {
                     b.Navigation("DonDatTours");
                 });
 
-            modelBuilder.Entity("WebDuLich.Models.VaiTro", b =>
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.VaiTro", b =>
                 {
                     b.Navigation("NguoiDungs");
                 });

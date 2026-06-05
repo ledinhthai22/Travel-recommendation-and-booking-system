@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
-namespace WebDuLich.Models
+namespace travel_recommendation_and_booking_system.Models
 {
     [Table("KhachHang")]
     public class KhachHang
@@ -18,6 +18,7 @@ namespace WebDuLich.Models
         public string SoDienThoai { get; set; }
         public DateTime NgaySinh { get; set; }
         [StringLength(100)]
+        public bool GioiTinh { get; set; }
         public string Email { get; set; }
         public int LoaiKhach { get; set; }
 
