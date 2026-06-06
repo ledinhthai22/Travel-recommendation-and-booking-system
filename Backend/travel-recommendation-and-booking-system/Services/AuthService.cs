@@ -102,7 +102,7 @@ namespace travel_recommendation_and_booking_system.Services
             _context.PhienDangNhaps.Add(phienMoi);
             await _context.SaveChangesAsync();
 
-            return new LoginResultDTO { IsSuccess = true, Token = accessToken, RefreshToken = refreshToken };
+            return new LoginResultDTO { IsSuccess = true, Token = accessToken, RefreshToken = refreshToken, HoTen=user.HoTen, MaVaiTro = user.MaVaiTro };
         }
         public async Task<LoginResultDTO> RenewTokenAsync(TokenModelDTO token)
         {
@@ -151,7 +151,7 @@ namespace travel_recommendation_and_booking_system.Services
             string otp = random.Next(100000, 999999).ToString();
 
             user.MaOtp = otp;
-            user.ThoiGianHetHanOtp = DateTime.Now.AddMinutes(3);
+            user.ThoiGianHetHanOtp = DateTime.Now.AddMinutes(5);
             await _context.SaveChangesAsync();
 
             string subject = "Mã OTP Khôi Phục Mật Khẩu";
@@ -159,7 +159,7 @@ namespace travel_recommendation_and_booking_system.Services
         <h3>Xin chào {user.HoTen},</h3>
         <p>Bạn vừa yêu cầu khôi phục mật khẩu. Dưới đây là mã OTP của bạn:</p>
         <h2 style='color: blue;'>{otp}</h2>
-        <p>Mã này sẽ hết hạn trong vòng <strong>3 phút</strong>. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>";
+        <p>Mã này sẽ hết hạn trong vòng <strong>5 phút</strong>. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>";
 
             await _emailService.SendEmailAsync(user.Email, subject, body);
             return true;

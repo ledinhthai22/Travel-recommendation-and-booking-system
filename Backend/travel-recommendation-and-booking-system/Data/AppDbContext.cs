@@ -55,11 +55,33 @@ namespace travel_recommendation_and_booking_system.Data
         .HasForeignKey(d => d.MaNguoiDung)
         .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<DonDatTour>()
-                .HasOne(d => d.ChuyenKhoiHanh)
-                .WithMany(c => c.DonDatTours)
-                .HasForeignKey(d => d.MaChuyen)
-                .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DonDatTour>()
+            .HasOne(d => d.ChuyenKhoiHanh)
+            .WithMany(c => c.DonDatTours)
+            .HasForeignKey(d => d.MaChuyen)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<VaiTro>().HasData(
+                new VaiTro { MaVaiTro = 1, TenVaiTro = "Quản Trị Viên" },
+                new VaiTro { MaVaiTro = 2, TenVaiTro = "Nhân Viên" },
+                new VaiTro { MaVaiTro = 3, TenVaiTro = "Hướng Dẫn Viên"},
+                new VaiTro { MaVaiTro = 4, TenVaiTro = "Khách Hàng"}
+            );
+
+        modelBuilder.Entity<NguoiDung>().HasData(
+                new NguoiDung
+                {
+                    MaNguoiDung = 1,
+                    MaVaiTro = 1,
+                    HoTen = "Quản Trị Viên",
+                    Email = "admin@gmail.com",
+                    MatKhau = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+                    SoDienThoai = "0988888888",
+                    TrangThai = 1,
+                    NgayTao = DateTime.Now,
+                    NgayCapNhat = DateTime.Now
+                }
+            );
         }
 
     }
