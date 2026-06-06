@@ -55,7 +55,9 @@ namespace travel_recommendation_and_booking_system.Controllers
             {
                 message = "Đăng nhập thành công!",
                 token = result.Token,
-                refreshToken = result.RefreshToken
+                refreshToken = result.RefreshToken,
+                maVaiTro = result.MaVaiTro,
+                hoTen = result.HoTen
             });
         }
 
