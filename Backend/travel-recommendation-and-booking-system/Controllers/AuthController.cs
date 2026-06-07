@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.Interfaces;
@@ -12,10 +13,12 @@ namespace travel_recommendation_and_booking_system.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IUserService _userService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, IUserService userService)
         {
             _authService = authService;
+            _userService = userService;
         }
 
         [HttpPost("register")]
@@ -132,6 +135,36 @@ namespace travel_recommendation_and_booking_system.Controllers
             }
 
             return Ok(new { message = "Đã đăng xuất" });
+        }
+
+        [Authorize]
+        [HttpGet("me")]
+
+        public async Task<IActionResult> GetMe()
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim))
+                {
+                    return Unauthorized(new { message = "Token không hợp lệ hoặc bị thiếu thông tin định danh." });
+                }
+                if (!int.TryParse(userIdClaim, out int userId))
+                {
+                    return BadRequest(new { message = "ID người dùng trong Token bị sai định dạng." });
+                }
+                var userProfile = await _userService.GetMeAsync(userId);
+
+                if (userProfile == null)
+                {
+                    return NotFound(new { message = "Tài khoản không tồn tại hoặc đã bị xóa." });
+                }
+                return Ok(userProfile);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Lỗi hệ thống: " + ex.Message });
+            }
         }
     }
 }
