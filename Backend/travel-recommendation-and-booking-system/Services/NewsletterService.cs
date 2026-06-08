@@ -25,12 +25,47 @@ namespace travel_recommendation_and_booking_system.Services
 
             var newSubscription = new Newsletter
             {
-                Email=newsletter.Email,
-                NgayGui=DateTime.Now,
+                Email = newsletter.Email,
+                NgayGui = DateTime.Now,
             };
             _context.Newsletters.Add(newSubscription);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<PageDTO<NewsletterResponseDTO>> GetPagedNewslettersAsync(int pageNumber, int pageSize)
+        {
+            if (pageNumber < 1)
+            {
+                pageNumber = 1;
+            }
+            if (pageSize < 1)
+            {
+                pageSize = 10;
+            }
+
+            var query = _context.Newsletters;
+
+            int totalItems = await query.CountAsync();
+            var items = await query
+            .OrderByDescending(n => n.NgayGui)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(n => new NewsletterResponseDTO
+            {
+                MaNewsletter = n.MaNewsletter,
+                Email = n.Email,
+                NgayGui = n.NgayGui
+            })
+            .ToListAsync();
+
+            return new PageDTO<NewsletterResponseDTO>
+            {
+                Items = items,
+                TotalItems = totalItems,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
     }
 }

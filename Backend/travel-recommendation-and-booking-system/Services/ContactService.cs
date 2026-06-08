@@ -1,4 +1,5 @@
-﻿using travel_recommendation_and_booking_system.Data;
+﻿using Microsoft.EntityFrameworkCore;
+using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
@@ -35,6 +36,45 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 return false;
             }
+        }
+
+        public async Task<PageDTO<ContactResponseDTO>> GetPagedContactsAsync(int pageNumber, int pageSize)
+        {
+            if(pageNumber < 1)
+            {
+                pageSize = 1;
+            }
+            if(pageSize < 1)
+            {
+                pageSize = 10;
+            }
+
+            var query = _context.LienHes.Where(l =>l.NgayXoa == null);
+            int totalItems = await query.CountAsync();
+
+            var items = await query
+                .OrderByDescending(l=>l.NgayTao)
+                .Skip((pageNumber-1)*pageSize)
+                .Take(pageSize)
+                .Select(l=> new ContactResponseDTO
+                {
+                    MaLienHe = l.MaLienHe,
+                    HoTen = l.HoTen,
+                    Email = l.Email,
+                    SodienThoai = l.SoDienThoai,
+                    NoiDung = l.NoiDung,
+                    TrangThai = l.TrangThai,
+                    NgayTao = l.NgayTao
+                }
+                ).ToListAsync();
+
+            return new PageDTO<ContactResponseDTO>
+            {
+                Items = items,
+                TotalItems = totalItems,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
     }
 }
