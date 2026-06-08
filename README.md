@@ -78,7 +78,7 @@ yarn preview
 * React Hot Toast
 * React Datatable
 ## Lưu ý
-
+* nếu yarn dev không chạy được thì bạn phải các các package thư viện liên quan tới công nghệ sử dụng trên
 * Backend phải được khởi động trước khi chạy Frontend.
 * Back thực hiện câu lệch: Update-Database
 * Kiểm tra đúng giá trị `VITE_API_URL` trong file `.env`.
