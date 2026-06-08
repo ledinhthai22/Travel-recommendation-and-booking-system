@@ -1,4 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import {
     X,
     Mail,
@@ -10,11 +16,100 @@ import {
     Loader2,
     LogIn,
     UserPlus,
-    CheckCircle2,
     ArrowLeft,
 } from 'lucide-react';
-
+import {
+    loginApi,
+    registerApi,
+    forgotPasswordApi,
+    resetPasswordApi,
+    verifyOtpApi,
+} from '~/Services/AuthService';
+import useAuth from '~/Hooks/useAuth';
 import InputField from '../UI/Form/InputField';
+import { useNavigate } from 'react-router-dom';
+import { toastSuccess, toastError } from '~/utils/Toast';
+import { getErrorMessage } from '~/utils/errorHelper';
+
+
+const EMPTY_FORM = {
+    fullName: '',
+    phone: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    otp: '',
+    newPassword: '',
+};
+
+const OTP_TTL = 300;
+
+const TITLES = {
+    login: 'Chào mừng trở lại',
+    register: 'Tạo tài khoản mới',
+    forgot: 'Quên mật khẩu',
+};
+
+const DESCRIPTIONS = {
+    login: 'Đăng nhập để tiếp tục đặt tour và quản lý hành trình của bạn.',
+    register: 'Tạo tài khoản để đặt tour nhanh hơn và nhận thông tin ưu đãi.',
+    forgot: 'Nhập email tài khoản của bạn. Chúng tôi sẽ gửi hướng dẫn đặt lại mật khẩu.',
+};
+
+
+const OtpCountdown = React.memo(function OtpCountdown({ onResend }) {
+    const [countdown, setCountdown] = useState(OTP_TTL);
+    const timerRef = useRef(null);
+
+    useEffect(() => {
+        timerRef.current = setInterval(() => {
+            setCountdown((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timerRef.current);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(timerRef.current);
+    }, []);
+
+    const mm = Math.floor(countdown / 60);
+    const ss = String(countdown % 60).padStart(2, '0');
+
+    return (
+        <div className="flex items-center justify-between text-sm">
+            <span>
+                Mã otp hết hạn sau:
+                <span className="font-medium text-red-500"> {mm}:{ss}</span>
+            </span>
+            {countdown === 0 && (
+                <button
+                    type="button"
+                    onClick={onResend}
+                    className="font-semibold text-[#0EA5E5] hover:underline"
+                >
+                    Gửi lại OTP
+                </button>
+            )}
+        </div>
+    );
+});
+
+/** Toggle show/hide password button */
+const PasswordToggle = React.memo(function PasswordToggle({ show, onToggle }) {
+    return (
+        <button
+            type="button"
+            onClick={onToggle}
+            className="text-slate-400 transition hover:text-[#0EA5E5]"
+        >
+            {show ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+    );
+});
+
+
 
 export default function AuthModal({ open, onClose }) {
     const [mode, setMode] = useState('login');
@@ -23,53 +118,50 @@ export default function AuthModal({ open, onClose }) {
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [forgotSent, setForgotSent] = useState(false);
+    const [otpSent, setOtpSent] = useState(false);
+    const [otpVerified, setOtpVerified] = useState(false);
+    const [form, setForm] = useState(EMPTY_FORM);
 
-    const getEmptyForm = () => ({
-        fullName: '',
-        phone: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-    });
-
-    const [form, setForm] = useState(getEmptyForm);
-
-    const resetModal = () => {
-        setMode('login');
-        setShowPassword(false);
-        setShowConfirmPassword(false);
-        setLoading(false);
-        setSubmitted(false);
-        setForgotSent(false);
-        setForm(getEmptyForm());
-    };
+    const { login } = useAuth();
+    const navigate = useNavigate();
 
     const isLogin = mode === 'login';
     const isRegister = mode === 'register';
     const isForgot = mode === 'forgot';
 
-    const switchMode = (nextMode) => {
+    // ── Reset ──────────────────────────────────────────────────────────────
+
+    const resetModal = useCallback(() => {
+        setMode('login');
+        setOtpSent(false);
+        setOtpVerified(false);
+        setShowPassword(false);
+        setShowConfirmPassword(false);
+        setLoading(false);
+        setSubmitted(false);
+        setForgotSent(false);
+        setForm(EMPTY_FORM);
+    }, []);
+
+    const switchMode = useCallback((nextMode) => {
         setMode(nextMode);
         setSubmitted(false);
         setForgotSent(false);
         setShowPassword(false);
         setShowConfirmPassword(false);
         setLoading(false);
-        setForm(getEmptyForm());
-    };
+        setForm(EMPTY_FORM);
+        setOtpSent(false);
+        setOtpVerified(false);
+    }, []);
+
+    // ── Effects ────────────────────────────────────────────────────────────
 
     useEffect(() => {
         if (!open) return;
-
-        const handleEsc = (e) => {
-            if (e.key === 'Escape') {
-                onClose?.();
-            }
-        };
-
+        const handleEsc = (e) => { if (e.key === 'Escape') onClose?.(); };
         document.body.style.overflow = 'hidden';
         window.addEventListener('keydown', handleEsc);
-
         return () => {
             document.body.style.overflow = '';
             window.removeEventListener('keydown', handleEsc);
@@ -77,117 +169,191 @@ export default function AuthModal({ open, onClose }) {
     }, [open, onClose]);
 
     useEffect(() => {
-        if (!open) {
-            resetModal();
-        }
-    }, [open]);
+        if (!open) resetModal();
+    }, [open, resetModal]);
 
-    if (!open) return null;
+    // ── Validation ─────────────────────────────────────────────────────────
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-
-        setForm((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-
-        if (isForgot && forgotSent) {
-            setForgotSent(false);
-        }
-    };
-
-    const errors = {
+    const errors = useMemo(() => ({
         fullName:
             isRegister && submitted && !form.fullName.trim()
-                ? 'Vui lòng nhập họ và tên.'
+                ? 'Vui lòng nhập họ tên'
                 : '',
 
         phone:
             isRegister && submitted && !form.phone.trim()
-                ? 'Vui lòng nhập số điện thoại.'
-                : '',
+                ? 'Vui lòng nhập số điện thoại'
+                : isRegister && submitted && !/^0\d{9}$/.test(form.phone)
+                    ? 'Số điện thoại không hợp lệ'
+                    : '',
 
         email:
             submitted && !form.email.trim()
-                ? 'Vui lòng nhập email.'
-                : '',
+                ? 'Vui lòng nhập email'
+                : submitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)
+                    ? 'Email không hợp lệ'
+                    : '',
 
         password:
-            !isForgot && submitted && !form.password.trim()
-                ? 'Vui lòng nhập mật khẩu.'
-                : '',
+            !isForgot && submitted && !form.password
+                ? 'Vui lòng nhập mật khẩu'
+                : !isForgot && submitted && form.password.length < 6
+                    ? 'Mật khẩu tối thiểu 6 ký tự'
+                    : '',
 
         confirmPassword:
-            isRegister && submitted && form.confirmPassword !== form.password
-                ? 'Mật khẩu xác nhận không khớp.'
+            isRegister && submitted && !form.confirmPassword
+                ? 'Vui lòng xác nhận mật khẩu'
+                : isRegister && submitted && form.confirmPassword !== form.password
+                    ? 'Mật khẩu xác nhận không khớp'
+                    : '',
+
+        otp:
+            isForgot && otpSent && !otpVerified && submitted && !form.otp.trim()
+                ? 'Vui lòng nhập mã OTP'
                 : '',
-    };
 
-    const hasError = Object.values(errors).some(Boolean);
+        newPassword:
+            isForgot && otpVerified && submitted && !form.newPassword
+                ? 'Vui lòng nhập mật khẩu mới'
+                : isForgot && otpVerified && submitted && form.newPassword.length < 6
+                    ? 'Mật khẩu tối thiểu 6 ký tự'
+                    : '',
+    }), [form, submitted, isRegister, isForgot, otpSent, otpVerified]);
 
-    const getTitle = () => {
-        if (isLogin) return 'Chào mừng trở lại';
-        if (isRegister) return 'Tạo tài khoản mới';
-        return 'Quên mật khẩu';
-    };
+    const hasError = useMemo(
+        () => Object.values(errors).some(Boolean),
+        [errors]
+    );
 
-    const getDescription = () => {
-        if (isLogin) {
-            return 'Đăng nhập để tiếp tục đặt tour và quản lý hành trình của bạn.';
+    // ── Handlers ───────────────────────────────────────────────────────────
+
+    const handleChange = useCallback((e) => {
+        const { name, value } = e.target;
+        setForm((prev) => ({ ...prev, [name]: value }));
+        if (isForgot && forgotSent) setForgotSent(false);
+    }, [isForgot, forgotSent]);
+
+    const togglePassword = useCallback(
+        () => setShowPassword((p) => !p), []
+    );
+
+    const toggleConfirmPassword = useCallback(
+        () => setShowConfirmPassword((p) => !p), []
+    );
+
+    const handleVerifyOtp = useCallback(async () => {
+        if (!form.otp.trim()) {
+            toastError('Thiếu OTP', 'Vui lòng nhập mã OTP');
+            return;
         }
-
-        if (isRegister) {
-            return 'Tạo tài khoản để đặt tour nhanh hơn và nhận thông tin ưu đãi.';
+        try {
+            await verifyOtpApi({ email: form.email, otp: form.otp });
+            setOtpVerified(true);
+            toastSuccess('OTP hợp lệ', 'Bạn có thể đổi mật khẩu');
+        } catch {
+            toastError('OTP không hợp lệ', 'Vui lòng kiểm tra lại');
         }
+    }, [form.otp, form.email]);
 
-        return 'Nhập email tài khoản của bạn. Chúng tôi sẽ gửi hướng dẫn đặt lại mật khẩu.';
-    };
+    const handleResendOtp = useCallback(async () => {
+        try {
+            await forgotPasswordApi(form.email);
+            toastSuccess('Đã gửi lại OTP', 'Vui lòng kiểm tra email');
+        } catch {
+            toastError('Lỗi', 'Không thể gửi OTP');
+        }
+    }, [form.email]);
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = useCallback(async (e) => {
         e.preventDefault();
         setSubmitted(true);
 
-        if (hasError) return;
+        if (hasError) {
+            toastError('Thông tin không hợp lệ', 'Vui lòng kiểm tra lại dữ liệu.');
+            return;
+        }
 
-        if (isRegister && form.confirmPassword !== form.password) return;
+        if (isRegister && form.confirmPassword !== form.password) {
+            toastError('Mật khẩu không khớp', 'Vui lòng nhập lại mật khẩu xác nhận.');
+            return;
+        }
 
         setLoading(true);
-
         try {
-            if (isForgot) {
-                const payload = {
-                    email: form.email,
-                };
-
-                console.log('Forgot password payload:', payload);
-                await new Promise((resolve) => setTimeout(resolve, 700));
-
-                setForgotSent(true);
+            if (isForgot && !otpSent) {
+                await forgotPasswordApi(form.email);
+                toastSuccess('Đã gửi OTP', 'Vui lòng kiểm tra email.');
+                setOtpSent(true);
                 return;
             }
 
-            const payload = isLogin
-                ? {
-                    email: form.email,
-                    password: form.password,
+            if (isForgot && otpVerified) {
+                if (form.newPassword !== form.confirmPassword) {
+                    toastError('Lỗi', 'Mật khẩu xác nhận không khớp');
+                    return;
                 }
-                : {
-                    fullName: form.fullName,
-                    phone: form.phone,
+                await resetPasswordApi({
                     email: form.email,
-                    password: form.password,
+                    otp: form.otp,
+                    newPassword: form.newPassword,
+                });
+                toastSuccess('Thành công', 'Đổi mật khẩu thành công');
+                switchMode('login');
+                return;
+            }
+
+            if (isLogin) {
+                const result = await loginApi({ email: form.email, matKhau: form.password });
+                const profile = await login(result);
+                toastSuccess('Đăng nhập thành công', 'Chào mừng bạn quay trở lại.');
+                onClose?.();
+                navigate(profile.maVaiTro === 1 || profile.maVaiTro === 2 ? '/Quan-ly' : '/');
+                return;
+            }
+
+            if (isRegister) {
+                const payload = {
+                    hoTen: form.fullName.trim(),
+                    email: form.email.trim(),
+                    matKhau: form.password,
+                    xacNhanMatKhau: form.confirmPassword,
+                    soDienThoai: form.phone.trim(),
                 };
-
-            console.log(isLogin ? 'Login payload:' : 'Register payload:', payload);
-            await new Promise((resolve) => setTimeout(resolve, 700));
-
-            alert(isLogin ? 'Đăng nhập thành công.' : 'Đăng ký thành công.');
-            onClose?.();
+                await registerApi(payload);
+                toastSuccess('Đăng ký thành công', 'Tài khoản của bạn đã được tạo.');
+                switchMode('login');
+                setForm({ ...EMPTY_FORM, email: payload.email });
+                return;
+            }
+        } catch (error) {
+            toastError('Thao tác thất bại', getErrorMessage(error));
         } finally {
             setLoading(false);
         }
-    };
+    }, [
+        hasError, isRegister, isForgot, isLogin,
+        form, otpSent, otpVerified,
+        login, navigate, onClose, switchMode,
+    ]);
+
+
+
+    const passwordToggle = useMemo(
+        () => <PasswordToggle show={showPassword} onToggle={togglePassword} />,
+        [showPassword, togglePassword]
+    );
+
+    const confirmPasswordToggle = useMemo(
+        () => <PasswordToggle show={showConfirmPassword} onToggle={toggleConfirmPassword} />,
+        [showConfirmPassword, toggleConfirmPassword]
+    );
+
+
+
+    if (!open) return null;
+
+
 
     return (
         <div className="fixed inset-0 z-[999] flex items-center justify-center px-4 py-4">
@@ -200,6 +366,7 @@ export default function AuthModal({ open, onClose }) {
 
             <div className="relative max-h-[92vh] w-full max-w-[430px] overflow-y-auto rounded-[28px] bg-white shadow-2xl">
                 <div className="relative p-5 sm:p-6">
+
                     <div className="relative px-10 text-center">
                         {isForgot && (
                             <button
@@ -220,15 +387,17 @@ export default function AuthModal({ open, onClose }) {
                         </button>
 
                         <h1 className="pt-1 text-2xl font-black leading-tight text-slate-900">
-                            {getTitle()}
+                            {TITLES[mode] ?? 'Đặt lại mật khẩu'}
                         </h1>
 
-                        <p className="mx-auto mt-2 max-w-[320px] text-xs leading-5 text-slate-500">
-                            {getDescription()}
+                        <p className="mx-auto mt-2 max-w-[360px] text-[11px] leading-5 text-slate-500">
+                            {DESCRIPTIONS[mode]}
                         </p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
+
+                       
                         {isRegister && (
                             <>
                                 <InputField
@@ -240,7 +409,6 @@ export default function AuthModal({ open, onClose }) {
                                     error={errors.fullName}
                                     Icon={User}
                                 />
-
                                 <InputField
                                     label="Số điện thoại"
                                     name="phone"
@@ -253,64 +421,34 @@ export default function AuthModal({ open, onClose }) {
                             </>
                         )}
 
-                        <InputField
-                            label="Email"
-                            name="email"
-                            type="email"
-                            value={form.email}
-                            onChange={handleChange}
-                            placeholder="you@example.com"
-                            error={errors.email}
-                            Icon={Mail}
-                        />
-
-                        {isForgot && forgotSent && (
-                            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                                <div className="flex items-start gap-3">
-                                    <CheckCircle2
-                                        size={20}
-                                        className="mt-0.5 shrink-0 text-emerald-600"
-                                    />
-
-                                    <div>
-                                        <p className="text-sm font-bold text-emerald-700">
-                                            Đã gửi hướng dẫn khôi phục
-                                        </p>
-
-                                        <p className="mt-1 text-xs leading-5 text-emerald-600">
-                                            Vui lòng kiểm tra email của bạn để đặt lại mật khẩu.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
+                      
                         {!isForgot && (
-                            <InputField
-                                label="Mật khẩu"
-                                name="password"
-                                type={showPassword ? 'text' : 'password'}
-                                value={form.password}
-                                onChange={handleChange}
-                                placeholder="Nhập mật khẩu"
-                                error={errors.password}
-                                Icon={Lock}
-                                rightAction={
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword((prev) => !prev)}
-                                        className="text-slate-400 transition hover:text-[#0EA5E5]"
-                                    >
-                                        {showPassword ? (
-                                            <EyeOff size={18} />
-                                        ) : (
-                                            <Eye size={18} />
-                                        )}
-                                    </button>
-                                }
-                            />
+                            <>
+                                <InputField
+                                    label="Email"
+                                    name="email"
+                                    type="email"
+                                    value={form.email}
+                                    onChange={handleChange}
+                                    placeholder="you@example.com"
+                                    error={errors.email}
+                                    Icon={Mail}
+                                />
+                                <InputField
+                                    label="Mật khẩu"
+                                    name="password"
+                                    type={showPassword ? 'text' : 'password'}
+                                    value={form.password}
+                                    onChange={handleChange}
+                                    placeholder="Nhập mật khẩu"
+                                    error={errors.password}
+                                    Icon={Lock}
+                                    rightAction={passwordToggle}
+                                />
+                            </>
                         )}
 
+                       
                         {isRegister && (
                             <InputField
                                 label="Xác nhận mật khẩu"
@@ -321,35 +459,90 @@ export default function AuthModal({ open, onClose }) {
                                 placeholder="Nhập lại mật khẩu"
                                 error={errors.confirmPassword}
                                 Icon={Lock}
-                                rightAction={
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setShowConfirmPassword((prev) => !prev)
-                                        }
-                                        className="text-slate-400 transition hover:text-[#0EA5E5]"
-                                    >
-                                        {showConfirmPassword ? (
-                                            <EyeOff size={18} />
-                                        ) : (
-                                            <Eye size={18} />
-                                        )}
-                                    </button>
-                                }
+                                rightAction={confirmPasswordToggle}
                             />
                         )}
 
-                        {isLogin && (
+                        {/* Forgot — step 1: email */}
+                        {isForgot && !otpSent && (
+                            <InputField
+                                label="Email"
+                                name="email"
+                                type="email"
+                                value={form.email}
+                                onChange={handleChange}
+                                placeholder="you@example.com"
+                                error={errors.email}
+                                Icon={Mail}
+                            />
+                        )}
+
+                      
+                        {isForgot && otpSent && !otpVerified && (
+                            <>
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                    <label className="text-sm text-slate-600">
+                                        OTP đã được gửi đến:
+                                    </label>
+                                    <p className="font-semibold text-slate-900">{form.email}</p>
+                                </div>
+
+                                <InputField
+                                    label="Mã OTP"
+                                    name="otp"
+                                    value={form.otp}
+                                    onChange={handleChange}
+                                    placeholder="Nhập mã OTP"
+                                />
+
+                             
+                                <OtpCountdown onResend={handleResendOtp} />
+
+                                <button
+                                    type="button"
+                                    onClick={handleVerifyOtp}
+                                    className="w-full rounded-2xl bg-[#0EA5E5] py-3 text-sm font-bold text-white"
+                                >
+                                    Xác nhận OTP
+                                </button>
+                            </>
+                        )}
+
+                      
+                        {isForgot && otpVerified && (
+                            <>
+                                <InputField
+                                    label="Mật khẩu mới"
+                                    name="newPassword"
+                                    type={showPassword ? 'text' : 'password'}
+                                    value={form.newPassword}
+                                    onChange={handleChange}
+                                    placeholder="Nhập mật khẩu mới"
+                                    Icon={Lock}
+                                    rightAction={passwordToggle}
+                                />
+                                <InputField
+                                    label="Xác nhận mật khẩu"
+                                    name="confirmPassword"
+                                    type={showConfirmPassword ? 'text' : 'password'}
+                                    value={form.confirmPassword}
+                                    onChange={handleChange}
+                                    placeholder="Nhập lại mật khẩu"
+                                    Icon={Lock}
+                                    rightAction={confirmPasswordToggle}
+                                />
+                            </>
+                        )}
+
+                          {isLogin && (
                             <div className="flex items-center justify-between">
                                 <label className="flex items-center gap-2 text-sm text-slate-500">
                                     <input
                                         type="checkbox"
-                                        style={{ color: '#005ea3' }}
-                                        className="h-4 w-4 rounded border-slate-300 focus:ring-[#0EA5E5]"
+                                        className="h-4 w-4 rounded border-slate-300"
                                     />
                                     Ghi nhớ đăng nhập
                                 </label>
-
                                 <button
                                     type="button"
                                     onClick={() => switchMode('forgot')}
@@ -360,47 +553,31 @@ export default function AuthModal({ open, onClose }) {
                             </div>
                         )}
 
-                        {isRegister && (
-                            <p className="text-xs leading-5 text-slate-400">
-                                Khi đăng ký, bạn đồng ý với điều khoản sử dụng và chính sách bảo mật của chúng tôi.
-                            </p>
+                        {(!isForgot || !otpSent || otpVerified) && (
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0EA5E5] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-100 transition disabled:cursor-not-allowed disabled:opacity-70"
+                            >
+                                {loading ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin" />
+                                        Đang xử lý...
+                                    </>
+                                ) : isLogin ? (
+                                    <><LogIn size={16} />Đăng nhập</>
+                                ) : isRegister ? (
+                                    <><UserPlus size={16} />Đăng ký</>
+                                ) : isForgot && !otpSent ? (
+                                    <><Mail size={16} />Gửi OTP</>
+                                ) : (
+                                    <><Lock size={14} />Đổi mật khẩu</>
+                                )}
+                            </button>
                         )}
-
-                        {isForgot && (
-                            <p className="text-xs leading-5 text-slate-400">
-                                Nếu email tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu trong vài phút.
-                            </p>
-                        )}
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0EA5E5] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-100 transition  disabled:cursor-not-allowed disabled:opacity-70"
-                        >
-                            {loading ? (
-                                <>
-                                    <Loader2 size={18} className="animate-spin" />
-                                    Đang xử lý...
-                                </>
-                            ) : isLogin ? (
-                                <>
-                                    <LogIn size={18} />
-                                    Đăng nhập
-                                </>
-                            ) : isRegister ? (
-                                <>
-                                    <UserPlus size={18} />
-                                    Đăng ký
-                                </>
-                            ) : (
-                                <>
-                                    <Mail size={18} />
-                                    Gửi 
-                                </>
-                            )}
-                        </button>
                     </form>
 
+                
                     <div className="mt-5 text-center text-sm text-slate-500">
                         {isLogin && (
                             <>
@@ -414,7 +591,6 @@ export default function AuthModal({ open, onClose }) {
                                 </button>
                             </>
                         )}
-
                         {isRegister && (
                             <>
                                 Đã có tài khoản?{' '}
@@ -427,7 +603,6 @@ export default function AuthModal({ open, onClose }) {
                                 </button>
                             </>
                         )}
-
                         {isForgot && (
                             <>
                                 Nhớ mật khẩu?{' '}
@@ -441,6 +616,7 @@ export default function AuthModal({ open, onClose }) {
                             </>
                         )}
                     </div>
+
                 </div>
             </div>
         </div>

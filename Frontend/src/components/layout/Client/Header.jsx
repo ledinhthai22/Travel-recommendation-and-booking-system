@@ -5,11 +5,11 @@ import { Menu, X } from 'lucide-react';
 import Logo from '~/components/UI/Header/Logo';
 import NavMenu from '~/components/UI/Header/NavMenu';
 import MobileMenu from '~/components/UI/Header/MobileMenu';
-import UserAction from '~/components/UI/Header/UserAcion';
+import UserAction from '~/components/UI/Header/UserAction';
 import AuthModal from '~/components/Auth/AuthModal';
-
+import useAuth from "~/Hooks/useAuth";
 const navLinks = [
-  { to: '/', label:'Trang chủ'},
+  { to: '/', label: 'Trang chủ' },
   { to: '/Cac-Chuyen-Di', label: 'Các chuyến đi' },
   { to: '/Lien-He', label: 'Liên hệ' },
 ];
@@ -21,7 +21,7 @@ export default function Header() {
 
   const { pathname } = useLocation();
 
-  const user = null;
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30);
@@ -46,9 +46,8 @@ export default function Header() {
   return (
     <>
       <header
-        className={`fixed left-0 top-0 z-40 w-full border-b border-slate-200 bg-white transition-shadow ${
-          scrolled ? 'shadow-md' : ''
-        }`}
+        className={`fixed left-0 top-0 z-40 w-full border-b border-slate-200 bg-white transition-shadow ${scrolled ? 'shadow-md' : ''
+          }`}
       >
         <nav>
           <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-4 md:px-8">
@@ -57,8 +56,11 @@ export default function Header() {
             <NavMenu navLinks={navLinks} isActive={isActive} />
 
             <div className="flex items-center gap-3">
-              <UserAction user={user} onLoginClick={handleOpenAuth} />
-
+              <UserAction
+                user={user}
+                onLoginClick={handleOpenAuth}
+                onLogout={logout}
+              />
               <button
                 type="button"
                 className="p-1 text-slate-600 md:hidden"

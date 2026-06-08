@@ -1,8 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
-using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.Interfaces;
 
@@ -116,6 +114,30 @@ namespace travel_recommendation_and_booking_system.Controllers
             }
 
             return Ok(new { message = "Khôi phục mật khẩu thành công. Vui lòng đăng nhập lại" });
+        }
+        [HttpPost("verify-otp")]
+        public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDTO model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var isValid =
+                await _authService.VerifyOtpAsync(model);
+
+            if (!isValid)
+            {
+                return BadRequest(new
+                {
+                    message = "Mã OTP không hợp lệ hoặc đã hết hạn"
+                });
+            }
+
+            return Ok(new
+            {
+                message = "Mã OTP hợp lệ"
+            });
         }
 
         [Authorize]

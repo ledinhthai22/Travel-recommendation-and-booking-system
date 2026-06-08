@@ -5,7 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import MainLayout from '~/components/layout/UserLayout';
 import AdminLayout from '~/components/layout/AdminLayout';
 import RouteReset from '~/components/Common/RouteReset';
-
+import ProtectedRoute from './Routes/ProtectedRoute';
 import {
   ContactPage,
   TourDetail,
@@ -15,6 +15,7 @@ import {
   ToursPage,
   CheckoutPage,
   Profile,
+  Wishlist,
 } from './Pages/Client';
 
 import {
@@ -49,33 +50,41 @@ function App() {
           </div>
         }
       >
-        <Toaster position="top-right" reverseOrder={false} />
+        <Toaster
+          position="top-right"
+          reverseOrder={false}
+          gutter={12}
+        />
 
         <Routes>
+          {/*public route user*/}
           <Route path="/" element={<MainLayout />}>
             <Route index element={<HomePage />} />
             <Route path="Cac-Chuyen-Di" element={<ToursPage />} />
             <Route path="Cac-Chuyen-Di/:name" element={<TourDetail />} />
-            <Route path="/Khach-san/:name" element={<HotelDetail />} />
+            <Route path="Khach-san/:name" element={<HotelDetail />} />
             <Route path="Lien-He" element={<ContactPage />} />
             <Route path="Thanh-Toan" element={<CheckoutPage />} />
-            <Route path="profile" element={<Profile />} />
-          </Route>
-
-          <Route path="/Quan-ly" element={<AdminLayout />}>
-            <Route index element={<DashBoard />} />
-            <Route path="Nguoi-dung" element={<UserManager />} />
-            <Route path="Cac-chuyen-di" element={<TourManager />} />
-            <Route path="Dia-diem" element={<LocationManager />} />
-            <Route path="Khach-san" element={<HotelManager />} />
-            <Route path="Nhan-vien" element={<EmployeeManager />} />
-            <Route path="Khach-du-lich" element={<TouristManager />} />
-            <Route path="Don-dat-cac-chuyen-di" element={<BookingManager />} />
-            <Route path="Lien-he" element={<ContactManager />} />
-            <Route path="Thong-tin-trang" element={<Webinfo />} />
-            <Route path="Newletter" element={<NewlettersManager />} />
-            <Route path="Hoat-dong-he-thong" element={<ActivityLogManager />} />
-            <Route path="Thong-doanh-thu-theo-cac-chuyen-di" element={<RevenueByTour />} />
+            <Route path="Thong-Tin-Ca-Nhan" element={<Profile />} />
+            <Route path="Danh-Sach-Yeu-Thich" element = {<Wishlist />} />
+          </Route> 
+          {/* Admin && nhân viên route */}
+          <Route element={<ProtectedRoute allowedRoles={["1", "2"]} />}>
+            <Route path="/Quan-ly" element={<AdminLayout />}>
+              <Route index element={<DashBoard />} />
+              <Route path="Nguoi-dung" element={<UserManager />} />
+              <Route path="Cac-chuyen-di" element={<TourManager />} />
+              <Route path="Dia-diem" element={<LocationManager />} />
+              <Route path="Khach-san" element={<HotelManager />} />
+              <Route path="Nhan-vien" element={<EmployeeManager />} />
+              <Route path="Khach-du-lich" element={<TouristManager />} />
+              <Route path="Don-dat-cac-chuyen-di" element={<BookingManager />} />
+              <Route path="Lien-he" element={<ContactManager />} />
+              <Route path="Thong-tin-trang" element={<Webinfo />} />
+              <Route path="Newletter" element={<NewlettersManager />} />
+              <Route path="Hoat-dong-he-thong" element={<ActivityLogManager />} />
+              <Route path="Thong-doanh-thu-theo-cac-chuyen-di" element={<RevenueByTour />} />
+            </Route>
           </Route>
 
           <Route path="*" element={<NotFound />} />

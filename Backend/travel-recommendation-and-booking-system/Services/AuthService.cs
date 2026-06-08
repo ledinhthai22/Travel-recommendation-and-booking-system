@@ -1,10 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Security.Claims;
 using System.Security.Cryptography;
+using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
-using System.Security.Claims;
 
 namespace travel_recommendation_and_booking_system.Services
 {
@@ -12,7 +12,7 @@ namespace travel_recommendation_and_booking_system.Services
     {
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
-        private readonly IEmailService _emailService;   
+        private readonly IEmailService _emailService;
         public AuthService(AppDbContext context, IConfiguration configuration, IEmailService emailService)
         {
             _context = context;
@@ -102,7 +102,7 @@ namespace travel_recommendation_and_booking_system.Services
             _context.PhienDangNhaps.Add(phienMoi);
             await _context.SaveChangesAsync();
 
-            return new LoginResultDTO { IsSuccess = true, Token = accessToken, RefreshToken = refreshToken, HoTen=user.HoTen, MaVaiTro = user.MaVaiTro };
+            return new LoginResultDTO { IsSuccess = true, Token = accessToken, RefreshToken = refreshToken, HoTen = user.HoTen, MaVaiTro = user.MaVaiTro };
         }
         public async Task<LoginResultDTO> RenewTokenAsync(TokenModelDTO token)
         {
@@ -156,10 +156,10 @@ namespace travel_recommendation_and_booking_system.Services
 
             string subject = "Mã OTP Khôi Phục Mật Khẩu";
             string body = $@"
-        <h3>Xin chào {user.HoTen},</h3>
-        <p>Bạn vừa yêu cầu khôi phục mật khẩu. Dưới đây là mã OTP của bạn:</p>
-        <h2 style='color: blue;'>{otp}</h2>
-        <p>Mã này sẽ hết hạn trong vòng <strong>5 phút</strong>. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>";
+                <h3>Xin chào {user.HoTen},</h3>
+                <p>Bạn vừa yêu cầu khôi phục mật khẩu. Dưới đây là mã OTP của bạn:</p>
+                <h2 style='color: blue;'>{otp}</h2>
+                <p>Mã này sẽ hết hạn trong vòng <strong>5 phút</strong>. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>";
 
             await _emailService.SendEmailAsync(user.Email, subject, body);
             return true;
@@ -179,6 +179,36 @@ namespace travel_recommendation_and_booking_system.Services
             user.ThoiGianHetHanOtp = null;
 
             await _context.SaveChangesAsync();
+            return true;
+        }
+        public async Task<bool> VerifyOtpAsync(VerifyOtpDTO model)
+        {
+            var user = await _context.NguoiDungs
+                .FirstOrDefaultAsync(u =>
+                    u.Email == model.Email &&
+                    u.NgayXoa == null);
+
+            if (user == null)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(user.MaOtp))
+            {
+                return false;
+            }
+
+            if (user.MaOtp != model.Otp)
+            {
+                return false;
+            }
+
+            if (user.ThoiGianHetHanOtp == null ||
+                user.ThoiGianHetHanOtp < DateTime.Now)
+            {
+                return false;
+            }
+
             return true;
         }
         //Token
