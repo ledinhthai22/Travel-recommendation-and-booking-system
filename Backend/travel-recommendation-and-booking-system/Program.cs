@@ -90,8 +90,6 @@ namespace travel_recommendation_and_booking_system
                               .AllowAnyHeader()
                               .AllowAnyMethod()
                               .AllowCredentials();
-
-
                     });
             });
             builder.Services.AddAuthorization();

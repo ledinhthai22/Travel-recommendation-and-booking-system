@@ -29,7 +29,7 @@ const InputField = ({
             <div className="relative flex items-center">
                 {Icon && (
                     <span className="pointer-events-none absolute left-3.5 text-slate-400">
-                        <Icon size={16} />
+                        <Icon size={16} className = "text-slate-400" />
                     </span>
                 )}
 

@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import {
     LogOut,
     User,
-
     Bell
 } from 'lucide-react';
+import useAuth from "~/Hooks/useAuth";
 export default function Header() {
     const [isNotifyOpen, setIsNotifyOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-
+    const { user, logout } = useAuth();
     return (
         <header className="fixed top-0 right-0 left-85 h-15 bg-white border border-slate-200 z-40">
             <div className="flex justify-between items-center h-full px-6">
@@ -21,7 +21,7 @@ export default function Header() {
                             }}
                             className={`w-11 h-11  flex items-center justify-center  transition-allactive:scale-95 ${isNotifyOpen ? ' text-[#0EA5E5]' : 'text-slate-500'}`}
                         >
-                            <Bell size={20}  />
+                            <Bell size={16} />
                         </button>
                         {isNotifyOpen && (
                             <div className="absolute right-0 mt-[15px] w-90 bg-white border border-slate-200 shadow-sm rounded-2xl overflow-hidden z-50">
@@ -37,7 +37,7 @@ export default function Header() {
                                         <p className="text-xs text-slate-400 mt-1">2 phút trước</p>
                                     </div>
                                 </div>
-                                <button className="w-full py-4 text-sm font-medium text-slate-500 hover:bg-slate-50 border-t border-slate-100">
+                                <button className="w-full py-4 text-sm font-medium text-slate-500 hover:bg-slate-50  hover:text-[#0EA5E5] border-t border-slate-100">
                                     Xem tất cả thông báo
                                 </button>
                             </div>
@@ -52,8 +52,8 @@ export default function Header() {
                             className={`flex items-center gap-3 p-3 pr-2  transition-all  active:scale-[0.97] ${isProfileOpen ? '' : ''}`}
                         >
                             <div className="text-right">
-                                <p className={`text-sm font-semibold ${isProfileOpen ? 'text-[#0EA5E5]' : ' text-slate-900'}`}>Quản trị viên</p>
-                                <p className={`text-[10px] ${isProfileOpen ? 'text-[#0EA5E5]' : ' text-slate-500'} mt-0.5 up`}>Admin</p>
+                                <p className={`text-[12px] font-semibold ${isProfileOpen ? 'text-[#0EA5E5]' : ' text-slate-900'}`}>{user?.hoTen || "Chưa có tên"}</p>
+                                <p className={`text-[10px] ${isProfileOpen ? 'text-[#0EA5E5]' : ' text-slate-500'}`}> {user?.maVaiTro == 1 ? 'Admin' : 'Nhân viên'}</p>
                             </div>
                             <img
                                 alt="Admin Avatar"
@@ -86,7 +86,7 @@ export default function Header() {
 
                                 <button
                                     onClick={() => {
-                                        console.log("Đăng xuất");
+                                        logout();
                                         setIsProfileOpen(false);
                                     }}
                                     className="w-full px-5 py-3 text-[12px] text-left flex items-center gap-3 hover:bg-red-50 text-red-600 transition-colors rounded-b-2xl"

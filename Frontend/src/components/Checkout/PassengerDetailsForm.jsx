@@ -138,7 +138,7 @@ export default function PassengerDetailsForm({
 
                         {allowSingleRoom && (
                             <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-600">
+                                <span className="text-[12px] text-slate-600">
                                     Phòng đơn
                                 </span>
 
@@ -154,7 +154,7 @@ export default function PassengerDetailsForm({
                                 >
                                     <span
                                         className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${singleRooms[key]
-                                            ? "left-[22px]"
+                                            ? "left-[19px]"
                                             : "left-[2px]"
                                             }`}
                                     />

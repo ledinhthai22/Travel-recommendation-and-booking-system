@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Star } from 'lucide-react';
 
 import DestinationsCard from '~/components/Destinations/DestinationsCard';
 import HeroSection from '~/components/Hero/HeroSection';
@@ -91,6 +91,86 @@ export default function HomePage() {
                         gap={30}
                         autoPlayMs={5000}
                     />
+                </div>
+            </section>
+            <section className="border-t border-slate-100 py-20">
+                <div className="mx-auto max-w-[1440px] px-4 md:px-8">
+
+                    <div className="mb-12 text-center">
+                        <h2 className="text-4xl font-bold text-slate-900">
+                            Khách hàng nói gì về chúng tôi
+                        </h2>
+
+                        <p className="mt-3 text-slate-500">
+                            Những đánh giá chân thực từ khách hàng đã trải nghiệm dịch vụ
+                        </p>
+                    </div>
+
+                    <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+
+                        {[
+                            {
+                                id: 1,
+                                name: 'Nguyễn Văn A',
+                                avatar: 'https://i.pravatar.cc/150?img=12',
+                                review:
+                                    'Tour được tổ chức rất chuyên nghiệp. Hướng dẫn viên nhiệt tình và lịch trình hợp lý.',
+                            },
+                            {
+                                id: 2,
+                                name: 'Trần Thị B',
+                                avatar: 'https://i.pravatar.cc/150?img=24',
+                                review:
+                                    'Đặt tour nhanh chóng, hỗ trợ khách hàng tốt. Chắc chắn sẽ quay lại sử dụng dịch vụ.',
+                            },
+                            {
+                                id: 3,
+                                name: 'Lê Minh C',
+                                avatar: 'https://i.pravatar.cc/150?img=33',
+                                review:
+                                    'Khách sạn đẹp, xe đưa đón đúng giờ. Trải nghiệm vượt ngoài mong đợi.',
+                            },
+                        ].map((review) => (
+                            <div
+                                key={review.id}
+                                className="
+                        rounded-3xl border border-slate-200
+                        bg-white p-6 shadow-sm
+                        transition-all duration-300
+                        hover:-translate-y-1 hover:shadow-lg
+                    "
+                            >
+                                <div className="mb-4 flex items-center gap-4">
+
+                                    <img
+                                        src={review.avatar}
+                                        alt={review.name}
+                                        className="h-14 w-14 rounded-full object-cover"
+                                    />
+
+                                    <div>
+                                        <h3 className="font-semibold text-slate-900">
+                                            {review.name}
+                                        </h3>
+
+                                        <div className="flex items-center gap-1">
+                                            {[...Array(5)].map((_, index) => (
+                                                <Star
+                                                    key={index}
+                                                    size={16}
+                                                    className="fill-amber-400 text-amber-400"
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p className="leading-7 text-slate-600">
+                                    "{review.review}"
+                                </p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </section>
         </div>
