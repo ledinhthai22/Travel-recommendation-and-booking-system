@@ -72,7 +72,7 @@ function App() {
           <Route element={<ProtectedRoute allowedRoles={["1", "2"]} />}>
             <Route path="/Quan-ly" element={<AdminLayout />}>
               <Route index element={<DashBoard />} />
-              <Route path="Nguoi-dung" element={<UserManager />} />
+              <Route path="Tai-khoan" element={<UserManager />} />
               <Route path="Cac-chuyen-di" element={<TourManager />} />
               <Route path="Dia-diem" element={<LocationManager />} />
               <Route path="Khach-san" element={<HotelManager />} />

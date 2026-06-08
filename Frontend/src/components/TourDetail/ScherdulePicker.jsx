@@ -1,10 +1,8 @@
 import { Bus } from "lucide-react";
 import { useMemo, useState } from "react";
+import { formatDate } from "~/Helper/FormatDate";
 
-function formatDate(dateString) {
-    return new Date(dateString).toLocaleDateString("vi-VN");
-}
-
+import { formatCurrency } from "~/Helper/FormatCurrency";
 function formatPrice(value) {
     return value === 0
         ? "Miễn phí"
@@ -258,7 +256,7 @@ export function SchedulePicker({
                                                             <p>Người lớn</p>
 
                                                             <span className="font-bold text-red-500">
-                                                                {formatPrice(
+                                                                {formatCurrency(
                                                                     schedule.gia.giaNguoiLon
                                                                 )}
                                                             </span>
@@ -268,7 +266,7 @@ export function SchedulePicker({
                                                             <p>Trẻ em</p>
 
                                                             <span className="font-bold text-red-500">
-                                                                {formatPrice(
+                                                                {formatCurrency(
                                                                     schedule.gia.giaTreEm
                                                                 )}
                                                             </span>
@@ -280,7 +278,7 @@ export function SchedulePicker({
                                                             <p>Em bé</p>
 
                                                             <span className="font-bold text-red-500">
-                                                                {formatPrice(
+                                                                {formatCurrency(
                                                                     schedule.gia.giaEmBe
                                                                 )}
                                                             </span>
@@ -292,9 +290,10 @@ export function SchedulePicker({
                                                             </p>
 
                                                             <span className="font-bold text-red-500">
-                                                                {formatPrice(
-                                                                    schedule.gia.phuThuPhongDon
-                                                                )}
+                                                                {schedule.gia.phuThuPhongDon === 0
+                                                                    ? 'miễn phí'
+                                                                    : formatCurrency(schedule.gia.phuThuPhongDon)
+                                                                }
                                                             </span>
                                                         </div>
                                                     </div>

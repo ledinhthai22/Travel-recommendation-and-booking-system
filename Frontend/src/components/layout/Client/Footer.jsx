@@ -60,20 +60,34 @@ export default function Footer() {
         e.preventDefault();
 
         if (!email.trim()) {
-            alert('Vui lòng nhập email');
+            toastError(
+                "Thiếu thông tin",
+                "Vui lòng nhập email"
+            );
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(email.trim())) {
+            toastError(
+                "Email không hợp lệ",
+                "Vui lòng nhập đúng định dạng email"
+            );
             return;
         }
 
         try {
             setLoading(true);
 
-            const res = await subscribeNewsletterApi(email);
+            await subscribeNewsletterApi(email.trim());
 
             toastSuccess(
-                "Đã gửi email",
-                "Thành công"
+                "Đăng ký thành công",
+                "Bạn sẽ nhận được các tin tức mới nhất qua email."
             );
-            setEmail('');
+
+            setEmail("");
         } catch (error) {
             toastError(
                 "Thao tác thất bại",
@@ -85,7 +99,7 @@ export default function Footer() {
     };
     return (
         <footer className="bg-[#0F172A] text-slate-400">
-            <div className="mx-auto max-w-[1440px] px-6 py-12 md:px-12 lg:py-16">
+            <div className="mx-auto max-w-[1440px] px-4 py-12 md:px-12 lg:py-16">
                 <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-[1.5fr_1fr_1fr_1fr_2fr] items-start">
                     <div className="flex flex-col gap-4">
                         <Link to="/" className="flex items-center gap-2.5">
@@ -142,11 +156,11 @@ export default function Footer() {
                             className="mt-2 flex items-center gap-2 max-w-sm"
                         >
                             <input
-                               
+
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="Email của bạn"
-                                className="w-full rounded-xl bg-white px-4 py-3 text-[13px] text-slate-800 outline-none placeholder:text-slate-400"
+                                className="w-full rounded-xl bg-white px-8 py-3 text-[13px] text-slate-800 outline-none placeholder:text-slate-400"
                             />
 
                             <button

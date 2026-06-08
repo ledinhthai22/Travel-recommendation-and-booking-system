@@ -3,6 +3,7 @@ import DataTableLib from 'react-data-table-component';
 import CustomDataTable from '~/components/UI/Table/CustomDataTable';
 import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
 import RowActionsButton from '~/components/UI/Table/Button/RowActionsButton';
+import { formatCurrency } from '~/Helper/FormatCurrency';
 const TRIP_REVENUE_DATA = [
     {
         id: 1,
@@ -86,9 +87,7 @@ const TRIP_REVENUE_DATA = [
     },
 ];
 
-const formatCurrency = (value) => {
-    return value.toLocaleString('vi-VN') + ' ₫';
-};
+
 export default function RevenueByTour() {
 
     const totalRevenue = useMemo(() => TRIP_REVENUE_DATA.reduce((sum, t) => sum + t.revenue, 0), []);

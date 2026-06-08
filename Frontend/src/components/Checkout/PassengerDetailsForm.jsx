@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import InputField from "../UI/Form/InputField";
 import Dropdown from "../Common/Dropdown";
 import SelectField from "../UI/Form/SelectField";
+import { formatCurrency } from "~/Helper/FormatCurrency";
 export default function PassengerDetailsForm({
     passengers,
     singleRooms,
@@ -67,12 +68,12 @@ export default function PassengerDetailsForm({
             },
         }));
     };
-    const formatCurrency = (value) =>
-        new Intl.NumberFormat("vi-VN", {
-            style: "currency",
-            currency: "VND",
-            maximumFractionDigits: 0,
-        }).format(value || 0);
+    // const formatCurrency = (value) =>
+    //     new Intl.NumberFormat("vi-VN", {
+    //         style: "currency",
+    //         currency: "VND",
+    //         maximumFractionDigits: 0,
+    //     }).format(value || 0);
     const handleSave = (e) => {
         e.preventDefault();
 

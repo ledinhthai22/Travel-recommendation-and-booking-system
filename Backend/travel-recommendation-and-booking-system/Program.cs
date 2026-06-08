@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using travel_recommendation_and_booking_system.Data;
+using travel_recommendation_and_booking_system.Extensions;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Services;
 
@@ -101,7 +102,11 @@ namespace travel_recommendation_and_booking_system
                 app.UseSwaggerUI();
             }
             app.UseCors("ReactPolicy");
+            app.UseStaticFiles();
+
             app.UseHttpsRedirection();
+
+            app.UseRequestLogging();
 
             app.UseAuthentication();
             app.UseAuthorization();
