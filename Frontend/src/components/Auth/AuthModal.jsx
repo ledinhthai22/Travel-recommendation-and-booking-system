@@ -96,7 +96,6 @@ const OtpCountdown = React.memo(function OtpCountdown({ onResend }) {
     );
 });
 
-/** Toggle show/hide password button */
 const PasswordToggle = React.memo(function PasswordToggle({ show, onToggle }) {
     return (
         <button
@@ -397,7 +396,7 @@ export default function AuthModal({ open, onClose }) {
 
                     <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
 
-                       
+
                         {isRegister && (
                             <>
                                 <InputField
@@ -421,7 +420,7 @@ export default function AuthModal({ open, onClose }) {
                             </>
                         )}
 
-                      
+
                         {!isForgot && (
                             <>
                                 <InputField
@@ -448,7 +447,7 @@ export default function AuthModal({ open, onClose }) {
                             </>
                         )}
 
-                       
+
                         {isRegister && (
                             <InputField
                                 label="Xác nhận mật khẩu"
@@ -477,7 +476,7 @@ export default function AuthModal({ open, onClose }) {
                             />
                         )}
 
-                      
+
                         {isForgot && otpSent && !otpVerified && (
                             <>
                                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -495,7 +494,7 @@ export default function AuthModal({ open, onClose }) {
                                     placeholder="Nhập mã OTP"
                                 />
 
-                             
+
                                 <OtpCountdown onResend={handleResendOtp} />
 
                                 <button
@@ -508,7 +507,7 @@ export default function AuthModal({ open, onClose }) {
                             </>
                         )}
 
-                      
+
                         {isForgot && otpVerified && (
                             <>
                                 <InputField
@@ -534,19 +533,12 @@ export default function AuthModal({ open, onClose }) {
                             </>
                         )}
 
-                          {isLogin && (
-                            <div className="flex items-center justify-between">
-                                <label className="flex items-center gap-2 text-sm text-slate-500">
-                                    <input
-                                        type="checkbox"
-                                        className="h-4 w-4 rounded border-slate-300"
-                                    />
-                                    Ghi nhớ đăng nhập
-                                </label>
+                        {isLogin && (
+                            <div className="flex items-center justify-end">
                                 <button
                                     type="button"
                                     onClick={() => switchMode('forgot')}
-                                    className="text-sm font-semibold text-[#0EA5E5] hover:underline"
+                                    className="text-[10px] font-semibold text-[#0EA5E5] hover:underline"
                                 >
                                     Quên mật khẩu?
                                 </button>
@@ -577,7 +569,7 @@ export default function AuthModal({ open, onClose }) {
                         )}
                     </form>
 
-                
+
                     <div className="mt-5 text-center text-sm text-slate-500">
                         {isLogin && (
                             <>

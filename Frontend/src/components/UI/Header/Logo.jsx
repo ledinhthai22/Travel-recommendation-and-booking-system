@@ -7,9 +7,9 @@ export default function Logo() {
 
   const handleClick = () => {
     if (location.pathname === "/") {
-      window.location.reload(); // đang ở home → reload
+      window.location.reload(); 
     } else {
-      navigate("/"); // chưa ở home → chuyển về
+      navigate("/"); 
     }
   };
 

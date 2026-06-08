@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
-
 import CheckoutStep from "~/components/Checkout/CheckoutStep";
 import ContactForm from "~/components/Checkout/ContactForm";
 import PassengerForm from "~/components/Checkout/PassengerForm";
@@ -9,7 +8,7 @@ import PassengerDetailsForm from "~/components/Checkout/PassengerDetailsForm";
 import TourSummaryCard from "~/components/Checkout/TourSummaryCard";
 import InputField from "~/components/UI/Form/InputField";
 import Loading from "~/components/Common/Loading";
-
+import { formatCurrency } from "~/Helper/FormatCurrency";
 export default function CheckoutPage() {
     const [step, setStep] = useState(1);
     const [success, setSuccess] = useState(false);
@@ -82,12 +81,7 @@ export default function CheckoutPage() {
             [type]: value,
         }));
     };
-    const formatCurrency = (value) =>
-        new Intl.NumberFormat("vi-VN", {
-            style: "currency",
-            currency: "VND",
-            maximumFractionDigits: 0,
-        }).format(value || 0);
+
     const singleRoomCount = Object.values(singleRooms).filter(Boolean).length;
 
     const totalPrice = useMemo(() => {

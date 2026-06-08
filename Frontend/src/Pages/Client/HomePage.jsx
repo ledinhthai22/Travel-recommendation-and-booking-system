@@ -157,7 +157,7 @@ export default function HomePage() {
                                             {[...Array(5)].map((_, index) => (
                                                 <Star
                                                     key={index}
-                                                    size={16}
+                                                    size={12}
                                                     className="fill-amber-400 text-amber-400"
                                                 />
                                             ))}

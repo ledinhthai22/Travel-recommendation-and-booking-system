@@ -133,7 +133,7 @@ export default function Sidebar() {
                                     <ContactRound size={16} />
                                     Quản lý nhân sự
                                 </NavLink>
-                                <NavLink to="/Quan-ly/Nguoi-dung" className={({ isActive }) => isActive ? activeSubmenuLinkClass : submenuLinkClass}>
+                                <NavLink to="/Quan-ly/Tai-khoan" className={({ isActive }) => isActive ? activeSubmenuLinkClass : submenuLinkClass}>
                                     <User size={16} />
                                     Quản lý tài khoản
                                 </NavLink>

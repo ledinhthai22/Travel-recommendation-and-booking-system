@@ -1,7 +1,7 @@
 import { memo, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Heart, Calendar, Users, ArrowRight, MapPin } from 'lucide-react';
-
+import { formatCurrency } from '~/Helper/FormatCurrency';
 function TourCard({
     id,
     image,
@@ -15,10 +15,7 @@ function TourCard({
 }) {
     const [wishlisted, setWishlisted] = useState(false);
 
-    const formattedPrice = useMemo(
-        () => Number(price).toLocaleString('vi-VN'),
-        [price],
-    );
+
 
     return (
         <article
@@ -125,7 +122,7 @@ function TourCard({
 
                         <div className="flex items-end gap-1">
                             <span className="text-lg font-bold text-slate-900">
-                                {formattedPrice}
+                                {formatCurrency(price)}
                             </span>
                             <span className="mb-[1px] text-[11px] text-slate-400">
                                 đ/người

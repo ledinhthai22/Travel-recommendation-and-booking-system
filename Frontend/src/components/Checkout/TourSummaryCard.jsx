@@ -1,12 +1,7 @@
 import React from "react";
 import { Bus, CreditCard, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
-const formatCurrency = (value) =>
-    new Intl.NumberFormat("vi-VN", {
-        style: "currency",
-        currency: "VND",
-        maximumFractionDigits: 0,
-    }).format(value || 0);
+import { formatCurrency } from "~/Helper/FormatCurrency";
 
 const formatDate = (dateStr) => {
     if (!dateStr) return "";
