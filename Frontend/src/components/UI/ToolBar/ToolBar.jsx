@@ -1,4 +1,4 @@
-import { ChevronDown, Funnel, Plus, BetweenHorizontalEnd,FileUp,FileDown } from "lucide-react";
+import { ChevronDown, Funnel, Plus, BetweenHorizontalEnd, FileUp, FileDown } from "lucide-react";
 import { useRef, useState } from "react";
 export default function ManagerToolbar({
     searchPlaceholder,
@@ -28,7 +28,7 @@ export default function ManagerToolbar({
                         <input
                             type="text"
                             placeholder={searchPlaceholder}
-                            className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
+                            className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 hover:border-sky-600 focus:border-sky-600 focus:outline-none rounded-xl text-sm transition-colors"
                             onChange={(e) => onSearchChange(e.target.value)}
                         />
                     </div>

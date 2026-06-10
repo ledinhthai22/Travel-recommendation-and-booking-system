@@ -93,6 +93,8 @@ export default function Webinfo() {
     const handleView = (row)=>{
 
     }
+    const handleLock = (row ) =>{
+    }
     const handleDelete = (row) => {
     };
     const filteredData = useMemo(() => {
@@ -160,6 +162,7 @@ export default function Webinfo() {
                     onDelete={handleDelete}
                     onEdit={handleEdit}
                     onView={handleView}
+                    onLock={handleLock}
                 />
             ),
         },

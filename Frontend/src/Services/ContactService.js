@@ -8,3 +8,19 @@ export const sentContactApi = async (data) => {
 
     return response.data;
 };
+export const getContactsApi = async (
+    pageNumber = 1,
+    pageSize = 10
+) => {
+    const response = await axiosClient.get(
+        "/Contact",
+        {
+            params: {
+                pageNumber,
+                pageSize
+            }
+        }
+    );
+
+    return response.data;
+};

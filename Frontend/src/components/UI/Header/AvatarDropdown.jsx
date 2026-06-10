@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { Heart, User, LogOut } from "lucide-react";
 export default function AvatarDropdown({ user, onLogout }) {
     const [open, setOpen] = useState(false);
-    console.log(user)
     const avatarUrl =
         user?.avatar ||
         `https://ui-avatars.com/api/?name=${encodeURIComponent(

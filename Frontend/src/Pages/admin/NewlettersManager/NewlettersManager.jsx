@@ -1,51 +1,49 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import CustomDataTable from '~/components/UI/Table/CustomDataTable';
 import RowActionsButton from '~/components/UI/Table/Button/RowActionsButton';
 import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
-
-const NEWSLETTER_DATA = [
-    {
-        maNewsletter: 1,
-        email: 'nguyenvanan@gmail.com',
-        ngayGui: '2026-04-14 09:45:00'
-    },
-    {
-        maNewsletter: 2,
-        email: 'tranthimai@yahoo.com',
-        ngayGui: '2026-04-13 14:20:00'
-    },
-    {
-        maNewsletter: 3,
-        email: 'lehoangnam@hotmail.com',
-        ngayGui: '2026-04-12 16:10:00'
-    },
-    {
-        maNewsletter: 4,
-        email: 'phamthuha@gmail.com',
-        ngayGui: '2026-04-11 11:30:00'
-    },
-    {
-        maNewsletter: 5,
-        email: 'support@company.vn',
-        ngayGui: '2026-04-10 08:15:00'
-    }
-];
+import { getNewslettersApi } from '~/Services/NewletterSevice';
+import { toastError } from '~/utils/Toast';
+import { getErrorMessage } from '~/utils/errorHelper';
 export default function NewsletterManager() {
     const [searchTerm, setSearchTerm] = useState('');
+    const [newsletters, setNewsletters] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    const fetchNewsletters = async () => {
+        try {
+            setLoading(true);
+
+            const response = await getNewslettersApi(1,100
+            );
+
+            setNewsletters(response.items || []);
+        } catch (error) {
+            toastError('Thao tác thất bại', getErrorMessage(error));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchNewsletters();
+    }, []);
 
     const filteredData = useMemo(() => {
-        if (!searchTerm.trim()) return NEWSLETTER_DATA;
+        let data = newsletters;
 
-        return NEWSLETTER_DATA.filter(item =>
-            item.email
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase())
-        );
-    }, [searchTerm]);
+        if (searchTerm.trim()) {
+            data = data.filter(item =>
+                item.email
+                    ?.toLowerCase()
+                    .includes(
+                        searchTerm.toLowerCase()
+                    )
+            );
+        }
 
-    const handleView = (row) => {
-        console.log('View newsletter:', row);
-    };
+        return data;
+    }, [newsletters, searchTerm]);
 
     const handleDelete = (row) => {
         console.log('Delete newsletter:', row);
@@ -70,15 +68,25 @@ export default function NewsletterManager() {
             sortable: true,
             selector: row => row.ngayGui,
             cell: row => {
-                const date = new Date(row.ngayGui);
+                const date = new Date(
+                    row.ngayGui
+                );
 
                 return (
                     <div>
                         <p className="text-sm text-slate-700">
-                            {date.toLocaleDateString('vi-VN')}
+                            {date.toLocaleDateString(
+                                'vi-VN'
+                            )}
                         </p>
                         <p className="text-xs text-slate-400">
-                            {date.toLocaleTimeString('vi-VN')}
+                            {date.toLocaleTimeString(
+                                'vi-VN',
+                                {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                }
+                            )}
                         </p>
                     </div>
                 );
@@ -91,7 +99,6 @@ export default function NewsletterManager() {
             cell: row => (
                 <RowActionsButton
                     row={row}
-                    onView={handleView}
                     onDelete={handleDelete}
                 />
             )
@@ -105,12 +112,13 @@ export default function NewsletterManager() {
                 onSearchChange={setSearchTerm}
                 showAddButton={false}
                 showCategoryFilter={false}
-                showImportExcel = {false}
+                showImportExcel={false}
             />
 
             <CustomDataTable
                 columns={columns}
                 data={filteredData}
+                progressPending={loading}
                 pagination
                 paginationPerPage={10}
                 paginationComponentOptions={{

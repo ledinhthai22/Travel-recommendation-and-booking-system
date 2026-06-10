@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash, Eye } from 'lucide-react';
+import { Trash, Eye,Lock } from 'lucide-react';
 export default function RowActionsButton({
     row,
     onView,
@@ -154,6 +154,16 @@ export default function RowActionsButton({
                             <Trash size={12} />Xóa
                         </button>
                     )}
+                    {/* 3. Xóa
+                    {showLock && onLock && (
+                        <button
+                            onClick={handleDelete}
+                            className="w-full px-3 py-2 flex items-center gap-2 hover:bg-red-50 
+                            text-left transition-colors text-xs font-medium text-red-600"
+                        >
+                            <Lock size={12} /> Khóa
+                        </button>
+                    )} */}
                 </div>,
                 document.body
             )}

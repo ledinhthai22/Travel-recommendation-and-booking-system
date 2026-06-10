@@ -1,4 +1,5 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import {
     logoutApi,
     getMeApi
@@ -31,15 +32,12 @@ export default function AuthProvider({ children }) {
                 JSON.stringify(profile)
             );
         } catch (error) {
-            if (
-                (response?.status === 401 ||
-                    response?.status === 403) &&
-                !config?.url?.includes("/auth/me")
-            ) {
+            const status = error?.response?.status;
+
+            if (status === 401 || status === 403) {
                 localStorage.removeItem("token");
                 localStorage.removeItem("user");
                 localStorage.removeItem("refreshToken");
-                window.location.href = "/";
             }
 
             setUser(null);
@@ -64,17 +62,9 @@ export default function AuthProvider({ children }) {
         return profile;
     };
 
-    const logout = async () => {
-        try {
-            const refreshToken =
-                localStorage.getItem("refreshToken");
-
-            if (refreshToken) {
-                await logoutApi(refreshToken);
-            }
-        } catch (err) {
-            console.log(err);
-        }
+    const logout = useCallback(async () => {
+        const refreshToken =
+            localStorage.getItem("refreshToken");
 
         localStorage.removeItem("token");
         localStorage.removeItem("refreshToken");
@@ -82,8 +72,14 @@ export default function AuthProvider({ children }) {
 
         setUser(null);
 
-        window.location.href = "/";
-    };
+        try {
+            if (refreshToken) {
+                await logoutApi(refreshToken);
+            }
+        } catch (err) {
+            console.log(err);
+        }
+    }, []);
 
     return (
         <AuthContext.Provider
