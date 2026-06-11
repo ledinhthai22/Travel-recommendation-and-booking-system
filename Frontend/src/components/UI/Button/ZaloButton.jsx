@@ -1,10 +1,11 @@
 import React from 'react';
 import ZaloIcon from '~/assets/Image/Logo-Zalo-Arc.webp';
-
-export default function ZaloButton({ phone = '0901234567' }) {
+import { useWebInfo } from '~/Hooks/useWebInfo';
+export default function ZaloButton() {
+  const {webInfo} = useWebInfo()
   return (
     <a
-      href={`https://zalo.me/${phone}`}
+      href={`https://zalo.me/${webInfo.zalo}`}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat Zalo"
