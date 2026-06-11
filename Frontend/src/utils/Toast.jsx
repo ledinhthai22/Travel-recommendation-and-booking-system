@@ -18,7 +18,7 @@ const show = ({
                 className={`
                     relative
                     w-[300px]
-                    rounded-2xl
+                    rounded-[8px]
                     bg-white
                     border
                     ${borderClass}
@@ -44,20 +44,25 @@ const show = ({
                         {icon}
                     </div>
 
-                    <div className="flex-1">
+                    <div
+                        className={`flex-1 ${!message ? "flex flex-col justify-center" : "flex flex-col"
+                            }`}
+                    >
                         <h4 className="font-semibold text-sm text-slate-900">
                             {title}
                         </h4>
 
-                        <p className="text-xs text-slate-500 mt-1">
-                            {message}
-                        </p>
+                        {message && (
+                            <p className="text-xs text-slate-500 mt-1">
+                                {message}
+                            </p>
+                        )}
                     </div>
                 </div>
 
-                {/* <div className="absolute left-0 bottom-0 h-1 w-full overflow-hidden rounded-b-2xl">
-                    <div className="h-full bg-current animate-progress" />
-                </div> */}
+                <div className="absolute left-0 bottom-[-0.5px] h-1 w-full overflow-hidden  rounded-b-[40px]">
+                    <div className="h-full bg-sky-400 animate-progress" />
+                </div>
             </div>
         ),
         {

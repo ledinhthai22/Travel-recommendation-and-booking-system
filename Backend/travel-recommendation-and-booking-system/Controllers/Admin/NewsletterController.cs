@@ -1,12 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.Interfaces;
-using travel_recommendation_and_booking_system.Services;
 
-namespace travel_recommendation_and_booking_system.Controllers
+namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
-    [Route("api/[controller]")]
+    [Route("api/admin/[controller]")]
     [ApiController]
     public class NewsletterController : ControllerBase
     {
@@ -15,26 +13,6 @@ namespace travel_recommendation_and_booking_system.Controllers
         {
             _newsletter = newsletter;
         }
-
-        [HttpPost("subscribe")]
-        public async Task<IActionResult> Subscribe([FromBody] NewsletterDTO newsletter)
-        {
-            try 
-            {
-                var result= await _newsletter.SubscribeAsync(newsletter);
-                if (!result)
-                {
-                    return BadRequest(new { message = "Email này đã được đăng ký nhận bản tin trước đó" });
-                }
-
-                return Ok(new { message = "Đăng ký nhận bản tin thành công" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Lỗi hệ thống: " + ex.Message });
-            }
-        }
-
         [HttpGet]
         [Authorize]
         public async Task<IActionResult> GetNewsletters([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
