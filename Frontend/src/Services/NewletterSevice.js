@@ -15,7 +15,7 @@ export const getNewslettersApi = async (
     pageSize = 10
 ) => {
     const response = await axiosClient.get(
-        "/Newsletter",
+        "/admin/Newsletter",
         {
             params: {
                 pageNumber,

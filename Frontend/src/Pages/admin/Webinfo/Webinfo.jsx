@@ -7,7 +7,7 @@ import {
     getWebInfoApi,
     clearWebInfoContentApi,
     updateWebInfoStatusApi
-} from '~/services/webInfoService';
+} from '~/Services/WebInfoService'
 
 import { toastError, toastSuccess } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";

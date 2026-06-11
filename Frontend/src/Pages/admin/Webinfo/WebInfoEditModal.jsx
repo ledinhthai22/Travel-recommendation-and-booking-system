@@ -3,7 +3,7 @@ import { X, Save } from "lucide-react";
 import {
     updateWebInfoApi,
     updateWebInfoStatusApi
-} from '~/services/webInfoService'
+} from '~/Services/WebInfoService'
 
 import { toastSuccess, toastError } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";

@@ -13,7 +13,7 @@ export const getContactsApi = async (
     pageSize = 10
 ) => {
     const response = await axiosClient.get(
-        "/Contact",
+        "/admin/Contact",
         {
             params: {
                 pageNumber,
