@@ -56,6 +56,7 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<INewsletterService, NewsletterService>();
+            builder.Services.AddScoped<IWebInfoService, WebInfoService>();
 
             var jwtSettings = builder.Configuration.GetSection("Jwt");
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
@@ -81,6 +82,16 @@ namespace travel_recommendation_and_booking_system
                     IssuerSigningKey = new SymmetricSecurityKey(key),
                     ClockSkew = TimeSpan.Zero
                 };
+            });
+            builder.Services.AddAuthorization(options =>
+            {
+                options.AddPolicy("AdminOnly",
+                    policy => policy.RequireRole("Quản Trị Viên"));
+                options.AddPolicy("StaffOnly",
+                    policy => policy.RequireRole("Nhân viên"));
+
+                options.AddPolicy("UserOnly",
+                    policy => policy.RequireRole("Người Dùng"));
             });
             builder.Services.AddCors(options =>
             {

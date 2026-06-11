@@ -80,6 +80,48 @@ namespace travel_recommendation_and_booking_system.Data
                         NgayCapNhat = DateTime.Now
                     }
                 );
+            modelBuilder.Entity<ThongTinTrang>().HasData(
+                new ThongTinTrang
+                {
+                    MaTTTrang = 1,
+                    Key = "logo_url",
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 2,
+                    Key = "ten_trang",
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 3,
+                    Key = "facebook_url",
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 4,
+                    Key = "dia_chi",
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 5,
+                    Key = "so_dien_thoai",
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 6,
+                    Key = "footer_copyright",
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 7,
+                    Key = "email_hotro",
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 8,
+                    Key = "zalo",
+                }
+            );
         }
 
     }

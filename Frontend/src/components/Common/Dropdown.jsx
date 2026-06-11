@@ -88,7 +88,7 @@ export default function Dropdown({
                 type="button"
                 onClick={() => setOpen((prev) => !prev)}
                 className="
-                    flex h-12 w-full items-center justify-between
+                    flex h-11 w-full items-center justify-between
                     rounded-2xl border border-slate-200
                     bg-white px-4
                     text-[15px] font-medium text-slate-800
@@ -98,7 +98,7 @@ export default function Dropdown({
                     focus:ring-2 focus:ring-sky-100
                 "
             >
-                <span className="truncate">
+                <span className="truncate text-[12px]">
                     {displayLabel}
                 </span>
 
@@ -114,7 +114,7 @@ export default function Dropdown({
                     )}
 
                     <ChevronDown
-                        size={18}
+                        size={12}
                         className={`transition-transform duration-200 ${
                             open ? 'rotate-180' : ''
                         }`}
@@ -224,7 +224,7 @@ export default function Dropdown({
                                         }}
                                         className={`
                                             flex w-full items-center
-                                            px-4 py-3 text-left text-[15px]
+                                            px-4 py-3 text-left text-[10px] font-bold
                                             transition-colors
                                             ${
                                                 isSelected

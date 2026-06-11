@@ -8,6 +8,7 @@ import {
     toastError,
 } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
+import { useWebInfo } from '~/Hooks/useWebInfo';
 const QUICK_LINKS = [
     { label: 'lorem lorem', href: '/' },
     { label: 'lorem lorem', href: '/' },
@@ -28,7 +29,7 @@ const SUPPORT_LINKS = [
 
 
 function FooterColumn({ title, links }) {
-
+    
     return (
         <div className="flex flex-col gap-3">
             <h3
@@ -56,6 +57,8 @@ function FooterColumn({ title, links }) {
 export default function Footer() {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
+    const {webInfo} = useWebInfo()
+    const url = "https://localhost:7016"
     const handleSubscribe = async (e) => {
         e.preventDefault();
 
@@ -104,33 +107,27 @@ export default function Footer() {
                     <div className="flex flex-col gap-4">
                         <Link to="/" className="flex items-center gap-2.5">
                             <img
-                                src={Logo}
-                                alt="Lối Riêng Travel"
+                                src={`${url}${webInfo.logo_url}`}
+                                alt={`${webInfo.ten_trang}`} 
                                 className="h-8 w-auto object-contain"
                             />
                             <span
                                 style={{ fontFamily: "'Poppins', sans-serif" }}
                                 className="text-base font-bold text-white tracking-wide"
                             >
-                                Lối Riêng Travel
+                                {webInfo.ten_trang}
                             </span>
                         </Link>
                         <p
                             style={{ fontFamily: "'Inter', sans-serif" }}
                             className="text-[11px] leading-relaxed text-slate-400 max-w-[200px]"
                         >
-                            Địa chỉ: 65 Huỳnh Thúc Kháng, Phường Sài Gòn, TP.HCM
+                            {webInfo.dia_chi} <br></br>
                         </p>
-                        <div className="flex items-center gap-3 mt-1">
-                            <a href="#" aria-label="Facebook" className="text-white hover:text-[#0EA5E5] transition">
+                        <div className="flex items-center gap-3 mt-0">
+                            <Link to={`${webInfo.facebook_url}`} aria-label="Facebook" className="text-white hover:text-[#0EA5E5] transition">
                                 <i className="fa-brands fa-facebook text-lg" />
-                            </a>
-                            <a href="#" aria-label="Instagram" className="text-white hover:text-[#0EA5E5] transition">
-                                <i className="fa-brands fa-instagram text-lg" />
-                            </a>
-                            <a href="#" aria-label="Youtube" className="text-white hover:text-[#0EA5E5] transition">
-                                <i className="fa-brands fa-youtube text-lg" />
-                            </a>
+                            </Link>
                         </div>
                     </div>
                     <FooterColumn title="lorem lorem" links={QUICK_LINKS} />

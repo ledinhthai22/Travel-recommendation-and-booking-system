@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.Interfaces;
 
-namespace travel_recommendation_and_booking_system.Controllers
+namespace Controllers.Auth
 {
     [Route("api/[controller]")]
     [ApiController]
