@@ -1,5 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace travel_recommendation_and_booking_system.Models
 {
@@ -21,6 +21,7 @@ namespace travel_recommendation_and_booking_system.Models
         public string Email { get; set; }
         [StringLength(255)]
         public string? DiaChi { get; set; }
+        public bool GioiTinh { get; set; }
         [Required]
         [StringLength(64)]
         public string MatKhau { get; set; }

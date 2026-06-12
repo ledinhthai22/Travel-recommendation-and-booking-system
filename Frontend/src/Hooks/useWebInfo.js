@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getWebInfoSettingsApi } from "~/services/webInfoService";
+import { getWebInfoSettingsApi } from "~/Services/WebInfoService";
 
 export const useWebInfo = () => {
     const [webInfo, setWebInfo] = useState({});

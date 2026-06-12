@@ -2,7 +2,7 @@ import axiosClient from './axiosClient';
 
 export const subscribeNewsletterApi = async (email) => {
     const response = await axiosClient.post(
-        '/Newsletter/subscribe',
+        '/PublicNewsletter/subscribe',
         {
             email,
         }
