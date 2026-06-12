@@ -6,6 +6,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
+    [Authorize]
     public class NewsletterController : ControllerBase
     {
         private readonly INewsletterService _newsletter;
@@ -13,14 +14,24 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         {
             _newsletter = newsletter;
         }
-        [HttpGet]
-        [Authorize]
-        public async Task<IActionResult> GetNewsletters([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        [HttpGet("get-newsletter")]
+        public async Task<IActionResult> GetNewsletters([FromQuery] string? key = null, [FromQuery] int page = 1, [FromQuery] int size = 10)
+        {
+            var result = await _newsletter.GetPagedNewslettersAsync(key, page, size);
+            return Ok(result);
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> SoftDeleteNewsletter(int id)
         {
             try
             {
-                var result = await _newsletter.GetPagedNewslettersAsync(pageNumber, pageSize);
-                return Ok(result);
+                var isnewsletter = await _newsletter.SoftDeleteNewsletterAsync(id);
+                if (!isnewsletter)
+                {
+                    return NotFound(new { success = false, message = "Không tìm thấy email này hoặc đã bị xóa từ trước" });
+                }
+                return Ok(new { success = true, message = "Đã xóa email đăng ký thành công" });
             }
             catch (Exception ex)
             {

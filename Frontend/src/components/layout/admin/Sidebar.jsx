@@ -17,7 +17,8 @@ import {
     Luggage,
     UserPen,
     Ticket,
-    ContactRound
+    ContactRound,
+    Images
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -148,7 +149,10 @@ export default function Sidebar() {
                         <UserPlus2 size={16} />
                         <span className="font-manrope tracking-tight">Quản lý newletters</span>
                     </NavLink>
-
+                    <NavLink to="/Quan-ly/Banner" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
+                        <Images size={16} />
+                        <span className="font-manrope tracking-tight">Quản lý banner</span>
+                    </NavLink>
                     <NavLink to="/Quan-ly/Thong-tin-trang" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
                         <Columns3Cog size={16} />
                         <span className="font-manrope tracking-tight">Quản lý thông tin trang</span>

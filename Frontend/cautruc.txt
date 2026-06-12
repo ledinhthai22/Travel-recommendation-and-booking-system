@@ -1,0 +1,125 @@
+D:\2026\DATN\Travel-recommendation-and-booking-system\Frontend
+├── eslint.config.js
+├── index.html
+├── jsconfig.json
+├── package-lock.json
+├── package.json
+├── README.md
+├── src
+|  ├── App.jsx
+|  ├── assets
+|  |  ├── Image
+|  |  |  ├── Logo-Zalo-Arc.webp
+|  |  |  └── Logo.png
+|  |  └── svg
+|  |     └── Icon.svg
+|  ├── components
+|  |  ├── Auth
+|  |  |  └── AuthModal.jsx
+|  |  ├── Checkout
+|  |  |  ├── CheckoutStep.jsx
+|  |  |  ├── ContactForm.jsx
+|  |  |  ├── PassengerDetailsForm.jsx
+|  |  |  ├── PassengerForm.jsx
+|  |  |  └── TourSummaryCard.jsx
+|  |  ├── Common
+|  |  |  ├── Dropdown.jsx
+|  |  |  ├── EmptyState.jsx
+|  |  |  ├── FeaturedCarousel.jsx
+|  |  |  ├── Loading.jsx
+|  |  |  ├── Pagination.jsx
+|  |  |  ├── RouteReset.jsx
+|  |  |  ├── SectionHeader.jsx
+|  |  |  └── SectionTitle.jsx
+|  |  ├── Destinations
+|  |  |  └── DestinationsCard.jsx
+|  |  ├── Hero
+|  |  |  └── HeroSection.jsx
+|  |  ├── layout
+|  |  |  ├── admin
+|  |  |  ├── AdminLayout.jsx
+|  |  |  ├── Client
+|  |  |  └── UserLayout.jsx
+|  |  ├── TourDetail
+|  |  |  ├── BookingCard.jsx
+|  |  |  ├── HotelInfo.jsx
+|  |  |  ├── ImageGallery.jsx
+|  |  |  ├── Itinerary.jsx
+|  |  |  ├── Notes.jsx
+|  |  |  ├── Reviews.jsx
+|  |  |  └── ScherdulePicker.jsx
+|  |  ├── Tours
+|  |  |  └── TourCard.jsx
+|  |  └── UI
+|  |     ├── Breadcrumbs
+|  |     ├── Button
+|  |     ├── Card
+|  |     ├── Form
+|  |     ├── Header
+|  |     ├── Modal
+|  |     ├── Table
+|  |     └── ToolBar
+|  ├── constants
+|  |  ├── Breadcrumbs.constants.js
+|  |  ├── Dashboard.constants.js
+|  |  ├── Home.constants.js
+|  |  ├── hotel.constants.js
+|  |  ├── TourDetail.constants.js
+|  |  └── Tours.constants.js
+|  ├── Context
+|  |  └── AuthContext.jsx
+|  ├── Helper
+|  |  ├── FormatCurrency.js
+|  |  ├── FormatDate.js
+|  |  └── FormatTime.js
+|  ├── Hooks
+|  |  ├── useAuth.js
+|  |  └── useWebInfo.js
+|  ├── main.jsx
+|  ├── Pages
+|  |  ├── admin
+|  |  |  ├── BookingManager
+|  |  |  ├── ContactManager
+|  |  |  ├── Dashboard
+|  |  |  ├── EmployeeManager
+|  |  |  ├── HotelManager
+|  |  |  ├── index.js
+|  |  |  ├── LocationManager
+|  |  |  ├── Log
+|  |  |  ├── NewlettersManager
+|  |  |  ├── RevenueByTour
+|  |  |  ├── TouristManager
+|  |  |  ├── TourManager
+|  |  |  ├── UserManager
+|  |  |  └── Webinfo
+|  |  └── Client
+|  |     ├── Checkout
+|  |     ├── ContactPage.jsx
+|  |     ├── HomePage.jsx
+|  |     ├── Hotel
+|  |     ├── index.js
+|  |     ├── NotFound.jsx
+|  |     ├── ProfilePage.jsx
+|  |     ├── Tour
+|  |     ├── TourDetail
+|  |     └── Wishlist
+|  ├── Routes
+|  |  └── ProtectedRoute.jsx
+|  ├── Services
+|  |  ├── AuthService.js
+|  |  ├── axiosClient.js
+|  |  ├── ContactService.js
+|  |  ├── NewletterSevice.js
+|  |  └── WebInfoService.js
+|  ├── styles
+|  |  └── index.css
+|  └── utils
+|     ├── errorHelper.js
+|     ├── handleConfirm.js
+|     └── Toast.jsx
+├── vite.config.js
+└── yarn.lock
+
+directory: 1216 file: 7068
+
+ignored: directory (113)

@@ -57,6 +57,7 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<INewsletterService, NewsletterService>();
             builder.Services.AddScoped<IWebInfoService, WebInfoService>();
+            builder.Services.AddScoped<IBannerService, BannerService>();
 
             var jwtSettings = builder.Configuration.GetSection("Jwt");
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);

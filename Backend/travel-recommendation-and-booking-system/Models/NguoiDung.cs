@@ -27,6 +27,8 @@ namespace travel_recommendation_and_booking_system.Models
         [StringLength(20)]
         public string SoDienThoai { get; set; }
         public DateTime? NgaySinh { get; set; }
+        public int? ChucVu { get; set; }
+        public int? PhongBan { get; set; }
         public string? MaOtp { get; set; }
         public DateTime? ThoiGianHetHanOtp { get; set; }
         public DateTime NgayTao { get; set; } = DateTime.Now;

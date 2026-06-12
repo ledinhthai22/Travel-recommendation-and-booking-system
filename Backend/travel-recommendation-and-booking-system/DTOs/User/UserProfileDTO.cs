@@ -1,6 +1,6 @@
-﻿namespace travel_recommendation_and_booking_system.DTOs
+﻿namespace DTOs.User
 {
-    public class StaffDTO
+    public class UserProfileDTO
     {
         public int MaNguoiDung { get; set; }
         public string HoTen { get; set; }
@@ -11,5 +11,6 @@
         public DateTime? NgaySinh { get; set; }
         public int TrangThai { get; set; }
         public int MaVaiTro { get; set; }
+        public string TenVaiTro { get; set; }
     }
 }

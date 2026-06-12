@@ -10,17 +10,30 @@ export const sentContactApi = async (data) => {
 };
 export const getContactsApi = async (
     pageNumber = 1,
-    pageSize = 10
+    pageSize = 10,
+    key='',
+    status=null
 ) => {
     const response = await axiosClient.get(
-        "/admin/Contact",
+        "/admin/Contact/get-contact",
         {
-            params: {
-                pageNumber,
-                pageSize
-            }
+            params: { pageNumber, pageSize, Key: key|| undefined, status: status ?? undefined }
         }
     );
 
+    return response.data;
+};
+
+export const getContactByIdApi = async (id) => {
+    const response = await axiosClient.get(
+        `/admin/Contact/${id}`,
+    );
+    return response.data;
+};
+
+export const softDeleteContactApi = async (id) => {
+    const response = await axiosClient.delete(
+        `/admin/Contact/${id}`,
+    );
     return response.data;
 };

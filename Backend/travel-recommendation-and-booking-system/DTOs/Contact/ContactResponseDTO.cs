@@ -1,4 +1,4 @@
-﻿namespace travel_recommendation_and_booking_system.DTOs
+﻿namespace DTOs.Contact
 {
     public class ContactResponseDTO
     {

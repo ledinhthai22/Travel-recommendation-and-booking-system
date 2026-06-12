@@ -11,6 +11,7 @@ namespace travel_recommendation_and_booking_system.Models
         [Required]
         [StringLength(255)]
         public string Email { get; set; }
-        public DateTime NgayGui { get; set; } = DateTime.Now;
+        public DateTime NgayGui { get; set; }
+        public DateTime? NgayXoa { get; set; }
     }
 }

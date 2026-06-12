@@ -1,8 +1,8 @@
 ﻿using System.Security.Claims;
 using System.Security.Cryptography;
+using DTOs.Auth;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
-using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
 

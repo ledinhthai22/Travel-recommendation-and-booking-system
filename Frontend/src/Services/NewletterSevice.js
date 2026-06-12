@@ -11,18 +11,26 @@ export const subscribeNewsletterApi = async (email) => {
     return response.data;
 };
 export const getNewslettersApi = async (
-    pageNumber = 1,
-    pageSize = 10
+    key='',
+    page=1,
+    size=10
 ) => {
     const response = await axiosClient.get(
-        "/admin/Newsletter",
+        "/admin/Newsletter/get-newsletter",
         {
             params: {
-                pageNumber,
-                pageSize
+                key:key||undefined,
+                page,
+                size
             }
         }
     );
 
     return response.data;
 };
+export const SoftDetailNewsletterApi = async (id)=>{
+    const reponse= await axiosClient.delete(
+        `/admin/Newsletter/${id}`
+    )
+    return reponse.data;
+} 

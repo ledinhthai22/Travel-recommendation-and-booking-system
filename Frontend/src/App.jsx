@@ -32,6 +32,7 @@ import {
   RevenueByTour,
   ActivityLogManager,
   NewlettersManager,
+  BannerManager
 } from './Pages/admin';
 
 
@@ -82,6 +83,7 @@ function App() {
               <Route path="Lien-he" element={<ContactManager />} />
               <Route path="Thong-tin-trang" element={<Webinfo />} />
               <Route path="Newletter" element={<NewlettersManager />} />
+              <Route path="Banner" element={<BannerManager/>} />
               <Route path="Hoat-dong-he-thong" element={<ActivityLogManager />} />
               <Route path="Thong-doanh-thu-theo-cac-chuyen-di" element={<RevenueByTour />} />
             </Route>

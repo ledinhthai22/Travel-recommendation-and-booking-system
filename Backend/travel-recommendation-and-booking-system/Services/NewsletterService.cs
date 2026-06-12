@@ -1,6 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DTOs.Newsletter;
+using DTOs.Page;
+using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
-using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
 
@@ -32,40 +33,57 @@ namespace travel_recommendation_and_booking_system.Services
             await _context.SaveChangesAsync();
             return true;
         }
-
-        public async Task<PageDTO<NewsletterResponseDTO>> GetPagedNewslettersAsync(int pageNumber, int pageSize)
+        public async Task<PageDTO<NewsletterResponseDTO>> GetPagedNewslettersAsync(string? keyword, int page, int size)
         {
-            if (pageNumber < 1)
+            if (page < 1)
             {
-                pageNumber = 1;
+                page = 1;
             }
-            if (pageSize < 1)
+            if (size < 1)
             {
-                pageSize = 10;
+                size = 10;
             }
 
-            var query = _context.Newsletters;
+            var query = _context.Newsletters.AsNoTracking().Where(n => n.NgayXoa == null);
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                query = query.Where(n => n.Email.Contains(keyword));
+            }
 
             int totalItems = await query.CountAsync();
+
             var items = await query
-            .OrderByDescending(n => n.NgayGui)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .Select(n => new NewsletterResponseDTO
-            {
-                MaNewsletter = n.MaNewsletter,
-                Email = n.Email,
-                NgayGui = n.NgayGui
-            })
-            .ToListAsync();
+                .OrderByDescending(n => n.NgayGui)
+                .Skip((page - 1) * size)
+                .Take(size)
+                .Select(n => new NewsletterResponseDTO
+                {
+                    MaNewsletter = n.MaNewsletter,
+                    Email = n.Email,
+                    NgayGui = n.NgayGui
+                })
+                .ToListAsync();
 
             return new PageDTO<NewsletterResponseDTO>
             {
                 Items = items,
                 TotalItems = totalItems,
-                PageNumber = pageNumber,
-                PageSize = pageSize
+                PageNumber = page,
+                PageSize = size
             };
+        }
+        public async Task<bool> SoftDeleteNewsletterAsync(int id)
+        {
+            var newsletter = await _context.Newsletters.FindAsync(id);
+
+            if(newsletter == null || newsletter.NgayXoa != null)
+            {
+                return false;
+            }
+            newsletter.NgayXoa = DateTime.Now;
+            _context.Newsletters.Update(newsletter);
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

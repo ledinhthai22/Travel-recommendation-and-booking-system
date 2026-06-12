@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace travel_recommendation_and_booking_system.DTOs
+namespace DTOs.Page
 {
     public class PageDTO<T>
     {

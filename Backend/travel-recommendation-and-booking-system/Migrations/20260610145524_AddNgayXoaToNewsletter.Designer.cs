@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using travel_recommendation_and_booking_system.Data;
 
@@ -11,9 +12,11 @@ using travel_recommendation_and_booking_system.Data;
 namespace travelrecommendationandbookingsystem.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260610145524_AddNgayXoaToNewsletter")]
+    partial class AddNgayXoaToNewsletter
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -48,10 +51,6 @@ namespace travelrecommendationandbookingsystem.Migrations
 
                     b.Property<DateTime?>("NgayXoa")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("TieuDe")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("TrangThai")
                         .HasColumnType("bit");
@@ -746,9 +745,6 @@ namespace travelrecommendationandbookingsystem.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaNguoiDung"));
 
-                    b.Property<int?>("ChucVu")
-                        .HasColumnType("int");
-
                     b.Property<string>("DiaChi")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
@@ -789,9 +785,6 @@ namespace travelrecommendationandbookingsystem.Migrations
                     b.Property<DateTime?>("NgayXoa")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("PhongBan")
-                        .HasColumnType("int");
-
                     b.Property<string>("SoDienThoai")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -816,9 +809,9 @@ namespace travelrecommendationandbookingsystem.Migrations
                             Email = "admin@gmail.com",
                             HoTen = "Quản Trị Viên",
                             MaVaiTro = 1,
-                            MatKhau = "$2a$11$NY4RZvWM9RFaGDoAFgOqGe62YSijcw579fDBBjQfAb49TfmcdKhFu",
-                            NgayCapNhat = new DateTime(2026, 6, 11, 22, 32, 15, 284, DateTimeKind.Local).AddTicks(515),
-                            NgayTao = new DateTime(2026, 6, 11, 22, 32, 15, 284, DateTimeKind.Local).AddTicks(500),
+                            MatKhau = "$2a$11$GqsI9u0DYsVSxf2GuDip6OWSuOA6DB3zQDRXjsWMFI6wgdwOK/iga",
+                            NgayCapNhat = new DateTime(2026, 6, 10, 21, 55, 24, 448, DateTimeKind.Local).AddTicks(1252),
+                            NgayTao = new DateTime(2026, 6, 10, 21, 55, 24, 448, DateTimeKind.Local).AddTicks(1233),
                             SoDienThoai = "0988888888",
                             TrangThai = 1
                         });
@@ -960,79 +953,19 @@ namespace travelrecommendationandbookingsystem.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("NgayCapNhat")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("NgayXoa")
+                    b.Property<DateTime>("NgayCapNhat")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Noidung")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool?>("Trangthai")
+                    b.Property<bool>("Trangthai")
                         .HasColumnType("bit");
 
                     b.HasKey("MaTTTrang");
 
                     b.ToTable("ThongTinTrang");
-
-                    b.HasData(
-                        new
-                        {
-                            MaTTTrang = 1,
-                            Key = "logo_url",
-                            NgayCapNhat = new DateTime(2026, 6, 11, 22, 32, 15, 284, DateTimeKind.Local).AddTicks(1001),
-                            Trangthai = true
-                        },
-                        new
-                        {
-                            MaTTTrang = 2,
-                            Key = "ten_trang",
-                            NgayCapNhat = new DateTime(2026, 6, 11, 22, 32, 15, 284, DateTimeKind.Local).AddTicks(1007),
-                            Trangthai = true
-                        },
-                        new
-                        {
-                            MaTTTrang = 3,
-                            Key = "facebook_url",
-                            NgayCapNhat = new DateTime(2026, 6, 11, 22, 32, 15, 284, DateTimeKind.Local).AddTicks(1008),
-                            Trangthai = true
-                        },
-                        new
-                        {
-                            MaTTTrang = 4,
-                            Key = "dia_chi",
-                            NgayCapNhat = new DateTime(2026, 6, 11, 22, 32, 15, 284, DateTimeKind.Local).AddTicks(1009),
-                            Trangthai = true
-                        },
-                        new
-                        {
-                            MaTTTrang = 5,
-                            Key = "so_dien_thoai",
-                            NgayCapNhat = new DateTime(2026, 6, 11, 22, 32, 15, 284, DateTimeKind.Local).AddTicks(1009),
-                            Trangthai = true
-                        },
-                        new
-                        {
-                            MaTTTrang = 6,
-                            Key = "footer_copyright",
-                            NgayCapNhat = new DateTime(2026, 6, 11, 22, 32, 15, 284, DateTimeKind.Local).AddTicks(1010),
-                            Trangthai = true
-                        },
-                        new
-                        {
-                            MaTTTrang = 7,
-                            Key = "email_hotro",
-                            NgayCapNhat = new DateTime(2026, 6, 11, 22, 32, 15, 284, DateTimeKind.Local).AddTicks(1011),
-                            Trangthai = true
-                        },
-                        new
-                        {
-                            MaTTTrang = 8,
-                            Key = "zalo",
-                            NgayCapNhat = new DateTime(2026, 6, 11, 22, 32, 15, 284, DateTimeKind.Local).AddTicks(1012),
-                            Trangthai = true
-                        });
                 });
 
             modelBuilder.Entity("travel_recommendation_and_booking_system.Models.TienNghi", b =>

@@ -196,8 +196,8 @@ export default function AuthModal({ open, onClose }) {
         password:
             !isForgot && submitted && !form.password
                 ? 'Vui lòng nhập mật khẩu'
-                : !isForgot && submitted && form.password.length < 6
-                    ? 'Mật khẩu tối thiểu 6 ký tự'
+                : !isForgot && submitted && form.password.length <8
+                    ? 'Mật khẩu tối thiểu 8 ký tự'
                     : '',
 
         confirmPassword:
@@ -215,8 +215,8 @@ export default function AuthModal({ open, onClose }) {
         newPassword:
             isForgot && otpVerified && submitted && !form.newPassword
                 ? 'Vui lòng nhập mật khẩu mới'
-                : isForgot && otpVerified && submitted && form.newPassword.length < 6
-                    ? 'Mật khẩu tối thiểu 6 ký tự'
+                : isForgot && otpVerified && submitted && form.newPassword.length < 8
+                    ? 'Mật khẩu tối thiểu 8 ký tự'
                     : '',
     }), [form, submitted, isRegister, isForgot, otpSent, otpVerified]);
 
