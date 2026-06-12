@@ -8,5 +8,9 @@ namespace travel_recommendation_and_booking_system.Extensions
         {
             return app.UseMiddleware<RequestLoggingMiddleware>();
         }
+        public static IApplicationBuilder UseExceptionError(this IApplicationBuilder app)
+        {
+            return app.UseMiddleware<ExceptionMiddleware>();
+        }
     }
 }

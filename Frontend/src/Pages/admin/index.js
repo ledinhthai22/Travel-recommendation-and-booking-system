@@ -1,7 +1,7 @@
 export {default as BookingManager} from './BookingManager/BookingManager'
 export {default as ContactManager} from './ContactManager/ContactManager'
 export {default as DashBoard} from './DashBoard/DashBoard'
-export {default as EmployeeManager} from './EmployeeManager/EmployeeManager'
+export {default as StaffManager} from './StaffManager/StaffManager'
 export {default as HotelManager} from './HotelManager/HotelManager'
 export {default as LocationManager} from './LocationManager/LocationManager'
 export {default as RevenueByTour} from './RevenueByTour/RevenueByTour'

@@ -57,6 +57,7 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<INewsletterService, NewsletterService>();
             builder.Services.AddScoped<IWebInfoService, WebInfoService>();
+            builder.Services.AddScoped<IStaffService, StaffService>();
 
             var jwtSettings = builder.Configuration.GetSection("Jwt");
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
@@ -118,7 +119,7 @@ namespace travel_recommendation_and_booking_system
             app.UseHttpsRedirection();
 
             app.UseRequestLogging();
-
+            app.UseExceptionError();
             app.UseAuthentication();
             app.UseAuthorization();
 
