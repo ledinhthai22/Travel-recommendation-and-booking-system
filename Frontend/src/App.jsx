@@ -24,7 +24,6 @@ import {
   TourManager,
   TouristManager,
   LocationManager,
-  EmployeeManager,
   HotelManager,
   BookingManager,
   Webinfo,
@@ -32,7 +31,8 @@ import {
   RevenueByTour,
   ActivityLogManager,
   NewlettersManager,
-  BannerManager
+  BannerManager,
+  StaffManager
 } from './Pages/admin';
 
 
@@ -77,7 +77,7 @@ function App() {
               <Route path="Cac-chuyen-di" element={<TourManager />} />
               <Route path="Dia-diem" element={<LocationManager />} />
               <Route path="Khach-san" element={<HotelManager />} />
-              <Route path="Nhan-vien" element={<EmployeeManager />} />
+              <Route path="Nhan-vien" element={<StaffManager />} />
               <Route path="Khach-du-lich" element={<TouristManager />} />
               <Route path="Don-dat-cac-chuyen-di" element={<BookingManager />} />
               <Route path="Lien-he" element={<ContactManager />} />

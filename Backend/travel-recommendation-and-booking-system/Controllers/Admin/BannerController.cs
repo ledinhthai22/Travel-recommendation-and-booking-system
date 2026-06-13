@@ -39,6 +39,11 @@ namespace Controllers.Admin
                 return BadRequest(ModelState);
             }
 
+            if (banner.DuongDanAnh == null || banner.DuongDanAnh.Length == 0)
+            {
+                return BadRequest(new { success = false, message = "Vui lòng chọn hình ảnh banner." });
+            }
+
             if (banner.DuongDanAnh.Length > 10 * 1024 * 1024)
             {
                 return BadRequest(new { success = false, message = "File ảnh vượt quá dung lượng cho phép (Tối đa 10MB)." });
@@ -48,8 +53,9 @@ namespace Controllers.Admin
 
             if (!isSuccess)
             {
-                return BadRequest(new { success = false, message = "Thêm Banner thất bại. Vui lòng kiểm tra lại file ảnh." });
+                return BadRequest(new { success = false, message = "Thêm Banner thất bại. Chấp nhận định dạng ảnh hợp lệ (JPG, PNG, WEBP, GIF)." });
             }
+
             return Ok(new { success = true, message = "Thêm Banner mới thành công" });
         }
 
@@ -60,18 +66,20 @@ namespace Controllers.Admin
             {
                 return BadRequest(ModelState);
             }
-            if (request.DuongDanAnh.Length > 10 * 1024 * 1024)
+
+            if (request.DuongDanAnh != null && request.DuongDanAnh.Length > 10 * 1024 * 1024)
             {
                 return BadRequest(new { success = false, message = "File ảnh vượt quá dung lượng cho phép (Tối đa 10MB)." });
             }
+
             var isSuccess = await _banner.UpdateBannerAsync(id, request);
 
             if (!isSuccess)
             {
-                return NotFound(new { success = false, message = "Không tìm thấy Banner hoặc dữ liệu đã bị xóa." });
+                return BadRequest(new { success = false, message = "Cập nhật thất bại. Vui lòng kiểm tra định dạng ảnh hoặc dữ liệu." });
             }
 
-            return Ok(new { success = true, message = "Cập nhật Banner thành công!" });
+            return Ok(new { success = true, message = "Cập nhật Banner thành công" });
         }
 
         [HttpDelete("{id}")]

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash, Eye } from 'lucide-react';
+import { Trash, Eye,KeyRound,Lock,Unlock } from 'lucide-react';
 
 export default function RowActionsButton({
     row,
@@ -9,15 +9,13 @@ export default function RowActionsButton({
     onDelete,
     onLock,
     onUnlock,
-    onApproval,
-    onReject,
+    onResetPass,
     showView = true,
     showEdit = true,
     showDelete = true,
     showLock = true,
     showUnlock = true,
-    showApproval = true,
-    showReject = true
+    showResetPass = true
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [dropdownStyle, setDropdownStyle] = useState({});
@@ -63,7 +61,7 @@ export default function RowActionsButton({
         setIsOpen(false);
     }, [row]);
 
-    if (!showView && !showEdit && !showDelete && !showLock && !showUnlock ) {
+    if (!showView && !showEdit && !showDelete && !showLock && !showUnlock  &&!showResetPass) {
         return null;
     }
 
@@ -73,6 +71,7 @@ export default function RowActionsButton({
         showDelete && onDelete,
         showLock && onLock,
         showUnlock && onUnlock,
+        showResetPass && onResetPass
     ].filter(Boolean).length;
 
     const dropdown = isOpen ? (
@@ -91,6 +90,15 @@ export default function RowActionsButton({
                     xem
                 </button>
             )}
+            {showResetPass && onResetPass && (
+                <button
+                    onClick={() => handleAction(onResetPass)}
+                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-slate-50 text-left text-xs font-medium"
+                >
+                    <KeyRound size={12} className="text-amber-600" />
+                    Cấp lại mật khẩu
+                </button>
+            )}
 
   
             {showEdit && onEdit && (
@@ -101,13 +109,32 @@ export default function RowActionsButton({
                     <span className="material-symbols-outlined text-amber-600" style={{ fontSize: '12px' }}>
                         {row?.isLocked ? 'restore' : 'edit_square'}
                     </span>
-                    <span className="text-gray-700">
+                    <span className="text-gray-900">
                         {row?.isLocked ? 'Khôi phục' : 'Chỉnh sửa'}
                     </span>
                 </button>
             )}
 
-    
+            {showLock && onLock && (
+                <button
+                    onClick={() => handleAction(onLock)}
+                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-orange-50 text-left text-xs font-medium text-orange-600"
+                >
+                    <Lock size={12} />
+                    <span>Khóa tài khoản</span>
+                </button>
+            )}
+
+            {showUnlock && onUnlock && (
+                <button
+                    onClick={() => handleAction(onUnlock)}
+                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-emerald-50 text-left text-xs font-medium text-emerald-600"
+                >
+                    <Unlock size={12} />
+                    <span>Mở khóa</span>
+                </button>
+            )}
+
             {actionCount > 1 && (
                 <div className="h-px bg-gray-100 mx-4 my-1" />
             )}

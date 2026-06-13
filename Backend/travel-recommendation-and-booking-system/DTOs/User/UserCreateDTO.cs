@@ -16,13 +16,15 @@ namespace travel_recommendation_and_booking_system.DTOs.User
         [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$", ErrorMessage = "Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt.")]
         public string MatKhau { get; set; }
 
-        [Required(ErrorMessage = "Mật khẩu không được trống")]
+        [Required(ErrorMessage = "Xác nhận mật khẩu không được trống")]
         [Compare("MatKhau", ErrorMessage = "Mật khẩu xác nhận không khớp.")]
         public string XacNhanMatKhau { get; set; }
 
         [Required(ErrorMessage = "Số điện thoại không được trống ")]
         [RegularExpression(@"^(0[3|5|7|8|9])[0-9]{8}$", ErrorMessage = "Số điện thoại không đúng định dạng")]
         public string SoDienThoai { get; set; }
+        public string? DiaChi {  get; set; }
+        public DateTime? NgaySinh { get; set; }
 
         [Required(ErrorMessage = "Vui lòng chọn vai trò.")]
         public int MaVaiTro { get; set; }

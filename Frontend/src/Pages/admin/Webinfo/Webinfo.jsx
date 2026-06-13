@@ -221,7 +221,20 @@ export default function Webinfo() {
                 paginationPerPage={10}
                 highlightOnHover
                 pointerOnHover
-                progressPending={loading}
+                paginationComponentOptions={{
+                    rowsPerPageText: 'Số dòng:',
+                    rangeSeparatorText: 'trên',
+                    noRowsPerPage: false,
+                    selectAllRowsItem: true,
+                    selectAllRowsItemText: 'Tất cả',
+                }}
+                noDataComponent={
+                    <div className="py-8 text-center">
+                        <p className="text-slate-400 text-sm">
+                            Không có dữ liệu
+                        </p>
+                    </div>
+                }
             />
 
             <WebInfoDetailModal

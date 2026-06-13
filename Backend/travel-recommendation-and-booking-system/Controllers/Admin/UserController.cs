@@ -12,6 +12,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
+    [Authorize]
     public class UserController : ControllerBase
     {
         private readonly IUserService _user;
@@ -27,25 +28,54 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
                 return BadRequest(ModelState);
             }
 
-            var isSuccess = await _user.CreateUserAsync(request);
-            if (request.DuongDanAnh != null && request.DuongDanAnh.Length > 10 * 1024 * 1024)
+            if (request.DuongDanAnh != null && request.DuongDanAnh.Length > 0)
             {
-                return BadRequest(new { success = false, message = "File ảnh vượt quá dung lượng cho phép (Tối đa 10MB)." });
-            }
-            if (!isSuccess)
-            {
-                return BadRequest(new
+                if (request.DuongDanAnh.Length > 10 * 1024 * 1024)
                 {
-                    success = false,
-                    message = "Email hoặc Số điện thoại này đã được sử dụng. Vui lòng thử lại!"
-                });
+                    return BadRequest(new { success = false, message = "File ảnh vượt quá dung lượng cho phép (Tối đa 10MB)." });
+                }
+
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+                var extension = Path.GetExtension(request.DuongDanAnh.FileName).ToLowerInvariant();
+
+                if (string.IsNullOrEmpty(extension) || !allowedExtensions.Contains(extension))
+                {
+                    return BadRequest(new { success = false, message = "Chỉ chấp nhận file ảnh (.jpg, .jpeg, .png, .gif, .webp)." });
+                }
+
+                if (!request.DuongDanAnh.ContentType.StartsWith("image/"))
+                {
+                    return BadRequest(new { success = false, message = "Nội dung file không hợp lệ. Vui lòng chọn đúng định dạng ảnh." });
+                }
             }
 
-            return Ok(new
+            try
             {
-                success = true,
-                message = "Thêm người dùng mới thành công!"
-            });
+                var isSuccess = await _user.CreateUserAsync(request);
+
+                if (!isSuccess)
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Email hoặc Số điện thoại này đã được sử dụng. Vui lòng thử lại!"
+                    });
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Thêm người dùng mới thành công!"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = $"Lỗi hệ thống khi tạo người dùng: {ex.Message}"
+                });
+            }
         }
 
         [HttpPut("{id}")]
@@ -55,26 +85,54 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             {
                 return BadRequest(ModelState);
             }
-            var isSuccess = await _user.UpdateUserAsync(id, request);
-            if (request.DuongDanAnh != null && request.DuongDanAnh.Length > 10 * 1024 * 1024)
+            if (request.DuongDanAnh != null && request.DuongDanAnh.Length > 0)
             {
-                return BadRequest(new { success = false, message = "File ảnh vượt quá dung lượng cho phép (Tối đa 10MB)." });
+                if (request.DuongDanAnh.Length > 10 * 1024 * 1024)
+                {
+                    return BadRequest(new { success = false, message = "File ảnh vượt quá dung lượng cho phép (Tối đa 10MB)." });
+                }
+
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+                var extension = Path.GetExtension(request.DuongDanAnh.FileName).ToLowerInvariant();
+
+                if (string.IsNullOrEmpty(extension) || !allowedExtensions.Contains(extension))
+                {
+                    return BadRequest(new { success = false, message = "Chỉ chấp nhận file ảnh (.jpg, .jpeg, .png, .gif, .webp)." });
+                }
+
+                if (!request.DuongDanAnh.ContentType.StartsWith("image/"))
+                {
+                    return BadRequest(new { success = false, message = "Nội dung file không hợp lệ. Vui lòng chọn đúng định dạng ảnh." });
+                }
             }
 
-            if (!isSuccess)
+            try
             {
-                return BadRequest(new
+                var isSuccess = await _user.UpdateUserAsync(id, request);
+
+                if (!isSuccess)
                 {
-                    success = false,
-                    message = "Không tìm thấy tài khoản hoặc Email/Số điện thoại đã bị trùng với người dùng khác"
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Không tìm thấy tài khoản hoặc Email/Số điện thoại đã bị trùng với người dùng khác."
+                    });
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Cập nhật thông tin tài khoản thành công!"
                 });
             }
-
-            return Ok(new
+            catch (Exception ex)
             {
-                success = true,
-                message = "Cập nhật thông tin tài khoản thành công!"
-            });
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = $"Lỗi hệ thống khi cập nhật tài khoản: {ex.Message}"
+                });
+            }
         }
 
         [HttpGet("get-user")]
@@ -83,12 +141,24 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             try
             {
                 var result = await _user.GetUsersAsync(pageNumber, pageSize, keyword, status);
-                return Ok(new { success = true, data = result });
+                return Ok(result);
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { success = false, message = "Lỗi hệ thống khi tải danh sách người dùng." });
             }
+        }
+        [HttpGet("{id}")]
+        public async Task<IActionResult> DetailUser(int id)
+        {
+            var user = await _user.DetailUserAsync(id);
+
+            if (user == null)
+            {
+                return NotFound(new { success = false, message = "Không tìm thấy người dùng." });
+            }
+
+            return Ok(user);
         }
         [HttpPatch("{id}/lock")]
         public async Task<IActionResult> LockUser(int id)
@@ -132,79 +202,5 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             });
         }
 
-        // nhân viên
-        [HttpPost("create-staff")]
-        public async Task<IActionResult> CreateStaff([FromForm] StaffCreateDTO request)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-            if (request.DuongDanAnh != null && request.DuongDanAnh.Length > 10 * 1024 * 1024)
-            {
-                return BadRequest(new { success = false, message = "File ảnh vượt quá dung lượng cho phép (Tối đa 10MB)." });
-            }
-            var isSuccess = await _user.CreateStaffAsync(request);
-
-            if (!isSuccess)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = "Thêm thất bại! Email hoặc Số điện thoại đã được đăng ký cho một nhân viên/khách hàng khác."
-                });
-            }
-
-            return Ok(new
-            {
-                success = true,
-                message = "Thêm nhân sự mới thành công!"
-            });
-        }
-
-        [HttpPut("update-staff/{id}")]
-        public async Task<IActionResult> UpdateStaff(int id, [FromForm] StaffUpdateDTO request)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            if (request.DuongDanAnh != null && request.DuongDanAnh.Length > 10 * 1024 * 1024)
-            {
-                return BadRequest(new { success = false, message = "File ảnh vượt quá dung lượng cho phép (Tối đa 10MB)." });
-            }
-            var isSuccess = await _user.UpdateStaffAsync(id, request);
-
-            if (!isSuccess)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = "Cập nhật thất bại! Không tìm thấy nhân viên hoặc Email/SĐT đã bị trùng."
-                });
-            }
-
-            return Ok(new
-            {
-                success = true,
-                message = "Cập nhật thông tin nhân viên thành công!"
-            });
-        }
-
-        [HttpGet("nhan-vien")]
-        public async Task<IActionResult> GetStaffs( [FromQuery] int pageNumber = 1,[FromQuery] int pageSize = 10,[FromQuery] string? keyword = null,[FromQuery] int? status = null)
-        {
-            try
-            {
-                var result = await _user.GetStaffsAsync(pageNumber, pageSize, keyword, status);
-                return Ok(new { success = true, data = result });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Lỗi tải danh sách nhân viên: {ex.Message}");
-                return StatusCode(500, new { success = false, message = "Lỗi hệ thống khi tải danh sách nhân sự." });
-            }
-        }
     }
 }

@@ -27,19 +27,23 @@ namespace travel_recommendation_and_booking_system.Services
                 {
                     return false;
                 }
-                // giới hạn dung lượng 10MB
-                long maxfilesize = 10 * 1014 * 1014;
 
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+                var fileExtension = Path.GetExtension(banner.DuongDanAnh.FileName).ToLower();
+
+                if (!allowedExtensions.Contains(fileExtension) || !banner.DuongDanAnh.ContentType.StartsWith("image/"))
+                {
+                    throw new Exception("File tải lên không phải là định dạng ảnh hợp lệ.");
+                }
+
+                // Tạo tên file an toàn
                 string originalFileName = Path.GetFileName(banner.DuongDanAnh.FileName);
                 originalFileName = originalFileName.Replace(" ", "_");
-
                 string timeStamp = DateTime.Now.ToString("yyyyMMddHHmmssfff");
                 string uniqueId = Guid.NewGuid().ToString().Substring(0, 6);
-
-                string newFileName = $"{timeStamp}_{uniqueId}_{originalFileName}";
+                string newFileName = $"{timeStamp}_{uniqueId}{fileExtension}";
 
                 string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "img", "banner");
-
                 if (!Directory.Exists(uploadsFolder))
                 {
                     Directory.CreateDirectory(uploadsFolder);
@@ -54,7 +58,7 @@ namespace travel_recommendation_and_booking_system.Services
                 string dbRelativePath = $"/img/banner/{newFileName}";
                 var newbanner = new Banner
                 {
-                    TieuDe=banner.TieuDe,
+                    TieuDe = banner.TieuDe,
                     DuongDanAnh = dbRelativePath,
                     LinkLienKet = banner.LinkLienKet,
                     TrangThai = true,
@@ -77,36 +81,35 @@ namespace travel_recommendation_and_booking_system.Services
             try
             {
                 var banner = await _context.Banners.FirstOrDefaultAsync(b => b.MaBanner == id && b.NgayXoa == null);
+                if (banner == null) return false;
 
-                if (request.DuongDanAnh == null || request.DuongDanAnh.Length == 0)
-                {
-                    return false;
-                }
-                // giới hạn dung lượng 10MB
-                long maxfilesize = 10 * 1014 * 1014;
                 if (request.DuongDanAnh != null && request.DuongDanAnh.Length > 0)
                 {
+                    var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+                    var fileExtension = Path.GetExtension(request.DuongDanAnh.FileName).ToLower();
+
+                    if (!allowedExtensions.Contains(fileExtension) || !request.DuongDanAnh.ContentType.StartsWith("image/"))
+                    {
+                        throw new Exception("File tải lên không phải là định dạng ảnh hợp lệ.");
+                    }
 
                     if (!string.IsNullOrEmpty(banner.DuongDanAnh))
                     {
                         string oldFilePath = Path.Combine(_webHostEnvironment.WebRootPath, banner.DuongDanAnh.TrimStart('/'));
-
                         if (System.IO.File.Exists(oldFilePath))
                         {
                             System.IO.File.Delete(oldFilePath);
                         }
                     }
 
-                    string originalFileName = Path.GetFileName(request.DuongDanAnh.FileName).Replace(" ", "_");
                     string timeStamp = DateTime.Now.ToString("yyyyMMddHHmmssfff");
                     string uniqueId = Guid.NewGuid().ToString().Substring(0, 6);
-                    string newFileName = $"{timeStamp}_{uniqueId}_{originalFileName}";
+                    string newFileName = $"{timeStamp}_{uniqueId}{fileExtension}";
 
                     string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "img", "banner");
                     if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
                     string filePath = Path.Combine(uploadsFolder, newFileName);
-
                     using (var fileStream = new FileStream(filePath, FileMode.Create))
                     {
                         await request.DuongDanAnh.CopyToAsync(fileStream);
@@ -114,9 +117,11 @@ namespace travel_recommendation_and_booking_system.Services
 
                     banner.DuongDanAnh = $"/img/banner/{newFileName}";
                 }
-                banner.TieuDe=request.TieuDe;
+
+                banner.TieuDe = request.TieuDe;
                 banner.LinkLienKet = request.LinkLienKet;
                 banner.NgayCapNhat = DateTime.Now;
+
                 _context.Banners.Update(banner);
                 await _context.SaveChangesAsync();
                 return true;

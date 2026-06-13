@@ -3,7 +3,9 @@ import CustomDataTable from '~/components/UI/Table/CustomDataTable';
 import RowActionsButton from '~/components/UI/Table/Button/RowActionsButton';
 import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
 
-import { getBannerApi, softDeleteBannerApi } from '~/Services/BannerService'; 
+import { getBannerApi, softDeleteBannerApi} from '~/Services/BannerService'; 
+import CreateBannerModal from './CreateBannerModal';
+import UpdateBannerModal from './UpdateBannerModal';
 import { toastError, toastSuccess } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
 import ConfirmModal from '~/components/UI/Modal/ConfirmModal';
@@ -16,7 +18,12 @@ export default function BannerManager() {
     const [banners, setBanners] = useState([]);
     const [totalRows, setTotalRows] = useState(0);
     const [loading, setLoading] = useState(false);
-
+    //thêm mới
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    //cập nhật
+    const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+    const [selectedBanner, setSelectedBanner] = useState(null);
+    //xóa mềm
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmConfig, setConfirmConfig] = useState({
         title: '',
@@ -71,13 +78,10 @@ export default function BannerManager() {
         });
         setConfirmOpen(true);
     };
-
-    const handleView = (row) => {
-        console.log("Xem chi tiết Banner:", row);
-    };
     
     const handleEdit = (row) => {
-        console.log("Sửa Banner:", row);
+        setSelectedBanner(row);
+        setIsUpdateModalOpen(true);
     };
 
 
@@ -165,7 +169,7 @@ export default function BannerManager() {
                 }}
                 showCategoryFilter={false} 
                 showAddButton={true} 
-                onAdd={() => console.log("Mở form thêm Banner")}
+                onAddClick={() => setIsCreateModalOpen(true)}
                 showExcel={false}
             />
 
@@ -198,6 +202,25 @@ export default function BannerManager() {
                 }
             />
 
+            <CreateBannerModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onSuccess={() => {
+                    setCurrentPage(1);
+                    fetchBanners();
+                }}
+            />
+            <UpdateBannerModal
+                isOpen={isUpdateModalOpen}
+                onClose={() => {
+                    setIsUpdateModalOpen(false);
+                    setSelectedBanner(null);
+                }}
+                onSuccess={() => {
+                    fetchBanners();
+                }}
+                bannerData={selectedBanner}
+            />
             <ConfirmModal
                 isOpen={confirmOpen}
                 title={confirmConfig.title}

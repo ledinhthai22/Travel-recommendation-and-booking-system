@@ -6,11 +6,10 @@ namespace travel_recommendation_and_booking_system.DTOs.Banner
     {
         [Required(ErrorMessage ="Vui lòng nhập tên tiêu đề")]
         public string TieuDe {  get; set; }
-        [Required(ErrorMessage = "Vui lòng chọn file ảnh.")]
-        public IFormFile DuongDanAnh { get; set; }
+        public IFormFile? DuongDanAnh { get; set; }
 
         [Required(ErrorMessage = "Vui lòng cung cấp link liên kết Banner.")]
-        public string LinkLienKet { get; set; }
+        public string? LinkLienKet { get; set; }
 
     }
 }

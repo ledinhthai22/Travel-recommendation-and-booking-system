@@ -9,7 +9,7 @@ import { toastSuccess, toastError } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
 import InputField from "~/components/UI/Form/InputField";
 import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
-import { Webinfo } from "..";
+
 
 export default function WebInfoEditModal({
     isOpen,
@@ -261,8 +261,8 @@ export default function WebInfoEditModal({
                             disabled={loading}
                             className="flex-1 py-3 bg-sky-500 text-white rounded-xl flex items-center justify-center gap-2"
                         >
-                            <Save size={16} />
-                            {loading ? "Đang lưu..." : "Cập nhật"}
+                           
+                            {loading ? "Đang lưu..." : "Lưu"}
                         </button>
                     </div>
                 </div>

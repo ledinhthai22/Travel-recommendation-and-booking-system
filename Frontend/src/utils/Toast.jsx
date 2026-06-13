@@ -48,7 +48,7 @@ const show = ({
                         className={`flex-1 ${!message ? "flex flex-col justify-center" : "flex flex-col"
                             }`}
                     >
-                        <h4 className="font-semibold text-sm text-slate-900">
+                        <h4 className="font-semibold text-sm text-slate-700">
                             {title}
                         </h4>
 

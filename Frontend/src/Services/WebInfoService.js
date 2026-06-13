@@ -2,7 +2,7 @@ import axiosClient from "./axiosClient";
 
 export const getWebInfoSettingsApi = async () => {
     const response = await axiosClient.get(
-        "/webinfo/settings"
+        "/publicWebInfo/settings"
     );
 
     return response.data;
