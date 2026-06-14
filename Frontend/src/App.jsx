@@ -69,7 +69,7 @@ function App() {
             <Route path="Thong-Tin-Ca-Nhan" element={<Profile />} />
             <Route path="Danh-Sach-Yeu-Thich" element = {<Wishlist />} />
           </Route> 
-          {/*route Admin && nhân viên  */}
+          {/* Admin && nhân viên route */}
           <Route element={<ProtectedRoute allowedRoles={["1", "2"]} />}>
             <Route path="/Quan-ly" element={<AdminLayout />}>
               <Route index element={<DashBoard />} />
