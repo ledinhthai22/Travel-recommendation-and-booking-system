@@ -36,21 +36,12 @@ namespace travel_recommendation_and_booking_system.Services
             if (!string.IsNullOrWhiteSpace(staff?.HoTen))
             {
                 var keyword = staff.HoTen.Trim().ToLower();
-                query = query.Where(x => (x.HoTen ?? "").ToLower().Contains(keyword));
-            }
 
-
-            if (!string.IsNullOrWhiteSpace(staff?.Email))
-            {
-                var keyword = staff.Email.Trim().ToLower();
-                query = query.Where(x => (x.Email ?? "").ToLower().Contains(keyword));
-            }
-
-
-            if (!string.IsNullOrWhiteSpace(staff?.SoDienThoai))
-            {
-                var keyword = staff.SoDienThoai.Trim().ToLower();
-                query = query.Where(x => (x.SoDienThoai ?? "").ToLower().Contains(keyword));
+                query = query.Where(x =>
+                    (x.HoTen ?? "").ToLower().Contains(keyword) ||
+                    (x.Email ?? "").ToLower().Contains(keyword) ||
+                    (x.SoDienThoai ?? "").ToLower().Contains(keyword)
+                );
             }
 
 
@@ -119,6 +110,7 @@ namespace travel_recommendation_and_booking_system.Services
         }
         public async Task<StaffResponseDTO> CreateAsync(StaffDTO staff)
         {
+
             var entity = new NguoiDung
             {
                 HoTen = staff.HoTen ?? "",
