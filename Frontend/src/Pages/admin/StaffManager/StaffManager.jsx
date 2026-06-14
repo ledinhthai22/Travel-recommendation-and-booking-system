@@ -134,20 +134,10 @@ export default function StaffManager() {
             name: 'Nhân viên',
             selector: row => row.hoTen,
             sortable: true,
-            grow: 2,
             cell: (row) => (
                 <div className="flex items-center gap-4 py-2">
-                    <img
-                        src={
-                            row.duongDanAnh
-                                ? `https://localhost:7016${row.duongDanAnh}`
-                                : "/default-avatar.png"
-                        }
-                        alt={row.hoTen}
-                        className="w-10 h-10 rounded-full object-cover"
-                    />
                     <div>
-                        <h4 className="font-semibold text-sm text-slate-900">
+                        <h4 className="font-semibold text-[10px] text-slate-900">
                             {row.hoTen}
                         </h4>
                         <p className="text-xs text-slate-500">

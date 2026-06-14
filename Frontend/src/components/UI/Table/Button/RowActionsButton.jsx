@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash, Eye,KeyRound } from 'lucide-react';
+import { Trash, Eye, KeyRound } from 'lucide-react';
 
 export default function RowActionsButton({
     row,
@@ -61,23 +61,15 @@ export default function RowActionsButton({
         setIsOpen(false);
     }, [row]);
 
-    if (!showView && !showEdit && !showDelete && !showLock && !showUnlock  &&!showResetPass) {
+    if (!showView && !showEdit && !showDelete && !showLock && !showUnlock && !showResetPass) {
         return null;
     }
 
-    const actionCount = [
-        showView && onView,
-        showEdit && onEdit,
-        showDelete && onDelete,
-        showLock && onLock,
-        showUnlock && onUnlock,
-        showResetPass && onResetPass
-    ].filter(Boolean).length;
 
     const dropdown = isOpen ? (
         <div
             ref={dropdownRef}
-            className="bg-white rounded-md shadow-2xl border border-gray-100 py-2"
+            className="bg-white rounded-md shadow-2xl border w-28 border-gray-100 py-2"
             style={dropdownStyle}
         >
 
@@ -100,7 +92,7 @@ export default function RowActionsButton({
                 </button>
             )}
 
-  
+
             {showEdit && onEdit && (
                 <button
                     onClick={() => handleAction(onEdit)}
@@ -115,19 +107,18 @@ export default function RowActionsButton({
                 </button>
             )}
 
-    
-            {actionCount > 1 && (
-                <div className="h-px bg-gray-100 mx-4 my-1" />
-            )}
-
             {showDelete && onDelete && (
-                <button
-                    onClick={() => handleAction(onDelete)}
-                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-red-50 text-left text-xs font-medium text-red-600"
-                >
-                    <Trash size={12} />
-                    Xóa
-                </button>
+                <div>
+                    <div className="h-px bg-gray-100 mx-4 my-1" />
+                    <button
+                        onClick={() => handleAction(onDelete)}
+                        className="w-full px-3 py-2 flex items-center gap-2 hover:bg-red-50 text-left text-xs font-medium text-red-600"
+                    >
+                        <Trash size={12} />
+                        Xóa
+                    </button>
+                </div>
+
             )}
         </div>
     ) : null;
