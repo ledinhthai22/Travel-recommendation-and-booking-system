@@ -33,7 +33,7 @@ namespace travel_recommendation_and_booking_system.Jobs
 
                 int oldStatus = item.TrangThai;
 
-                // Hết số lượng
+                // check hết số lượng
                 if (item.SoLuongToiDa <= 0)
                 {
                     item.TrangThai = 5;

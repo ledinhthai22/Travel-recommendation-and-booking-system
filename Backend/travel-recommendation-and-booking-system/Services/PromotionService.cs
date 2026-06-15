@@ -107,7 +107,7 @@ namespace travel_recommendation_and_booking_system.Services
                 throw new Exception("Ngày bắt đầu phải nhỏ hơn ngày hết hạn.");
             }
 
-            if (promotion.NgayHetHan <= now)
+            if (promotion.NgayHetHan.ToUniversalTime() <= now)
             {
                 throw new Exception("Ngày hết hạn phải lớn hơn thời điểm hiện tại.");
             }
@@ -236,7 +236,7 @@ namespace travel_recommendation_and_booking_system.Services
                 {
                     existedPromotion.TrangThai = 1;
                 }
-                else if (now > existedPromotion.NgayHetHan)
+                else if (now >= existedPromotion.NgayHetHan)
                 {
                     existedPromotion.TrangThai = 4;
                 }

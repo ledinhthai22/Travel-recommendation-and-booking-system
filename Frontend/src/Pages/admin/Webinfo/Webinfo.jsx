@@ -34,13 +34,13 @@ export default function Webinfo() {
         confirmText: 'Xác nhận',
         action: null
     });
-
+    const pageSize = 100000000;
     const fetchWebInfo = useCallback(async (key = '', statusValue = "") => {
         setLoading(true);
 
         const res = await getWebInfoApi(
             1,
-            10,
+            pageSize,
             key,
             statusValue === "" ? null : statusValue === "true"
         );
@@ -112,7 +112,7 @@ export default function Webinfo() {
         {
             name: 'STT',
             width: '80px',
-            center : 'true',
+            center: 'true',
             selector: row => row.maTTTrang,
         },
         {
@@ -186,7 +186,7 @@ export default function Webinfo() {
                     row={row}
                     onView={handleView}
                     onEdit={handleEdit}
-                    onDelete={handleDelete}
+                    onDelete={!row.trangthai ? handleDelete : undefined}
                     onLock={handleToggleStatus}
                 />
             )
