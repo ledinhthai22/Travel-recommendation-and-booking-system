@@ -40,6 +40,15 @@ namespace travel_recommendation_and_booking_system.Data
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<KS_TN>().HasKey(kt => new { kt.MaKhachSan, kt.MaTienNghi });
+            modelBuilder.Entity<KS_TN>()
+                .HasOne(x => x.KhachSan)
+                .WithMany(x => x.KS_TNs)
+                .HasForeignKey(x => x.MaKhachSan);
+
+            modelBuilder.Entity<KS_TN>()
+                .HasOne(x => x.TienNghi)
+                .WithMany(x => x.KS_TNs)
+                .HasForeignKey(x => x.MaTienNghi);
 
             modelBuilder.Entity<Tour_KhachSan>().HasKey(tk => new { tk.MaTour, tk.MaKhachSan });
 
@@ -48,10 +57,10 @@ namespace travel_recommendation_and_booking_system.Data
             modelBuilder.Entity<DanhSachYeuThich>().HasKey(dy => new { dy.MaNguoiDung, dy.MaTour });
 
             modelBuilder.Entity<DonDatTour>()
-        .HasOne(d => d.NguoiDung)
-        .WithMany(n => n.DonDatTours)
-        .HasForeignKey(d => d.MaNguoiDung)
-        .OnDelete(DeleteBehavior.Restrict);
+                .HasOne(d => d.NguoiDung)
+                .WithMany(n => n.DonDatTours)
+                .HasForeignKey(d => d.MaNguoiDung)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<DonDatTour>()
                 .HasOne(d => d.ChuyenKhoiHanh)

@@ -33,6 +33,7 @@ import {
   NewlettersManager,
   StaffManager,
   PromotionManager,
+  HotelFormPage,
 } from './Pages/admin';
 
 
@@ -69,14 +70,19 @@ function App() {
             <Route path="Thong-Tin-Ca-Nhan" element={<Profile />} />
             <Route path="Danh-Sach-Yeu-Thich" element = {<Wishlist />} />
           </Route> 
-          {/* Admin && nhân viên route */}
+          {/*route Admin && nhân viên  */}
           <Route element={<ProtectedRoute allowedRoles={["1", "2"]} />}>
             <Route path="/Quan-ly" element={<AdminLayout />}>
               <Route index element={<DashBoard />} />
               <Route path="Tai-khoan" element={<UserManager />} />
               <Route path="Cac-chuyen-di" element={<TourManager />} />
               <Route path="Dia-diem" element={<LocationManager />} />
-              <Route path="Khach-san" element={<HotelManager />} />
+              {/* <Route path="Khach-san" element={<HotelManager />} />
+              <Route path="Them-Khach-San" element={<HotelFormPage />} /> */}
+              <Route path="Khach-san">
+                <Route index element={<HotelManager />} />
+                <Route path="Them-Khach-San" element={<HotelFormPage />} />
+              </Route>
               <Route path="Nhan-vien" element={<StaffManager />} />
               <Route path="Khach-du-lich" element={<TouristManager />} />
               <Route path="Don-dat-cac-chuyen-di" element={<BookingManager />} />
@@ -85,8 +91,9 @@ function App() {
               <Route path="Newletter" element={<NewlettersManager />} />
               <Route path="Hoat-dong-he-thong" element={<ActivityLogManager />} />
               <Route path="Thong-doanh-thu-theo-cac-chuyen-di" element={<RevenueByTour />} />
-              <Route path="Uu-Dai" element = {<PromotionManager />} />
+              <Route path="Uu-Dai" element={<PromotionManager />} />
             </Route>
+
           </Route>
 
           <Route path="*" element={<NotFound />} />

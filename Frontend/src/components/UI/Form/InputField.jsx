@@ -68,7 +68,12 @@ const InputField = ({
                         disabled={disabled}
                         readOnly={readOnly}
                         rows={rows}
-                        className={inputClass}
+                        className={`
+                            ${inputClass}
+                            resize-y
+                            min-h-[60px]
+                            max-h-[500px]
+                        `}
                         {...rest}
                     />
                 ) : (
