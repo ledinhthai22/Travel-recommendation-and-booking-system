@@ -2,12 +2,13 @@ import axiosClient from "./axiosClient";
 export const getBannerApi= async (
     pageNumber=1,
     pageSize=10,
-    key=''
+    key='',
+    status=null
 )=>{
     const reponse =await axiosClient.get(
         "/admin/Banner/get-banner",
         {
-            params:{pageNumber,pageSize,key:key||undefined}
+            params:{pageNumber,pageSize,key:key||undefined,status:status??undefined}
         }
     );
     return reponse.data;

@@ -23,11 +23,6 @@ namespace travel_recommendation_and_booking_system.DTOs.User
         [Required(ErrorMessage = "Số điện thoại không được trống ")]
         [RegularExpression(@"^(0[3|5|7|8|9])[0-9]{8}$", ErrorMessage = "Số điện thoại không đúng định dạng")]
         public string SoDienThoai { get; set; }
-        public string? DiaChi {  get; set; }
-        public DateTime? NgaySinh { get; set; }
-
-        [Required(ErrorMessage = "Vui lòng chọn vai trò.")]
-        public int MaVaiTro { get; set; }
-        public IFormFile? DuongDanAnh { get; set; }
+        public bool GioiTinh {  get; set; }
     }
 }

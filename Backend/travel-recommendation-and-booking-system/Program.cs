@@ -1,12 +1,15 @@
 ﻿
 using System.Text;
+using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.Extensions;
 using travel_recommendation_and_booking_system.Interfaces;
+using travel_recommendation_and_booking_system.Jobs;
 using travel_recommendation_and_booking_system.Services;
+using travel_recommendation_and_booking_system.SignalR;
 
 namespace travel_recommendation_and_booking_system
 {
@@ -49,7 +52,14 @@ namespace travel_recommendation_and_booking_system
                     }
                 });
             });
+            builder.Services.AddSignalR();
+            builder.Services.AddHangfire(config =>
+            {
+                config.UseSqlServerStorage(
+                    builder.Configuration.GetConnectionString("DefaultConnection"));
+            });
 
+            builder.Services.AddHangfireServer();
             builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IContactService, ContactService>();
@@ -59,7 +69,8 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<IWebInfoService, WebInfoService>();
             builder.Services.AddScoped<IBannerService, BannerService>();
             builder.Services.AddScoped<IStaffService, StaffService>();
-
+            builder.Services.AddScoped<IPromotionService, PromotionService>();
+            builder.Services.AddScoped<PromotionStatusJob>();
             var jwtSettings = builder.Configuration.GetSection("Jwt");
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
@@ -116,16 +127,15 @@ namespace travel_recommendation_and_booking_system
             }
             app.UseCors("ReactPolicy");
             app.UseStaticFiles();
-
             app.UseHttpsRedirection();
-
             app.UseRequestLogging();
             app.UseExceptionError();
             app.UseAuthentication();
             app.UseAuthorization();
-
             app.MapControllers();
-
+            app.UseCustomHangfireJobs();
+            app.MapHub<TravelRecommendationHub>("/TravelRecommendationHub");
+            app.UseHangfireDashboard("/hangfire");
             app.Run();
         }
     }

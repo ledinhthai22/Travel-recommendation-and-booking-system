@@ -4,6 +4,7 @@ import InputField from "~/components/UI/Form/InputField";
 import { updateBannerApi } from "~/Services/BannerService";
 import { toastSuccess, toastError } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
+import Dropdown from "~/components/Common/Dropdown";
 
 export default function UpdateBannerModal({ isOpen, onClose, onSuccess, bannerData }) {
     const [loading, setLoading] = useState(false);
@@ -22,6 +23,7 @@ export default function UpdateBannerModal({ isOpen, onClose, onSuccess, bannerDa
             setForm({
                 tieuDe: bannerData.tieuDe || "",
                 linkLienKet: bannerData.linkLienKet || "",
+                trangThai: bannerData.trangThai ?? true,
                 duongDanAnh: null
             });
             setPreviewImage(bannerData.duongDanAnh ? `https://localhost:7016${bannerData.duongDanAnh}` : null);
@@ -70,6 +72,9 @@ export default function UpdateBannerModal({ isOpen, onClose, onSuccess, bannerDa
             
             if (form.duongDanAnh) {
                 formData.append("DuongDanAnh", form.duongDanAnh);
+            }
+            if (form.trangThai) {
+                formData.append("TrangThai", form.trangThai);
             }
 
             await updateBannerApi(bannerData.maBanner, formData);
@@ -140,6 +145,18 @@ export default function UpdateBannerModal({ isOpen, onClose, onSuccess, bannerDa
                             value={form.linkLienKet}
                             onChange={(e) => handleChange("linkLienKet", e.target.value)}
                         />
+
+                        <Dropdown
+                            label="Trạng thái"
+                            placeholder="Chọn trạng thái"
+                            value={form.trangThai}
+                            onChange={(value) => handleChange("trangThai", value)}
+                            options={[
+                                { value: true, label: "Hiển thị" },
+                                { value: false, label: "Ẩn" }
+                            ]}
+                        />
+
                     </div>
                 </div>
 

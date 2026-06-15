@@ -23,5 +23,6 @@ namespace travel_recommendation_and_booking_system.DTOs.User
         [Required(ErrorMessage = "Vui lòng chọn trạng thái.")]
         public int TrangThai { get; set; }
         public IFormFile? DuongDanAnh { get; set; }
+        public bool GioiTinh { get; set; }
     }
 }

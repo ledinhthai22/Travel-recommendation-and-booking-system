@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, Upload } from "lucide-react";
 import InputField from "~/components/UI/Form/InputField";
 import { updateUserApi } from "~/Services/UserService";
+import Dropdown from "~/components/Common/Dropdown";
 import { toastSuccess, toastError } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
 
@@ -15,6 +16,7 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
         soDienThoai: "",
         diaChi: "",
         ngaySinh: "",
+        gioTinh:true,
         maVaiTro: 4,
         duongDanAnh: null
     });
@@ -28,6 +30,7 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
                 soDienThoai: userData.soDienThoai ||"",
                 maVaiTro: userData.maVaiTro || 4,
                 diaChi:userData.diaChi||"",
+                gioiTinh:userData.gioiTinh??true,
                 ngaySinh: userData.ngaySinh ? userData.ngaySinh.split('T')[0] : (userData.NgaySinh ? userData.NgaySinh.split('T')[0] : ""),
                 duongDanAnh: null 
             });
@@ -80,6 +83,7 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
             formData.append("HoTen", form.hoTen);
             formData.append("Email", form.email);
             formData.append("SoDienThoai", form.soDienThoai);
+            formData.append("GioiTinh", form.gioiTinh);
             formData.append("MaVaiTro", "4");
 
             if (form.diaChi.trim()) {
@@ -170,6 +174,16 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
                             label="Số điện thoại *"
                             value={form.soDienThoai}
                             onChange={(e) => handleChange("soDienThoai", e.target.value)}
+                        />
+                        <Dropdown
+                            label="Giới tính"
+                            placeholder="Chọn giới tính"
+                            value={form.gioiTinh}
+                            onChange={(value) => handleChange("gioiTinh", value)} 
+                            options={[
+                                { value: true, label: "Nam" },
+                                { value: false, label: "Nữ" }
+                            ]}
                         />
                          <InputField
                             label="Địa chỉ"

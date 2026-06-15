@@ -1,22 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace travel_recommendation_and_booking_system.Models
+﻿namespace travel_recommendation_and_booking_system.DTOs.Promotion
 {
-    [Table("UuDai")]
-    public class UuDai
+    public class PromotionResponseDTO
     {
-        [Key]
         public int MaUuDai { get; set; }
-        [Required]
-        [StringLength(50)]
         public string MaCode { get; set; }
-        [Required]
-        [StringLength(255)]
         public string TenUuDai { get; set; }
         public float PhanTramGiam { get; set; }
-
-        [Column(TypeName = "decimal(18,2)")]
         public decimal DieuKienApDung { get; set; }
         public DateTime NgayBatDau { get; set; }
         public DateTime NgayHetHan { get; set; }
@@ -24,8 +13,5 @@ namespace travel_recommendation_and_booking_system.Models
         public int TrangThai { get; set; }
         public DateTime NgayTao { get; set; } = DateTime.Now;
         public DateTime NgayCapNhat { get; set; } = DateTime.Now;
-        public DateTime? NgayXoa { get; set; }
-
-        public virtual ICollection<DonDatTour> DonDatTours { get; set; } = new List<DonDatTour>();
     }
 }

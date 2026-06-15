@@ -4,7 +4,7 @@ export const getUserApi = async (
     pageNumber=1,
     pageSize=10,
     keyword='',
-    status
+    status=null
 ) =>{
     const reponse =await axiosClient.get(
         "/admin/User/get-user",

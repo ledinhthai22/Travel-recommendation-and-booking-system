@@ -40,6 +40,7 @@ const EMPTY_FORM = {
     confirmPassword: '',
     otp: '',
     newPassword: '',
+    gioiTinh: true
 };
 
 const OTP_TTL = 300;
@@ -229,7 +230,10 @@ export default function AuthModal({ open, onClose }) {
 
     const handleChange = useCallback((e) => {
         const { name, value } = e.target;
-        setForm((prev) => ({ ...prev, [name]: value }));
+        let finalValue = value;
+            if (value === "true") finalValue = true;
+            if (value === "false") finalValue = false;
+        setForm((prev) => ({ ...prev, [name]: finalValue }));
         if (isForgot && forgotSent) setForgotSent(false);
     }, [isForgot, forgotSent]);
 
@@ -316,9 +320,11 @@ export default function AuthModal({ open, onClose }) {
                     hoTen: form.fullName.trim(),
                     email: form.email.trim(),
                     matKhau: form.password,
+                    gioiTinh:form.gioiTinh,
                     xacNhanMatKhau: form.confirmPassword,
                     soDienThoai: form.phone.trim(),
                 };
+                console.log("Dữ liệu gửi lên server:", payload);
                 await registerApi(payload);
                 toastSuccess('Đăng ký thành công', 'Tài khoản của bạn đã được tạo.');
                 switchMode('login');
@@ -408,6 +414,16 @@ export default function AuthModal({ open, onClose }) {
                                     error={errors.fullName}
                                     Icon={User}
                                 />
+                                <InputField
+                                    as="select"
+                                    label="Giới tính"
+                                    name="gioiTinh"
+                                    value={form.gioiTinh}
+                                    onChange={handleChange}
+                                >
+                                    <option value="true">Nam</option>
+                                    <option value="false">Nữ</option>
+                                </InputField>
                                 <InputField
                                     label="Số điện thoại"
                                     name="phone"

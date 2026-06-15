@@ -19,11 +19,11 @@ namespace Controllers.Admin
         }
 
         [HttpGet("get-banner")]
-        public async Task<IActionResult> GetBanner([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] string? key = null)
+        public async Task<IActionResult> GetBanner([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] string? key = null, [FromQuery] bool? status =null)
         {
             try
             {
-                var result = await _banner.GetBannerAsync(pageNumber, pageSize, key);
+                var result = await _banner.GetBannerAsync(pageNumber, pageSize, key,status);
                 return Ok(result);
             }
             catch (Exception ex)

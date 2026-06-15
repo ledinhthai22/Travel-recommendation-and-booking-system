@@ -14,6 +14,7 @@ export default function BannerManager() {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [perPage, setPerPage] = useState(10);
+    const [statusFilter,setstatusFilter] = useState("");
 
     const [banners, setBanners] = useState([]);
     const [totalRows, setTotalRows] = useState(0);
@@ -36,7 +37,11 @@ export default function BannerManager() {
     const fetchBanners = async () => {
         try {
             setLoading(true);
-            const response = await getBannerApi(currentPage, perPage, searchTerm);
+            let statusParam = null;
+            if (statusFilter === 'true') statusParam = true;
+            if (statusFilter === 'false') statusParam = false;
+
+            const response = await getBannerApi(currentPage, perPage, searchTerm,statusParam);
             
             setBanners(response.items || []);
             setTotalRows(response.totalItems || 0);
@@ -50,7 +55,7 @@ export default function BannerManager() {
 
     useEffect(() => {
         fetchBanners();
-    }, [currentPage, perPage, searchTerm]);
+    }, [currentPage, perPage, searchTerm,statusFilter]);
 
 
     const handleConfirm = async () => {
@@ -64,6 +69,10 @@ export default function BannerManager() {
     };
 
     const handleDelete = (row) => {
+        if(!row.trangThai){
+            toastError("Không thể xóa vì banner này đang hiển thị");
+            return;
+        }
         setConfirmConfig({
             title: "Xóa Banner",
             message: `Bạn có chắc chắn muốn xóa banner "${row.tieuDe}" không?`,
@@ -86,6 +95,14 @@ export default function BannerManager() {
 
 
     const columns = useMemo(() => [
+         {
+            name: 'STT',
+            width: '80px',
+            center: true,
+            cell: (row, index) => (
+                <span className="font-medium">{index + 1}</span>
+            )
+        },
         {
             name: 'Hình ảnh',
             width: '120px',
@@ -154,6 +171,7 @@ export default function BannerManager() {
                     row={row}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    showDelete={row.trangThai === false}
                 />
             ),
         },
@@ -171,6 +189,21 @@ export default function BannerManager() {
                 showAddButton={true} 
                 onAddClick={() => setIsCreateModalOpen(true)}
                 showExcel={false}
+                    filters={[
+                    {
+                        placeholder: "Trạng thái",
+                        value: statusFilter,
+                        onChange: (value) => {
+                            setstatusFilter(value);
+                            setCurrentPage(1);
+                        },
+                        options: [
+                            { value: "", label: "Tất cả" },
+                            { value: "true", label: "Hiển thị" },
+                            { value: "false", label: "Đã Ẩn"} 
+                        ],
+                    }
+                ]}
             />
 
             <CustomDataTable

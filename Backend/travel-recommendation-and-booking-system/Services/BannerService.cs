@@ -120,6 +120,7 @@ namespace travel_recommendation_and_booking_system.Services
 
                 banner.TieuDe = request.TieuDe;
                 banner.LinkLienKet = request.LinkLienKet;
+                banner.TrangThai = request.TrangThai;
                 banner.NgayCapNhat = DateTime.Now;
 
                 _context.Banners.Update(banner);
@@ -137,12 +138,11 @@ namespace travel_recommendation_and_booking_system.Services
         {
             var banner = await _context.Banners.FindAsync(id);
 
-            if(banner == null || banner.NgayXoa != null)
+            if(banner == null || banner.NgayXoa != null || banner.TrangThai == false)
             {
                 return false;
             }
 
-            banner.TrangThai=false;
             banner.NgayXoa = DateTime.Now;
 
             _context.Banners.Update(banner);
@@ -150,7 +150,7 @@ namespace travel_recommendation_and_booking_system.Services
             return true;
         }
 
-        public async Task<PageDTO<BannerResponseDTO>> GetBannerAsync(int pageNumber, int pageSize, string? key)
+        public async Task<PageDTO<BannerResponseDTO>> GetBannerAsync(int pageNumber, int pageSize, string? key, bool? status)
         {
             if (pageNumber < 1)
             {
@@ -165,6 +165,10 @@ namespace travel_recommendation_and_booking_system.Services
             if (!string.IsNullOrWhiteSpace(key))
             {
                 query = query.Where(n => n.TieuDe.Contains(key));
+            }
+            if (status.HasValue)
+            {
+                query = query.Where(n => n.TrangThai == status.Value);
             }
 
             int totalItems = await query.CountAsync();

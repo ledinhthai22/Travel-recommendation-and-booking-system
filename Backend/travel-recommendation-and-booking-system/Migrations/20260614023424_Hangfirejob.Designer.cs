@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using travel_recommendation_and_booking_system.Data;
 
@@ -11,9 +12,11 @@ using travel_recommendation_and_booking_system.Data;
 namespace travelrecommendationandbookingsystem.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260614023424_Hangfirejob")]
+    partial class Hangfirejob
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -48,10 +51,6 @@ namespace travelrecommendationandbookingsystem.Migrations
 
                     b.Property<DateTime?>("NgayXoa")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("TieuDe")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("TrangThai")
                         .HasColumnType("bit");
@@ -728,9 +727,6 @@ namespace travelrecommendationandbookingsystem.Migrations
                         .HasColumnType("nvarchar(255)");
 
                     b.Property<DateTime>("NgayGui")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("NgayXoa")
                         .HasColumnType("datetime2");
 
                     b.HasKey("MaNewsletter");

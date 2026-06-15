@@ -27,28 +27,6 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             {
                 return BadRequest(ModelState);
             }
-
-            if (request.DuongDanAnh != null && request.DuongDanAnh.Length > 0)
-            {
-                if (request.DuongDanAnh.Length > 10 * 1024 * 1024)
-                {
-                    return BadRequest(new { success = false, message = "File ảnh vượt quá dung lượng cho phép (Tối đa 10MB)." });
-                }
-
-                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
-                var extension = Path.GetExtension(request.DuongDanAnh.FileName).ToLowerInvariant();
-
-                if (string.IsNullOrEmpty(extension) || !allowedExtensions.Contains(extension))
-                {
-                    return BadRequest(new { success = false, message = "Chỉ chấp nhận file ảnh (.jpg, .jpeg, .png, .gif, .webp)." });
-                }
-
-                if (!request.DuongDanAnh.ContentType.StartsWith("image/"))
-                {
-                    return BadRequest(new { success = false, message = "Nội dung file không hợp lệ. Vui lòng chọn đúng định dạng ảnh." });
-                }
-            }
-
             try
             {
                 var isSuccess = await _user.CreateUserAsync(request);

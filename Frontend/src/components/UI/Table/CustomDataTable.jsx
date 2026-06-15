@@ -77,7 +77,7 @@ export default function CustomDataTable({ columns, data, loading = false, ...pro
                 progressPending={loading}
                 pagination
                 paginationPerPage={10}
-                paginationRowsPerPageOptions={[5, 10, 20, 50]}
+                paginationRowsPerPageOptions={[5, 10, 15, 20,50]}
                 highlightOnHover
                 pointerOnHover
                 noDataComponent={

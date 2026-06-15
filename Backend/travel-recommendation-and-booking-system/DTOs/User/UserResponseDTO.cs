@@ -10,6 +10,7 @@
         public DateTime? NgaySinh { get; set; }
         public string SoDienThoai { get; set; }
         public string TenVaiTro { get; set; }
+        public bool GioiTinh { get; set; }
         public int TrangThai { get; set; }
         public string TenTrangThai => TrangThai switch
         {

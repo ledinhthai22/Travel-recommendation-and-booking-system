@@ -27,6 +27,7 @@ namespace travel_recommendation_and_booking_system.Services
                     MaNguoiDung = u.MaNguoiDung,
                     HoTen = u.HoTen,
                     Email = u.Email,
+                    GioiTinh = u.GioiTinh,
                     SoDienThoai = u.SoDienThoai,
                     DuongDanAnh = u.DuongDanAnh,
                     DiaChi = u.DiaChi,
@@ -49,45 +50,20 @@ namespace travel_recommendation_and_booking_system.Services
             }
 
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.MatKhau);
-            string? avatarPath = null;
-
-            if (request.DuongDanAnh != null && request.DuongDanAnh.Length > 0)
-            {
-                string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "img", "avatars");
-                if (!Directory.Exists(uploadsFolder))
-                {
-                    Directory.CreateDirectory(uploadsFolder);
-                }
-
-                string originalFileName = Path.GetFileName(request.DuongDanAnh.FileName).Replace(" ", "_");
-                string newFileName = $"{DateTime.Now:yyyyMMddHHmmssfff}_{Guid.NewGuid().ToString().Substring(0, 6)}_{originalFileName}";
-                string filePath = Path.Combine(uploadsFolder, newFileName);
-
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
-                {
-                    await request.DuongDanAnh.CopyToAsync(fileStream);
-                }
-                avatarPath = $"/img/avatars/{newFileName}";
-            }
-
             var newUser = new NguoiDung
             {
                 HoTen = request.HoTen,
                 Email = request.Email,
-                DiaChi = request.DiaChi,
-                NgaySinh = request.NgaySinh,
                 MatKhau = hashedPassword,
+                GioiTinh = request.GioiTinh,
                 SoDienThoai = request.SoDienThoai,
-                MaVaiTro = request.MaVaiTro,
-                DuongDanAnh = avatarPath,
+                MaVaiTro = 4,
                 TrangThai = 1,
                 NgayTao = DateTime.Now,
                 NgayCapNhat = DateTime.Now
             };
-
             _context.NguoiDungs.Add(newUser);
             await _context.SaveChangesAsync();
-
             return true;
         }
         public async Task<bool> UpdateUserAsync(int id, UserUpdateDTO request)
@@ -133,6 +109,7 @@ namespace travel_recommendation_and_booking_system.Services
             user.Email = request.Email;
             user.SoDienThoai = request.SoDienThoai;
             user.DiaChi = request.DiaChi;
+            user.GioiTinh = request.GioiTinh;
             user.NgaySinh = request.NgaySinh;
             user.MaVaiTro = request.MaVaiTro;
             user.NgayCapNhat = DateTime.Now;
@@ -177,6 +154,7 @@ namespace travel_recommendation_and_booking_system.Services
                     Email = n.Email,
                     NgaySinh=n.NgaySinh,
                     DiaChi = n.DiaChi,
+                    GioiTinh= n.GioiTinh,
                     SoDienThoai= n.SoDienThoai,
                     DuongDanAnh = n.DuongDanAnh,
                     TenVaiTro = n.VaiTro.TenVaiTro,
@@ -205,7 +183,8 @@ namespace travel_recommendation_and_booking_system.Services
                     HoTen = n.HoTen,
                     Email = n.Email,
                     SoDienThoai = n.SoDienThoai,
-                    DiaChi = n.DiaChi, 
+                    DiaChi = n.DiaChi,
+                    GioiTinh=n.GioiTinh,
                     NgaySinh = n.NgaySinh,     
                     DuongDanAnh = n.DuongDanAnh,
                     TenVaiTro = n.VaiTro.TenVaiTro,

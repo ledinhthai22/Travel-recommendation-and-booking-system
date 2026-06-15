@@ -32,7 +32,8 @@ import {
   ActivityLogManager,
   NewlettersManager,
   BannerManager,
-  StaffManager
+  StaffManager,
+  PromotionManager,
 } from './Pages/admin';
 
 
@@ -69,7 +70,7 @@ function App() {
             <Route path="Thong-Tin-Ca-Nhan" element={<Profile />} />
             <Route path="Danh-Sach-Yeu-Thich" element = {<Wishlist />} />
           </Route> 
-          {/* Admin && nhân viên route */}
+          {/*route Admin && nhân viên  */}
           <Route element={<ProtectedRoute allowedRoles={["1", "2"]} />}>
             <Route path="/Quan-ly" element={<AdminLayout />}>
               <Route index element={<DashBoard />} />
@@ -86,6 +87,7 @@ function App() {
               <Route path="Banner" element={<BannerManager/>} />
               <Route path="Hoat-dong-he-thong" element={<ActivityLogManager />} />
               <Route path="Thong-doanh-thu-theo-cac-chuyen-di" element={<RevenueByTour />} />
+              <Route path="Uu-Dai" element = {<PromotionManager />} />
             </Route>
           </Route>
 

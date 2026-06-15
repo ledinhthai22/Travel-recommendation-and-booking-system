@@ -53,12 +53,13 @@ export default function DetailUserModal({ isOpen, onClose, userData }) {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <InputField label="Số điện thoại" value={userData.soDienThoai || "Chưa cập nhật"} readOnly />
-                    <InputField label="Vai trò" value={userData.tenVaiTro || "Chưa phân quyền"} readOnly />
+                    <InputField label="Số điện thoại" value={userData.soDienThoai} readOnly />
+                    <InputField label="Vai trò" value={userData.tenVaiTro } readOnly />
+                    <InputField label="Giới tính" value={userData.gioiTinh === true ? "Nam" : "Nữ"} readOnly />
                     <InputField label="Ngày sinh" value={formatNgay(userData.ngaySinh)} readOnly />
                     <InputField label="Ngày tham gia" value={formatNgay(userData.ngayTao)} readOnly />
                     <div className="md:col-span-2">
-                        <InputField label="Địa chỉ" value={userData.diaChi || "Chưa cập nhật"} readOnly />
+                        <InputField label="Địa chỉ" value={userData.diaChi} readOnly />
                     </div>
                 </div>
 

@@ -3,7 +3,7 @@ import CustomDataTable from '~/components/UI/Table/CustomDataTable';
 import RowActionsButton from '~/components/UI/Table/Button/RowActionsButton';
 import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
 import ContactDetailModal from './ContactDetailModal';
-import { getContactsApi,softDeleteContactApi } from '~/Services/ContactService';
+import { getContactByIdApi, getContactsApi,softDeleteContactApi } from '~/Services/ContactService';
 import { toastError,toastSuccess } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
 import ConfirmModal from '~/components/UI/Modal/ConfirmModal';
@@ -61,10 +61,18 @@ export default function ContactManager() {
   }, [currentPage, perPage, searchTerm, statusFilter]);
 
   //xem chi tiết
-  const handleView = (row) => {
-    setSelectedItem(row);
+  const handleView = async (row) => {
+    if (!row.trangThai) {
+            await getContactByIdApi(row.maLienHe);
+            setContacts(prev => prev.map(item => 
+                item.maLienHe === row.maLienHe ? { ...item, trangThai: true } : item
+            ));
+            setSelectedItem({ ...row, trangThai: true });
+    } else {
+        setSelectedItem(row);
+    }
     setOpenView(true);
-  };
+};
 
   const handleConfirm = async () => {
       try {
@@ -76,24 +84,37 @@ export default function ContactManager() {
       }
   };
 
+  //xóa liên hệ
   const handleDelete = (row) => {
-        setConfirmConfig({
-            title: "Xóa liên hệ",
-            message: `Bạn có chắc chắn muốn xóa liên hệ của "${row.hoTen}" không?`,
-            type: "danger",
-            confirmText: "Xóa",
-            action: async () => {
-                setLoading(true);
-                await softDeleteContactApi(row.maLienHe);
-                toastSuccess("Xóa liên hệ thành công!");
-                fetchContacts();
-            }
-        });
-        setConfirmOpen(true);
+      if (!row.trangThai) {
+          toastError("Không thể xóa: Liên hệ này chưa được đọc");
+          return;
+      }
+      setConfirmConfig({
+          title: "Xóa liên hệ",
+          message: `Bạn có chắc chắn muốn xóa liên hệ của "${row.hoTen}" không?`,
+          type: "danger",
+          confirmText: "Xóa",
+          action: async () => {
+              setLoading(true);
+              await softDeleteContactApi(row.maLienHe);
+              toastSuccess("Xóa liên hệ thành công!");
+              fetchContacts();
+          }
+      });
+      setConfirmOpen(true);
     };
 
   const columns = useMemo(
     () => [
+      {
+        name: 'STT',
+        width: '80px',
+        center: true,
+        cell: (row, index) => (
+            <span className="font-medium">{index + 1}</span>
+        )
+      },
       {
         name: 'Người gửi',
         sortable: true,
@@ -181,6 +202,7 @@ export default function ContactManager() {
             row={row}
             onView={handleView}
             onDelete={handleDelete}
+            showDelete={row.trangThai===true}
           />
         ),
       },
@@ -246,7 +268,11 @@ export default function ContactManager() {
 
       <ContactDetailModal 
       isOpen={openView}
-      onClose={()=>setOpenView()}
+      onClose={() => {
+        setOpenView(false);
+        setSelectedItem(null);
+        fetchContacts();
+    }}
       data={selectedItem}
       />
       

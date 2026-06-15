@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useState } from 'react';
 import Logo from '~/assets/svg/Icon.svg';
+import { useWebInfo } from '~/Hooks/useWebInfo';
 import {
     LayoutDashboard,
     BarChart3,
@@ -18,7 +19,8 @@ import {
     UserPen,
     Ticket,
     ContactRound,
-    Images
+    Images,
+    BadgePercent
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -26,7 +28,8 @@ export default function Sidebar() {
         tour: false,
         user: false,
     });
-
+    const { webInfo } = useWebInfo()
+    const url = "https://localhost:7016"
     const baseLinkClass =
         "flex items-center gap-3 px-4 py-3 text-slate-600 font-medium hover:bg-[#0EA5E5]/10 hover:text-[#0EA5E5] rounded-2xl transition-all duration-200 group text-[13px]";
 
@@ -52,18 +55,18 @@ export default function Sidebar() {
                 <div className="mb-5 px-1 flex items-center gap-3 shrink-0">
                     <div className="w-10 h-10 rounded-xl shrink-0 bg-white border border-sky-100 overflow-hidden flex items-center justify-center shadow-sm">
                         <img
-                            src={Logo}
-                            alt="Company Logo"
+                            src={`${url}${webInfo.logo_url}`}
+                            alt={`${webInfo.ten_trang}`}
                             className="w-full h-full object-fill"
                         />
                     </div>
                     <div className="flex-1 min-w-0">
                         <h1 className="text-[13px] font-black tracking-[-0.015em] text-slate-800 leading-none mb-1 uppercase">
-                            LỐI RIÊNG TRAVEL
+                           {webInfo.ten_trang}
                         </h1>
-                        <p className="text-[10px] tracking-[0.12em] text-slate-500 font-semibold">
+                        {/* <p className="text-[10px] tracking-[0.12em] text-slate-500 font-semibold">
                             Admin Dashboard
-                        </p>
+                        </p> */}
                     </div>
                 </div>
 
@@ -74,10 +77,10 @@ export default function Sidebar() {
                         <span className="font-manrope tracking-tight">Dashboard</span>
                     </NavLink>
 
-                    <NavLink to="/Quan-ly/Thong-doanh-thu-theo-cac-chuyen-di" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
+                    {/* <NavLink to="/Quan-ly/Thong-doanh-thu-theo-cac-chuyen-di" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
                         <BarChart3 size={16} />
                         <span className="font-manrope tracking-tight">Doanh thu theo tour</span>
-                    </NavLink>
+                    </NavLink> */}
                     <div>
                         <button
                             onClick={() => toggleMenu('tour')}
@@ -152,6 +155,10 @@ export default function Sidebar() {
                     <NavLink to="/Quan-ly/Banner" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
                         <Images size={16} />
                         <span className="font-manrope tracking-tight">Quản lý banner</span>
+                    </NavLink>    
+                    <NavLink to="/Quan-ly/Uu-Dai" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
+                        <BadgePercent size={16} />
+                        <span className="font-manrope tracking-tight">Quản lý ưu đãi</span>
                     </NavLink>
                     <NavLink to="/Quan-ly/Thong-tin-trang" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
                         <Columns3Cog size={16} />
@@ -161,6 +168,7 @@ export default function Sidebar() {
                         <FileClock size={16} />
                         <span className="font-manrope tracking-tight">Nhật ký hoạt động</span>
                     </NavLink>
+
                 </nav>
             </div>
         </aside>

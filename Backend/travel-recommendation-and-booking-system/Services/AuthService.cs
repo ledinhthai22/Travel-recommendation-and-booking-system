@@ -53,6 +53,7 @@ namespace travel_recommendation_and_booking_system.Services
                 Email = register.Email,
                 MatKhau = passwordHash,
                 SoDienThoai = register.SoDienThoai,
+                GioiTinh = register.GioiTinh,
                 MaVaiTro = maKhachHang,
                 NgayTao = DateTime.Now,
                 NgayCapNhat = DateTime.Now,

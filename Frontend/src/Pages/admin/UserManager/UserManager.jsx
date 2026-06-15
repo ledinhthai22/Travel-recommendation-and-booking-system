@@ -41,6 +41,7 @@ export default function UserManager() {
     const [currentPage, setCurrentPage] = useState(1);
     const [perPage, setPerPage] = useState(10);
     const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter,setStatusFilter] = useState("");
     // thêm tài khoản
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     // cập nhật 
@@ -62,7 +63,10 @@ export default function UserManager() {
     const fetchUsers = async () => {
         try {
             setLoading(true);
-            const response = await getUserApi(currentPage, perPage, searchTerm);
+            let statusParam = null;
+            if (statusFilter === 'true') statusParam = 1;
+            if (statusFilter === 'false') statusParam = 0;
+            const response = await getUserApi(currentPage, perPage, searchTerm,statusParam);
             setUsers(response.items || []);
             setTotalRows(response.totalItems || 0);
         } catch (error) {
@@ -74,7 +78,7 @@ export default function UserManager() {
 
     useEffect(() => {
         fetchUsers();
-    }, [currentPage, perPage, searchTerm]);
+    }, [currentPage, perPage, searchTerm,statusFilter]);
 
 
     const executeConfirmAction = async () => {
@@ -140,30 +144,44 @@ export default function UserManager() {
 
     const columns = useMemo(() => [
         {
+            name: 'STT',
+            width: '80px',
+            center: true,
+            cell: (row, index) => (
+                <span className="font-medium">{index + 1}</span>
+            )
+        },
+        {
             name: 'Người dùng',
             sortable: true,
             minWidth: '250px',
             selector: row => row.hoTen,
             cell: (row) => {
-                const statusConfig = getStatusConfig(row.trangThai);
-                return (
-                    <div className="flex items-center gap-4 py-2">
-                        <img
-                            src={row.duongDanAnh ? `https://localhost:7016${row.duongDanAnh}` : 'https://placehold.co/150x150?text=No+Avt'}
-                            alt={row.hoTen}
-                            onError={(e) => { e.target.src = 'https://placehold.co/150x150?text=Error' }}
-                            className={`w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0 
-                                ${statusConfig.isLocked ? 'opacity-50 grayscale' : ''}`}
-                        />
-                        <div className="min-w-0">
-                            <h4 className={`font-bold text-sm truncate ${statusConfig.isLocked ? 'text-slate-400' : 'text-slate-900'}`}>
-                                {row.hoTen}
-                            </h4>
-                            <p className="text-xs text-slate-500 truncate">{row.email}</p>
-                        </div>
+            const statusConfig = getStatusConfig(row.trangThai);
+            
+            const getImageUrl = (path) => {
+                if (!path) return 'https://placehold.co/150x150?text=No+Avt';
+                return path.startsWith('http') ? path : `https://localhost:7016${path}`;
+            };
+
+            return (
+                <div className="flex items-center gap-4 py-2">
+                    <img
+                        src={getImageUrl(row.duongDanAnh)}
+                        alt={row.hoTen}
+                        onError={(e) => { e.target.src = 'https://placehold.co/150x150?text=Error' }}
+                        className={`w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0 
+                            ${statusConfig.isLocked ? 'opacity-50 grayscale' : ''}`}
+                    />
+                    <div className="min-w-0">
+                        <h4 className={`font-bold text-sm truncate ${statusConfig.isLocked ? 'text-slate-400' : 'text-slate-900'}`}>
+                            {row.hoTen}
+                        </h4>
+                        <p className="text-xs text-slate-500 truncate">{row.email}</p>
                     </div>
-                );
-            },
+                </div>
+            );
+        },
         },
         {
             name: 'Vai trò',
@@ -226,6 +244,21 @@ export default function UserManager() {
                 }}
                 addButtonText="Thêm người dùng"
                 showCategoryFilter={false}
+                filters={[
+                    {
+                        placeholder: "Trạng thái",
+                        value: statusFilter,
+                        onChange: (value) => {
+                            setStatusFilter(value);
+                            setCurrentPage(1);
+                        },
+                        options: [
+                            { value: "", label: "Tất cả" },
+                            { value: "true", label: "Hoạt động" },
+                            { value: "false", label: "Ngưng hoạt động"} 
+                        ],
+                    }
+                ]}
                onAddClick={() => setIsCreateModalOpen(true)}
             />
 

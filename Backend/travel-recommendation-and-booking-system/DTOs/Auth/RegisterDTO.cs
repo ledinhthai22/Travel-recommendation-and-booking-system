@@ -23,5 +23,6 @@ namespace DTOs.Auth
         [Required(ErrorMessage ="Số điện thoại không được trống ")]
         [RegularExpression(@"^(0[3|5|7|8|9])[0-9]{8}$", ErrorMessage = "Số điện thoại không đúng định dạng")]
         public string SoDienThoai { get; set; } = null!;
+        public bool GioiTinh {  get; set; }
     }
 }

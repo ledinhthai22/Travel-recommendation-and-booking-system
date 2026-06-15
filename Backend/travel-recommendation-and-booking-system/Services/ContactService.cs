@@ -93,7 +93,7 @@ namespace travel_recommendation_and_booking_system.Services
         {
             var contact = await _context.LienHes.FindAsync(id);
 
-            if (contact == null || contact.NgayXoa != null)
+            if (contact == null || contact.NgayXoa != null || contact.TrangThai ==false)
             {
                 return false;
             }
