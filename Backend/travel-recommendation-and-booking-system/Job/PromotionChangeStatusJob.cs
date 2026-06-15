@@ -28,24 +28,32 @@ namespace travel_recommendation_and_booking_system.Jobs
 
             foreach (var item in promotions)
             {
+                var start = DateTime.SpecifyKind(item.NgayBatDau, DateTimeKind.Utc);
+                var end = DateTime.SpecifyKind(item.NgayHetHan, DateTimeKind.Utc);
+
                 int oldStatus = item.TrangThai;
 
-                // Ưu tiên hết hạn
-                if (now > item.NgayHetHan)
+                // Hết số lượng
+                if (item.SoLuongToiDa <= 0)
+                {
+                    item.TrangThai = 5;
+                }
+                // Hết hạn
+                else if (now >= end)
                 {
                     item.TrangThai = 4;
                 }
-                // Nếu admin đã ngưng thì giữ nguyên
+                // Chưa bắt đầu
+                else if (now < start)
+                {
+                    item.TrangThai = 1;
+                }
+                // Đang tạm dừng
                 else if (item.TrangThai == 3)
                 {
                     continue;
                 }
-                // Chưa đến ngày bắt đầu
-                else if (now < item.NgayBatDau)
-                {
-                    item.TrangThai = 1;
-                }
-                // Đang trong thời gian hiệu lực
+                // Đang hoạt động
                 else
                 {
                     item.TrangThai = 2;
