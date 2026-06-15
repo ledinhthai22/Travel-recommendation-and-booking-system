@@ -16,7 +16,7 @@ import {
 } from "~/utils/Toast";
 
 import { getErrorMessage } from "~/utils/errorHelper";
-
+import { toLocalInput } from "~/Helper/DateTime";
 export default function UpdatePromotionModal({
     isOpen,
     onClose,
@@ -52,22 +52,19 @@ export default function UpdatePromotionModal({
         setForm({
             maCode: promotion.maCode?.toUpperCase() || "",
             tenUuDai: promotion.tenUuDai || "",
-            phanTramGiam:
-                promotion.phanTramGiam || "",
-            dieuKienApDung:
-                promotion.dieuKienApDung || "",
-            soLuongToiDa:
-                promotion.soLuongToiDa || "",
+            phanTramGiam: promotion.phanTramGiam || "",
+            dieuKienApDung: promotion.dieuKienApDung || "",
+            soLuongToiDa: promotion.soLuongToiDa || "",
+
             ngayBatDau: promotion.ngayBatDau
-                ? promotion.ngayBatDau.slice(0, 16)
+                ? toLocalInput(promotion.ngayBatDau)
                 : "",
 
             ngayHetHan: promotion.ngayHetHan
-                ? promotion.ngayHetHan.slice(0, 16)
+                ? toLocalInput(promotion.ngayHetHan)
                 : ""
         });
     }, [promotion]);
-
     if (!isOpen || !promotion) return null;
 
     const handleChange = (

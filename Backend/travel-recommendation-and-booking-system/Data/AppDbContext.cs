@@ -108,11 +108,6 @@ namespace travel_recommendation_and_booking_system.Data
                 },
                 new ThongTinTrang
                 {
-                    MaTTTrang = 6,
-                    Key = "footer_copyright",
-                },
-                new ThongTinTrang
-                {
                     MaTTTrang = 7,
                     Key = "email_hotro",
                 },
@@ -120,7 +115,72 @@ namespace travel_recommendation_and_booking_system.Data
                 {
                     MaTTTrang = 8,
                     Key = "zalo",
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 9,
+                    Key = "faq_1_question",
+                    Trangthai = true
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 10,
+                    Key = "faq_1_answer",
+                    Trangthai = true
+                },
+
+                new ThongTinTrang
+                {
+                    MaTTTrang = 11,
+                    Key = "faq_2_question",
+                    Trangthai = true
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 12,
+                    Key = "faq_2_answer",
+                    Trangthai = true
+                },
+
+                new ThongTinTrang
+                {
+                    MaTTTrang = 13,
+                    Key = "faq_3_question",
+                    Trangthai = true
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 14,
+                    Key = "faq_3_answer",
+                    Trangthai = true
+                },
+
+                new ThongTinTrang
+                {
+                    MaTTTrang = 15,
+                    Key = "faq_4_question",
+                    Trangthai = true
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 16,
+                    Key = "faq_4_answer",
+                    Trangthai = true
+                },
+
+                new ThongTinTrang
+                {
+                    MaTTTrang = 17,
+                    Key = "faq_5_question",
+                    Trangthai = true
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 18,
+                    Key = "faq_5_answer",
+                    Trangthai = true
                 }
+
             );
         }
 

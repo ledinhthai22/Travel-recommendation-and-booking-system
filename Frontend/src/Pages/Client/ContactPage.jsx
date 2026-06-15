@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
     ChevronDown,
     MessageCircle,
@@ -14,6 +14,8 @@ import {
     toastError,
 } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
+import { useWebInfo } from "~/Hooks/useWebInfo";
+
 const SUPPORT_TOPICS = [
     {
         icon: MessageCircle,
@@ -37,15 +39,8 @@ const SUPPORT_TOPICS = [
     },
 ];
 
-const FAQS = [
-    'Tôi nên liên hệ trước bao lâu để được tư vấn đặt tour ?',
-    'Tôi nên liên hệ trước bao lâu để được tư vấn đặt tour ?',
-    'Tôi nên liên hệ trước bao lâu để được tư vấn đặt tour ?',
-    'Tôi nên liên hệ trước bao lâu để được tư vấn đặt tour ?',
-    'Tôi nên liên hệ trước bao lâu để được tư vấn đặt tour ?',
-];
 
-function FaqItem({ title }) {
+function FaqItem({ index, title, answer }) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -55,7 +50,7 @@ function FaqItem({ title }) {
                 className="flex w-full items-center justify-between py-4 text-left"
             >
                 <span className="font-medium">
-                    {title}
+                    {index}.{title}
                 </span>
 
                 <ChevronDown
@@ -67,7 +62,7 @@ function FaqItem({ title }) {
 
             {open && (
                 <div className="pb-4 text-sm text-slate-500">
-                    Bạn nên liên hệ trước từ 7 - 14 ngày để được tư vấn và sắp xếp lịch trình phù hợp.
+                    {answer}
                 </div>
             )}
         </div>
@@ -81,7 +76,24 @@ export default function Contact() {
         soDienthoai: '',
         noiDung: '',
     });
+    const { webInfo } = useWebInfo();
+    const faqs = useMemo(() => {
+        const result = [];
 
+        for (let i = 1; i <= 10; i++) {
+            const question = webInfo?.[`faq_${i}_question`];
+            const answer = webInfo?.[`faq_${i}_answer`];
+
+            if (question && answer) {
+                result.push({
+                    question,
+                    answer,
+                });
+            }
+        }
+
+        return result;
+    }, [webInfo]);
     const handleChange = (e) => {
         const { name, value } = e.target;
 
@@ -199,17 +211,14 @@ export default function Contact() {
 
 
                             <div className="mt-4">
-                                <label className="mb-2 block text-sm font-medium">
-                                    Nội dung
-                                </label>
-
-
-                                <textarea
-                                    rows="8"
+                                <InputField
+                                    label="Nội dung"
                                     name="noiDung"
                                     value={form.noiDung}
                                     onChange={handleChange}
-                                    className="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-sky-500"
+                                    multiline
+                                    rows={8}
+                                    placeholder="Nhập nội dung cần hỗ trợ..."
                                 />
                             </div>
 
@@ -262,7 +271,7 @@ export default function Contact() {
                     </div>
                 </div>
 
-                {/* FAQ */}
+
                 <div className="mt-20">
                     <h2 className="text-center text-3xl font-bold">
                         Bạn cần biết gì trước khi liên hệ?
@@ -273,12 +282,20 @@ export default function Contact() {
                     </p>
 
                     <div className="mx-auto mt-8 max-w-4xl rounded-3xl shadow-2xl border border-slate-200 bg-white px-8 py-4">
-                        {FAQS.map((item, index) => (
-                            <FaqItem
-                                key={index}
-                                title={item}
-                            />
-                        ))}
+                        {faqs.length > 0 ? (
+                            faqs.map((faq, index) => (
+                                <FaqItem
+                                    key={index}
+                                    index={index + 1}
+                                    title={faq.question}
+                                    answer={faq.answer}
+                                />
+                            ))
+                        ) : (
+                            <div className="py-6 text-center text-slate-500">
+                                Chưa có câu hỏi thường gặp
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
