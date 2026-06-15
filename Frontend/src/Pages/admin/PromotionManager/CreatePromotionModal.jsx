@@ -76,8 +76,7 @@ export default function CreatePromotionModal({
             return "Vui lòng chọn ngày hết hạn";
 
         if (
-            new Date(toUTC(form.ngayBatDau)) >=
-            new Date(toUTC(form.ngayHetHan))
+            new Date(toUTC(form.ngayBatDau)) >= new Date(toUTC(form.ngayHetHan))
         ) {
             return "Ngày hết hạn phải lớn hơn ngày bắt đầu";
         }
