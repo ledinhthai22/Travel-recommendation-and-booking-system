@@ -1,11 +1,12 @@
-﻿using travel_recommendation_and_booking_system.DTOs.Amenities;
+﻿using travel_recommendation_and_booking_system.DTOs;
+using travel_recommendation_and_booking_system.DTOs.Amenities;
 
 namespace travel_recommendation_and_booking_system.Interfaces
 {
     public interface IAmenitiesService
     {
         Task<List<AmenitiesDTO>> GetAllAsync(); // lấy danh sách tất cả tiện nghi
-
+        Task<PageDTO<AmenitiesDTO>> GetPagedAmenitiesAsync(int pageNumber, int pageSize, AmenitiesDTO amenities); // lấy danh sách tiện nghi theo trang
         Task<AmenitiesDTO?> GetByIdAsync(int id); // lấy thông tin chi tiết của tiện nghi
 
         Task<int> CreateAsync(AmenitiesDTO amenities); // thêm tiện nghi

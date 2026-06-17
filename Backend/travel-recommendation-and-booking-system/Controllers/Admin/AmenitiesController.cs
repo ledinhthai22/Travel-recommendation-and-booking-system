@@ -8,30 +8,39 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
     [ApiController]
     public class AmenitiesController : ControllerBase
     {
-        private readonly IAmenitiesService _service;
+        private readonly IAmenitiesService _amenitiesservice;
 
         public AmenitiesController(
-            IAmenitiesService service)
+            IAmenitiesService amenitiesservice)
         {
-            _service = service;
+            _amenitiesservice = amenitiesservice;
         }
+        [HttpGet("paged")]
+        public async Task<IActionResult> GetPagedPromotionsAsync([FromQuery] int pageNumber, [FromQuery] int pageSize, [FromQuery] AmenitiesDTO amenities)
+        {
+            var result = await _amenitiesservice.GetPagedAmenitiesAsync(
+                pageNumber,
+                pageSize,
+                amenities);
 
+            return Ok(result);
+        }
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            return Ok(await _service.GetAllAsync());
+            return Ok(await _amenitiesservice.GetAllAsync());
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            return Ok(await _service.GetByIdAsync(id));
+            return Ok(await _amenitiesservice.GetByIdAsync(id));
         }
 
         [HttpPost]
         public async Task<IActionResult> Create(AmenitiesDTO dto)
         {
-            var id = await _service.CreateAsync(dto);
+            var id = await _amenitiesservice.CreateAsync(dto);
 
             return Ok(new
             {
@@ -43,7 +52,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, AmenitiesDTO dto)
         {
-            await _service.UpdateAsync(id, dto);
+            await _amenitiesservice.UpdateAsync(id, dto);
 
             return Ok(new
             {
@@ -54,7 +63,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            await _service.DeleteAsync(id);
+            await _amenitiesservice.DeleteAsync(id);
 
             return Ok(new
             {

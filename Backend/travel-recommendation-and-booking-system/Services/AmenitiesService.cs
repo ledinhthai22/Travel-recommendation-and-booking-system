@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
+using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.DTOs.Amenities;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
@@ -14,7 +15,52 @@ namespace travel_recommendation_and_booking_system.Services
         {
             _context = context;
         }
+        public async Task<PageDTO<AmenitiesDTO>> GetPagedAmenitiesAsync(int pageNumber, int pageSize, AmenitiesDTO amenities)
+        {
+            if (pageNumber < 1)
+                pageNumber = 1;
 
+            if (pageSize < 1)
+                pageSize = 10;
+
+            var query = _context.TienNghis
+            .Where(x => x.NgayXoa == null)
+            .AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(amenities?.TenTienNghi))
+            {
+                var keyword = amenities.TenTienNghi.Trim().ToLower();
+
+                query = query.Where(x =>
+                    x.TenTienNghi.ToLower().Contains(keyword)
+                );
+            }
+
+
+
+
+            int totalItems = await query.CountAsync();
+
+            var items = await query
+                .OrderByDescending(x => x.NgayTao)
+                .ThenBy(x => x.MaTienNghi)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Select(x => new AmenitiesDTO
+                {
+                    MaTienNghi = x.MaTienNghi,
+                    TenTienNghi = x.TenTienNghi
+
+                })
+                .ToListAsync();
+            return new PageDTO<AmenitiesDTO>
+            {
+                Items = items,
+                TotalItems = totalItems,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
         public async Task<List<AmenitiesDTO>> GetAllAsync()
         {
             return await _context.TienNghis

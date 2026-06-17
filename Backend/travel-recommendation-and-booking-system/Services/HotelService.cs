@@ -23,9 +23,9 @@ namespace travel_recommendation_and_booking_system.Services
             pageSize = pageSize < 1 ? 10 : pageSize;
 
             var query = _context.KhachSans
+                .Include(x => x.HinhAnhSKs)
                 .AsNoTracking()
                 .Where(x => x.NgayXoa == null);
-
             if (!string.IsNullOrWhiteSpace(hotel?.TenKhachSan))
                 query = query.Where(x => x.TenKhachSan.Contains(hotel.TenKhachSan));
 
@@ -37,6 +37,10 @@ namespace travel_recommendation_and_booking_system.Services
 
             if (hotel?.TrangThai != null)
                 query = query.Where(x => x.TrangThai == hotel.TrangThai);
+            if (hotel?.SoSao != null)
+            {
+                query = query.Where(x => x.SoSao == hotel.SoSao);
+            }
 
             var totalItems = await query.CountAsync();
 
@@ -48,12 +52,22 @@ namespace travel_recommendation_and_booking_system.Services
                 {
                     MaKhachSan = x.MaKhachSan,
                     TenKhachSan = x.TenKhachSan,
+                    MoTa = x.MoTa,
                     SoSao = x.SoSao,
                     DiaChi = x.DiaChi,
                     SoDienThoai = x.SoDienThoai,
                     TrangThai = x.TrangThai,
-                    NgayTao = x.NgayTao
+                    NgayTao = x.NgayTao,
+
+                    HinhAnh = x.HinhAnhSKs.Select(img => new ImageHotelDTO
+                    {
+                        MaAnhSK = img.MaAnhSK,
+                        DuongDanAnh = img.DuongDanAnh,
+                        AnhChinh = img.AnhChinh,
+                        SoThuTu = img.SoThuTu
+                    }).ToList(),
                 })
+                .AsNoTracking()
                 .ToListAsync();
 
             return new PageDTO<HotelResponseDTO>
@@ -173,7 +187,10 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 throw new Exception("Không tìm thấy khách sạn");
             }
-
+            if (entity.TrangThai)
+            {
+                throw new Exception("Chỉ được phép xóa các khách sạn ngưng hợp tác");
+            }
             entity.NgayXoa = DateTime.Now;
 
             await _context.SaveChangesAsync();
