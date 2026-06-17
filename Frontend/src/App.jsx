@@ -33,10 +33,10 @@ import {
   NewlettersManager,
   StaffManager,
   PromotionManager,
-  HotelFormPage,
+  HotelCreatePage,
+  HotelEditPage,
+  HotelDetailPage,
 } from './Pages/admin';
-
-
 function App() {
   return (
     <BrowserRouter>
@@ -68,8 +68,8 @@ function App() {
             <Route path="Lien-He" element={<ContactPage />} />
             <Route path="Thanh-Toan" element={<CheckoutPage />} />
             <Route path="Thong-Tin-Ca-Nhan" element={<Profile />} />
-            <Route path="Danh-Sach-Yeu-Thich" element = {<Wishlist />} />
-          </Route> 
+            <Route path="Danh-Sach-Yeu-Thich" element={<Wishlist />} />
+          </Route>
           {/*route Admin && nhân viên  */}
           <Route element={<ProtectedRoute allowedRoles={["1", "2"]} />}>
             <Route path="/Quan-ly" element={<AdminLayout />}>
@@ -77,11 +77,11 @@ function App() {
               <Route path="Tai-khoan" element={<UserManager />} />
               <Route path="Cac-chuyen-di" element={<TourManager />} />
               <Route path="Dia-diem" element={<LocationManager />} />
-              {/* <Route path="Khach-san" element={<HotelManager />} />
-              <Route path="Them-Khach-San" element={<HotelFormPage />} /> */}
               <Route path="Khach-san">
                 <Route index element={<HotelManager />} />
-                <Route path="Them-Khach-San" element={<HotelFormPage />} />
+                <Route path="Them-Khach-San" element={<HotelCreatePage />} />
+                <Route path="Xem-chi-tiet/:id"element={<HotelDetailPage />} />
+                <Route path="Cap-nhat/:id" element= {<HotelEditPage/>}/>
               </Route>
               <Route path="Nhan-vien" element={<StaffManager />} />
               <Route path="Khach-du-lich" element={<TouristManager />} />

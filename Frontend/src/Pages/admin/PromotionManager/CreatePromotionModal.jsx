@@ -7,13 +7,15 @@ import { createPromotionApi } from "~/Services/PromotionService";
 import { toastSuccess, toastError } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
 import { toUTC } from "~/Helper/ToUTC";
+
 export default function CreatePromotionModal({
     isOpen,
     onClose,
     onSuccess
 }) {
-
     const [loading, setLoading] = useState(false);
+
+    const [errors, setErrors] = useState({});
 
     const [form, setForm] = useState({
         maCode: "",
@@ -24,6 +26,7 @@ export default function CreatePromotionModal({
         ngayHetHan: "",
         soLuongToiDa: ""
     });
+
     const resetForm = () => {
         setForm({
             maCode: "",
@@ -34,87 +37,112 @@ export default function CreatePromotionModal({
             ngayHetHan: "",
             soLuongToiDa: ""
         });
+
+        setErrors({});
     };
-    if (!isOpen) return null;
 
     const handleChange = (field, value) => {
-        setForm(prev => ({
+        setForm((prev) => ({
             ...prev,
             [field]: value
+        }));
+
+        setErrors((prev) => ({
+            ...prev,
+            [field]: ""
         }));
     };
 
     const validate = () => {
+        const newErrors = {};
 
-        if (!form.maCode.trim())
-            return "Vui lòng nhập mã code";
+        if (!form.maCode.trim()) {
+            newErrors.maCode = "Vui lòng nhập mã code";
+        }
 
-        if (!form.tenUuDai.trim())
-            return "Vui lòng nhập tên ưu đãi";
+        if (!form.tenUuDai.trim()) {
+            newErrors.tenUuDai = "Vui lòng nhập tên ưu đãi";
+        }
 
-        if (!form.phanTramGiam)
-            return "Vui lòng nhập phần trăm giảm";
+        if (!form.dieuKienApDung.trim()) {
+            newErrors.dieuKienApDung =
+                "Vui lòng nhập điều kiện áp dụng";
+        }
 
-        if (
+        if (!form.phanTramGiam) {
+            newErrors.phanTramGiam =
+                "Vui lòng nhập phần trăm giảm";
+        } else if (
             Number(form.phanTramGiam) <= 0 ||
             Number(form.phanTramGiam) > 100
         ) {
-            return "Phần trăm giảm từ 1 đến 100";
+            newErrors.phanTramGiam =
+                "Phần trăm giảm phải từ 1 đến 100";
+        }
+
+        if (!form.soLuongToiDa) {
+            newErrors.soLuongToiDa =
+                "Vui lòng nhập số lượng tối đa";
+        } else if (
+            Number(form.soLuongToiDa) < 1
+        ) {
+            newErrors.soLuongToiDa =
+                "Số lượng tối đa phải lớn hơn 0";
+        }
+
+        if (!form.ngayBatDau) {
+            newErrors.ngayBatDau =
+                "Vui lòng chọn ngày bắt đầu";
+        }
+
+        if (!form.ngayHetHan) {
+            newErrors.ngayHetHan =
+                "Vui lòng chọn ngày hết hạn";
         }
 
         if (
-            form.dieuKienApDung === "" ||
-            Number(form.dieuKienApDung) < 0
+            form.ngayBatDau &&
+            form.ngayHetHan &&
+            new Date(form.ngayBatDau) >=
+            new Date(form.ngayHetHan)
         ) {
-            return "Điều kiện áp dụng không hợp lệ";
+            newErrors.ngayHetHan =
+                "Ngày hết hạn phải lớn hơn ngày bắt đầu";
         }
 
-        if (!form.ngayBatDau)
-            return "Vui lòng chọn ngày bắt đầu";
+        setErrors(newErrors);
 
-        if (!form.ngayHetHan)
-            return "Vui lòng chọn ngày hết hạn";
-
-        if (
-            new Date(toUTC(form.ngayBatDau)) >= new Date(toUTC(form.ngayHetHan))
-        ) {
-            return "Ngày hết hạn phải lớn hơn ngày bắt đầu";
-        }
-
-        if (
-            !form.soLuongToiDa ||
-            Number(form.soLuongToiDa) <= 0
-        ) {
-            return "Số lượng tối đa phải lớn hơn 0";
-        }
-
-        return null;
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async () => {
-
-        const error = validate();
-
-        if (error) {
-            toastError(error);
-            return;
-        }
-
         try {
+            if (!validate()) return;
 
             setLoading(true);
 
             const payload = {
-                maCode: form.maCode.trim().toUpperCase(),
+                maCode: form.maCode
+                    .trim()
+                    .toUpperCase(),
+
                 tenUuDai: form.tenUuDai.trim(),
+
                 phanTramGiam: Number(
                     form.phanTramGiam
                 ),
-                dieuKienApDung: Number(
-                    form.dieuKienApDung
+
+                dieuKienApDung:
+                    form.dieuKienApDung.trim(),
+
+                ngayBatDau: toUTC(
+                    form.ngayBatDau
                 ),
-                ngayBatDau: toUTC(form.ngayBatDau),
-                ngayHetHan: toUTC(form.ngayHetHan),
+
+                ngayHetHan: toUTC(
+                    form.ngayHetHan
+                ),
+
                 soLuongToiDa: Number(
                     form.soLuongToiDa
                 )
@@ -125,56 +153,71 @@ export default function CreatePromotionModal({
             toastSuccess(
                 "Thêm ưu đãi thành công"
             );
-            resetForm()
+
+            resetForm();
+
             onSuccess?.();
+
             onClose();
-
         } catch (error) {
-
             toastError(
                 getErrorMessage(error)
             );
-
         } finally {
-
             setLoading(false);
         }
     };
 
+    const handleClose = () => {
+        resetForm();
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
     return (
         <div className="fixed inset-0 bg-black/50 z-999 flex items-center justify-center">
-
-            <div className="bg-white rounded-3xl w-full max-w-3xl p-6">
-
+            <div className="bg-white rounded-3xl w-full max-w-2xl p-4">
                 <div className="flex justify-between items-center mb-8">
-                    <h2 className="text-2xl font-bold">
+                    <h2 className="text-2xl ml-1 font-bold">
                         Thêm ưu đãi
                     </h2>
 
-                    <button onClick={onClose}>
+                    <button onClick={handleClose}>
                         <X size={22} />
                     </button>
                 </div>
 
                 <div className="grid grid-cols-1 gap-5">
-
                     <InputField
                         label="Mã code"
                         value={form.maCode}
+                        error={errors.maCode}
                         onChange={(e) => {
-                            const value = e.target.value
-                                .normalize("NFD")
-                                .replace(/[\u0300-\u036f]/g, "")
-                                .replace(/[^a-zA-Z0-9]/g, "")
-                                .toUpperCase();
+                            const value =
+                                e.target.value
+                                    .normalize("NFD")
+                                    .replace(
+                                        /[\u0300-\u036f]/g,
+                                        ""
+                                    )
+                                    .replace(
+                                        /[^a-zA-Z0-9]/g,
+                                        ""
+                                    )
+                                    .toUpperCase();
 
-                            handleChange("maCode", value);
+                            handleChange(
+                                "maCode",
+                                value
+                            );
                         }}
                     />
 
                     <InputField
                         label="Tên ưu đãi"
                         value={form.tenUuDai}
+                        error={errors.tenUuDai}
                         onChange={(e) =>
                             handleChange(
                                 "tenUuDai",
@@ -187,6 +230,7 @@ export default function CreatePromotionModal({
                         label="Phần trăm giảm (%)"
                         type="number"
                         value={form.phanTramGiam}
+                        error={errors.phanTramGiam}
                         onChange={(e) =>
                             handleChange(
                                 "phanTramGiam",
@@ -196,9 +240,11 @@ export default function CreatePromotionModal({
                     />
 
                     <InputField
-                        label="Điều kiện áp dụng (VNĐ)"
-                        type="number"
+                        label="Điều kiện áp dụng"
                         value={form.dieuKienApDung}
+                        error={
+                            errors.dieuKienApDung
+                        }
                         onChange={(e) =>
                             handleChange(
                                 "dieuKienApDung",
@@ -210,10 +256,16 @@ export default function CreatePromotionModal({
                     <InputField
                         label="Ngày bắt đầu"
                         type="datetime-local"
-                        min={new Date().toISOString().slice(0, 16)}
+                        min={new Date()
+                            .toISOString()
+                            .slice(0, 16)}
                         value={form.ngayBatDau}
+                        error={errors.ngayBatDau}
                         onChange={(e) =>
-                            handleChange("ngayBatDau", e.target.value)
+                            handleChange(
+                                "ngayBatDau",
+                                e.target.value
+                            )
                         }
                     />
 
@@ -221,6 +273,7 @@ export default function CreatePromotionModal({
                         label="Ngày hết hạn"
                         type="datetime-local"
                         value={form.ngayHetHan}
+                        error={errors.ngayHetHan}
                         onChange={(e) =>
                             handleChange(
                                 "ngayHetHan",
@@ -233,6 +286,7 @@ export default function CreatePromotionModal({
                         label="Số lượng tối đa"
                         type="number"
                         value={form.soLuongToiDa}
+                        error={errors.soLuongToiDa}
                         onChange={(e) =>
                             handleChange(
                                 "soLuongToiDa",
@@ -240,13 +294,11 @@ export default function CreatePromotionModal({
                             )
                         }
                     />
-
                 </div>
 
                 <div className="flex justify-end gap-3 mt-8">
-
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="
                             px-6 py-2
                             rounded-xl
@@ -264,19 +316,15 @@ export default function CreatePromotionModal({
                             rounded-xl
                             bg-sky-500
                             text-white
+                            disabled:opacity-50
                         "
                     >
-                        {
-                            loading
-                                ? "Đang lưu..."
-                                : "Lưu"
-                        }
+                        {loading
+                            ? "Đang lưu..."
+                            : "Lưu"}
                     </button>
-
                 </div>
-
             </div>
-
         </div>
     );
 }

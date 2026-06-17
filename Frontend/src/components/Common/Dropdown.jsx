@@ -1,18 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Check, Search, X } from 'lucide-react';
+import { ChevronDown, Check, Search, X, Star } from 'lucide-react';
 
 export default function Dropdown({
-    label,           
+    label,
     value,
     options = [],
     onChange,
+    disabled = false,
     multiSelect = false,
     selected = [],
     searchable = false,
     clearable = false,
     placeholder = 'Chọn',
     fullWidth = true,
-    className = ""    
+    className = ""
 }) {
     const [open, setOpen] = useState(false);
     const [keyword, setKeyword] = useState('');
@@ -51,9 +52,13 @@ export default function Dropdown({
 
     const filteredOptions = useMemo(() => {
         const text = keyword.trim().toLowerCase();
+
         if (!text) return normalizedOptions;
+
         return normalizedOptions.filter((option) =>
-            option.label.toLowerCase().includes(text),
+            typeof option.label === "string"
+                ? option.label.toLowerCase().includes(text)
+                : true
         );
     }, [keyword, normalizedOptions]);
 
@@ -67,12 +72,12 @@ export default function Dropdown({
     };
 
     return (
-        
+
         <div
             ref={ref}
             className={`flex flex-col gap-1.5 ${fullWidth ? 'w-full' : 'w-fit'} ${className}`}
         >
-           
+
             {label && (
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
                     {label}
@@ -82,19 +87,22 @@ export default function Dropdown({
             <div className="relative w-full">
                 <button
                     type="button"
-                    onClick={() => setOpen((prev) => !prev)}
-                    className="
-                        flex h-11 w-full items-center justify-between
-                        rounded-2xl border border-slate-200
-                        bg-white px-4
-                        text-[15px] font-medium text-slate-800
-                        shadow-sm transition-all duration-200
-                        hover:border-slate-300
-                        focus:border-sky-500
-                        focus:ring-2 focus:ring-sky-100
-                    "
+                    onClick={() => {
+                        if (disabled) return;
+                        setOpen((prev) => !prev)
+                    }}
+                    className={`
+                            flex h-11 w-full items-center justify-between
+                            rounded-2xl border border-slate-200
+                            px-4 text-[15px] font-medium
+                            shadow-sm transition-all duration-200
+                            ${disabled
+                            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                            : "bg-white text-slate-800 hover:border-slate-300"
+                        }
+                `}
                 >
-                   
+
                     <span className="truncate text-sm font-normal">
                         {displayLabel}
                     </span>
@@ -112,9 +120,8 @@ export default function Dropdown({
 
                         <ChevronDown
                             size={14}
-                            className={`transition-transform duration-200 ${
-                                open ? 'rotate-180' : ''
-                            }`}
+                            className={`transition-transform duration-200 ${open ? 'rotate-180' : ''
+                                }`}
                         />
                     </div>
                 </button>
@@ -179,8 +186,10 @@ export default function Dropdown({
                                     );
                                 })
                             ) : (
+
                                 filteredOptions.map((option) => {
                                     const isSelected = value === option.value;
+
                                     return (
                                         <button
                                             key={option.value}
@@ -190,16 +199,32 @@ export default function Dropdown({
                                                 setOpen(false);
                                             }}
                                             className={`
-                                                flex w-full items-center
-                                                px-4 py-3 text-left text-sm
-                                                transition-colors
-                                                ${isSelected ? 'bg-sky-50 font-semibold text-sky-600' : 'text-slate-700 hover:bg-slate-50'}
-                                            `}
+                                                        flex w-full items-center
+                                                        px-4 py-3 text-left text-sm
+                                                        transition-colors
+                                                        ${isSelected
+                                                    ? "bg-sky-50 font-semibold text-sky-600"
+                                                    : "text-slate-700 hover:bg-slate-50"
+                                                }
+                                                    `}
                                         >
-                                            {option.label}
+                                            {typeof option.value === "number" ? (
+                                                <div className="flex items-center gap-1">
+                                                    {[...Array(option.value)].map((_, index) => (
+                                                        <Star
+                                                            key={index}
+                                                            size={10}
+                                                            className="fill-yellow-400 text-yellow-400"
+                                                        />
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                option.label
+                                            )}
                                         </button>
                                     );
                                 })
+
                             )}
                         </div>
                     </div>

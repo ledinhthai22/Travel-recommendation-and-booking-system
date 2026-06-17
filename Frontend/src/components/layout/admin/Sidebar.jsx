@@ -19,13 +19,15 @@ import {
     UserPen,
     Ticket,
     ContactRound,
-    BadgePercent
+    BadgePercent,
+    HousePlus
 } from 'lucide-react';
 
 export default function Sidebar() {
     const [openMenu, setOpenMenu] = useState({
         tour: false,
         user: false,
+        hotel: false
     });
     const { webInfo } = useWebInfo()
     const url = "https://localhost:7016"
@@ -61,7 +63,7 @@ export default function Sidebar() {
                     </div>
                     <div className="flex-1 min-w-0">
                         <h1 className="text-[13px] font-black tracking-[-0.015em] text-slate-800 leading-none mb-1 uppercase">
-                           {webInfo.ten_trang}
+                            {webInfo.ten_trang}
                         </h1>
                         {/* <p className="text-[10px] tracking-[0.12em] text-slate-500 font-semibold">
                             Admin Dashboard
@@ -86,7 +88,7 @@ export default function Sidebar() {
                             className={`w-full flex items-center gap-2 px-4 py-3 text-slate-600 font-medium hover:bg-slate-100 hover:text-slate-900 rounded-2xl transition-all duration-200${openMenu.tour ? '' : ''} text-[13.8px]`}
                         >
                             <MapPinned size={16} />
-                            <span className="font-manrope tracking-tight flex-1 text-left">Quản lý chuyến đi & dịch vụ</span>
+                            <span className="font-manrope tracking-tight flex-1 text-left">Quản lý chuyến đi & địa điểm</span>
                             <span className={` transition-transform duration-300 ${openMenu.tour ? 'rotate-180' : ''}`}>
                                 <ChevronDown size={14} />
                             </span>
@@ -98,13 +100,13 @@ export default function Sidebar() {
                                     <MapPin size={16} />
                                     Quản lý địa điểm
                                 </NavLink>
-                                <NavLink to="/Quan-ly/Cac-chuyen-di" className={({ isActive }) => isActive ? activeSubmenuLinkClass : submenuLinkClass}>
-                                    <Luggage size={16} />
-                                    Quản lý các chuyến đi
-                                </NavLink>
                                 <NavLink to="/Quan-ly/Khach-san" className={({ isActive }) => isActive ? activeSubmenuLinkClass : submenuLinkClass}>
                                     <Building2 size={16} />
                                     Quản lý khách sạn
+                                </NavLink>
+                                <NavLink to="/Quan-ly/Cac-chuyen-di" className={({ isActive }) => isActive ? activeSubmenuLinkClass : submenuLinkClass}>
+                                    <Luggage size={16} />
+                                    Quản lý các chuyến đi
                                 </NavLink>
                                 <NavLink to="/Quan-ly/Don-dat-cac-chuyen-di" className={({ isActive }) => isActive ? activeSubmenuLinkClass : submenuLinkClass}>
                                     <Ticket size={16} />
@@ -114,6 +116,7 @@ export default function Sidebar() {
                                     <UserPen size={16} />
                                     Quản lý khách du lịch
                                 </NavLink>
+
                             </div>
                         )}
                     </div>
@@ -159,10 +162,10 @@ export default function Sidebar() {
                         <Columns3Cog size={16} />
                         <span className="font-manrope tracking-tight">Quản lý thông tin trang</span>
                     </NavLink>
-                    <NavLink to="/Quan-ly/Hoat-dong-he-thong" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
+                    {/* <NavLink to="/Quan-ly/Hoat-dong-he-thong" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
                         <FileClock size={16} />
                         <span className="font-manrope tracking-tight">Nhật ký hoạt động</span>
-                    </NavLink>
+                    </NavLink> */}
 
                 </nav>
             </div>

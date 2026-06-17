@@ -13,10 +13,27 @@ export default function ManagerCard({
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [dropdownStyle, setDropdownStyle] = useState({});
+    const renderStars = (rating) => {
+        return Array.from({ length: 5 }, (_, i) => {
+            const filled = i < rating;
 
+            return (
+                <Star
+                    key={i}
+                    size={12}
+                    className={
+                        filled
+                            ? "text-yellow-400 fill-yellow-400"
+                            : "text-gray-300"
+                    }
+                    stroke="none"
+                />
+            );
+        });
+    };
     const buttonRef = useRef(null);
     const dropdownRef = useRef(null);
-
+    const url = "https://localhost:7016"
     let displayName = '';
     let displayLocation = '';
     let imageUrl = '';
@@ -44,10 +61,13 @@ export default function ManagerCard({
     if (type === 'hotel') {
         displayName = item.tenKhachSan;
         displayLocation = item.diaChi;
+        const mainImage =
+            item.hinhAnh?.find(img => img.anhChinh);
 
         imageUrl =
-            item.hinhAnh?.find(x => x.anhChinh)?.duongDanAnh ||
+            mainImage?.duongDanAnh ||
             item.hinhAnh?.[0]?.duongDanAnh ||
+            item.anhDaiDien ||
             '';
 
         subInfo1 = `${item.soSao} sao`;
@@ -77,7 +97,6 @@ export default function ManagerCard({
             setDropdownStyle({
                 top: `${rect.bottom + window.scrollY + 6}px`,
                 left: `${rect.left + window.scrollX}px`,
-                minWidth: '160px',
                 zIndex: 99999
             });
         }
@@ -114,19 +133,24 @@ export default function ManagerCard({
     }, [isOpen]);
 
     return (
-        <div className="group bg-white rounded-xl mt-[10px] mb-[1px] overflow-hidden border border-slate-200 hover:border-blue-400 transition-all duration-300 flex flex-col shadow-sm hover:shadow-md">
+        <div className="group bg-white rounded-xl mt-[5px] mb-[0px] overflow-hidden border border-slate-200 hover:border-blue-400 transition-all duration-300 flex flex-col shadow-sm hover:shadow-md">
 
             {/* IMAGE */}
             <div
                 className={`relative overflow-hidden ${!isOnline ? 'grayscale' : ''
                     }`}
-                style={{ height: '100px' }}
+                style={{ height: '110px' }}
             >
                 <img
-                    src={imageUrl}
+                    src={
+                        imageUrl
+                            ? `${url}/${imageUrl}`
+                            : '/images/no-image.jpg'
+                    }
                     alt={displayName}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 "
                 />
+                <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-all duration-300"></div>
 
                 {/* STATUS */}
                 <div className="absolute top-0 left-2">
@@ -141,7 +165,7 @@ export default function ManagerCard({
                 </div>
 
                 {/* LOCATION */}
-                <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-t from-black/70 to-transparent">
+                <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-tto-transparent">
                     <div className="flex justify-between items-center text-white text-[10px]">
                         <span className="font-bold flex items-center gap-1">
                             <MapPin size={14} />
@@ -176,15 +200,18 @@ export default function ManagerCard({
                     {/* HOTEL */}
                     {type === 'hotel' && (
                         <>
-                            <p className="flex items-center gap-1 text-[10px] font-bold text-slate-600 min-h-[15px]">
-                                <Star size={10} />
-                                {subInfo1}
-                            </p>
-
-                            <p className="flex items-center gap-1 text-[10px] font-bold text-slate-600 min-h-[15px]">
-                                <Phone size={10} />
+                            <p className="flex items-center gap-1 text-[11px] font-bold text-slate-500 min-h-[15px]">
+                                <Phone size={10} className="text-blue-500 stroke-0 fill-blue-500" />
                                 {subInfo2}
                             </p>
+                            <p className="flex items-center text-[11px] gap-x-1 mt-1 mb-1 leading-none">
+                                {renderStars(item.soSao)}
+                            </p>
+
+                            {/* <p className="flex items-center gap-1 text-[10px] font-bold text-slate-600 min-h-[15px]">
+                                <Phone size={10} />
+                                {subInfo2}
+                            </p> */}
                         </>
                     )}
                     {type === 'tour' && (
@@ -225,18 +252,18 @@ export default function ManagerCard({
                         <button onClick={() => { onView?.(item); setIsOpen(false); }}
                             className="w-full px-4 py-2 flex items-center gap-2.5 hover:bg-slate-50 transition-colors">
                             <span className="material-symbols-outlined text-blue-600" style={{ fontSize: '15px' }}>visibility</span>
-                            <span className="text-[12px] font-medium text-gray-700">Xem chi tiết</span>
+                            <span className="text-[10px] font-medium text-gray-700">Xem</span>
                         </button>
                         <button onClick={() => { onEdit?.(item); setIsOpen(false); }}
                             className="w-full px-4 py-2 flex items-center gap-2.5 hover:bg-slate-50 transition-colors">
                             <span className="material-symbols-outlined text-amber-500" style={{ fontSize: '15px' }}>edit_square</span>
-                            <span className="text-[12px] font-medium text-gray-700">Cập nhật</span>
+                            <span className="text-[10px] font-medium text-gray-700">Cập nhật</span>
                         </button>
                         <div className="h-px bg-gray-100 mx-3 my-1" />
                         <button onClick={() => { onDelete?.(item); setIsOpen(false); }}
                             className="w-full px-4 py-2 flex items-center gap-2.5 hover:bg-red-50 transition-colors">
                             <span className="material-symbols-outlined text-red-500" style={{ fontSize: '15px' }}>delete</span>
-                            <span className="text-[12px] font-medium text-red-600">Xóa</span>
+                            <span className="text-[10px] font-medium text-red-600">Xóa</span>
                         </button>
                     </div>,
                     document.body
