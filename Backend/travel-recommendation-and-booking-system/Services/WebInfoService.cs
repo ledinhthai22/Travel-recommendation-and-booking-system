@@ -142,16 +142,16 @@ namespace travel_recommendation_and_booking_system.Services
                 }
 
             }
-            //else
-            //{
+            else
+            {
 
-            //    if (string.IsNullOrWhiteSpace(webinfo.NoiDung))
-            //    {
-            //        throw new Exception("Nội dung không được để trống");
-            //    }
+                if (string.IsNullOrWhiteSpace(webinfo.NoiDung))
+                {
+                    throw new Exception("Nội dung không được để trống");
+                }
 
-            //    webInfo.Noidung = webinfo.NoiDung.Trim();
-            //}
+                webInfo.Noidung = webinfo.NoiDung.Trim();
+            }
 
             webInfo.NgayCapNhat = DateTime.Now;
 

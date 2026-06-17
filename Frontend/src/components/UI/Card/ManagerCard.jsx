@@ -31,7 +31,7 @@ export default function ManagerCard({
         displayLocation = item.tinhThanh;
         imageUrl = item.duongDanAnh;
 
-        subInfo1 = item.loaiDiaDiem;
+        subInfo1 = item.tenLoai || item.loaiDiaDiem;
         subInfo2 = item.khuVuc
             ? 'Trong nước'
             : 'Ngoài nước';

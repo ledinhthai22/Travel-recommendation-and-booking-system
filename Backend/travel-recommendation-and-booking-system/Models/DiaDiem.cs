@@ -24,7 +24,8 @@ namespace travel_recommendation_and_booking_system.Models
         public DateTime NgayCapNhat { get; set; } = DateTime.Now;
         public DateTime? NgayXoa { get; set; }
         public bool TrangThai { get; set; }
-
+        [ForeignKey("LoaiDiaDiem")]
+        public virtual LoaiDiaDiem LoaiDiaDiemNavigation { get; set; }
         public virtual ICollection<CTLichTrinh> CTLichTrinhs { get; set; } = new List<CTLichTrinh>();
     }
 }

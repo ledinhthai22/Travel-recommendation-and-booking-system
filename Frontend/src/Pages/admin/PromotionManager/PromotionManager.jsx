@@ -10,6 +10,8 @@ import PromotionDetailModal from "./PromotionDetailModal";
 import CreatePromotionModal from "./CreatePromotionModal";
 import UpdatePromotionModal from "./UpdatePromotionModal";
 import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
+import { toLocalInput } from "~/Helper/DateTime";
+import { toVNTime } from "~/Helper/DateTime";
 export default function PromotionManager() {
     const [searchCode, setSearchCode] = useState("");
     const [searchName, setSearchName] = useState("");
@@ -43,41 +45,38 @@ export default function PromotionManager() {
         if (!endDate) return "Không có dữ liệu";
 
         const end = new Date(endDate).getTime();
+        if (isNaN(end)) return "Ngày không hợp lệ";
 
-        if (isNaN(end)) {
-            return "Ngày không hợp lệ";
-        }
+        const diff = end - Date.now();
 
-        const diff = end - now;
+        if (diff <= 0) return "Đã hết hạn";
 
-        if (diff <= 0) {
-            return "Đã hết hạn";
-        }
+        const totalMinutes = Math.floor(diff / 60000);
 
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor(
-            (diff / (1000 * 60 * 60)) % 24
-        );
-        const minutes = Math.floor(
-            (diff / (1000 * 60)) % 60
-        );
+        const days = Math.floor(totalMinutes / (60 * 24));
+        const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+        const minutes = totalMinutes % 60;
 
-        return `${days}d ${hours}h ${minutes}m`;
+        if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+        if (hours > 0) return `${hours}h ${minutes}m`;
+
+        return `${minutes}m`;
     };
-
 
     const statusLabels = {
         1: "Chờ kích hoạt",
         2: "Đang hoạt động",
         3: "Ngưng hoạt động",
-        4: "Hết hạn"
+        4: "Hết hạn",
+        5: "Hết mã ưu đãi"
     };
 
     const statusColors = {
         1: "bg-yellow-100 text-yellow-700",
         2: "bg-green-100 text-green-700",
         3: "bg-yellow-100 text-yellow-700",
-        4: "bg-slate-100 text-slate-700"
+        4: "bg-slate-100 text-slate-700",
+        5: "bg-slate-100 text-slate-700",
     };
 
     const handleConfirm = async () => {
@@ -129,12 +128,14 @@ export default function PromotionManager() {
 
                 connection.off("PromotionStatusChanged");
 
-                connection.on("PromotionStatusChanged", () => {
-                    console.log(
-                        "Promotion status changed - refreshing..."
+                connection.on("PromotionStatusChanged", (id, status) => {
+                    setPromotions(prev =>
+                        prev.map(p =>
+                            p.maUuDai === id
+                                ? { ...p, trangThai: status }
+                                : p
+                        )
                     );
-
-                    fetchPromotions();
                 });
             } catch (error) {
                 console.error("SignalR Error:", error);
@@ -177,8 +178,8 @@ export default function PromotionManager() {
             confirmText: "Xóa",
             action: async () => {
                 await deletePromotionApi(row.maUuDai);
-                toastSuccess("Xóa thành công nhân viên", row.tenUuDai);
-                fetchStaffs();
+                toastSuccess("Xóa thành công ưu đãi", row.tenUuDai);
+                fetchPromotions();
             }
         });
         setConfirmOpen(true);
@@ -238,9 +239,15 @@ export default function PromotionManager() {
                 name: "Thời gian còn lại",
                 center: 'true',
                 cell: (row) => (
-                    <span className="font-semibold text-[10px] text-blue-600">
-                        {getTimeLeft(row.ngayHetHan)}
-                    </span>
+                    <div className="text-center">
+                        <div className="font-semibold text-blue-600 text-[10px]">
+                            {getTimeLeft(row.ngayHetHan)}
+                        </div>
+
+                        <div className="text-[10px] text-slate-400">
+                            {toVNTime(row.ngayHetHan)}
+                        </div>
+                    </div>
                 )
             },
             {
