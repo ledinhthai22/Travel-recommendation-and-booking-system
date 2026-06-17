@@ -118,7 +118,7 @@ export default function HotelEditPage() {
     }
 
     return (
-        <div className="p-2 max-w-[1440px] mx-auto">
+        <div >
             <HotelForm
                 mode="edit"
                 initialData={initialData}

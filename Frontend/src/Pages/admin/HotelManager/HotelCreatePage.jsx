@@ -42,7 +42,7 @@ export default function HotelCreatePage() {
     };
 
     return (
-        <div className="p-2 max-w-[1440px]">
+        <div className="mx-auto">
             <HotelForm
                 mode="add"
                 onSave={handleSave}

@@ -1,4 +1,4 @@
-﻿using travel_recommendation_and_booking_system.DTOs;
+﻿using DTOs.Page;
 using travel_recommendation_and_booking_system.DTOs.Hotel;
 
 namespace travel_recommendation_and_booking_system.Interfaces

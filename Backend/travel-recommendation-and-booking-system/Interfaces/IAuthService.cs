@@ -1,4 +1,4 @@
-﻿using travel_recommendation_and_booking_system.DTOs;
+﻿using DTOs.Auth;
 
 namespace travel_recommendation_and_booking_system.Interfaces;
 

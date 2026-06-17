@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using DTOs.Contact;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.Interfaces;
 
 namespace Controllers.Client
@@ -31,8 +31,5 @@ namespace Controllers.Client
 
             return StatusCode(500, new { message = "Có lỗi xảy ra khi gửi liên hệ" });
         }
-
-
-
     }
 }

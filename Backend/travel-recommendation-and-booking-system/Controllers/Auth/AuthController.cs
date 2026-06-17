@@ -1,7 +1,7 @@
 ﻿using System.Security.Claims;
+using DTOs.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.Interfaces;
 
 namespace Controllers.Auth

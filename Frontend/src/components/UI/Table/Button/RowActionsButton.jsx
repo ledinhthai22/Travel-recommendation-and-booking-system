@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash, Eye, KeyRound } from 'lucide-react';
-
+import { Trash, Eye,KeyRound,Lock,Unlock } from 'lucide-react';
 export default function RowActionsButton({
     row,
     onView,
@@ -65,7 +64,6 @@ export default function RowActionsButton({
         return null;
     }
 
-
     const dropdown = isOpen ? (
         <div
             ref={dropdownRef}
@@ -106,6 +104,30 @@ export default function RowActionsButton({
                     </span>
                 </button>
             )}
+
+            {showLock && onLock && (
+                <button
+                    onClick={() => handleAction(onLock)}
+                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-orange-50 text-left text-xs font-medium text-orange-600"
+                >
+                    <Lock size={12} />
+                    <span>Khóa tài khoản</span>
+                </button>
+            )}
+
+            {showUnlock && onUnlock && (
+                <button
+                    onClick={() => handleAction(onUnlock)}
+                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-emerald-50 text-left text-xs font-medium text-emerald-600"
+                >
+                    <Unlock size={12} />
+                    <span>Mở khóa</span>
+                </button>
+            )}
+
+            {/* {actionCount > 1 && (
+                <div className="h-px bg-gray-100 mx-4 my-1" />
+            )} */}
 
             {showDelete && onDelete && (
                 <div>

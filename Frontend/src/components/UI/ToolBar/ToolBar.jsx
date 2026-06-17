@@ -91,7 +91,7 @@ export default function ManagerToolbar({
                             </button>
 
                             {isExcelOpen && (
-                                <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden">
+                                <div className="absolute right-0 mt-2 w-34 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden">
                                     {showImportExcel && (
                                         <button
                                             onClick={() => {

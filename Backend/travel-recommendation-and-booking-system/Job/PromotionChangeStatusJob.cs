@@ -20,7 +20,7 @@ namespace travel_recommendation_and_booking_system.Jobs
 
         public async Task UpdatePromotionStatus()
         {
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
 
             var promotions = await _context.UuDais
                 .Where(x => x.NgayXoa == null)
@@ -28,36 +28,32 @@ namespace travel_recommendation_and_booking_system.Jobs
 
             foreach (var item in promotions)
             {
-                var start = DateTime.SpecifyKind(item.NgayBatDau, DateTimeKind.Utc);
-                var end = DateTime.SpecifyKind(item.NgayHetHan, DateTimeKind.Utc);
+                var start = item.NgayBatDau;
+                var end = item.NgayHetHan;
 
                 int oldStatus = item.TrangThai;
 
-                // check hết số lượng
                 if (item.SoLuongToiDa <= 0)
                 {
                     item.TrangThai = 5;
                 }
-                // Hết hạn
-                else if (now >= end)
-                {
-                    item.TrangThai = 4;
-                }
-                // Chưa bắt đầu
-                else if (now < start)
-                {
-                    item.TrangThai = 1;
-                }
-                // Đang tạm dừng
-                else if (item.TrangThai == 3)
-                {
-                    continue;
-                }
-                // Đang hoạt động
-                else
+                if (now == item.NgayBatDau)
                 {
                     item.TrangThai = 2;
                 }
+                if (now >= end)
+                {
+                    item.TrangThai = 4;
+                }
+                if (now < start)
+                {
+                    item.TrangThai = 1;
+                }
+                if (item.TrangThai == 3)
+                {
+                    continue;
+                }
+
 
                 if (oldStatus != item.TrangThai)
                 {

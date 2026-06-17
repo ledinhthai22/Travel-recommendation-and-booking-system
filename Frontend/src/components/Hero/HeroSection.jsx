@@ -3,6 +3,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { vi } from "date-fns/locale";
 import { MapPin, Calendar, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const DateInput = forwardRef((props, ref) => (
     <input
@@ -19,26 +20,43 @@ export default function HeroSection({
     subtitle,
     background,
     stats = [],
+    link,
     showSearchBar = false,
 }) {
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
+    const navigate = useNavigate();
 
+    const handleBannerClick = () => {
+        console.log(link);
+
+        if (!link) return;
+
+        if (link.startsWith("http")) {
+            window.open(link, "_blank");
+            return;
+        }
+
+        navigate(link);
+    };
     const handleStartDateChange = (date) => {
         setStartDate(date);
         if (endDate && date > endDate) setEndDate(null);
     };
 
     return (
-        <section className="relative h-[548px] min-h-[600px] flex items-center mt-16 justify-center overflow-hidden">
+        <section
+            onClick={handleBannerClick}
+            className={`relative h-[750px] min-h-[600px] flex items-center mt-16 justify-center overflow-hidden   ${link ? " cursor-pointer" : ""}`}
+        >
             <div className="absolute inset-0 scale-105">
                 <img src={background} className="w-full h-full object-cover" alt="" />
             </div>
 
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black/70" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-black/70" />
 
-            <div className="relative z-10 w-full max-w-7xl text-center text-white px-4">
-                <h1 className="text-[45px] md:text-4xl font-bold mb-2">{title}</h1>
+            <div className="relative z-10 w-full max-w-7xl text-center text-white ">
+                <h1 className="text-[45px] md:text-4xl font-bold mb-2 mt-0 uppercase">{title}</h1>
                 <p className="text-white text-base md:text-lg max-w-xl mx-auto mb-8">{subtitle}</p>
 
                 {showSearchBar && (
@@ -105,6 +123,6 @@ export default function HeroSection({
                     </div>
                 )}
             </div>
-        </section>
+        </section >
     );
 }

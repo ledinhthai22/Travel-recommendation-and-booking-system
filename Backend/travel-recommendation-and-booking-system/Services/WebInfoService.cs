@@ -1,8 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DTOs.Page;
+using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
-using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.DTOs.WebInfo;
 using travel_recommendation_and_booking_system.Interfaces;
+
 
 namespace travel_recommendation_and_booking_system.Services
 {

@@ -2,22 +2,35 @@ import React, { useMemo, useState, useEffect } from 'react';
 import CustomDataTable from '~/components/UI/Table/CustomDataTable';
 import RowActionsButton from '~/components/UI/Table/Button/RowActionsButton';
 import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
-import { getNewslettersApi } from '~/Services/NewletterSevice';
-import { toastError } from '~/utils/Toast';
+import { getNewslettersApi,SoftDetailNewsletterApi } from '~/Services/NewletterSevice';
+import { toastError,toastSuccess } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
+import ConfirmModal from '~/components/UI/Modal/ConfirmModal';
 export default function NewsletterManager() {
     const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage,setCurrentPage] = useState(1);
+    const [perPage,setPerPage] = useState(10);
     const [newsletters, setNewsletters] = useState([]);
+    const [totalRows, setTotalRows] = useState(0);
     const [loading, setLoading] = useState(false);
 
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmConfig, setConfirmConfig] = useState({
+      title: '',
+      message: '',
+      type: 'danger',
+      confirmText: 'Xác nhận',
+      action: null
+  });
+
+    //gọi api lấy dữ liệu
     const fetchNewsletters = async () => {
         try {
+
             setLoading(true);
-
-            const response = await getNewslettersApi(1,100
-            );
-
+            const response = await getNewslettersApi(searchTerm,currentPage,perPage);
             setNewsletters(response.items || []);
+            setTotalRows(response.totalItems || 0);
         } catch (error) {
             toastError('Thao tác thất bại', getErrorMessage(error));
         } finally {
@@ -25,28 +38,36 @@ export default function NewsletterManager() {
         }
     };
 
+    // lắng nghe sự thay đổi của dữ liệu
     useEffect(() => {
         fetchNewsletters();
-    }, []);
+    }, [searchTerm,currentPage,perPage]);
 
-    const filteredData = useMemo(() => {
-        let data = newsletters;
-
-        if (searchTerm.trim()) {
-            data = data.filter(item =>
-                item.email
-                    ?.toLowerCase()
-                    .includes(
-                        searchTerm.toLowerCase()
-                    )
-            );
+    const handleConfirm = async () => {
+        try {
+            await confirmConfig.action?.();
+        } catch (error) {
+            toastError("Thao tác thất bại", getErrorMessage(error));
+        } finally {
+            setConfirmOpen(false);
         }
-
-        return data;
-    }, [newsletters, searchTerm]);
-
+    };
+    // Nút Xóa mở Confirm Modal
     const handleDelete = (row) => {
-        console.log('Delete newsletter:', row);
+        setConfirmConfig({
+            title: "Xóa Email Đăng Ký",
+            message: `Bạn có chắc chắn muốn xóa email "${row.email}" không?`,
+            type: "danger",
+            confirmText: "Xóa",
+            action: async () => {
+                setLoading(true);
+                await SoftDetailNewsletterApi(row.maNewsletter); 
+                
+                toastSuccess("Xóa email thành công!");
+                fetchNewsletters(); 
+            }
+        });
+        setConfirmOpen(true);
     };
 
     const columns = useMemo(() => [
@@ -117,19 +138,24 @@ export default function NewsletterManager() {
 
             <CustomDataTable
                 columns={columns}
-                data={filteredData}
+                data={newsletters}
                 progressPending={loading}
                 pagination
-                paginationPerPage={10}
+                paginationServer
+                paginationTotalRows={totalRows}
+                onChangePage={(page) => setCurrentPage(page)}
+                onChangeRowsPerPage={(newPerPage, page) => {
+                    setPerPage(newPerPage);
+                    setCurrentPage(page);
+                }}
+                highlightOnHover
+                pointerOnHover
                 paginationComponentOptions={{
                     rowsPerPageText: 'Số dòng:',
                     rangeSeparatorText: 'trên',
                     noRowsPerPage: false,
-                    selectAllRowsItem: true,
-                    selectAllRowsItemText: 'Tất cả',
+                    selectAllRowsItem: false,
                 }}
-                highlightOnHover
-                pointerOnHover
                 noDataComponent={
                     <div className="py-8 text-center">
                         <p className="text-slate-400 text-sm">
@@ -137,6 +163,15 @@ export default function NewsletterManager() {
                         </p>
                     </div>
                 }
+            />
+            <ConfirmModal
+                isOpen={confirmOpen}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                confirmText={confirmConfig.confirmText}
+                type={confirmConfig.type}
+                onCancel={() => setConfirmOpen(false)}
+                onConfirm={handleConfirm}
             />
         </div>
     );

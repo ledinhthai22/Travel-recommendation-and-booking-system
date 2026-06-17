@@ -20,7 +20,8 @@ import {
     Ticket,
     ContactRound,
     BadgePercent,
-    HousePlus
+    HousePlus,
+    Images,
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -154,6 +155,10 @@ export default function Sidebar() {
                         <UserPlus2 size={16} />
                         <span className="font-manrope tracking-tight">Quản lý newletters</span>
                     </NavLink>
+                    <NavLink to="/Quan-ly/Banner" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
+                        <Images size={16} />
+                        <span className="font-manrope tracking-tight">Quản lý banner</span>
+                    </NavLink>    
                     <NavLink to="/Quan-ly/Uu-Dai" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
                         <BadgePercent size={16} />
                         <span className="font-manrope tracking-tight">Quản lý ưu đãi</span>
@@ -162,10 +167,7 @@ export default function Sidebar() {
                         <Columns3Cog size={16} />
                         <span className="font-manrope tracking-tight">Quản lý thông tin trang</span>
                     </NavLink>
-                    {/* <NavLink to="/Quan-ly/Hoat-dong-he-thong" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <FileClock size={16} />
-                        <span className="font-manrope tracking-tight">Nhật ký hoạt động</span>
-                    </NavLink> */}
+ 
 
                 </nav>
             </div>

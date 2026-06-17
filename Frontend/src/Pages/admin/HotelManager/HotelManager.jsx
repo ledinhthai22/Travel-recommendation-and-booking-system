@@ -1,281 +1,208 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+
 import ManagerCard from "~/components/UI/Card/ManagerCard";
 import ManagerToolbar from "~/components/UI/ToolBar/ToolBar";
-import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
+
 import { getHotelApi, deleteHotelApi } from "~/Services/HotelService";
-import { toastSuccess, toastError } from "~/utils/Toast";
+import { toastSuccess, toastError, toastWarning } from "~/utils/Toast";
+import { getErrorMessage } from "~/utils/errorHelper";
 
 export default function HotelManager() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [starFilter, setStarFilter] = useState("");
-  const [hotels, setHotels] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [totalItems, setTotalItems] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(8);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+    const navigate = useNavigate();
 
-  const navigate = useNavigate();
+    // Filter & Search
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
+    const [starFilter, setStarFilter] = useState("");
 
-  const [confirmConfig, setConfirmConfig] = useState({
-    title: "",
-    message: "",
-    type: "danger",
-    confirmText: "Xác nhận",
-    action: null,
-  });
-  const fetchHotels = async () => {
-    try {
-      setLoading(true);
+    // Data
+    const [hotels, setHotels] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [totalRows, setTotalRows] = useState(0);
 
-      const response = await getHotelApi(
-        currentPage,
-        pageSize,
-        searchTerm,
-        "",
-        "",
-        starFilter === "" ? null : Number(starFilter),
-        statusFilter === "" ? null : statusFilter
-      );
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [perPage, setPerPage] = useState(8);
 
-      setHotels(response.items || []);
-      setTotalItems(response.totalItems || 0);
-    } catch (error) {
-      console.error("Lỗi lấy danh sách khách sạn:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchHotels = async () => {
+        try {
+            setLoading(true);
+            const response = await getHotelApi(
+                currentPage,
+                perPage,
+                searchTerm,
+                "",
+                "",
+                starFilter ? Number(starFilter) : null,
+                statusFilter ? statusFilter === "true" : null
+            );
 
-  useEffect(() => {
-    fetchHotels();
-  }, [
-    currentPage,
-    pageSize,
-    searchTerm,
-    statusFilter,
-    starFilter,
-  ]);
+            setHotels(response.items || []);
+            setTotalRows(response.totalItems || 0);
+        } catch (error) {
+            toastError("Lỗi tải danh sách khách sạn!", getErrorMessage(error));
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const totalPages = Math.ceil(totalItems / pageSize);
-  const startIdx = (currentPage - 1) * pageSize;
+    useEffect(() => {
+        fetchHotels();
+    }, [currentPage, perPage, searchTerm, statusFilter, starFilter]);
 
-  const handleConfirm = async () => {
-    try {
-      if (confirmConfig.action) {
-        await confirmConfig.action();
-      }
-    } catch (error) {
-      console.error(error);
+    // Navigation
+    const handleAddHotel = () => navigate("/Quan-ly/Khach-san/Them-Khach-San");
+    
+    const handleViewHotel = (hotel) => 
+        navigate(`/Quan-ly/Khach-san/Xem-chi-tiet/${hotel.maKhachSan}`);
 
-      const msg =
-        error?.response?.data?.message ||
-        "Có lỗi xảy ra khi thực hiện tác vụ";
+    const handleEditHotel = (hotel) => 
+        navigate(`/Quan-ly/Khach-san/Cap-nhat/${hotel.maKhachSan}`);
 
-      toastError(msg);
-    } finally {
-      setConfirmOpen(false);
-    }
-  };
+    // Delete with validation
+    const handleDelete = async (hotel) => {
+        if (hotel.trangThai === true) {
+            toastWarning("Không thể xóa khách sạn đang hoạt động. Vui lòng chuyển sang trạng thái ngưng hoạt động trước!");
+            return;
+        }
 
-  const handleAddHotel = () => {
-    navigate("/Quan-ly/Khach-san/Them-Khach-San");
-  };
+        try {
+            await deleteHotelApi(hotel.maKhachSan);
+            toastSuccess(`Đã xóa khách sạn "${hotel.tenKhachSan}" thành công!`);
+            fetchHotels();
+        } catch (error) {
+            toastError("Xóa thất bại", getErrorMessage(error));
+        }
+    };
 
-  const handleViewHotel = (hotel) => {
-    navigate(
-      `/Quan-ly/Khach-san/Xem-chi-tiet/${hotel.maKhachSan}`
-    );
-  };
-
-  const handleEditHotel = (hotel) => {
-    navigate(
-      `/Quan-ly/Khach-san/Cap-nhat/${hotel.maKhachSan}`
-    );
-  };
-
-  const handleDelete = useCallback(
-    (hotel) => {
-      setConfirmConfig({
-        title: "Xóa khách sạn",
-        message: `Bạn có chắc muốn xóa "${hotel.tenKhachSan}" ?`,
-        type: "danger",
-        confirmText: "Xóa",
-        action: async () => {
-          await deleteHotelApi(hotel.maKhachSan);
-
-          toastSuccess(
-            "Xóa thành công khách sạn " +
-            hotel.tenKhachSan
-          );
-
-          fetchHotels();
-        },
-      });
-
-      setConfirmOpen(true);
-    },
-    [fetchHotels]
-  );
-
-  return (
-    <div className="p-4 space-y-6">
-      <ManagerToolbar
-        searchPlaceholder="Tìm kiếm khách sạn..."
-        onSearchChange={(value) => {
-          setSearchTerm(value);
-          setCurrentPage(1);
-        }}
-        addButtonText="Thêm khách sạn"
-        onAddClick={handleAddHotel}
-        showExcel={false}
-        filters={[
-          {
-            placeholder: "Trạng thái",
-            value: statusFilter,
-            onChange: (value) => {
-              setStatusFilter(value);
-              setCurrentPage(1);
-            },
-            options: [
-              { label: "Tất cả", value: "" },
-              { label: "Hoạt động", value: "true" },
-              { label: "Ngưng hoạt động", value: "false" },
-            ],
-          },
-          {
-            placeholder: "Số sao",
-            value: starFilter,
-            onChange: (value) => {
-              setStarFilter(value);
-              setCurrentPage(1);
-            },
-            options: [
-              {
-                label: "Xếp loại số sao",
-                value: "",
-              },
-              {
-                label: "5 sao",
-                value: 5,
-              },
-              {
-                label: "4 sao",
-                value: 4,
-              },
-              {
-                label: "3 sao",
-                value: 3,
-              },
-              {
-                label: "2 sao",
-                value: 2,
-              },
-              {
-                label: "1 sao",
-                value: 1,
-              },
-            ],
-          },
-        ]}
-      />
-
-      {loading ? (
-        <div className="text-center py-10">
-          Đang tải dữ liệu...
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
-          {hotels.map((hotel) => (
-            <ManagerCard
-              key={hotel.maKhachSan}
-              item={hotel}
-              type="hotel"
-              onView={handleViewHotel}
-              onEdit={handleEditHotel}
-              onDelete={handleDelete}
+    return (
+        <div className="p-4 space-y-6">
+            <ManagerToolbar
+                searchPlaceholder="Tìm kiếm khách sạn..."
+                onSearchChange={(value) => {
+                    setSearchTerm(value);
+                    setCurrentPage(1);
+                }}
+                addButtonText="Thêm khách sạn"
+                onAddClick={handleAddHotel}
+                showExcel={false}
+                filters={[
+                    {
+                        placeholder: "Trạng thái",
+                        value: statusFilter,
+                        onChange: (value) => {
+                            setStatusFilter(value);
+                            setCurrentPage(1);
+                        },
+                        options: [
+                            { value: "", label: "Tất cả" },
+                            { value: "true", label: "Hoạt động" },
+                            { value: "false", label: "Ngưng hoạt động" },
+                        ],
+                    },
+                    {
+                        placeholder: "Số sao",
+                        value: starFilter,
+                        onChange: (value) => {
+                            setStarFilter(value);
+                            setCurrentPage(1);
+                        },
+                        options: [
+                            { value: "", label: "Tất cả sao" },
+                            { value: "5", label: "5 sao" },
+                            { value: "4", label: "4 sao" },
+                            { value: "3", label: "3 sao" },
+                            { value: "2", label: "2 sao" },
+                            { value: "1", label: "1 sao" },
+                        ],
+                    },
+                ]}
             />
-          ))}
+
+            {/* Loading / Empty / Data States */}
+            {loading ? (
+                <div className="flex justify-center items-center py-20">
+                    <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+            ) : hotels.length === 0 ? (
+                <div className="text-center py-20 text-slate-500 font-medium bg-white rounded-2xl border border-dashed border-slate-300">
+                    Không tìm thấy khách sạn nào!
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {hotels.map((hotel) => (
+                        <ManagerCard
+                            key={hotel.maKhachSan}
+                            item={hotel}
+                            type="hotel"
+                            onView={() => handleViewHotel(hotel)}
+                            onEdit={() => handleEditHotel(hotel)}
+                            onDelete={() => handleDelete(hotel)}
+                        />
+                    ))}
+                </div>
+            )}
+
+            {/* Pagination */}
+            {totalRows > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between px-2 pt-6 border-t border-slate-100 gap-4 mt-6">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-slate-500">Số lượng:</span>
+                            <select
+                                value={perPage}
+                                onChange={(e) => {
+                                    setPerPage(Number(e.target.value));
+                                    setCurrentPage(1);
+                                }}
+                                className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-1.5 outline-none cursor-pointer"
+                            >
+                                {[8, 16, 24, 32].map((num) => (
+                                    <option key={num} value={num}>{num}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <span className="text-sm text-slate-400 font-medium">
+                            Hiển thị {(currentPage - 1) * perPage + 1} –{" "}
+                            {Math.min(currentPage * perPage, totalRows)} / {totalRows}
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-sky-600 disabled:opacity-40 transition-all"
+                        >
+                            <span className="material-symbols-outlined text-xl">chevron_left</span>
+                        </button>
+
+                        {Array.from({ length: Math.ceil(totalRows / perPage) }, (_, i) => i + 1).map((page) => (
+                            <button
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${
+                                    currentPage === page
+                                        ? "bg-sky-500 text-white"
+                                        : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                }`}
+                            >
+                                {page}
+                            </button>
+                        ))}
+
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalRows / perPage), p + 1))}
+                            disabled={currentPage === Math.ceil(totalRows / perPage)}
+                            className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-sky-600 disabled:opacity-40 transition-all"
+                        >
+                            <span className="material-symbols-outlined text-xl">chevron_right</span>
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
-      )}
-
-      <div className="flex items-center justify-between px-2">
-        <span className="text-xs text-slate-400 font-medium">
-          Hiển thị{" "}
-          {totalItems === 0 ? 0 : startIdx + 1} –{" "}
-          {Math.min(
-            startIdx + pageSize,
-            totalItems
-          )}{" "}
-          / {totalItems} khách sạn
-        </span>
-
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() =>
-              setCurrentPage((p) =>
-                Math.max(1, p - 1)
-              )
-            }
-            disabled={currentPage === 1}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-white hover:shadow-sm disabled:opacity-40 transition-all"
-          >
-            <span className="material-symbols-outlined text-xl">
-              chevron_left
-            </span>
-          </button>
-
-          {Array.from(
-            { length: totalPages },
-            (_, i) => i + 1
-          ).map((page) => (
-            <button
-              key={page}
-              onClick={() =>
-                setCurrentPage(page)
-              }
-              className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${currentPage === page
-                ? "bg-[#0EA5E5] text-white shadow"
-                : "text-slate-500 hover:bg-slate-100"
-                }`}
-            >
-              {page}
-            </button>
-          ))}
-
-          <button
-            onClick={() =>
-              setCurrentPage((p) =>
-                Math.min(
-                  totalPages,
-                  p + 1
-                )
-              )
-            }
-            disabled={
-              currentPage === totalPages ||
-              totalPages === 0
-            }
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-white hover:shadow-sm disabled:opacity-40 transition-all"
-          >
-            <span className="material-symbols-outlined text-xl">
-              chevron_right
-            </span>
-          </button>
-        </div>
-      </div>
-
-      <ConfirmModal
-        isOpen={confirmOpen}
-        title={confirmConfig.title}
-        message={confirmConfig.message}
-        confirmText={confirmConfig.confirmText}
-        type={confirmConfig.type}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={handleConfirm}
-      />
-    </div>
-  );
+    );
 }

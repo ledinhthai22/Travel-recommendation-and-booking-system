@@ -1,4 +1,5 @@
-﻿using DTOs.Staff;
+﻿using DTOs.Page;
+using DTOs.Staff;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs;

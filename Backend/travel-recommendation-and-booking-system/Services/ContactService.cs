@@ -1,6 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DTOs.Contact;
+using DTOs.Page;
+using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
-using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
 
@@ -38,18 +39,30 @@ namespace travel_recommendation_and_booking_system.Services
             }
         }
 
-        public async Task<PageDTO<ContactResponseDTO>> GetPagedContactsAsync(int pageNumber, int pageSize)
+        public async Task<PageDTO<ContactResponseDTO>> GetPagedContactsAsync(int pageNumber, int pageSize,string ? key, bool ? status)
         {
             if(pageNumber < 1)
             {
-                pageSize = 1;
+                pageNumber = 1;
             }
             if(pageSize < 1)
             {
                 pageSize = 10;
             }
 
-            var query = _context.LienHes.Where(l =>l.NgayXoa == null);
+            var query = _context.LienHes.Where(l =>l.NgayXoa == null).AsNoTracking();
+            if (status.HasValue)
+            {
+                query = query.Where(l => l.TrangThai == status.Value);
+            }
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                var lowerKey = key.ToLower();
+
+                query = query.Where(l => l.HoTen.ToLower().Contains(lowerKey)
+                                      || l.Email.ToLower().Contains(lowerKey)
+                                      || l.NoiDung.ToLower().Contains(lowerKey));
+            }
             int totalItems = await query.CountAsync();
 
             var items = await query
@@ -74,6 +87,43 @@ namespace travel_recommendation_and_booking_system.Services
                 TotalItems = totalItems,
                 PageNumber = pageNumber,
                 PageSize = pageSize
+            };
+        }
+        public async Task<bool> SoftDeleteContactAsync(int id)
+        {
+            var contact = await _context.LienHes.FindAsync(id);
+
+            if (contact == null || contact.NgayXoa != null || contact.TrangThai ==false)
+            {
+                return false;
+            }
+            contact.NgayXoa = DateTime.Now;
+            _context.LienHes.Update(contact);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+         public async Task<ContactResponseDTO?> GetContactByIdAsync(int id)
+        {
+            var contact = await _context.LienHes.AsNoTracking().FirstOrDefaultAsync(l => l.MaLienHe == id && l.NgayXoa == null);
+            if (contact == null)
+            {
+                return null;
+            }
+            if (!contact.TrangThai)
+            {
+                contact.TrangThai = true;
+                _context.LienHes.Update(contact);
+                await _context.SaveChangesAsync();
+            }
+            return new ContactResponseDTO
+            {
+                MaLienHe = contact.MaLienHe,
+                HoTen = contact.HoTen,
+                Email = contact.Email,
+                SodienThoai = contact.SoDienThoai,
+                NoiDung = contact.NoiDung,
+                TrangThai = contact.TrangThai,
+                NgayTao = contact.NgayTao
             };
         }
     }

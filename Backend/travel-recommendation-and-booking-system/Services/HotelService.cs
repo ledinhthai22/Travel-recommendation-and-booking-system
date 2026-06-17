@@ -1,6 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DTOs.Page;
+using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
-using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.DTOs.Amenities;
 using travel_recommendation_and_booking_system.DTOs.Hotel;
 using travel_recommendation_and_booking_system.DTOs.ImageHotel;
@@ -324,7 +324,7 @@ namespace travel_recommendation_and_booking_system.Services
             foreach (var file in images)
             {
                 var fileName =
-                    $"{DateTime.Now:yyyyMMddHHmmssfff}_{maKhachSan}_{index}{Path.GetExtension(file.FileName)}";
+                    $"{DateTime.Now:yyyyMMddHHmmssfff}_{maKhachSan}_{tenKhachSan}_{index}{Path.GetExtension(file.FileName)}";
 
                 var fullPath = Path.Combine(uploadFolder, fileName);
 

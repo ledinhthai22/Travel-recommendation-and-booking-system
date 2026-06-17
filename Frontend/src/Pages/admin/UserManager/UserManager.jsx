@@ -1,148 +1,220 @@
-import React, { useState, useMemo } from 'react';
-import CustomDataTable from '~/components/UI/Table/CustomDataTable'
-import RowActionsButton from '~/components/UI/Table/Button/RowActionsButton'
+import React, { useState, useEffect, useMemo } from 'react';
+import CustomDataTable from '~/components/UI/Table/CustomDataTable';
+import RowActionsButton from '~/components/UI/Table/Button/RowActionsButton';
 import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
-const USERS_DATA = [
-    {
-        id: 1,
-        name: 'Lê Minh Tuấn',
-        email: 'minhtuan.le@fluidexplorer.com',
-        avatar: 'https://i.pravatar.cc/150?u=1',
-        role: 'Quản trị viên',
-        status: 'Đang hoạt động',
-        date: '12/05/2023',
-        isLocked: false
-    },
-    {
-        id: 2,
-        name: 'Nguyễn Thu Hà',
-        email: 'thuha.nguyen@travel.co',
-        avatar: 'https://i.pravatar.cc/150?u=2',
-        role: 'Điều hành Tour',
-        status: 'Đang hoạt động',
-        date: '08/11/2023',
-        isLocked: false
-    },
-    {
-        id: 3,
-        name: 'Trần Hoàng Nam',
-        email: 'nam.tran@concierge.vn',
-        avatar: 'https://i.pravatar.cc/150?u=3',
-        role: 'Hướng dẫn viên',
-        status: 'Ngoại tuyến',
-        date: '15/01/2024',
-        isLocked: false
-    },
-    {
-        id: 4,
-        name: 'Phạm Thùy Linh',
-        email: 'thuylinh.p@partner.com',
-        avatar: 'https://i.pravatar.cc/150?u=4',
-        role: 'Khách hàng VIP',
-        status: 'Đã khóa',
-        date: '20/09/2022',
-        isLocked: true
-    },
-    {
-        id: 5,
-        name: 'Phạm Thùy Linh',
-        email: 'thuylinh.p@partner.com',
-        avatar: 'https://i.pravatar.cc/150?u=4',
-        role: 'Khách hàng VIP',
-        status: 'Đã khóa',
-        date: '20/09/2022',
-        isLocked: true
-    },
-];
+import CreateUserModal from './CreateUserModal';
+import { getUserApi,unlockUserApi,lockUserApi,getUserDetailApi } from '~/Services/UserService'; 
+import { toastError,toastSuccess } from '~/utils/Toast';
+import { getErrorMessage } from '~/utils/errorHelper';
+import ConfirmModal from '~/components/UI/Modal/ConfirmModal';
+import UpdateUserModal from './UpdateUserModal';
+import DetailUserModal from './DetalUserModal';
 
-const getStatusStyle = (status) => {
-    switch (status) {
-        case 'Đang hoạt động':
-            return 'text-green-600 bg-green-50 border-green-200';
-        case 'Nghỉ phép':
-            return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-        case 'Đã khóa':
-            return 'text-red-500 bg-red-50 border-red-200';
+const getStatusConfig = (trangThai) => {
+    switch (trangThai) {
+        case 0:
+            return { 
+                text: 'Đã khóa', 
+                style: 'text-red-500 bg-red-50 border-red-200', 
+                isLocked: true 
+            };
+        case 1:
+            return { 
+                text: 'Đang hoạt động', 
+                style: 'text-green-600 bg-green-50 border-green-200', 
+                isLocked: false 
+            };
         default:
-            return 'text-slate-500 bg-slate-50 border-slate-200';
+            return { 
+                text: 'Không xác định', 
+                style: 'text-slate-500 bg-slate-50 border-slate-200', 
+                isLocked: false 
+            };
+    }
+};
+export default function UserManager() {
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [totalRows, setTotalRows] = useState(0);
+    
+    // State phân trang và tìm kiếm
+    const [currentPage, setCurrentPage] = useState(1);
+    const [perPage, setPerPage] = useState(10);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter,setStatusFilter] = useState("");
+    // thêm tài khoản
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    // cập nhật 
+    const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
+    //xem chi tiết
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [selectedDetailUser, setSelectedDetailUser] = useState(null);
+    // form xác nhận 
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmConfig, setConfirmConfig] = useState({
+        title: '',
+        message: '',
+        type: 'danger',
+        confirmText: 'Xác nhận',
+        action: null
+    });
+
+    const fetchUsers = async () => {
+        try {
+            setLoading(true);
+            let statusParam = null;
+            if (statusFilter === 'true') statusParam = 1;
+            if (statusFilter === 'false') statusParam = 0;
+            const response = await getUserApi(currentPage, perPage, searchTerm,statusParam);
+            setUsers(response.items || []);
+            setTotalRows(response.totalItems || 0);
+        } catch (error) {
+            toastError("Lỗi tải danh sách người dùng", getErrorMessage(error));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUsers();
+    }, [currentPage, perPage, searchTerm,statusFilter]);
+
+
+    const executeConfirmAction = async () => {
+        try {
+            await confirmConfig.action?.();
+        } catch (error) {
+            toastError("Thao tác thất bại", getErrorMessage(error));
+        } finally {
+            setConfirmOpen(false);
+        }
+    };
+
+  const handleEdit = (row) => {
+    setSelectedUser(row);
+    setIsUpdateModalOpen(true);
+};
+
+    const handleView = async (row) => {
+    try {
+        setLoading(true);
+        const res = await getUserDetailApi(row.maNguoiDung); 
+        console.log("Dữ liệu nhận được:", res);
+        setSelectedDetailUser(res);
+        setIsDetailModalOpen(true);
+    } catch (error) {
+        toastError("Không thể tải chi tiết người dùng!");
+    } finally {
+        setLoading(false);
     }
 };
 
-export default function UserManager() {
-    const [searchTerm, setSearchTerm] = useState('');
-
-    // Lọc dữ liệu
-    const filteredData = useMemo(() => {
-        if (!searchTerm.trim()) return USERS_DATA;
-        const term = searchTerm.toLowerCase();
-        return USERS_DATA.filter(item =>
-            item.name.toLowerCase().includes(term) ||
-            item.email.toLowerCase().includes(term) ||
-            item.role.toLowerCase().includes(term)
-        );
-    }, [searchTerm]);
-
-    const handleEdit = (row) => {
-        console.log('Edit user:', row);
-        // Thêm logic chỉnh sửa sau
+   const handleLock = (row) => {
+        setConfirmConfig({
+            title: "Khóa tài khoản",
+            message: `Bạn có chắc chắn muốn khóa tài khoản của "${row.hoTen}" không?`,
+            type: "danger",
+            confirmText: "Khóa tài khoản",
+            action: async () => {
+                setLoading(true);
+                await lockUserApi(row.maNguoiDung);
+                toastSuccess(`Đã khóa tài khoản ${row.hoTen}`);
+                fetchUsers();
+            }
+        });
+        setConfirmOpen(true);
     };
 
-    const handleView = (row) => {
-        console.log('View user:', row);
-        // Thêm logic xem chi tiết sau
-    };
-
-    const handleDelete = (row) => {
-        console.log('Delete user:', row);
-        // Thêm logic xóa (nên có confirm dialog)
+    const handleUnlock = (row) => {
+        setConfirmConfig({
+            title: "Mở khóa tài khoản",
+            message: `Bạn có chắc chắn muốn mở khóa cho người dùng "${row.hoTen}" không?`,
+            type: "info",
+            confirmText: "Mở khóa",
+            action: async () => {
+                setLoading(true);
+                await unlockUserApi(row.maNguoiDung);
+                toastSuccess(`Đã mở khóa tài khoản ${row.hoTen}`);
+                fetchUsers();
+            }
+        });
+        setConfirmOpen(true);
     };
 
     const columns = useMemo(() => [
         {
+            name: 'STT',
+            width: '80px',
+            center: true,
+            cell: (row, index) => (
+                <span className="font-medium">{index + 1}</span>
+            )
+        },
+        {
             name: 'Người dùng',
             sortable: true,
-            selector: row => row.name,
-            cell: (row) => (
-                <div className="flex items-center gap-4 py-1">
+            minWidth: '250px',
+            selector: row => row.hoTen,
+            cell: (row) => {
+            const statusConfig = getStatusConfig(row.trangThai);
+            
+            const getImageUrl = (path) => {
+                if (!path) return 'https://placehold.co/150x150?text=No+Avt';
+                return path.startsWith('http') ? path : `https://localhost:7016${path}`;
+            };
+
+            return (
+                <div className="flex items-center gap-4 py-2">
                     <img
-                        src={row.avatar}
-                        alt={row.name}
-                        className={`w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0
-              ${row.isLocked ? 'opacity-50 grayscale' : ''}`}
+                        src={getImageUrl(row.duongDanAnh)}
+                        alt={row.hoTen}
+                        onError={(e) => { e.target.src = 'https://placehold.co/150x150?text=Error' }}
+                        className={`w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0 
+                            ${statusConfig.isLocked ? 'opacity-50 grayscale' : ''}`}
                     />
                     <div className="min-w-0">
-                        <h4 className={`font-bold text-sm truncate ${row.isLocked ? 'text-slate-400' : 'text-slate-900'}`}>
-                            {row.name}
+                        <h4 className={`font-bold text-sm truncate ${statusConfig.isLocked ? 'text-slate-400' : 'text-slate-900'}`}>
+                            {row.hoTen}
                         </h4>
                         <p className="text-xs text-slate-500 truncate">{row.email}</p>
                     </div>
                 </div>
-            ),
+            );
+        },
         },
         {
             name: 'Vai trò',
             sortable: true,
-            selector: row => row.role,
-            cell: (row) => (
-                <p className={`text-sm font-semibold ${row.isLocked ? 'text-slate-400' : 'text-slate-700'}`}>
-                    {row.role}
-                </p>
-            ),
+            selector: row => row.tenVaiTro,
+            cell: (row) => {
+                const statusConfig = getStatusConfig(row.trangThai);
+                return (
+                    <p className={`text-sm font-semibold ${statusConfig.isLocked ? 'text-slate-400' : 'text-slate-700'}`}>
+                        {row.tenVaiTro || 'Chưa phân quyền'}
+                    </p>
+                );
+            },
         },
         {
             name: 'Trạng thái',
-            cell: (row) => (
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${getStatusStyle(row.status)}`}>
-                    {row.status}
-                </span>
-            ),
+            cell: (row) => {
+                const statusConfig = getStatusConfig(row.trangThai);
+                return (
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusConfig.style}`}>
+                        {statusConfig.text}
+                    </span>
+                );
+            },
         },
         {
             name: 'Ngày tham gia',
             sortable: true,
-            selector: row => row.date,
+            selector: row => row.ngayTao,
             cell: (row) => (
-                <span className="text-sm text-slate-500 font-medium">{row.date}</span>
+                <span className="text-sm text-slate-500 font-medium">
+                    {row.ngayTao ? new Date(row.ngayTao).toLocaleDateString('vi-VN') : '--'}
+                </span>
             ),
         },
         {
@@ -152,7 +224,10 @@ export default function UserManager() {
                 <RowActionsButton
                     row={row}
                     onEdit={handleEdit}
-                    onDelete={handleDelete}
+                    showLock={row.trangThai === 1} 
+                    onLock={handleLock}
+                    showUnlock={row.trangThai === 0} 
+                    onUnlock={handleUnlock}
                     onView={handleView}
                 />
             ),
@@ -162,34 +237,101 @@ export default function UserManager() {
     return (
         <div className="space-y-6 p-4">
             <ManagerToolbar
-                searchPlaceholder="Tìm kiếm người dùng..."
-                onSearchChange={setSearchTerm}
+                searchPlaceholder="Tìm kiếm tên, email..."
+                onSearchChange={(value) => {
+                    setSearchTerm(value);
+                    setCurrentPage(1);
+                }}
                 addButtonText="Thêm người dùng"
                 showCategoryFilter={false}
+                filters={[
+                    {
+                        placeholder: "Trạng thái",
+                        value: statusFilter,
+                        onChange: (value) => {
+                            setStatusFilter(value);
+                            setCurrentPage(1);
+                        },
+                        options: [
+                            { value: "", label: "Tất cả" },
+                            { value: "true", label: "Hoạt động" },
+                            { value: "false", label: "Ngưng hoạt động"} 
+                        ],
+                    }
+                ]}
+               onAddClick={() => setIsCreateModalOpen(true)}
             />
 
             <CustomDataTable
                 selectableRows
                 selectableRowsHighlight
                 columns={columns}
-                data={filteredData}
-                paginationPerPage={8}  
+                data={users}
+                progressPending={loading}
+                
+                pagination
+                paginationServer
+                paginationTotalRows={totalRows}
+                onChangePage={(page) => setCurrentPage(page)}
+                onChangeRowsPerPage={(newPerPage, page) => {
+                    setPerPage(newPerPage);
+                    setCurrentPage(page);
+                }}
+
                 paginationComponentOptions={{
                     rowsPerPageText: 'Số dòng:',
                     rangeSeparatorText: 'trên',
                     noRowsPerPage: false,
-                    selectAllRowsItem: true,
-                    selectAllRowsItemText: 'Tất cả',
+                    selectAllRowsItem: false, 
                 }}
                 highlightOnHover
                 pointerOnHover
                 noDataComponent={
                     <div className="py-8 text-center">
                         <p className="text-slate-400 text-sm">
-                            Không có dữ liệu
+                            Không tìm thấy dữ liệu người dùng
                         </p>
                     </div>
                 }       
+            />
+            
+            <CreateUserModal 
+                isOpen={isCreateModalOpen} 
+                onClose={() => setIsCreateModalOpen(false)} 
+                onSuccess={() => {
+                    setIsCreateModalOpen(false);
+                    fetchUsers();
+                }} 
+            />
+            <UpdateUserModal
+                isOpen={isUpdateModalOpen}
+                onClose={() => {
+                    setIsUpdateModalOpen(false);
+                    setSelectedUser(null);
+                }}
+                onSuccess={() => {
+                    setIsUpdateModalOpen(false);
+                    setSelectedUser(null);
+                    fetchUsers();
+                }}
+                userData={selectedUser}
+            />
+            <DetailUserModal
+                isOpen={isDetailModalOpen}
+                onClose={() => {
+                    setIsDetailModalOpen(false);
+                    setSelectedDetailUser(null);
+                }}
+                userData={selectedDetailUser}
+            />
+            <ConfirmModal
+                isOpen={confirmOpen}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                confirmText={confirmConfig.confirmText}
+                type={confirmConfig.type}
+                onCancel={() => setConfirmOpen(false)}
+                onConfirm={executeConfirmAction}
             />
         </div>
     );

@@ -1,6 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DTOs.Page;
+using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
-using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.DTOs.Promotion;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
@@ -134,14 +134,15 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 newPromotion.TrangThai = 1;
             }
-            else if (now > promotion.NgayHetHan)
-            {
-                newPromotion.TrangThai = 4;
-            }
-            else
+            if (now == promotion.NgayBatDau)
             {
                 newPromotion.TrangThai = 2;
             }
+            if (now > promotion.NgayHetHan)
+            {
+                newPromotion.TrangThai = 4;
+            }
+
 
             _context.UuDais.Add(newPromotion);
             await _context.SaveChangesAsync();

@@ -6,7 +6,7 @@ import InputField from "~/components/UI/Form/InputField";
 import { createPromotionApi } from "~/Services/PromotionService";
 import { toastSuccess, toastError } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
-import { toUTC } from "~/Helper/ToUTC";
+
 
 export default function CreatePromotionModal({
     isOpen,
@@ -135,13 +135,13 @@ export default function CreatePromotionModal({
                 dieuKienApDung:
                     form.dieuKienApDung.trim(),
 
-                ngayBatDau: toUTC(
+                ngayBatDau:
                     form.ngayBatDau
-                ),
+                ,
 
-                ngayHetHan: toUTC(
+                ngayHetHan:
                     form.ngayHetHan
-                ),
+                ,
 
                 soLuongToiDa: Number(
                     form.soLuongToiDa

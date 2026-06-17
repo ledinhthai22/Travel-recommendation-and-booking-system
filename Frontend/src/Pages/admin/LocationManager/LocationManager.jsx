@@ -1,241 +1,196 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import ManagerCard from '~/components/UI/Card/ManagerCard';
 import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
-import LocationModal from './LocationModal';
-
-const LOCATION_DATA = [
-  {
-    maDiaDiem: 1,
-    tenDiaDiem: "Vịnh Hạ Long",
-    duongDanAnh: "https://images.unsplash.com/photo-1524230507669-5ff97982bb5e?q=80&w=600",
-    loaiDiaDiem: "Vịnh",
-    moTa: "Di sản thiên nhiên thế giới nổi tiếng với hàng nghìn đảo đá vôi.",
-    tinhThanh: "Quảng Ninh",
-    quocGia: "Việt Nam",
-    khuVuc: true,
-    ngayTao: "2026-01-10",
-    ngayCapNhat: "2026-01-15",
-    ngayXoa: null,
-    trangThai: true
-  },
-  {
-    maDiaDiem: 2,
-    tenDiaDiem: "Fansipan",
-    duongDanAnh: "https://images.unsplash.com/photo-1504457047772-27faf1c00561?q=80&w=600",
-    loaiDiaDiem: "Núi",
-    moTa: "Đỉnh núi cao nhất Đông Dương.",
-    tinhThanh: "Lào Cai",
-    quocGia: "Việt Nam",
-    khuVuc: true,
-    ngayTao: "2026-01-11",
-    ngayCapNhat: "2026-01-16",
-    ngayXoa: null,
-    trangThai: true
-  },
-  {
-    maDiaDiem: 3,
-    tenDiaDiem: "Phố Cổ Hội An",
-    duongDanAnh: "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?q=80&w=600",
-    loaiDiaDiem: "Di tích lịch sử",
-    moTa: "Đô thị cổ nổi tiếng của Việt Nam.",
-    tinhThanh: "Quảng Nam",
-    quocGia: "Việt Nam",
-    khuVuc: true,
-    ngayTao: "2026-01-12",
-    ngayCapNhat: "2026-01-17",
-    ngayXoa: null,
-    trangThai: true
-  },
-  {
-    maDiaDiem: 4,
-    tenDiaDiem: "Đà Lạt",
-    duongDanAnh: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=600",
-    loaiDiaDiem: "Thành phố",
-    moTa: "Thành phố ngàn hoa.",
-    tinhThanh: "Lâm Đồng",
-    quocGia: "Việt Nam",
-    khuVuc: true,
-    ngayTao: "2026-01-13",
-    ngayCapNhat: "2026-01-18",
-    ngayXoa: null,
-    trangThai: true
-  },
-  {
-    maDiaDiem: 5,
-    tenDiaDiem: "Phú Quốc",
-    duongDanAnh: "https://images.unsplash.com/photo-1589394815804-964ed0be2eb5?q=80&w=600",
-    loaiDiaDiem: "Đảo",
-    moTa: "Hòn đảo du lịch nổi tiếng phía Nam.",
-    tinhThanh: "Kiên Giang",
-    quocGia: "Việt Nam",
-    khuVuc: true,
-    ngayTao: "2026-01-14",
-    ngayCapNhat: "2026-01-19",
-    ngayXoa: null,
-    trangThai: true
-  },
-  {
-    maDiaDiem: 6,
-    tenDiaDiem: "Bangkok",
-    duongDanAnh: "https://images.unsplash.com/photo-1508009603885-50cf7c579365?q=80&w=600",
-    loaiDiaDiem: "Thành phố",
-    moTa: "Thủ đô của Thái Lan.",
-    tinhThanh: "Bangkok",
-    quocGia: "Thái Lan",
-    khuVuc: false,
-    ngayTao: "2026-01-15",
-    ngayCapNhat: "2026-01-20",
-    ngayXoa: null,
-    trangThai: true
-  },
-  {
-    maDiaDiem: 7,
-    tenDiaDiem: "Núi Phú Sĩ",
-    duongDanAnh: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=600",
-    loaiDiaDiem: "Núi",
-    moTa: "Biểu tượng nổi tiếng của Nhật Bản.",
-    tinhThanh: "Yamanashi",
-    quocGia: "Nhật Bản",
-    khuVuc: false,
-    ngayTao: "2026-01-16",
-    ngayCapNhat: "2026-01-21",
-    ngayXoa: null,
-    trangThai: true
-  },
-  {
-    maDiaDiem: 8,
-    tenDiaDiem: "Đảo Jeju",
-    duongDanAnh: "https://images.unsplash.com/photo-1527631746610-bca00a040d60?q=80&w=600",
-    loaiDiaDiem: "Đảo",
-    moTa: "Hòn đảo du lịch nổi tiếng của Hàn Quốc.",
-    tinhThanh: "Jeju",
-    quocGia: "Hàn Quốc",
-    khuVuc: false,
-    ngayTao: "2026-01-17",
-    ngayCapNhat: "2026-01-22",
-    ngayXoa: null,
-    trangThai: true
-  }
-];
-
-const PAGE_SIZE = 8;
+import LocationFormPage from './LocationFormPage';
+import { getLocationApi, deleteLocationApi } from '~/Services/LocationService';
+import { getTypeLocationListApi } from '~/Services/TypeLocationService';
+import { toastError, toastSuccess, toastWarning } from '~/utils/Toast';
+import { getErrorMessage } from '~/utils/errorHelper';
 
 export default function LocationManager() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [locations, setLocations] = useState(LOCATION_DATA);
+  const [perPage, setPerPage] = useState(8);
 
-  const [modalConfig, setModalConfig] = useState({
-    isOpen: false,
-    mode: 'add',
-    data: null
-  });
+  const [locations, setLocations] = useState([]);
+  const [allTypes, setAllTypes] = useState([]);
+  const [totalRows, setTotalRows] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const filteredData = useMemo(() => {
-    if (!searchTerm.trim()) return locations;
-    const term = searchTerm.toLowerCase();
-    return locations.filter(item =>
-      (item.name || '').toLowerCase().includes(term) ||
-      (item.province || '').toLowerCase().includes(term) ||
-      (item.category || '').toLowerCase().includes(term)
-    );
-  }, [searchTerm, locations]);
+  const [showForm, setShowForm] = useState(false);
+  const [formMode, setFormMode] = useState('add');
+  const [selectedLocation, setSelectedLocation] = useState(null);
 
-  const totalItems = filteredData.length;
-  const totalPages = Math.ceil(totalItems / PAGE_SIZE);
-  const startIdx = (currentPage - 1) * PAGE_SIZE;
-  const pageData = filteredData.slice(startIdx, startIdx + PAGE_SIZE);
-
-  const openModal = (mode, data = null) => {
-    setModalConfig({ isOpen: true, mode, data });
-  };
-
-  const handleSave = (newLocation, mode) => {
-    if (mode === 'add') {
-      setLocations(prev => [newLocation, ...prev]);
-    } else if (mode === 'edit') {
-      setLocations(prev => prev.map(item =>
-        item.id === newLocation.id ? newLocation : item
-      ));
+  const fetchLocations = async () => {
+    try {
+      setLoading(true);
+      let statusParam = statusFilter === '' ? null : statusFilter === 'true';
+      const response = await getLocationApi(currentPage, perPage, searchTerm, statusParam);
+      setLocations(response.items || []);
+      setTotalRows(response.totalItems || 0);
+    } catch (error) {
+      toastError("Lỗi tải danh sách địa điểm!");
+    } finally {
+      setLoading(false);
     }
-    setCurrentPage(1);
   };
 
-  // FIX: nhận item từ argument của callback (truyền từ ManagerCard)
-  const handleView = (item) => openModal('view', item);
-  const handleEdit = (item) => openModal('edit', item);
-  const handleDelete = (item) => setLocations(prev => prev.filter(l => l.id !== item.id));
+  const fetchAllTypes = async () => {
+    try {
+      const res = await getTypeLocationListApi(1, 1000, '');
+      setAllTypes(res.items || []);
+    } catch (error) {
+      console.error("Không tải được danh sách loại");
+    }
+  };
+
+  useEffect(() => {
+    fetchAllTypes();
+    fetchLocations();
+  }, [currentPage, perPage, searchTerm, statusFilter]);
+
+  const handleOpenForm = (mode, data = null) => {
+    setFormMode(mode);
+    setSelectedLocation(data);
+    setShowForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowForm(false);
+    setSelectedLocation(null);
+  };
+
+  const handleSuccess = () => {
+    setShowForm(false);
+    fetchLocations();
+  };
+
+  const handleDelete = async (item) => {
+    if (item.trangThai === true) {
+      toastWarning("Không thể xóa địa điểm đang hoạt động. Vui lòng chuyển sang trạng thái ẩn trước!");
+      return;
+    }
+    try {
+      await deleteLocationApi(item.maDiaDiem);
+      toastSuccess("Đã xóa địa điểm thành công!");
+      fetchLocations();
+    } catch (error) {
+      toastError("Xóa thất bại", getErrorMessage(error));
+    }
+  };
+
+  if (showForm) {
+    return (
+      <div>
+        <LocationFormPage
+          mode={formMode}
+          initialData={selectedLocation}
+          onCancel={handleCloseForm}
+          onSave={handleSuccess}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 space-y-6">
       <ManagerToolbar
         searchPlaceholder="Tìm kiếm địa điểm..."
-        onSearchChange={(value) => {
-          setSearchTerm(value);
-          setCurrentPage(1);
-        }}
+        onSearchChange={(value) => { setSearchTerm(value); setCurrentPage(1); }}
         addButtonText="Thêm địa điểm"
-        onAddClick={() => openModal('add')}
+        onAddClick={() => handleOpenForm('add')}
+        showExcel={false}
+        filters={[
+          {
+            placeholder: "Trạng thái",
+            value: statusFilter,
+            onChange: (value) => { setStatusFilter(value); setCurrentPage(1); },
+            options: [
+              { value: "", label: "Tất cả" },
+              { value: "true", label: "Đang hoạt động" },
+              { value: "false", label: "Tạm ẩn" }
+            ],
+          }
+        ]}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {pageData.map(item => (
-          <ManagerCard
-            key={item.maDiaDiem}
-            item={item}
-            type="location"
-            onView={handleView}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
-        ))}
-      </div>
-
-      {/* Pagination */}
-      <div className="flex items-center justify-between px-2 pt-4">
-        <span className="text-xs text-slate-400 font-medium">
-          Hiển thị {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, totalItems)} / {totalItems} địa điểm
-        </span>
-
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-white hover:shadow-sm disabled:opacity-40 transition-all"
-          >
-            <span className="material-symbols-outlined text-xl">chevron_left</span>
-          </button>
-
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-            <button
-              key={page}
-              onClick={() => setCurrentPage(page)}
-              className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${currentPage === page
-                ? 'bg-[#0EA5E5] text-white shadow'
-                : 'text-slate-500 hover:bg-slate-100'
-                }`}
-            >
-              {page}
-            </button>
-          ))}
-
-          <button
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-white hover:shadow-sm disabled:opacity-40 transition-all"
-          >
-            <span className="material-symbols-outlined text-xl">chevron_right</span>
-          </button>
+      {loading ? (
+        <div className="flex justify-center items-center py-20">
+          <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
-      </div>
+      ) : locations.length === 0 ? (
+        <div className="text-center py-20 text-slate-500 font-medium bg-white rounded-2xl border border-dashed border-slate-300">
+          Không tìm thấy địa điểm nào!
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {locations.map((item, index) => (
+            <ManagerCard
+              key={`${item.maDiaDiem}-${index}`}
+              item={{
+                ...item,
+                tenLoai: allTypes.find(t => t.maLoaiDD === item.loaiDiaDiem)?.tenLoaiDD || item.loaiDiaDiem
+              }}
+              type="location"
+              onView={() => handleOpenForm('view', item)}
+              onEdit={() => handleOpenForm('edit', item)}
+              onDelete={() => handleDelete(item)}
+            />
+          ))}
+        </div>
+      )}
+      {totalRows > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between px-2 pt-6 border-t border-slate-100 gap-4 mt-6">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-500">Số lượng:</span>
+              <select
+                value={perPage}
+                onChange={(e) => {
+                  setPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-sky-500 focus:border-sky-500 block p-1.5 outline-none cursor-pointer"
+              >
+                <option value={8}>8</option>
+                <option value={16}>16</option>
+                <option value={24}>24</option>
+                <option value={32}>32</option>
+              </select>
+            </div>
+            <span className="text-sm text-slate-400 font-medium">
+              Hiển thị {(currentPage - 1) * perPage + 1} – {Math.min(currentPage * perPage, totalRows)} / {totalRows}
+            </span>
+          </div>
 
-      <LocationModal
-        isOpen={modalConfig.isOpen}
-        mode={modalConfig.mode}
-        initialData={modalConfig.data}
-        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
-        onSave={handleSave}
-      />
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-sky-600 disabled:opacity-40 transition-all"
+            >
+              <span className="material-symbols-outlined text-xl">chevron_left</span>
+            </button>
+            {Array.from({ length: Math.ceil(totalRows / perPage) }, (_, i) => i + 1).map(page => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`w-9 h-9 rounded-xl text-sm font-bold ${currentPage === page ? 'bg-sky-500 text-white' : 'border border-slate-200 text-slate-600'}`}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalRows / perPage), p + 1))}
+              disabled={currentPage === Math.ceil(totalRows / perPage)}
+              className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-sky-600 disabled:opacity-40 transition-all"
+            >
+              <span className="material-symbols-outlined text-xl">chevron_right</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

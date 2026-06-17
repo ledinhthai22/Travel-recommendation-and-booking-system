@@ -1,4 +1,5 @@
-﻿using travel_recommendation_and_booking_system.DTOs;
+﻿using DTOs.Page;
+using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.DTOs.WebInfo;
 
 namespace travel_recommendation_and_booking_system.Interfaces

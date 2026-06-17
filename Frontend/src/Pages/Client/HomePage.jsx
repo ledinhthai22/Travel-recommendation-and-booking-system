@@ -1,20 +1,31 @@
 import { Link } from 'react-router-dom';
 import { ChevronRight, Star } from 'lucide-react';
-
 import DestinationsCard from '~/components/Destinations/DestinationsCard';
 import HeroSection from '~/components/Hero/HeroSection';
 import FeaturedCarousel from '~/components/Common/FeaturedCarousel';
 import TourCard from '~/components/Tours/TourCard';
 import SectionTitle from '~/components/Common/SectionTitle';
 import { destinations, bestTours, hotDeals } from '~/constants/Home.constants';
+import useBanner from '~/Hooks/useBanner';
 
 export default function HomePage() {
+    const { banners, loading } = useBanner();
+
+    const activeBanner = banners
     return (
         <div className="min-h-screen bg-white">
             <HeroSection
-                title="Khám phá hành trình phù hợp với bạn"
+                title={
+                    activeBanner?.tieuDe ||
+                    "Khám phá hành trình phù hợp với bạn"
+                }
                 subtitle="Xem tour, điểm đến hoặc khách sạn bạn thích. Hệ thống sẽ ghi nhận hành vi để gợi ý phù hợp hơn."
-                background="https://images.unsplash.com/photo-1501785888041-af3ef285b470"
+                background={
+                    activeBanner?.duongDanAnh
+                        ? `https://localhost:7016${activeBanner.duongDanAnh}`
+                        : "https://images.unsplash.com/photo-1501785888041-af3ef285b470"
+                }
+                link={activeBanner?.linkLienKet}
                 badge="Có thể dùng ngay, không cần đăng nhập"
                 showSearchBar={true}
             />

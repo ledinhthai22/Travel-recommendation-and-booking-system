@@ -9,7 +9,6 @@ import {
     updatePromotionApi,
     changePromotionStatusApi
 } from "~/Services/PromotionService";
-import { toUTC } from "~/Helper/ToUTC";
 import {
     toastSuccess,
     toastError
@@ -145,9 +144,9 @@ export default function UpdatePromotionModal({
                             form.soLuongToiDa
                         ),
                     ngayBatDau:
-                        toUTC(form.ngayBatDau),
+                       form.ngayBatDau,
                     ngayHetHan:
-                        toUTC(form.ngayHetHan)
+                       form.ngayHetHan
                 }
             );
 

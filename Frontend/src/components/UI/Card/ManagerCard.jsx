@@ -48,7 +48,7 @@ export default function ManagerCard({
         displayLocation = item.tinhThanh;
         imageUrl = item.duongDanAnh;
 
-        subInfo1 = item.loaiDiaDiem;
+        subInfo1 = item.tenLoai || item.loaiDiaDiem;
         subInfo2 = item.khuVuc
             ? 'Trong nước'
             : 'Ngoài nước';
@@ -144,7 +144,7 @@ export default function ManagerCard({
                 <img
                     src={
                         imageUrl
-                            ? `${url}/${imageUrl}`
+                            ? `${url}${imageUrl}`
                             : '/images/no-image.jpg'
                     }
                     alt={displayName}

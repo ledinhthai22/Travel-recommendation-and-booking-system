@@ -187,7 +187,6 @@ export default function Webinfo() {
                     onView={handleView}
                     onEdit={handleEdit}
                     onDelete={!row.trangthai ? handleDelete : undefined}
-                    onLock={handleToggleStatus}
                 />
             )
         }

@@ -1,6 +1,6 @@
 ﻿
+using DTOs.Page;
 using DTOs.Staff;
-using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.DTOs.Staff;
 
 namespace travel_recommendation_and_booking_system.Interfaces

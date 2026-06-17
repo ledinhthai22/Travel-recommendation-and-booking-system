@@ -46,7 +46,7 @@ export default function HotelDetailPage() {
     }
 
     return (
-        <div className="p-4 max-w-[1440px] mx-auto">
+        <div className="mx-auto">
             <HotelFormPage
                 mode="view"
                 initialData={hotel}
