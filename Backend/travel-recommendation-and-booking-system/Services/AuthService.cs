@@ -222,8 +222,6 @@ namespace travel_recommendation_and_booking_system.Services
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.MaNguoiDung.ToString()),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Name, user.HoTen),
                 new Claim(ClaimTypes.Role, user.MaVaiTro.ToString())
             };
 
