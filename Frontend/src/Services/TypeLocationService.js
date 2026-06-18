@@ -1,5 +1,9 @@
 import axiosClient from "./axiosClient";
 
+export const getAllTypeLocationApi = async () => {
+    const response = await axiosClient.get("/admin/TypeLocation/get-all");
+    return response.data;
+};
 export const getTypeLocationListApi = async (pageNumber = 1, pageSize = 9, key = '') => {
     const response = await axiosClient.get("/admin/TypeLocation/get-typelocation", {
         params: { pageNumber, pageSize, key: key || undefined }

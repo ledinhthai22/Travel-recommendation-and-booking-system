@@ -2,7 +2,6 @@
 {
     public class ImageHotelDTO
     {
-
         public int MaAnhSK { get; set; }
         public string DuongDanAnh { get; set; }
         public bool AnhChinh { get; set; }

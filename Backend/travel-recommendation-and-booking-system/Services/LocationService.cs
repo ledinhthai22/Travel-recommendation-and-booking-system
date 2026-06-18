@@ -86,7 +86,6 @@ namespace travel_recommendation_and_booking_system.Services
                     throw new Exception("File tải lên không phải là định dạng ảnh hợp lệ.");
                 }
 
-                // Tạo tên file an toàn
                 string originalFileName = Path.GetFileName(location.DuongDanAnh.FileName);
                 originalFileName = originalFileName.Replace(" ", "_");
                 string timeStamp = DateTime.Now.ToString("yyyyMMddHHmmssfff");
@@ -128,7 +127,6 @@ namespace travel_recommendation_and_booking_system.Services
                 var fullError = ex.Message + (ex.InnerException != null ? " | Inner: " + ex.InnerException.Message : "");
                 Console.WriteLine($"LỖI THẬT SỰ TẠI SERVICE: {fullError}");
 
-                // Ném lại lỗi này ra Controller
                 throw new Exception(fullError);
             }
         }

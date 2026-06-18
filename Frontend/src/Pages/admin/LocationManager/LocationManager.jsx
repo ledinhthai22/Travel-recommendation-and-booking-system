@@ -3,7 +3,7 @@ import ManagerCard from '~/components/UI/Card/ManagerCard';
 import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
 import LocationFormPage from './LocationFormPage';
 import { getLocationApi, deleteLocationApi } from '~/Services/LocationService';
-import { getTypeLocationListApi } from '~/Services/TypeLocationService';
+import { getAllTypeLocationApi } from '~/Services/TypeLocationService';
 import { toastError, toastSuccess, toastWarning } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
 
@@ -38,12 +38,12 @@ export default function LocationManager() {
 
   const fetchAllTypes = async () => {
     try {
-      const res = await getTypeLocationListApi(1, 1000, '');
-      setAllTypes(res.items || []);
+        const res = await getAllTypeLocationApi();
+        setAllTypes(res || []);
     } catch (error) {
-      console.error("Không tải được danh sách loại");
+        toastError("Không tải được danh sách loại");
     }
-  };
+};
 
   useEffect(() => {
     fetchAllTypes();

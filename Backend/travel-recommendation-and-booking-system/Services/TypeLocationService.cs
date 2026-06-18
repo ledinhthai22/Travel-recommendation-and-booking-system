@@ -16,6 +16,16 @@ namespace travel_recommendation_and_booking_system.Services
         {
             _context = context;
         }
+        public async Task<List<TypeLocationReponseDTO>> GetAllAsync()
+        {
+            return await _context.LoaiDiaDiem.Where(l=>l.Ngayxoa==null)
+                .Select(l => new TypeLocationReponseDTO
+                {
+                    MaLoaiDD = l.MaLoaiDiaDiem,
+                    TenLoaiDD = l.TenLoaiDiaDiem,
+                })
+                .ToListAsync();
+        }
         public async Task<PageDTO<TypeLocationReponseDTO>> getTypeLocationAsync(int pageNumber, int pageSize, string? key)
         {
             if (pageNumber < 1)
@@ -79,10 +89,9 @@ namespace travel_recommendation_and_booking_system.Services
             }
             catch (DbUpdateException ex)
             {
-                // Dòng này là "chìa khóa": Nó sẽ cho sếp biết lỗi thật sự ở đâu
                 var innerMessage = ex.InnerException?.Message;
                 System.Diagnostics.Debug.WriteLine("LỖI DB CHI TIẾT: " + innerMessage);
-                throw; // Để EF vẫn báo lỗi lên trên
+                throw;
             }
         }
 

@@ -34,7 +34,7 @@ export default function LocationFormPage({ mode = 'add', initialData = null, onC
         tinhThanh: '',
         quocGia: 'Việt Nam',
         moTa: '',
-        khuVuc: false,
+        khuVuc: true,
         trangThai: true
     });
     const [image, setImage] = useState(null);
@@ -57,11 +57,11 @@ export default function LocationFormPage({ mode = 'add', initialData = null, onC
         if ((isViewMode || isEditMode) && initialData) {
             setFormData({
                 tenDiaDiem: initialData.tenDiaDiem || '',
-                loaiDiaDiem: initialData.loaiDiaDiem || null,
+                loaiDiaDiem: initialData.loaiDiaDiem ? initialData.loaiDiaDiem.toString() : null,
                 tinhThanh: initialData.tinhThanh || '',
                 quocGia: initialData.quocGia || 'Việt Nam',
                 moTa: initialData.moTa || '',
-                khuVuc: initialData.khuVuc || false,
+                khuVuc: initialData.khuVuc || true,
                 trangThai: initialData.trangThai !== undefined ? initialData.trangThai : true
             });
             if (initialData.duongDanAnh) {
@@ -252,7 +252,6 @@ export default function LocationFormPage({ mode = 'add', initialData = null, onC
                         </button>
                         <button onClick={() => setActiveTab('category')} className={`flex-1 py-4 font-semibold transition-all flex items-center justify-center gap-2 ${activeTab === 'category' ? 'text-[#0EA5E5] border-b-2 border-[#0EA5E5] bg-sky-50/50' : 'text-slate-500 hover:text-slate-700'}`}>
                             Quản lý Loại địa điểm
-                            {formData.loaiDiaDiem && <span className="bg-[#0EA5E5] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center">1</span>}
                         </button>
                     </div>
                 )}
@@ -285,13 +284,13 @@ export default function LocationFormPage({ mode = 'add', initialData = null, onC
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6 pt-4 border-t border-slate-100">
                             <div className="md:col-span-2">
-                                <InputField label="Tên địa điểm" name="tenDiaDiem" required disabled={isViewMode} value={formData.tenDiaDiem} onChange={handleInputChange} error={errors.tenDiaDiem} Icon={MapPin} />
+                                <InputField label="Tên địa điểm" name="tenDiaDiem" required disabled={isViewMode} value={formData.tenDiaDiem} onChange={handleInputChange} error={errors.tenDiaDiem}/>
                             </div>
                             {isViewMode ? (
                                 <div className="w-full">
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Loại địa điểm</label>
                                     <div className="p-3 bg-slate-100 border border-slate-300 rounded-lg text-slate-700 font-medium">
-                                        {typeData.find(item => item.maLoaiDD === formData.loaiDiaDiem)?.tenLoaiDD || "Chưa chọn"}
+                                        {typeData.find(item => item.maLoaiDD === formData.loaiDiaDiem)?.tenLoaiDD || ""}
                                     </div>
                                 </div>
                             ) : (
@@ -299,20 +298,24 @@ export default function LocationFormPage({ mode = 'add', initialData = null, onC
                                     <Dropdown
                                         label="Loại địa điểm"
                                         placeholder="Chọn loại địa điểm..."
-                                        value={formData.loaiDiaDiem}
+                                        value={formData.loaiDiaDiem ? formData.loaiDiaDiem.toString() : ""}
                                         onChange={(value) => {
                                             setFormData(prev => ({ ...prev, loaiDiaDiem: value }));
                                             if (errors.loaiDiaDiem) setErrors(prev => ({ ...prev, loaiDiaDiem: '' }));
                                         }}
                                         options={typeData.map(a => ({ value: a.maLoaiDD.toString(), label: a.tenLoaiDD }))}
                                         fullWidth
-                                        error={errors.loaiDiaDiem}
                                         Icon={Tags}
                                     />
+                                    {errors.loaiDiaDiem && (
+                                    <p className="text-red-600 text-sm mt-2 font-medium">
+                                        {errors.loaiDiaDiem}
+                                    </p>
+                                    )}
                                 </div>
                             )}
-                            <InputField label="Tỉnh / Thành phố" name="tinhThanh" required disabled={isViewMode} value={formData.tinhThanh} onChange={handleInputChange} error={errors.tinhThanh} Icon={Building} />
-                            <InputField label="Quốc gia" name="quocGia" required disabled={isViewMode} value={formData.quocGia} onChange={handleInputChange} error={errors.quocGia} Icon={Globe2} />
+                            <InputField label="Tỉnh / Thành phố" name="tinhThanh" required disabled={isViewMode} value={formData.tinhThanh} onChange={handleInputChange} error={errors.tinhThanh}/>
+                            <InputField label="Quốc gia" name="quocGia" required disabled={isViewMode} value={formData.quocGia} onChange={handleInputChange} error={errors.quocGia}/>
                             {isViewMode ? (
                                 <div className="w-full">
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Khu vực</label>
@@ -369,14 +372,6 @@ export default function LocationFormPage({ mode = 'add', initialData = null, onC
 
                 {!isViewMode && activeTab === 'category' && (
                     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-                        <div className="mb-2">
-                            {errors.loaiDiaDiem && (
-                                <p className="text-red-600 font-medium text-sm mt-3 bg-red-50 p-3 rounded-lg border border-red-200 inline-block">
-                                    {errors.loaiDiaDiem}
-                                </p>
-                            )}
-                        </div>
-
                         <ManagerToolbar
                             searchPlaceholder="Tìm kiếm loại địa điểm..."
                             onSearchChange={(value) => {

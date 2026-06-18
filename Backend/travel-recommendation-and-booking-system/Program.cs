@@ -4,6 +4,7 @@ using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Services;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.Extensions;
 using travel_recommendation_and_booking_system.Interfaces;
@@ -70,6 +71,8 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<IBannerService, BannerService>();
             builder.Services.AddScoped<ITypeLocation, TypeLocationService>();
             builder.Services.AddScoped<ILocation, LocationService>();
+            builder.Services.AddScoped<ITypeTour, TypeTourService>();
+            builder.Services.AddScoped<ITour, TourService>();
             builder.Services.AddScoped<IStaffService, StaffService>();
             builder.Services.AddScoped<IPromotionService, PromotionService>();
             builder.Services.AddScoped<IHotelService, HotelService>();

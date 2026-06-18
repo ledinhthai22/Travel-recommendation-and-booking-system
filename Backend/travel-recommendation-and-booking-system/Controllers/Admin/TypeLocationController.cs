@@ -16,7 +16,12 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         public TypeLocationController(ITypeLocation type) { 
             _type = type;
         }
-
+        [HttpGet("get-all")]
+        public async Task<IActionResult> GetAll()
+        {
+            var result = await _type.GetAllAsync();
+            return Ok(result);
+        }
         [HttpGet("get-typelocation")]
         public async Task<IActionResult> GetTypeLocaton([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 9, [FromQuery] string? key = null)
         {
@@ -48,7 +53,6 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             }
             catch (Exception ex)
             {
-                // Đây là bước quan trọng nhất: Lấy lỗi chi tiết từ Database
                 var message = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
                 return BadRequest(new { message = "Lỗi Database: " + message });
             }
@@ -79,7 +83,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             {
                 return BadRequest(new { message = "xóa thất bại" });
             }
-            return Ok(new { message = "Cập nhật thành công" });
+            return Ok(new { message = "Xóa thành công" });
         }
 
     }
