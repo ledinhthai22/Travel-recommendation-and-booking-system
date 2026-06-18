@@ -39,6 +39,7 @@ import {
     HotelDetailPage,
     TypeLocationManager,
     AmenitiesManager,
+    LocationManager
 } from './Pages/admin';
 
 function App() {
