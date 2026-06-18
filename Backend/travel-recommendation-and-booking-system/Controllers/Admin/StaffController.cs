@@ -19,7 +19,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 
         [HttpGet]
         public async Task<IActionResult> GetPagedStaffs(
-            [FromQuery] StaffDTO staff,
+            [FromQuery] StaffFilterDTO staff,
             int pageNumber = 1,
             int pageSize = 10
             )
@@ -54,7 +54,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 
             return CreatedAtAction(
                 nameof(GetById),
-                new { id = result.MaNguoiDung },
+                new { id = result.MaNhanVien },
                 result);
         }
 

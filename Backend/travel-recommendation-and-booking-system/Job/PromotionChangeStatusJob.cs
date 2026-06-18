@@ -28,40 +28,37 @@ namespace travel_recommendation_and_booking_system.Jobs
 
             foreach (var item in promotions)
             {
-                var start = item.NgayBatDau;
-                var end = item.NgayHetHan;
-
                 int oldStatus = item.TrangThai;
 
                 if (item.SoLuongToiDa <= 0)
                 {
                     item.TrangThai = 5;
                 }
-                if (now == item.NgayBatDau)
-                {
-                    item.TrangThai = 2;
-                }
-                if (now >= end)
+                else if (DateTime.Now >= item.NgayHetHan)
                 {
                     item.TrangThai = 4;
                 }
-                if (now < start)
+                else if (DateTime.Now >= item.NgayBatDau)
+                {
+                    item.TrangThai = 2;
+                }
+                else if (item.TrangThai == 3 && item.NgayHetHan < DateTime.Now)
+                {
+                    item.TrangThai = 4;
+                }
+                else
                 {
                     item.TrangThai = 1;
                 }
-                if (item.TrangThai == 3)
-                {
-                    continue;
-                }
-
 
                 if (oldStatus != item.TrangThai)
                 {
-                    item.NgayCapNhat = now;
+                    item.NgayCapNhat = DateTime.Now;
 
                     await _hub.Clients.All.SendAsync(
                         "PromotionStatusChanged",
                         item.MaUuDai,
+                        item.SoLuongToiDa,
                         item.TrangThai
                     );
                 }

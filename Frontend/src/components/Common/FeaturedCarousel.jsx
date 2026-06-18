@@ -146,7 +146,7 @@ function FeaturedCarousel({
                     <Link
                         to={viewAllTo}
                         style={{ fontFamily: "'Inter', sans-serif", color: '#0EA5E5' }}
-                        className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold transition-colors duration-200 hover:opacity-80"
+                        className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold transition-colors hover:gap-10 duration-200 hover:opacity-80"
                     >
                         <span>Xem thêm</span>
                         <ArrowRight size={15} />

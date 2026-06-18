@@ -15,7 +15,7 @@ export default function CreateStaffModal({
 }) {
 
     const [loading, setLoading] = useState(false);
-
+    const [errors, setErrors] = useState({});
     const [previewImage, setPreviewImage] = useState(null);
 
     const [form, setForm] = useState({
@@ -26,6 +26,7 @@ export default function CreateStaffModal({
         gioiTinh: true,
         duongDanAnh: null,
         diaChi: "",
+        cccd: "",
         ngaySinh: "",
         trangThai: 2,
         maVaiTro: 2
@@ -38,8 +39,14 @@ export default function CreateStaffModal({
             ...prev,
             [field]: value
         }));
-    };
 
+        if (errors[field]) {
+            setErrors(prev => ({
+                ...prev,
+                [field]: ""
+            }));
+        }
+    };
     const handleImageChange = (e) => {
         const file = e.target.files[0];
 
@@ -59,45 +66,51 @@ export default function CreateStaffModal({
     };
 
     const validate = () => {
+        const newErrors = {};
 
         if (!form.hoTen.trim())
-            return "Vui lòng nhập họ tên";
+            newErrors.hoTen = "Vui lòng nhập họ tên";
 
         if (!form.email.trim())
-            return "Vui lòng nhập email";
+            newErrors.email = "Vui lòng nhập email";
 
-        const emailRegex =
-            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        if (!emailRegex.test(form.email))
-            return "Email không hợp lệ";
+        if (form.email && !emailRegex.test(form.email))
+            newErrors.email = "Email không hợp lệ";
 
         if (!form.matkhau.trim())
-            return "Vui lòng nhập mật khẩu";
+            newErrors.matkhau = "Vui lòng nhập mật khẩu";
+        else if (form.matkhau.length < 8)
+            newErrors.matkhau = "Mật khẩu tối thiểu 8 ký tự";
 
-        if (form.matkhau.length < 8)
-            return "Mật khẩu tối thiểu 8 ký tự";
+        if (!form.cccd.trim())
+            newErrors.cccd = "Vui lòng nhập CCCD";
+
+        const cccdRegex = /^\d{12}$/;
+
+        if (form.cccd && !cccdRegex.test(form.cccd))
+            newErrors.cccd = "CCCD phải gồm 12 số";
 
         const phoneRegex = /^0\d{9}$/;
 
         if (!phoneRegex.test(form.soDienThoai))
-            return "Số điện thoại không hợp lệ";
+            newErrors.soDienThoai = "Số điện thoại không hợp lệ";
 
         if (!form.ngaySinh)
-            return "Vui lòng chọn ngày sinh";
+            newErrors.ngaySinh = "Vui lòng chọn ngày sinh";
 
-        return null;
+        if (!form.diaChi.trim())
+            newErrors.diaChi = "Vui lòng nhập địa chỉ";
+
+        setErrors(newErrors);
+
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async () => {
 
-        const error = validate();
-
-        if (error) {
-            toastError(error);
-            return;
-        }
-
+        if (!validate()) return;
         try {
 
             setLoading(true);
@@ -110,6 +123,7 @@ export default function CreateStaffModal({
             formData.append("SoDienThoai", form.soDienThoai);
             formData.append("GioiTinh", form.gioiTinh);
             formData.append("DiaChi", form.diaChi);
+            formData.append("Cccd", form.cccd)
             formData.append("NgaySinh", form.ngaySinh);
             formData.append("TrangThai", form.trangThai);
             formData.append("MaVaiTro", form.maVaiTro);
@@ -209,22 +223,18 @@ export default function CreateStaffModal({
                             label="Họ tên"
                             value={form.hoTen}
                             onChange={(e) =>
-                                handleChange(
-                                    "hoTen",
-                                    e.target.value
-                                )
+                                handleChange("hoTen", e.target.value)
                             }
+                            error={errors.hoTen}
                         />
                         <div className="mt-5">
                             <InputField
                                 label="Email"
                                 value={form.email}
                                 onChange={(e) =>
-                                    handleChange(
-                                        "email",
-                                        e.target.value
-                                    )
+                                    handleChange("email", e.target.value)
                                 }
+                                error={errors.email}
                             />
                         </div>
 
@@ -235,16 +245,21 @@ export default function CreateStaffModal({
 
                 <div className="grid grid-cols-2 gap-5">
 
-
+                    <InputField
+                        label="CCCD"
+                        value={form.cccd}
+                        onChange={(e) =>
+                            handleChange("cccd", e.target.value)
+                        }
+                        error={errors.cccd}
+                    />
                     <InputField
                         label="Số điện thoại"
                         value={form.soDienThoai}
                         onChange={(e) =>
-                            handleChange(
-                                "soDienThoai",
-                                e.target.value
-                            )
+                            handleChange("soDienThoai", e.target.value)
                         }
+                        error={errors.soDienThoai}
                     />
 
                     <InputField
@@ -252,11 +267,9 @@ export default function CreateStaffModal({
                         type="password"
                         value={form.matkhau}
                         onChange={(e) =>
-                            handleChange(
-                                "matkhau",
-                                e.target.value
-                            )
+                            handleChange("matkhau", e.target.value)
                         }
+                        error={errors.matkhau}
                     />
 
                     <InputField
@@ -264,21 +277,17 @@ export default function CreateStaffModal({
                         type="date"
                         value={form.ngaySinh}
                         onChange={(e) =>
-                            handleChange(
-                                "ngaySinh",
-                                e.target.value
-                            )
+                            handleChange("ngaySinh", e.target.value)
                         }
+                        error={errors.ngaySinh}
                     />
                     <InputField
                         label="Địa chỉ"
                         value={form.diaChi}
                         onChange={(e) =>
-                            handleChange(
-                                "diaChi",
-                                e.target.value
-                            )
+                            handleChange("diaChi", e.target.value)
                         }
+                        error={errors.diaChi}
                     />
 
                     <Dropdown
@@ -301,27 +310,17 @@ export default function CreateStaffModal({
                                 label: "Nữ"
                             }
                         ]}
+                        error={errors.gioiTinh}
                     />
 
                     <Dropdown
                         label="Chức danh"
                         placeholder="Vai trò"
-                        value={form.maVaiTro}
-                        onChange={(value) =>
-                            handleChange(
-                                "maVaiTro",
-                                value
-                            )
-                        }
+                        value={form.maVaiTro.toString()}
+                        onChange={(value) => handleChange("maVaiTro", parseInt(value))}
                         options={[
-                            {
-                                value: 2,
-                                label: "Nhân viên"
-                            },
-                            {
-                                value: 3,
-                                label: "Quản lý"
-                            }
+                            { value: "2", label: "Nhân viên" },
+                            { value: "3", label: "Hướng dẫn viên" }
                         ]}
                     />
 

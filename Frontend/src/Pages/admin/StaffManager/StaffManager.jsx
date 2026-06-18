@@ -40,14 +40,14 @@ export default function StaffManager() {
 
     const statusLabels = {
         2: "Đang làm việc",
-        3: "Nghỉ phép",
-        4: "Nghỉ việc"
+        1: "Nghỉ phép",
+        0: "Nghỉ việc"
     };
 
     const statusColors = {
         2: "bg-green-100 text-green-700",
-        3: "bg-yellow-100 text-yellow-700",
-        4: "bg-red-100 text-red-700"
+        1: "bg-yellow-100 text-yellow-700",
+        0: "bg-red-100 text-red-700"
     };
 
     const fetchStaffs = useCallback(async (
@@ -226,8 +226,8 @@ export default function StaffManager() {
                         options: [
                             { value: "", label: "Tất cả" },
                             { value: "2", label: "Đang làm việc" },
-                            { value: "3", label: "Nghỉ phép" },
-                            { value: "4", label: "Nghỉ việc" }
+                            { value: "1", label: "Nghỉ phép" },
+                            { value: "0", label: "Nghỉ việc" }
                         ],
                     }
                 ]}
@@ -262,7 +262,7 @@ export default function StaffManager() {
                     setOpenView(false);
                     setSelectedItem(null);
                 }}
-                staffId={selectedItem?.maNguoiDung}
+                staffId={selectedItem?.maNhanVien}
             />
 
             <CreateStaffModal
@@ -273,7 +273,7 @@ export default function StaffManager() {
 
             <StaffUpdateModal
                 isOpen={openUpdate}
-                staffId={selectedItem?.maNguoiDung}
+                staffId={selectedItem?.maNhanVien}
                 onClose={() => {
                     setOpenUpdate(false);
                     setSelectedItem(null);

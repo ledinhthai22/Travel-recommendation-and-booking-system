@@ -7,21 +7,17 @@ import ManagerToolbar from "~/components/UI/ToolBar/ToolBar";
 import { getHotelApi, deleteHotelApi } from "~/Services/HotelService";
 import { toastSuccess, toastError, toastWarning } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
-
+import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
 export default function HotelManager() {
     const navigate = useNavigate();
-
-    // Filter & Search
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [starFilter, setStarFilter] = useState("");
-
-    // Data
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmConfig, setConfirmConfig] = useState({});
     const [hotels, setHotels] = useState([]);
     const [loading, setLoading] = useState(false);
     const [totalRows, setTotalRows] = useState(0);
-
-    // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const [perPage, setPerPage] = useState(8);
 
@@ -51,31 +47,49 @@ export default function HotelManager() {
         fetchHotels();
     }, [currentPage, perPage, searchTerm, statusFilter, starFilter]);
 
-    // Navigation
+
     const handleAddHotel = () => navigate("/Quan-ly/Khach-san/Them-Khach-San");
-    
-    const handleViewHotel = (hotel) => 
+
+    const handleViewHotel = (hotel) =>
         navigate(`/Quan-ly/Khach-san/Xem-chi-tiet/${hotel.maKhachSan}`);
 
-    const handleEditHotel = (hotel) => 
+    const handleEditHotel = (hotel) =>
         navigate(`/Quan-ly/Khach-san/Cap-nhat/${hotel.maKhachSan}`);
 
-    // Delete with validation
-    const handleDelete = async (hotel) => {
+    const executeDelete = async (hotel) => {
+        try {
+            await deleteHotelApi(hotel.maKhachSan);
+
+            toastSuccess(
+                `Đã xóa khách sạn "${hotel.tenKhachSan}" thành công!`
+            );
+
+            fetchHotels();
+        } catch (error) {
+            toastError(
+                "Xóa thất bại",
+                getErrorMessage(error)
+            );
+        }
+    };
+    const handleDelete = (hotel) => {
         if (hotel.trangThai === true) {
-            toastWarning("Không thể xóa khách sạn đang hoạt động. Vui lòng chuyển sang trạng thái ngưng hoạt động trước!");
+            toastWarning(
+                "Không thể xóa khách sạn đang hoạt động. Vui lòng chuyển sang trạng thái ngưng hoạt động trước!"
+            );
             return;
         }
 
-        try {
-            await deleteHotelApi(hotel.maKhachSan);
-            toastSuccess(`Đã xóa khách sạn "${hotel.tenKhachSan}" thành công!`);
-            fetchHotels();
-        } catch (error) {
-            toastError("Xóa thất bại", getErrorMessage(error));
-        }
-    };
+        setConfirmConfig({
+            title: "Xác nhận xóa khách sạn",
+            message: `Bạn có chắc chắn muốn xóa khách sạn "${hotel.tenKhachSan}" không?`,
+            type: "danger",
+            confirmText: "Xóa",
+            action: () => executeDelete(hotel)
+        });
 
+        setConfirmOpen(true);
+    };
     return (
         <div className="p-4 space-y-6">
             <ManagerToolbar
@@ -97,7 +111,7 @@ export default function HotelManager() {
                         },
                         options: [
                             { value: "", label: "Tất cả" },
-                            { value: "true", label: "Hoạt động" },
+                            { value: "true", label: "Đang hợp tác" },
                             { value: "false", label: "Ngưng hoạt động" },
                         ],
                     },
@@ -120,7 +134,6 @@ export default function HotelManager() {
                 ]}
             />
 
-            {/* Loading / Empty / Data States */}
             {loading ? (
                 <div className="flex justify-center items-center py-20">
                     <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
@@ -138,13 +151,15 @@ export default function HotelManager() {
                             type="hotel"
                             onView={() => handleViewHotel(hotel)}
                             onEdit={() => handleEditHotel(hotel)}
-                            onDelete={() => handleDelete(hotel)}
+                            onDelete={hotel.trangThai === false
+                                ? () => handleDelete(hotel)
+                                : null}
                         />
                     ))}
                 </div>
             )}
 
-            {/* Pagination */}
+
             {totalRows > 0 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between px-2 pt-6 border-t border-slate-100 gap-4 mt-6">
                     <div className="flex items-center gap-4">
@@ -183,11 +198,10 @@ export default function HotelManager() {
                             <button
                                 key={page}
                                 onClick={() => setCurrentPage(page)}
-                                className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${
-                                    currentPage === page
-                                        ? "bg-sky-500 text-white"
-                                        : "border border-slate-200 text-slate-600 hover:bg-slate-50"
-                                }`}
+                                className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${currentPage === page
+                                    ? "bg-sky-500 text-white"
+                                    : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    }`}
                             >
                                 {page}
                             </button>
@@ -203,6 +217,18 @@ export default function HotelManager() {
                     </div>
                 </div>
             )}
+            <ConfirmModal
+                isOpen={confirmOpen}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                type={confirmConfig.type}
+                confirmText={confirmConfig.confirmText}
+                onCancel={() => setConfirmOpen(false)}
+                onConfirm={async () => {
+                    await confirmConfig.action?.();
+                    setConfirmOpen(false);
+                }}
+            />
         </div>
     );
 }

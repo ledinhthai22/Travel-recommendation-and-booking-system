@@ -8,7 +8,7 @@ import { getErrorMessage } from "~/utils/errorHelper";
 export default function CreateBannerModal({ isOpen, onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
     const [previewImage, setPreviewImage] = useState(null);
-
+    const [errors, setErrors] = useState({});
     const [form, setForm] = useState({
         tieuDe: "",
         linkLienKet: "",
@@ -35,15 +35,23 @@ export default function CreateBannerModal({ isOpen, onClose, onSuccess }) {
     };
 
     const validate = () => {
-        if (!form.tieuDe.trim()) return "Vui lòng nhập tiêu đề banner";
-        if (!form.duongDanAnh) return "Vui lòng chọn hình ảnh banner";
-        return null;
+        const newErrors = {};
+        if (!form.tieuDe.trim()) {
+            newErrors.tieuDe = "Vui lòng nhập tiêu đề banner"
+        }
+
+        if (!form.duongDanAnh) {
+            newErrors.duongDanAnh = "Vui lòng chọn hình ảnh banner"
+        }
+        if (!form.linkLienKet.trim()) {
+            newErrors.linkLienKet = "Vui lòng nhập link liên kết"
+        }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async () => {
-        const error = validate();
-        if (error) {
-            toastError(error);
+        if (!validate()) {
             return;
         }
 
@@ -96,53 +104,59 @@ export default function CreateBannerModal({ isOpen, onClose, onSuccess }) {
                             Hình ảnh (Tối đa 10MB)
                             <span className="text-red-500">*</span>
                         </label>
-
-                        <label className="
-                            border-2 border-dashed
-                            border-sky-300
-                            bg-sky-50
-                            rounded-2xl
-                            h-64
-                            w-full
-                            flex
-                            flex-col
-                            items-center
-                            justify-center
-                            cursor-pointer
-                            overflow-hidden
-                            hover:bg-sky-100
-                            transition-colors
-                        ">
-                            {previewImage ? (
-                                <img
-                                    src={previewImage}
-                                    alt="Preview"
-                                    className="w-full h-full object-cover"
-                                />
-                            ) : (
-                                <>
-                                    <Upload
-                                        size={40}
-                                        className="text-sky-500 mb-3"
+                            <label
+                                className="
+                                    border-2 border-dashed
+                                    border-sky-300
+                                    bg-sky-50
+                                    rounded-2xl
+                                    h-64
+                                    w-full
+                                    flex
+                                    flex-col
+                                    items-center
+                                    justify-center
+                                    cursor-pointer
+                                    overflow-hidden
+                                    hover:bg-sky-100
+                                    transition-colors
+                                "
+                            >
+                                {previewImage ? (
+                                    <img
+                                        src={previewImage}
+                                        alt="Preview"
+                                        className="w-full h-full object-cover"
                                     />
+                                ) : (
+                                    <>
+                                        <Upload
+                                            size={40}
+                                            className="text-sky-500 mb-3"
+                                        />
 
-                                    <span className="text-sm font-medium text-sky-700">
-                                        Nhấn để tải ảnh lên
-                                    </span>
+                                        <span className="text-sm font-medium text-sky-700">
+                                            Nhấn để tải ảnh lên
+                                        </span>
 
-                                    <span className="text-xs text-sky-500 mt-1">
-                                        JPG, PNG, WEBP (Max 10MB)
-                                    </span>
-                                </>
-                            )}
+                                        <span className="text-xs text-sky-500 mt-1">
+                                            JPG, PNG, WEBP (Max 10MB)
+                                        </span>
+                                    </>
+                                )}
 
-                            <input
-                                hidden
-                                type="file"
-                                accept="image/png,image/jpeg,image/jpg,image/webp"
-                                onChange={handleImageChange}
-                            />
-                        </label>
+                                <input
+                                    hidden
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                                    onChange={handleImageChange}
+                                />
+                            </label>
+                        {errors.duongDanAnh && (
+                            <p className="mt-2 text-sm text-red-500">
+                                {errors.duongDanAnh}
+                            </p>
+                        )}
                     </div>
 
                     {/* Thông tin banner */}
@@ -157,6 +171,7 @@ export default function CreateBannerModal({ isOpen, onClose, onSuccess }) {
                                 )
                             }
                             placeholder="Nhập tiêu đề..."
+                            error={errors.tieuDe}
                         />
 
                         <InputField
@@ -169,6 +184,7 @@ export default function CreateBannerModal({ isOpen, onClose, onSuccess }) {
                                 )
                             }
                             placeholder="https://vidu.com/khuyen-mai"
+                            error={errors.linkLienKet}
                         />
                     </div>
                 </div>

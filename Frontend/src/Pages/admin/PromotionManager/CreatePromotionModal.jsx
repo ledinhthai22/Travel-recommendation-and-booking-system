@@ -177,7 +177,7 @@ export default function CreatePromotionModal({
 
     return (
         <div className="fixed inset-0 bg-black/50 z-999 flex items-center justify-center">
-            <div className="bg-white rounded-3xl w-full max-w-2xl p-4">
+            <div className="bg-white rounded-3xl w-full max-w-2xl p-6">
                 <div className="flex justify-between items-center mb-8">
                     <h2 className="text-2xl ml-1 font-bold">
                         Thêm ưu đãi
@@ -188,7 +188,7 @@ export default function CreatePromotionModal({
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 gap-5">
+                <div className="grid grid-cols-2 gap-5 mb-4">
                     <InputField
                         label="Mã code"
                         value={form.maCode}
@@ -282,20 +282,20 @@ export default function CreatePromotionModal({
                         }
                     />
 
-                    <InputField
-                        label="Số lượng tối đa"
-                        type="number"
-                        value={form.soLuongToiDa}
-                        error={errors.soLuongToiDa}
-                        onChange={(e) =>
-                            handleChange(
-                                "soLuongToiDa",
-                                e.target.value
-                            )
-                        }
-                    />
-                </div>
 
+                </div>
+                <InputField
+                    label="Số lượng tối đa"
+                    type="number"
+                    value={form.soLuongToiDa}
+                    error={errors.soLuongToiDa}
+                    onChange={(e) =>
+                        handleChange(
+                            "soLuongToiDa",
+                            e.target.value
+                        )
+                    }
+                />
                 <div className="flex justify-end gap-3 mt-8">
                     <button
                         onClick={handleClose}

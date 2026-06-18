@@ -24,7 +24,7 @@ export default function WebInfoEditModal({
     const [loading, setLoading] = useState(false);
     const [toggleLoading, setToggleLoading] = useState(false);
 
-
+    
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmConfig, setConfirmConfig] = useState({});
     const validateByKey = (key, value) => {

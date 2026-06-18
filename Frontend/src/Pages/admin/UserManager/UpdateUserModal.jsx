@@ -9,44 +9,51 @@ import { getErrorMessage } from "~/utils/errorHelper";
 export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }) {
     const [loading, setLoading] = useState(false);
     const [previewImage, setPreviewImage] = useState(null);
-
+    const [errors, setErrors] = useState({});
     const [form, setForm] = useState({
         hoTen: "",
         email: "",
         soDienThoai: "",
         diaChi: "",
         ngaySinh: "",
-        gioTinh:true,
+        gioiTinh: true,
         maVaiTro: 4,
         duongDanAnh: null
-    });
+    })
 
     useEffect(() => {
         if (isOpen && userData) {
-            console.log("Dữ liệu user nhận được:", userData);
+            setErrors({});
+
             setForm({
                 hoTen: userData.hoTen || "",
                 email: userData.email || "",
-                soDienThoai: userData.soDienThoai ||"",
+                soDienThoai: userData.soDienThoai || "",
                 maVaiTro: userData.maVaiTro || 4,
-                diaChi:userData.diaChi||"",
-                gioiTinh:userData.gioiTinh??true,
-                ngaySinh: userData.ngaySinh ? userData.ngaySinh.split('T')[0] : (userData.NgaySinh ? userData.NgaySinh.split('T')[0] : ""),
-                duongDanAnh: null 
+                diaChi: userData.diaChi || "",
+                gioiTinh: userData.gioiTinh ?? true,
+                ngaySinh: userData.ngaySinh
+                    ? userData.ngaySinh.split("T")[0]
+                    : "",
+                duongDanAnh: null
             });
-
-            if (userData.duongDanAnh) {
-                setPreviewImage(`https://localhost:7016${userData.duongDanAnh}`);
-            } else {
-                setPreviewImage(null);
-            }
         }
     }, [isOpen, userData]);
 
     if (!isOpen) return null;
 
     const handleChange = (field, value) => {
-        setForm(prev => ({ ...prev, [field]: value }));
+        setForm(prev => ({
+            ...prev,
+            [field]: value
+        }));
+
+        if (errors[field]) {
+            setErrors(prev => ({
+                ...prev,
+                [field]: ""
+            }));
+        }
     };
 
     const handleImageChange = (e) => {
@@ -63,19 +70,38 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
     };
 
     const validate = () => {
-        if (!form.hoTen.trim()) return "Vui lòng nhập họ tên";
-        if (!form.email.trim()) return "Vui lòng nhập email";
-        if (!form.soDienThoai.trim()) return "Vui lòng nhập số điện thoại";
-        return null;
-    };
+        const newErrors = {};
 
-    const handleSubmit = async () => {
-        const error = validate();
-        if (error) {
-            toastError(error);
-            return;
+        if (!form.hoTen.trim()) {
+            newErrors.hoTen = "Vui lòng nhập họ tên";
         }
 
+        if (!form.email.trim()) {
+            newErrors.email = "Vui lòng nhập email";
+        } else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (!emailRegex.test(form.email)) {
+                newErrors.email = "Email không hợp lệ";
+            }
+        }
+
+        if (!form.soDienThoai.trim()) {
+            newErrors.soDienThoai = "Vui lòng nhập số điện thoại";
+        } else {
+            const phoneRegex = /^0\d{9}$/;
+
+            if (!phoneRegex.test(form.soDienThoai)) {
+                newErrors.soDienThoai = "Số điện thoại không hợp lệ";
+            }
+        }
+
+        setErrors(newErrors);
+
+        return Object.keys(newErrors).length === 0;
+    };
+    const handleSubmit = async () => {
+        if (!validate()) return;
         try {
             setLoading(true);
             const formData = new FormData();
@@ -97,7 +123,7 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
             }
 
             const res = await updateUserApi(userData.maNguoiDung, formData);
-            
+
             toastSuccess(res.message || "Cập nhật thành công!");
             onSuccess?.();
             handleClose();
@@ -120,7 +146,7 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
     return (
         <div className="fixed inset-0 bg-black/50 z-[999] flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl w-full max-w-4xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-                
+
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold text-slate-800">Cập nhật tài khoản</h2>
                     <button onClick={handleClose} className="p-1 hover:bg-slate-100 rounded-full transition-colors">
@@ -134,9 +160,9 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
                         <label className="border-2 border-dashed border-sky-300 bg-sky-50 rounded-full aspect-square w-48 mx-auto flex flex-col items-center justify-center cursor-pointer overflow-hidden hover:bg-sky-100 transition-colors group">
                             {previewImage ? (
                                 <div className="relative w-full h-full">
-                                    <img 
-                                        src={previewImage} 
-                                        alt="Preview" 
+                                    <img
+                                        src={previewImage}
+                                        alt="Preview"
                                         className="w-full h-full object-cover"
                                         onError={(e) => { e.target.src = 'https://placehold.co/200x200?text=Lỗi+Ảnh' }}
                                     />
@@ -147,7 +173,7 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
                             ) : (
                                 <>
                                     <Upload size={28} className="text-sky-500 mb-2" />
-                                    <span className="text-xs text-sky-700 font-medium text-center px-2">Đổi ảnh mới<br/>(Max 10MB)</span>
+                                    <span className="text-xs text-sky-700 font-medium text-center px-2">Đổi ảnh mới<br />(Max 10MB)</span>
                                 </>
                             )}
                             <input hidden type="file" accept="image/png, image/jpeg, image/jpg, image/webp" onChange={handleImageChange} />
@@ -160,6 +186,7 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
                                 label="Họ và Tên *"
                                 value={form.hoTen}
                                 onChange={(e) => handleChange("hoTen", e.target.value)}
+                                error={errors.hoTen}
                             />
                         </div>
 
@@ -168,24 +195,25 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
                             type="email"
                             value={form.email}
                             onChange={(e) => handleChange("email", e.target.value)}
+                            error={errors.email}
                         />
-
                         <InputField
                             label="Số điện thoại *"
                             value={form.soDienThoai}
                             onChange={(e) => handleChange("soDienThoai", e.target.value)}
+                            error={errors.soDienThoai}
                         />
                         <Dropdown
                             label="Giới tính"
                             placeholder="Chọn giới tính"
                             value={form.gioiTinh}
-                            onChange={(value) => handleChange("gioiTinh", value)} 
+                            onChange={(value) => handleChange("gioiTinh", value)}
                             options={[
                                 { value: true, label: "Nam" },
                                 { value: false, label: "Nữ" }
                             ]}
                         />
-                         <InputField
+                        <InputField
                             label="Địa chỉ"
                             value={form.diaChi}
                             onChange={(e) => handleChange("diaChi", e.target.value)}

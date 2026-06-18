@@ -81,20 +81,14 @@ export const deleteStaffApi = async (
 };
 
 
-export const updateStaffStatusApi = async (
-    id,
-    trangThai
-) => {
+export const updateStaffStatusApi = async (id, trangThai) => {
     const response = await axiosClient.patch(
         `/admin/staff/${id}/status`,
-        trangThai,
+        null,              
         {
-            headers: {
-                "Content-Type": "application/json"
-            }
+            params: { trangthai: trangThai }  
         }
     );
-
     return response.data;
 };
 export const resetStaffPasswordApi = async (

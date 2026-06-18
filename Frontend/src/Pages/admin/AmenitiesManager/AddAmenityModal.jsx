@@ -9,14 +9,15 @@ import { getErrorMessage } from '~/utils/errorHelper';
 export default function AddAmenityModal({ isOpen, onClose, onSuccess }) {
     const [tenTienNghi, setTenTienNghi] = useState('');
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
         if (!tenTienNghi.trim()) {
-            toastError("Vui lòng nhập tên tiện nghi");
+            setError('Vui lòng nhập tên loại địa điểm.');
             return;
         }
-
         setLoading(true);
         try {
             await createAmenityApi({ tenTienNghi: tenTienNghi.trim() });
@@ -36,15 +37,14 @@ export default function AddAmenityModal({ isOpen, onClose, onSuccess }) {
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
             <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b">
+                <div className="flex items-center justify-between m-4 ">
                     <h3 className="text-xl font-semibold text-slate-800">Thêm Tiện Nghi Mới</h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
                         <X size={24} />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <form onSubmit={handleSubmit} className="p-4 pt-0">
                     <InputField
                         label="Tên tiện nghi"
                         placeholder="Ví dụ: Bể bơi vô cực, Wifi miễn phí..."
@@ -52,6 +52,7 @@ export default function AddAmenityModal({ isOpen, onClose, onSuccess }) {
                         onChange={(e) => setTenTienNghi(e.target.value)}
                         required
                         disabled={loading}
+                        error={error}
                     />
 
                     <div className="flex gap-3 pt-4">
@@ -65,7 +66,7 @@ export default function AddAmenityModal({ isOpen, onClose, onSuccess }) {
                         </button>
                         <button
                             type="submit"
-                            disabled={loading || !tenTienNghi.trim()}
+                            disabled={loading}
                             className="flex-1 py-3 px-6 rounded-xl bg-[#0EA5E5] hover:bg-[#0284c7] text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}

@@ -242,6 +242,7 @@ export default function UserManager() {
                     setSearchTerm(value);
                     setCurrentPage(1);
                 }}
+                showExcel ={false}
                 addButtonText="Thêm người dùng"
                 showCategoryFilter={false}
                 filters={[

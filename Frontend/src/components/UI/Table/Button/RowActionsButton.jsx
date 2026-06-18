@@ -74,7 +74,7 @@ export default function RowActionsButton({
             {showView && onView && (
                 <button
                     onClick={() => handleAction(onView)}
-                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-slate-50 text-left text-xs font-medium"
+                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-slate-50 text-left text-xs font-medium cursor-pointer"
                 >
                     <Eye size={12} className="text-blue-600" />
                     xem
@@ -83,7 +83,7 @@ export default function RowActionsButton({
             {showResetPass && onResetPass && (
                 <button
                     onClick={() => handleAction(onResetPass)}
-                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-slate-50 text-left text-xs font-medium"
+                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-slate-50 text-left text-xs font-medium cursor-pointer"
                 >
                     <KeyRound size={12} className="text-amber-600" />
                     Cấp lại mật khẩu
@@ -94,7 +94,7 @@ export default function RowActionsButton({
             {showEdit && onEdit && (
                 <button
                     onClick={() => handleAction(onEdit)}
-                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-slate-50 text-left text-xs font-medium"
+                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-slate-50 text-left text-xs font-medium cursor-pointer"
                 >
                     <span className="material-symbols-outlined text-amber-600" style={{ fontSize: '12px' }}>
                         {row?.isLocked ? 'restore' : 'edit_square'}
@@ -108,7 +108,7 @@ export default function RowActionsButton({
             {showLock && onLock && (
                 <button
                     onClick={() => handleAction(onLock)}
-                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-orange-50 text-left text-xs font-medium text-orange-600"
+                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-orange-50 text-left text-xs font-medium text-orange-600 cursor-pointer"
                 >
                     <Lock size={12} />
                     <span>Khóa tài khoản</span>
@@ -118,23 +118,20 @@ export default function RowActionsButton({
             {showUnlock && onUnlock && (
                 <button
                     onClick={() => handleAction(onUnlock)}
-                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-emerald-50 text-left text-xs font-medium text-emerald-600"
+                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-emerald-50 text-left text-xs font-medium text-emerald-600 cursor-pointer"
                 >
                     <Unlock size={12} />
                     <span>Mở khóa</span>
                 </button>
             )}
 
-            {/* {actionCount > 1 && (
-                <div className="h-px bg-gray-100 mx-4 my-1" />
-            )} */}
 
             {showDelete && onDelete && (
                 <div>
                     <div className="h-px bg-gray-100 mx-4 my-1" />
                     <button
                         onClick={() => handleAction(onDelete)}
-                        className="w-full px-3 py-2 flex items-center gap-2 hover:bg-red-50 text-left text-xs font-medium text-red-600"
+                        className="w-full px-3 py-2 flex items-center gap-2 hover:bg-red-50 text-left text-xs font-medium text-red-600 cursor-pointer"
                     >
                         <Trash size={12} />
                         Xóa

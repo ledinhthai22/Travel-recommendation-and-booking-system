@@ -37,6 +37,8 @@ import {
     HotelCreatePage,
     HotelEditPage,
     HotelDetailPage,
+    TypeLocationManager,
+    AmenitiesManager,
 } from './Pages/admin';
 
 function App() {
@@ -75,13 +77,15 @@ function App() {
                             <Route index element={<DashBoard />} />
                             <Route path="Tai-khoan" element={<UserManager />} />
                             <Route path="Cac-chuyen-di" element={<TourManager />} />
-                            
+                            <Route path="Dia-diem" element={<LocationManager />} />
+                            <Route path="Loai-Dia-Diem" element={<TypeLocationManager />} />
                             <Route path="Khach-san">
                                 <Route index element={<HotelManager />} />
                                 <Route path="Them-Khach-San" element={<HotelCreatePage />} />
                                 <Route path="Xem-chi-tiet/:id" element={<HotelDetailPage />} />
                                 <Route path="Cap-nhat/:id" element={<HotelEditPage />} />
                             </Route>
+                            <Route path="Tien-ich" element={<AmenitiesManager />} />
 
                             <Route path="Nhan-vien" element={<StaffManager />} />
                             <Route path="Khach-du-lich" element={<TouristManager />} />
