@@ -24,7 +24,6 @@ import {
     UserManager,
     TourManager,
     TouristManager,
-    LocationManager,
     HotelManager,
     BookingManager,
     Webinfo,
@@ -76,7 +75,6 @@ function App() {
                             <Route index element={<DashBoard />} />
                             <Route path="Tai-khoan" element={<UserManager />} />
                             <Route path="Cac-chuyen-di" element={<TourManager />} />
-                            <Route path="Dia-diem" element={<LocationManager />} />
                             
                             <Route path="Khach-san">
                                 <Route index element={<HotelManager />} />

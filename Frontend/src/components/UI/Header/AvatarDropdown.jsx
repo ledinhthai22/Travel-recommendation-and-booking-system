@@ -3,12 +3,11 @@ import { Link } from "react-router-dom";
 import { Heart, User, LogOut } from "lucide-react";
 export default function AvatarDropdown({ user, onLogout }) {
     const [open, setOpen] = useState(false);
-    const avatarUrl =
-        user?.avatar ||
-        `https://ui-avatars.com/api/?name=${encodeURIComponent(
-            user?.hoTen || "User"
-        )}&background=0EA5E5&color=fff`;
-
+    const avatarUrl = user?.duongDanAnh
+    ? `https://localhost:7016${user.duongDanAnh}`
+    : user?.avatar 
+        ? `https://localhost:7016${user.avatar}` 
+        : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.hoTen || "User")}&background=0EA5E5&color=fff`;
     return (
         <div className="relative">
             {/* Trigger */}

@@ -10,7 +10,7 @@ using travelrecommendationandbookingsystem.Migrations;
 
 namespace Services
 {
-    public class TypeTourService:ITypeTour
+    public class TypeTourService:ITypeTourService
     {
         private readonly AppDbContext _context;
         public TypeTourService(AppDbContext context)

@@ -69,10 +69,11 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<INewsletterService, NewsletterService>();
             builder.Services.AddScoped<IWebInfoService, WebInfoService>();
             builder.Services.AddScoped<IBannerService, BannerService>();
-            builder.Services.AddScoped<ITypeLocation, TypeLocationService>();
-            builder.Services.AddScoped<ILocation, LocationService>();
-            builder.Services.AddScoped<ITypeTour, TypeTourService>();
-            builder.Services.AddScoped<ITour, TourService>();
+            builder.Services.AddScoped<ITypeLocationService, TypeLocationService>();
+            builder.Services.AddScoped<ILocationService, LocationService>();
+            builder.Services.AddScoped<ITypeTourService, TypeTourService>();
+            builder.Services.AddScoped<ITourService, TourService>();
+            builder.Services.AddScoped<IUserProfileService, UserProfileService>();
             builder.Services.AddScoped<IStaffService, StaffService>();
             builder.Services.AddScoped<IPromotionService, PromotionService>();
             builder.Services.AddScoped<IHotelService, HotelService>();

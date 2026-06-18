@@ -4,7 +4,7 @@ using travel_recommendation_and_booking_system.DTOs.Tour;
 
 namespace travel_recommendation_and_booking_system.Interfaces
 {
-    public interface ITour
+    public interface ITourService
     {
         Task<PageDTO<TourReponseDTO>> GetPagedTourAsync( int pageNumber,int pageSize, string key, bool? status);
         Task<TourReponseDTO?> GetTourByIdAsync(int id);

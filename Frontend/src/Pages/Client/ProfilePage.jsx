@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     BookOpen,
     User,
@@ -8,12 +8,30 @@ import {
     Camera
 } from "lucide-react";
 
+import { getUserProfileApi,updateUserProfileApi } from "~/Services/UserProfile";
+import { toastSuccess, toastError } from "~/utils/Toast";
+import UpdateUserProfileModal from "../admin/UserProfileManager/UpdateUserProfileModal";
 export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState("overview");
+    const [proFileData,setProFileData] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const fetchProfile = async () => {
+        try {
+            const data = await getUserProfileApi();
+            setProFileData(data);
+        } catch (error) {
+            console.error("lỗi lấy dữ liệu người dùng", error);
+        }
+    };
+
+    useEffect(() =>{
+        fetchProfile();
+    },[]);
 
     const user = {
-        name: "User demo",
-        avatar: "https://i.pravatar.cc/200?img=32",
+        name: proFileData?.hoTen || "Người dùng",
+        avatar: proFileData?.duongDanAnh ? `https://localhost:7016${proFileData.duongDanAnh}` : "https://i.pravatar.cc/200?img=32",
         totalTours: 8,
         totalReviews: 8,
         totalSpent: 8,
@@ -85,6 +103,14 @@ export default function ProfilePage() {
         },
     ];
 
+    if (!proFileData) {
+        return (
+            <div className="flex h-[70vh] items-center justify-center">
+                <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-[70vh] mt-30">
             <div className="mx-auto max-w-[1400px] bg-white">
@@ -99,18 +125,11 @@ export default function ProfilePage() {
                             <div className="relative">
                                 <img
                                     src={user.avatar}
-                                    alt=""
-                                    className="h-14 w-14 rounded-full object-cover"
+                                    alt="Avatar"
+                                    className="h-14 w-14 rounded-full object-cover border border-slate-200"
                                 />
-
-                                <button className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow">
-                                    <Camera size={10} />
-                                </button>
                             </div>
-
-                            <h2 className="font-semibold">
-                                {user.name}
-                            </h2>
+                            <h2 className="font-semibold">{user.name}</h2>
                         </div>
 
                         <div className="space-y-2">
@@ -245,50 +264,49 @@ export default function ProfilePage() {
                                 </h2>
 
                                 <div className="rounded-xl border border-slate-200">
-                                    <div className="grid md:grid-cols-2">
-                                        <div className="border-b border-r border-slate-200 p-4">
-                                            <p className="text-sm text-slate-500">
-                                                Họ và tên
-                                            </p>
-
-                                            <p className="mt-1 font-medium">
-                                                Nguyễn Văn A
-                                            </p>
+                                    <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200 border-b border-slate-200">
+                                        <div className="divide-y divide-slate-200">
+                                            <div className="p-4">
+                                                <p className="text-sm text-slate-500">Họ và tên</p>
+                                                <p className="mt-1 font-medium">{proFileData?.hoTen || "Chưa cập nhật"}</p>
+                                            </div>
+                                            <div className="p-4">
+                                                <p className="text-sm text-slate-500">Số điện thoại</p>
+                                                <p className="mt-1 font-medium">{proFileData?.soDienThoai || "Chưa cập nhật"}</p>
+                                            </div>
+                                            <div className="p-4">
+                                                <p className="text-sm text-slate-500">Giới tính</p>
+                                                <p className="mt-1 font-medium">
+                                                    {proFileData ? (proFileData.gioiTinh ? "Nam" : "Nữ") : "Chưa cập nhật"}
+                                                </p>
+                                            </div>
                                         </div>
 
-                                        <div className="border-b border-slate-200 p-4">
-                                            <p className="text-sm text-slate-500">
-                                                Email
-                                            </p>
-
-                                            <p className="mt-1 font-medium">
-                                                nguyenvana@gmail.com
-                                            </p>
-                                        </div>
-
-                                        <div className="border-r border-slate-200 p-4">
-                                            <p className="text-sm text-slate-500">
-                                                Số điện thoại
-                                            </p>
-
-                                            <p className="mt-1 font-medium">
-                                                0901234567
-                                            </p>
-                                        </div>
-
-                                        <div className="p-4">
-                                            <p className="text-sm text-slate-500">
-                                                Địa chỉ
-                                            </p>
-
-                                            <p className="mt-1 font-medium">
-                                                TP.HCM
-                                            </p>
+                                        <div className="divide-y divide-slate-200">
+                                            <div className="p-4">
+                                                <p className="text-sm text-slate-500">Email</p>
+                                                <p className="mt-1 font-medium">{proFileData?.email || "Chưa cập nhật"}</p>
+                                            </div>
+                                            <div className="p-4">
+                                                <p className="text-sm text-slate-500">Ngày Sinh</p>
+                                                <p className="mt-1 font-medium">
+                                                    {proFileData?.ngaySinh 
+                                                        ? new Date(proFileData.ngaySinh).toLocaleDateString("vi-VN") 
+                                                        : "Chưa cập nhật"}
+                                                </p>
+                                            </div>
+                                            <div className="p-4">
+                                                <p className="text-sm text-slate-500">Địa chỉ</p>
+                                                <p className="mt-1 font-medium">{proFileData?.diaChi || "Chưa cập nhật"}</p>
+                                            </div>
                                         </div>
                                     </div>
 
                                     <div className="border-t border-slate-200 p-4 text-right">
-                                        <button className="rounded-lg bg-sky-500 px-4 py-2 text-white">
+                                        <button 
+                                            onClick={() => setIsModalOpen(true)}
+                                            className="rounded-lg bg-sky-500 px-4 py-2 text-white hover:bg-sky-600 transition"
+                                        >
                                             Cập nhật
                                         </button>
                                     </div>
@@ -392,6 +410,12 @@ export default function ProfilePage() {
                     </main>
                 </div>
             </div>
+            <UpdateUserProfileModal 
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                profileData={proFileData}
+                onUpdateSuccess={fetchProfile}
+            /> 
         </div>
     );
 }

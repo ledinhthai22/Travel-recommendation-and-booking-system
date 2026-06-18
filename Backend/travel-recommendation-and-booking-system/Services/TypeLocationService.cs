@@ -8,7 +8,7 @@ using travel_recommendation_and_booking_system.Interfaces;
 
 namespace travel_recommendation_and_booking_system.Services
 {
-    public class TypeLocationService: ITypeLocation
+    public class TypeLocationService: ITypeLocationService
     {
         private readonly AppDbContext _context;
 

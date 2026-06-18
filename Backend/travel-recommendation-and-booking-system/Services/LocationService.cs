@@ -10,7 +10,7 @@ using travel_recommendation_and_booking_system.Models;
 
 namespace travel_recommendation_and_booking_system.Services
 {
-    public class LocationService:ILocation
+    public class LocationService:ILocationService
     {
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment;

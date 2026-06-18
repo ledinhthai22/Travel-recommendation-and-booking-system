@@ -8,7 +8,7 @@ using travel_recommendation_and_booking_system.Models;
 
 namespace travel_recommendation_and_booking_system.Services
 {
-    public class TourService:ITour
+    public class TourService:ITourService
     {
         private readonly AppDbContext _context;
         public TourService(AppDbContext context)
