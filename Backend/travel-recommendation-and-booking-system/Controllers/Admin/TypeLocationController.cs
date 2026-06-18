@@ -12,8 +12,8 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
     [Authorize]
     public class TypeLocationController : ControllerBase
     {
-        private readonly ITypeLocation _type;
-        public TypeLocationController(ITypeLocation type) { 
+        private readonly ITypeLocationService _type;
+        public TypeLocationController(ITypeLocationService type) { 
             _type = type;
         }
         [HttpGet("get-all")]

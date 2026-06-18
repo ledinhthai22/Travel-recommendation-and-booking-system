@@ -3,7 +3,7 @@ using travel_recommendation_and_booking_system.DTOs.TypeLocation;
 
 namespace travel_recommendation_and_booking_system.Interfaces
 {
-    public interface ITypeLocation
+    public interface ITypeLocationService
     {
         Task<List<TypeLocationReponseDTO>> GetAllAsync();
         Task<PageDTO<TypeLocationReponseDTO>> getTypeLocationAsync(int pageNumber, int pageSize, string? key); 

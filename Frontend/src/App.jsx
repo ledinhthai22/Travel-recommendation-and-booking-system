@@ -24,7 +24,6 @@ import {
     UserManager,
     TourManager,
     TouristManager,
-    LocationManager,
     HotelManager,
     BookingManager,
     Webinfo,

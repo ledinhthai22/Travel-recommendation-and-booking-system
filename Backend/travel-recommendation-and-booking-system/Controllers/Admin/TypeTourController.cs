@@ -10,8 +10,8 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
     [Authorize]
     public class TypeTourController : ControllerBase
     {
-        private readonly ITypeTour _tour;
-        public TypeTourController(ITypeTour tour)
+        private readonly ITypeTourService _tour;
+        public TypeTourController(ITypeTourService tour)
         {
             _tour = tour;
         }

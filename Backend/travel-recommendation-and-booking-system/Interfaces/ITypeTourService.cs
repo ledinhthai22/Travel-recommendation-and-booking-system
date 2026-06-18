@@ -4,7 +4,7 @@ using travel_recommendation_and_booking_system.DTOs.TypeTour;
 
 namespace travel_recommendation_and_booking_system.Interfaces
 {
-    public interface ITypeTour {
+    public interface ITypeTourService {
         Task<List<TypeTourReponseDTO>> GetAllAsync();
         Task<PageDTO<TypeTourReponseDTO>> GetTypeTourAsync(int pageNumber, int pageSize, string? key, bool? status);
         Task<bool> CreateTypeTourAsync(TypeTourDTO typetour);

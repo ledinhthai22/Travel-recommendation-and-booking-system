@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { Bell } from "lucide-react";
 import AvatarDropdown from "./AvatarDropdown";
-
+import useAuth from "~/Hooks/useAuth";
 export default function UserActions({
-  user,
+  // user,
   onLoginClick,
   onLogout,
 }) {
   const [isNotifyOpen, setIsNotifyOpen] = useState(false);
 
+  const { user } = useAuth();
   if (!user) {
     return (
       <button

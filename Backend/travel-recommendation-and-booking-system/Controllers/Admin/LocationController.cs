@@ -13,8 +13,8 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
     [Authorize]
     public class LocationController : ControllerBase
     {
-        private readonly ILocation _location;
-        public LocationController(ILocation location) {
+        private readonly ILocationService _location;
+        public LocationController(ILocationService location) {
             _location = location;
         }
         [HttpGet("get-location")]
