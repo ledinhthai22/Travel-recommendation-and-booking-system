@@ -135,7 +135,7 @@ export default function LocationManager() {
               type="location"
               onView={() => handleOpenForm('view', item)}
               onEdit={() => handleOpenForm('edit', item)}
-              onDelete={location.trangThai === false
+              onDelete={item.trangThai === false
                 ? () => handleDelete(hotel)
                 : null}
             />
