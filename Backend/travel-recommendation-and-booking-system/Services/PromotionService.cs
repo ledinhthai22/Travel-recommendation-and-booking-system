@@ -100,7 +100,7 @@ namespace travel_recommendation_and_booking_system.Services
         }
         public async Task<PromotionResponseDTO> CreateAsync(PromotionDTO promotion)
         {
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
 
             if (promotion.NgayBatDau >= promotion.NgayHetHan)
             {
@@ -195,7 +195,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 throw new Exception("Không thể cập nhật ưu đãi đã hết hạn.");
             }
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
 
             if (promotion.NgayBatDau >= promotion.NgayHetHan)
             {
@@ -309,7 +309,7 @@ namespace travel_recommendation_and_booking_system.Services
                 promotion.TrangThai = 2;
             }
 
-            promotion.NgayCapNhat = DateTime.UtcNow;
+            promotion.NgayCapNhat = DateTime.Now;
 
             await _context.SaveChangesAsync();
 

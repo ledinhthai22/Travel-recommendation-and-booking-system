@@ -2,7 +2,6 @@
 using DTOs.Staff;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
-using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.DTOs.Staff;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
@@ -18,61 +17,58 @@ namespace travel_recommendation_and_booking_system.Services
             _context = context;
             _environment = environment;
         }
-        public async Task<PageDTO<StaffResponseDTO>> GetPagedStaffsAsync(int pageNumber, int pageSize, StaffDTO staff)
+        public async Task<PageDTO<StaffResponseDTO>> GetPagedStaffsAsync(int pageNumber, int pageSize, StaffFilterDTO filter)
         {
-            if (pageNumber < 1)
-                pageNumber = 1;
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 10;
 
-            if (pageSize < 1)
-                pageSize = 10;
-
-            var query = _context.NguoiDungs
-            .Include(x => x.VaiTro)
-            .Where(n => n.NgayXoa == null && n.MaVaiTro >= 2 && n.MaVaiTro != 4)
-            .OrderBy(x => x.NgayTao)
-            .ThenByDescending(x => x.TrangThai)
-            .AsNoTracking();
+            var query = _context.NhanViens
+                .Include(x => x.VaiTro)
+                .Where(n => n.NgayXoa == null && n.MaVaiTro >= 2 && n.MaVaiTro != 4)
+                .AsNoTracking();
 
 
-            if (!string.IsNullOrWhiteSpace(staff?.HoTen))
+            if (!string.IsNullOrWhiteSpace(filter?.HoTen))
             {
-                var keyword = staff.HoTen.Trim().ToLower();
+                var keyword = filter.HoTen.Trim().ToLower();
 
                 query = query.Where(x =>
                     (x.HoTen ?? "").ToLower().Contains(keyword) ||
                     (x.Email ?? "").ToLower().Contains(keyword) ||
-                    (x.SoDienThoai ?? "").ToLower().Contains(keyword)
+                    (x.SoDienThoai ?? "").ToLower().Contains(keyword) ||
+                    (x.Cccd ?? "").ToLower().Contains(keyword)
                 );
             }
 
-
-            if (staff != null && staff.TrangThai > 0)
+            if (filter != null && filter.TrangThai > 0)
             {
-                query = query.Where(x => x.TrangThai == staff.TrangThai);
+                query = query.Where(x => x.TrangThai == filter.TrangThai);
             }
+
 
             int totalItems = await query.CountAsync();
 
-            var items = await query.Where(x => x.NgayXoa == null)
+            var items = await query
+                .OrderByDescending(x => x.TrangThai)
+                .ThenBy(x => x.NgayTao)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Select(x => new StaffResponseDTO
                 {
-                    MaNguoiDung = x.MaNguoiDung,
+                    MaNhanVien = x.MaNhanVien,
                     HoTen = x.HoTen,
                     GioiTinh = x.GioiTinh,
                     Email = x.Email,
                     SoDienThoai = x.SoDienThoai,
                     DuongDanAnh = x.DuongDanAnh,
                     DiaChi = x.DiaChi,
+                    Cccd = x.Cccd,
                     NgaySinh = x.NgaySinh!.Value,
                     TrangThai = x.TrangThai,
                     MaVaiTro = x.MaVaiTro,
                     TenVaiTro = x.VaiTro.TenVaiTro,
                     NgayTao = x.NgayTao
                 })
-                .OrderBy(x => x.TrangThai)
-                .ThenByDescending(x => x.NgayTao)
                 .ToListAsync();
 
             return new PageDTO<StaffResponseDTO>
@@ -88,31 +84,34 @@ namespace travel_recommendation_and_booking_system.Services
             if (id <= 0)
                 return null;
 
-            var staff = await _context.NguoiDungs.AsNoTracking()
-                .Where(n => n.MaNguoiDung == id && n.NgayXoa == null)
-                .Select(x => new StaffResponseDTO
-                {
-                    MaNguoiDung = x.MaNguoiDung,
-                    HoTen = x.HoTen,
-                    GioiTinh = x.GioiTinh,
-                    Email = x.Email,
-                    SoDienThoai = x.SoDienThoai,
-                    DuongDanAnh = x.DuongDanAnh,
-                    DiaChi = x.DiaChi,
-                    NgaySinh = x.NgaySinh!.Value,
-                    TrangThai = x.TrangThai,
-                    MaVaiTro = x.MaVaiTro,
-                    TenVaiTro = x.VaiTro.TenVaiTro,
-                    NgayTao = x.NgayTao
-                })
-                .FirstOrDefaultAsync();
+            var staff = await _context.NhanViens
+              .Include(x => x.VaiTro)
+              .AsNoTracking()
+              .Where(n => n.MaNhanVien == id && n.NgayXoa == null)
+              .Select(x => new StaffResponseDTO
+              {
+                  MaNhanVien = x.MaNhanVien,
+                  HoTen = x.HoTen,
+                  GioiTinh = x.GioiTinh,
+                  Email = x.Email,
+                  SoDienThoai = x.SoDienThoai,
+                  DuongDanAnh = x.DuongDanAnh,
+                  DiaChi = x.DiaChi,
+                  Cccd = x.Cccd,
+                  NgaySinh = x.NgaySinh!.Value,
+                  TrangThai = x.TrangThai,
+                  MaVaiTro = x.MaVaiTro,
+                  TenVaiTro = x.VaiTro.TenVaiTro,
+                  NgayTao = x.NgayTao
+              })
+              .FirstOrDefaultAsync();
             return staff;
 
         }
         public async Task<StaffResponseDTO> CreateAsync(StaffDTO staff)
         {
 
-            var entity = new NguoiDung
+            var entity = new NhanVien
             {
                 HoTen = staff.HoTen ?? "",
                 GioiTinh = staff.GioiTinh,
@@ -121,12 +120,13 @@ namespace travel_recommendation_and_booking_system.Services
                 SoDienThoai = staff.SoDienThoai ?? "",
                 DiaChi = staff.DiaChi,
                 NgaySinh = staff.NgaySinh,
+                Cccd = staff.Cccd,
                 TrangThai = staff.TrangThai ?? 1,
                 MaVaiTro = staff.MaVaiTro,
                 NgayTao = DateTime.UtcNow
             };
 
-            _context.NguoiDungs.Add(entity);
+            _context.NhanViens.Add(entity);
             await _context.SaveChangesAsync();
 
             if (staff.DuongDanAnh != null)
@@ -158,7 +158,7 @@ namespace travel_recommendation_and_booking_system.Services
                     Path.GetExtension(staff.DuongDanAnh.FileName);
 
                 string fileName =
-                    $"{DateTime.Now:yyyyMMddHHmmss}_{entity.MaNguoiDung}_{entity.HoTen.Replace(" ", "")}{extension}";
+                    $"{DateTime.Now:yyyyMMddHHmmss}_{entity.MaNhanVien}_{entity.HoTen.Replace(" ", "")}{extension}";
 
                 string filePath =
                     Path.Combine(folderPath, fileName);
@@ -177,13 +177,14 @@ namespace travel_recommendation_and_booking_system.Services
             }
             return new StaffResponseDTO
             {
-                MaNguoiDung = entity.MaNguoiDung,
+                MaNhanVien = entity.MaNhanVien,
                 HoTen = entity.HoTen,
                 Email = entity.Email,
                 GioiTinh = entity.GioiTinh,
                 SoDienThoai = entity.SoDienThoai,
                 DuongDanAnh = entity.DuongDanAnh,
                 DiaChi = entity.DiaChi,
+                Cccd = entity.Cccd,
                 NgaySinh = entity.NgaySinh ?? DateTime.MinValue,
                 TrangThai = entity.TrangThai,
                 MaVaiTro = entity.MaVaiTro,
@@ -195,7 +196,7 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<StaffResponseDTO?> UpdateAsync(int id, StaffDTO staff)
         {
-            var entity = await _context.NguoiDungs.FindAsync(id);
+            var entity = await _context.NhanViens.FindAsync(id);
 
             if (entity == null)
                 throw new Exception("Không tìm thấy nhân viên");
@@ -205,6 +206,7 @@ namespace travel_recommendation_and_booking_system.Services
             entity.GioiTinh = staff.GioiTinh;
             entity.SoDienThoai = staff.SoDienThoai ?? entity.SoDienThoai;
             entity.DiaChi = staff.DiaChi ?? entity.DiaChi;
+            entity.Cccd = staff.Cccd ?? entity.Cccd;
             entity.NgaySinh = staff.NgaySinh;
             entity.TrangThai = staff.TrangThai ?? entity.TrangThai;
             entity.MaVaiTro = staff.MaVaiTro;
@@ -261,7 +263,7 @@ namespace travel_recommendation_and_booking_system.Services
                     Path.GetExtension(staff.DuongDanAnh.FileName);
 
                 string fileName =
-                    $"{DateTime.Now:yyyyMMddHHmmss}_{entity.MaNguoiDung}_{entity.HoTen.Replace(" ", "")}{extension}";
+                    $"{DateTime.Now:yyyyMMddHHmmss}_{entity.MaNhanVien}_{entity.HoTen.Replace(" ", "")}{extension}";
 
                 string filePath =
                     Path.Combine(folderPath, fileName);
@@ -281,13 +283,14 @@ namespace travel_recommendation_and_booking_system.Services
 
             return new StaffResponseDTO
             {
-                MaNguoiDung = entity.MaNguoiDung,
+                MaNhanVien = entity.MaNhanVien,
                 HoTen = entity.HoTen,
                 Email = entity.Email,
                 GioiTinh = entity.GioiTinh,
                 SoDienThoai = entity.SoDienThoai,
                 DuongDanAnh = entity.DuongDanAnh,
                 DiaChi = entity.DiaChi,
+                Cccd = entity.Cccd,
                 NgaySinh = entity.NgaySinh ?? DateTime.MinValue,
                 TrangThai = entity.TrangThai,
                 MaVaiTro = entity.MaVaiTro,
@@ -299,7 +302,7 @@ namespace travel_recommendation_and_booking_system.Services
         }
         public async Task<bool> DeleteAsync(int id)
         {
-            var query = await _context.NguoiDungs.FindAsync(id);
+            var query = await _context.NhanViens.FindAsync(id);
             if (query == null)
                 return false;
             if (query.TrangThai == 2 || query.TrangThai == 3)
@@ -313,9 +316,9 @@ namespace travel_recommendation_and_booking_system.Services
             }
             return true;
         }
-        public async Task<bool> UpdateStatusAsync(int maNguoiDung, int trangthai)
+        public async Task<bool> UpdateStatusAsync(int maNhanVien, int trangthai)
         {
-            var staff = await _context.NguoiDungs.FindAsync(maNguoiDung);
+            var staff = await _context.NhanViens.FindAsync(maNhanVien);
             if (staff == null)
                 return false;
             staff.TrangThai = trangthai;
@@ -323,11 +326,11 @@ namespace travel_recommendation_and_booking_system.Services
             await _context.SaveChangesAsync();
             return true;
         }
-        public async Task<bool> ResetPasswordAsync(int maNguoiDung, string newPassword)
+        public async Task<bool> ResetPasswordAsync(int maNhanVien, string newPassword)
         {
-            var staff = await _context.NguoiDungs
+            var staff = await _context.NhanViens
                 .FirstOrDefaultAsync(x =>
-                    x.MaNguoiDung == maNguoiDung &&
+                    x.MaNhanVien == maNhanVien &&
                     x.NgayXoa == null);
 
             if (staff == null)

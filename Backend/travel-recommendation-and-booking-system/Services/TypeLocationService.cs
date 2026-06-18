@@ -1,6 +1,4 @@
-﻿using Azure;
-using DTOs.Contact;
-using DTOs.Page;
+﻿using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.TypeLocation;
@@ -8,7 +6,7 @@ using travel_recommendation_and_booking_system.Interfaces;
 
 namespace travel_recommendation_and_booking_system.Services
 {
-    public class TypeLocationService: ITypeLocation
+    public class TypeLocationService : ITypeLocation
     {
         private readonly AppDbContext _context;
 
@@ -18,7 +16,7 @@ namespace travel_recommendation_and_booking_system.Services
         }
         public async Task<List<TypeLocationReponseDTO>> GetAllAsync()
         {
-            return await _context.LoaiDiaDiem.Where(l=>l.Ngayxoa==null)
+            return await _context.LoaiDiaDiem.Where(l => l.Ngayxoa == null)
                 .Select(l => new TypeLocationReponseDTO
                 {
                     MaLoaiDD = l.MaLoaiDiaDiem,
@@ -52,9 +50,9 @@ namespace travel_recommendation_and_booking_system.Services
                 .Take(pageSize)
                 .Select(l => new TypeLocationReponseDTO
                 {
-                    MaLoaiDD=l.MaLoaiDiaDiem,
-                    TenLoaiDD=l.TenLoaiDiaDiem,
-                    NgayTao=l.NgayTao
+                    MaLoaiDD = l.MaLoaiDiaDiem,
+                    TenLoaiDD = l.TenLoaiDiaDiem,
+                    NgayTao = l.NgayTao
                 }
                 ).ToListAsync();
 
@@ -119,6 +117,15 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 return false;
             }
+            bool isUsed = await _context.DiaDiems
+               .AnyAsync(x =>
+                   x.LoaiDiaDiem == id &&
+                   x.NgayXoa == null);
+
+            if (isUsed)
+                throw new Exception(
+                    "Loại địa điểm đang được sử dụng, không thể xóa."
+                );
             typeLDD.Ngayxoa = DateTime.Now;
             _context.LoaiDiaDiem.Update(typeLDD);
             await _context.SaveChangesAsync();

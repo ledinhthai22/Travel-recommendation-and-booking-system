@@ -4,7 +4,7 @@ namespace DTOs.Staff
 {
     public class StaffDTO
     {
-        //public int MaNguoiDung { get; set; }
+        public int MaNhanVien { get; set; }
 
         [StringLength(100, ErrorMessage = "Họ tên tối đa 100 ký tự")]
         public string? HoTen { get; set; }
@@ -27,7 +27,7 @@ namespace DTOs.Staff
         public string? DiaChi { get; set; }
 
         public DateTime? NgaySinh { get; set; }
-
+        public string? Cccd { get; set; }
 
         public int? TrangThai { get; set; }
 

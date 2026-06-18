@@ -8,6 +8,7 @@ namespace travel_recommendation_and_booking_system.Data
 
         public DbSet<VaiTro> VaiTros { get; set; }
         public DbSet<NguoiDung> NguoiDungs { get; set; }
+        public DbSet<NhanVien> NhanViens { get; set; }
         public DbSet<DiaDiem> DiaDiems { get; set; }
         public DbSet<KhachSan> KhachSans { get; set; }
         public DbSet<HinhAnhSK> HinhAnhSKs { get; set; }
@@ -40,16 +41,24 @@ namespace travel_recommendation_and_booking_system.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<KS_TN>().HasKey(kt => new { kt.MaKhachSan, kt.MaTienNghi });
-            modelBuilder.Entity<KS_TN>()
-                .HasOne(x => x.KhachSan)
-                .WithMany(x => x.KS_TNs)
-                .HasForeignKey(x => x.MaKhachSan);
+            modelBuilder.Entity<KS_TN>(entity =>
+            {
 
-            modelBuilder.Entity<KS_TN>()
-                .HasOne(x => x.TienNghi)
-                .WithMany(x => x.KS_TNs)
-                .HasForeignKey(x => x.MaTienNghi);
+                entity.HasKey(kt => new { kt.MaKhachSan, kt.MaTienNghi });
+
+
+                entity.HasOne(x => x.KhachSan)
+                      .WithMany(x => x.KS_TNs)
+                      .HasForeignKey(x => x.MaKhachSan);
+
+                entity.HasOne(x => x.TienNghi)
+                      .WithMany(x => x.KS_TNs)
+                      .HasForeignKey(x => x.MaTienNghi);
+
+
+                entity.HasIndex(x => x.MaTienNghi)
+                      .HasDatabaseName("IX_KS_TN_MaTienNghi");
+            });
 
             modelBuilder.Entity<Tour_KhachSan>().HasKey(tk => new { tk.MaTour, tk.MaKhachSan });
 
