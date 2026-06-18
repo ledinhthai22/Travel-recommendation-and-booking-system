@@ -1,5 +1,3 @@
-// ManagerCard.jsx
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Star, MapPin, Earth, Tag, Phone, Clock3, Users } from 'lucide-react';
@@ -42,7 +40,7 @@ export default function ManagerCard({
     let statusText = '';
 
     const isOnline = item.trangThai;
-
+    console.log("ITEM:", item);
     if (type === 'location') {
         displayName = item.tenDiaDiem;
         displayLocation = item.tinhThanh;
@@ -74,7 +72,7 @@ export default function ManagerCard({
         subInfo2 = item.soDienThoai;
 
         statusText = isOnline
-            ? 'Hợp tác'
+            ? 'Đang Hợp tác'
             : 'Ngưng hợp tác';
     }
     if (type === 'tour') {
@@ -259,12 +257,30 @@ export default function ManagerCard({
                             <span className="material-symbols-outlined text-amber-500" style={{ fontSize: '15px' }}>edit_square</span>
                             <span className="text-[10px] font-medium text-gray-700">Cập nhật</span>
                         </button>
-                        <div className="h-px bg-gray-100 mx-3 my-1" />
-                        <button onClick={() => { onDelete?.(item); setIsOpen(false); }}
-                            className="w-full px-4 py-2 flex items-center gap-2.5 hover:bg-red-50 transition-colors">
-                            <span className="material-symbols-outlined text-red-500" style={{ fontSize: '15px' }}>delete</span>
-                            <span className="text-[10px] font-medium text-red-600">Xóa</span>
-                        </button>
+
+                        {onDelete && (
+                            <div>
+                                <div className="h-px bg-gray-100 mx-3 my-1" />
+                                <button
+                                    onClick={() => {
+                                        onDelete?.(item);
+                                        setIsOpen(false);
+                                    }}
+                                    className="w-full px-4 py-2 flex items-center gap-2.5 hover:bg-red-50 transition-colors"
+                                >
+                                    <span
+                                        className="material-symbols-outlined text-red-500"
+                                        style={{ fontSize: '15px' }}
+                                    >
+                                        delete
+                                    </span>
+                                    <span className="text-[10px] font-medium text-red-600">
+                                        Xóa
+                                    </span>
+                                </button>
+                            </div>
+                        )}
+
                     </div>,
                     document.body
                 )}

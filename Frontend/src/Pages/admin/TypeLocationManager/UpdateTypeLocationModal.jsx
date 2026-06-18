@@ -42,7 +42,7 @@ export default function UpdateTypeLocationModal({
         setConfirmConfig({
             title: "Xác nhận cập nhật",
             message: `Bạn có chắc chắn muốn đổi tên thành "${tenLoaiDD.trim()}" không?`,
-            type: "info",
+            type: "warning",
             confirmText: "Cập nhật",
             action: async () => {
                 try {
@@ -63,18 +63,17 @@ export default function UpdateTypeLocationModal({
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center justify-between m-4 bg-slate-50/50">
                     <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                        <Edit2 size={20} className="text-[#0EA5E5]" />
                         Cập Nhật Loại Địa Điểm
                     </h3>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-xl transition-colors">
+                    <button onClick={onClose} className="text-slate-400 hover:text-red-600 hover:bg-slate-100 p-2 rounded-xl transition-colors cursor-pointer">
                         <X size={20} />
                     </button>
                 </div>
-                <form onSubmit={handleSubmit} className="p-6">
+                <form onSubmit={handleSubmit} className="p-4 pt-0">
                     <InputField
                         label="Tên Loại Địa Điểm"
                         name="tenLoaiDD"
@@ -87,12 +86,12 @@ export default function UpdateTypeLocationModal({
                         autoFocus
                     />
                     <div className="flex items-center justify-end gap-3 mt-8">
-                        <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
+                        <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer">
                             Hủy bỏ
                         </button>
-                        <button type="submit" disabled={loading} className="px-6 py-2.5 rounded-xl text-sm font-medium text-white bg-[#0EA5E5] hover:bg-[#0284c7] transition-all shadow-sm flex items-center gap-2 disabled:opacity-70">
+                        <button type="submit" disabled={loading} className="px-6 py-2.5 rounded-xl text-sm font-medium text-white bg-[#0EA5E5] hover:bg-[#0284c7] transition-all shadow-sm flex items-center gap-2 disabled:opacity-70 cursor-pointer">
                             {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
-                            Lưu Cập Nhật
+                            Cập Nhật
                         </button>
                     </div>
                 </form>

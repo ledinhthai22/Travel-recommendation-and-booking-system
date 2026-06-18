@@ -47,7 +47,7 @@ export default function HeroSection({
     return (
         <section
             onClick={handleBannerClick}
-            className={`relative h-[750px] min-h-[600px] flex items-center mt-16 justify-center overflow-hidden   ${link ? " cursor-pointer" : ""}`}
+            className={`relative h-[650px] min-h-[600px] flex items-center mt-16 justify-center overflow-hidden   ${link ? " cursor-pointer" : ""}`}
         >
             <div className="absolute inset-0 scale-105">
                 <img src={background} className="w-full h-full object-cover" alt="" />

@@ -17,4 +17,5 @@ export {default as HotelFormPage}  from"./HotelManager/HotelFormPage"
 export {default as HotelDetailPage} from "./HotelManager/HotelDetailPage"
 export {default as HotelCreatePage} from "./HotelManager/HotelCreatePage"
 export {default as HotelEditPage} from "./HotelManager/HotelUpdatePage"
-
+export {default as TypeLocationManager} from "./TypeLocationManager/TypeLocationaManager"
+export {default as AmenitiesManager} from "./AmenitiesManager/AmenitiesManager"

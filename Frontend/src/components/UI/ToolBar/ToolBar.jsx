@@ -130,7 +130,7 @@ export default function ManagerToolbar({
 
                             <button
                                 onClick={onAddClick}
-                                className="h-10 px-5 rounded-xl bg-sky-500 text-white font-semibold text-sm flex items-center gap-2 hover:opacity-90"
+                                className="h-10 px-5 rounded-xl bg-sky-500 text-white font-semibold text-sm flex items-center gap-2 hover:opacity-90 cursor-pointer"
                             >
                                 <Plus size={16} />
 

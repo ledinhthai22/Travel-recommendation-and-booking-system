@@ -48,12 +48,6 @@ export default function PromotionDetailModal({
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
-                    {/* <InputField
-                        label="Mã ưu đãi"
-                        value={promotion.maUuDai}
-                        readOnly
-                    /> */}
-
                     <InputField
                         label="Mã code"
                         value={promotion.maCode}

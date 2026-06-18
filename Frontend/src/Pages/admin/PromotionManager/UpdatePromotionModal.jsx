@@ -144,9 +144,9 @@ export default function UpdatePromotionModal({
                             form.soLuongToiDa
                         ),
                     ngayBatDau:
-                       form.ngayBatDau,
+                        form.ngayBatDau,
                     ngayHetHan:
-                       form.ngayHetHan
+                        form.ngayHetHan
                 }
             );
 
@@ -236,7 +236,7 @@ export default function UpdatePromotionModal({
     return (
         <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center">
 
-            <div className="bg-white rounded-3xl w-full max-w-2xl p-5">
+            <div className="bg-white rounded-3xl w-full max-w-2xl p-6">
 
                 <div className="flex justify-between items-center mb-8">
 
@@ -250,7 +250,7 @@ export default function UpdatePromotionModal({
 
                 </div>
 
-                <div className="grid grid-cols-1 gap-5">
+                <div className="grid grid-cols-2 gap-5 mb-2">
 
                     <InputField
                         label="Mã code"
@@ -306,48 +306,8 @@ export default function UpdatePromotionModal({
                         }
                     />
 
-                    <InputField
-                        label="Số lượng tối đa"
-                        type="number"
-                        value={
-                            form.soLuongToiDa
-                        }
-                        onChange={(e) =>
-                            handleChange(
-                                "soLuongToiDa",
-                                e.target.value
-                            )
-                        }
-                    />
 
-                    {(promotion.trangThai === 2 || promotion.trangThai === 3) && (
-                        <Dropdown
-                            label="Trạng thái"
-                            placeholder="Chọn trạng thái"
-                            value={promotion.trangThai}
-                            onChange={(value) => {
-                                const newStatus = Number(value);
 
-                                if (promotion.trangThai === 2 && newStatus === 3) {
-                                    handleStopPromotion();
-                                }
-
-                                if (promotion.trangThai === 3 && newStatus === 2) {
-                                    handleStartPromotion();
-                                }
-                            }}
-                            options={[
-                                {
-                                    value: 2,
-                                    label: "Hoạt động"
-                                },
-                                {
-                                    value: 3,
-                                    label: "Ngưng hoạt động"
-                                }
-                            ]}
-                        />
-                    )}
 
                     <InputField
                         label="Ngày bắt đầu"
@@ -378,7 +338,51 @@ export default function UpdatePromotionModal({
                     />
 
                 </div>
+                <InputField
+                    label="Số lượng tối đa"
+                    type="number"
+                    value={
+                        form.soLuongToiDa
+                    }
+                    onChange={(e) =>
+                        handleChange(
+                            "soLuongToiDa",
+                            e.target.value
+                        )
+                    }
+                />
+                <div className="mt-2">
 
+                    {(promotion.trangThai === 2 || promotion.trangThai === 3) && (
+                        <Dropdown
+                            label="Trạng thái"
+                            placeholder="Chọn trạng thái"
+                            value={promotion.trangThai}
+                            onChange={(value) => {
+                                const newStatus = Number(value);
+
+                                if (promotion.trangThai === 2 && newStatus === 3) {
+                                    handleStopPromotion();
+                                }
+
+                                if (promotion.trangThai === 3 && newStatus === 2) {
+                                    handleStartPromotion();
+                                }
+                            }}
+                            options={[
+                                {
+                                    value: 2,
+                                    label: "Hoạt động"
+                                },
+                                {
+                                    value: 3,
+                                    label: "Ngưng hoạt động"
+                                }
+                            ]}
+                        />
+                    )}
+
+                </div>
                 <div className="flex justify-end gap-3 mt-8">
 
                     <button

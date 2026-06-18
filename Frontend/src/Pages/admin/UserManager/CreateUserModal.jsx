@@ -8,7 +8,7 @@ import { getErrorMessage } from "~/utils/errorHelper";
 
 export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
-
+    const [errors, setErrors] = useState({});
     const [form, setForm] = useState({
         hoTen: "",
         email: "",
@@ -30,34 +30,76 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
                 gioiTinh: true,
                 maVaiTro: 4
             });
+
+            setErrors({});
         }
     }, [isOpen]);
 
     if (!isOpen) return null;
 
     const handleChange = (field, value) => {
-        setForm(prev => ({ ...prev, [field]: value }));
+        setForm(prev => ({
+            ...prev,
+            [field]: value
+        }));
+
+        if (errors[field]) {
+            setErrors(prev => ({
+                ...prev,
+                [field]: ""
+            }));
+        }
     };
 
     const validate = () => {
-        if (!form.hoTen.trim()) return "Vui lòng nhập họ tên";
-        if (!form.email.trim()) return "Vui lòng nhập email";
-        if (!form.soDienThoai.trim()) return "Vui lòng nhập số điện thoại";
-        if (!form.matKhau.trim()) return "Vui lòng nhập mật khẩu";
-        if (form.matKhau.length < 8) return "Mật khẩu phải có ít nhất 8 ký tự";
-        if (form.matKhau !== form.xacNhanMatKhau) return "Mật khẩu xác nhận không khớp";
-        return null;
-    };
+        const newErrors = {};
 
-    const handleSubmit = async () => {
-        const error = validate();
-        if (error) {
-            toastError(error);
-            return;
+        if (!form.hoTen.trim()) {
+            newErrors.hoTen = "Vui lòng nhập họ tên";
         }
+
+        if (!form.email.trim()) {
+            newErrors.email = "Vui lòng nhập email";
+        } else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (!emailRegex.test(form.email)) {
+                newErrors.email = "Email không hợp lệ";
+            }
+        }
+
+        if (!form.soDienThoai.trim()) {
+            newErrors.soDienThoai = "Vui lòng nhập số điện thoại";
+        } else {
+            const phoneRegex = /^0\d{9}$/;
+
+            if (!phoneRegex.test(form.soDienThoai)) {
+                newErrors.soDienThoai = "Số điện thoại không hợp lệ";
+            }
+        }
+
+        if (!form.matKhau.trim()) {
+            newErrors.matKhau = "Vui lòng nhập mật khẩu";
+        } else if (form.matKhau.length < 8) {
+            newErrors.matKhau = "Mật khẩu phải có ít nhất 8 ký tự";
+        }
+
+        if (!form.xacNhanMatKhau.trim()) {
+            newErrors.xacNhanMatKhau = "Vui lòng xác nhận mật khẩu";
+        } else if (form.matKhau !== form.xacNhanMatKhau) {
+            newErrors.xacNhanMatKhau = "Mật khẩu xác nhận không khớp";
+        }
+
+        setErrors(newErrors);
+
+        return Object.keys(newErrors).length === 0;
+    };
+    const handleSubmit = async () => {
+        if (!validate()) return;
 
         try {
             setLoading(true);
+
             const payload = {
                 hoTen: form.hoTen,
                 email: form.email,
@@ -69,7 +111,9 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
             };
 
             await createUserApi(payload);
+
             toastSuccess("Thêm khách hàng thành công!");
+
             onSuccess?.();
             onClose();
         } catch (error) {
@@ -94,6 +138,7 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
                         label="Họ và Tên *"
                         value={form.hoTen}
                         onChange={(e) => handleChange("hoTen", e.target.value)}
+                        error={errors.hoTen}
                     />
 
                     <InputField
@@ -101,12 +146,13 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
                         type="email"
                         value={form.email}
                         onChange={(e) => handleChange("email", e.target.value)}
+                        error={errors.email}
                     />
-
                     <InputField
                         label="Số điện thoại *"
                         value={form.soDienThoai}
                         onChange={(e) => handleChange("soDienThoai", e.target.value)}
+                        error={errors.soDienThoai}
                     />
 
                     <Dropdown
@@ -125,13 +171,15 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
                         type="password"
                         value={form.matKhau}
                         onChange={(e) => handleChange("matKhau", e.target.value)}
+                        error={errors.matKhau}
                     />
-                    
+
                     <InputField
                         label="Xác nhận mật khẩu *"
                         type="password"
                         value={form.xacNhanMatKhau}
-                        onChange={(e) => handleChange("xacNhanMatKhau", e.target.value)} 
+                        onChange={(e) => handleChange("xacNhanMatKhau", e.target.value)}
+                        error={errors.xacNhanMatKhau}
                     />
                 </div>
 

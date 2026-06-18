@@ -38,12 +38,12 @@ export default function LocationManager() {
 
   const fetchAllTypes = async () => {
     try {
-        const res = await getAllTypeLocationApi();
-        setAllTypes(res || []);
+      const res = await getAllTypeLocationApi();
+      setAllTypes(res || []);
     } catch (error) {
-        toastError("Không tải được danh sách loại");
+      toastError("Không tải được danh sách loại");
     }
-};
+  };
 
   useEffect(() => {
     fetchAllTypes();
@@ -108,8 +108,8 @@ export default function LocationManager() {
             onChange: (value) => { setStatusFilter(value); setCurrentPage(1); },
             options: [
               { value: "", label: "Tất cả" },
-              { value: "true", label: "Đang hoạt động" },
-              { value: "false", label: "Tạm ẩn" }
+              { value: "true", label: "Đang khai thác" },
+              { value: "false", label: "Ngưng khai thác" }
             ],
           }
         ]}
@@ -135,7 +135,9 @@ export default function LocationManager() {
               type="location"
               onView={() => handleOpenForm('view', item)}
               onEdit={() => handleOpenForm('edit', item)}
-              onDelete={() => handleDelete(item)}
+              onDelete={location.trangThai === false
+                ? () => handleDelete(hotel)
+                : null}
             />
           ))}
         </div>
