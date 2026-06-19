@@ -1,10 +1,8 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 using travel_recommendation_and_booking_system.DTOs.UserProfile;
 using travel_recommendation_and_booking_system.Interfaces;
-using travel_recommendation_and_booking_system.Services;
 
 namespace Controllers.Admin
 {
@@ -38,6 +36,7 @@ namespace Controllers.Admin
         }
 
         [HttpPut("me")]
+        [Authorize(Policy = "UserOnly")]
         public async Task<IActionResult> UpdateMyProfile([FromForm] UserProfileDTO dto)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

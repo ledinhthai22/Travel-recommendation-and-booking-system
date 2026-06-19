@@ -8,12 +8,13 @@ import {
     Camera
 } from "lucide-react";
 
-import { getUserProfileApi,updateUserProfileApi } from "~/Services/UserProfile";
+import { getUserProfileApi, updateUserProfileApi } from "~/Services/UserProfile";
 import { toastSuccess, toastError } from "~/utils/Toast";
 import UpdateUserProfileModal from "../admin/UserProfileManager/UpdateUserProfileModal";
+import InputField from "~/components/UI/Form/InputField";
 export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState("overview");
-    const [proFileData,setProFileData] = useState(null);
+    const [proFileData, setProFileData] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const fetchProfile = async () => {
@@ -25,9 +26,9 @@ export default function ProfilePage() {
         }
     };
 
-    useEffect(() =>{
+    useEffect(() => {
         fetchProfile();
-    },[]);
+    }, []);
 
     const user = {
         name: proFileData?.hoTen || "Người dùng",
@@ -263,49 +264,59 @@ export default function ProfilePage() {
                                     Thông tin cá nhân
                                 </h2>
 
-                                <div className="rounded-xl border border-slate-200">
-                                    <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200 border-b border-slate-200">
-                                        <div className="divide-y divide-slate-200">
-                                            <div className="p-4">
-                                                <p className="text-sm text-slate-500">Họ và tên</p>
-                                                <p className="mt-1 font-medium">{proFileData?.hoTen || "Chưa cập nhật"}</p>
-                                            </div>
-                                            <div className="p-4">
-                                                <p className="text-sm text-slate-500">Số điện thoại</p>
-                                                <p className="mt-1 font-medium">{proFileData?.soDienThoai || "Chưa cập nhật"}</p>
-                                            </div>
-                                            <div className="p-4">
-                                                <p className="text-sm text-slate-500">Giới tính</p>
-                                                <p className="mt-1 font-medium">
-                                                    {proFileData ? (proFileData.gioiTinh ? "Nam" : "Nữ") : "Chưa cập nhật"}
-                                                </p>
-                                            </div>
-                                        </div>
+                                <div >
+                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-1">
+                                        <InputField
+                                            label="Họ và tên"
+                                            value={proFileData?.hoTen || ""}
+                                            readOnly
+                                        />
 
-                                        <div className="divide-y divide-slate-200">
-                                            <div className="p-4">
-                                                <p className="text-sm text-slate-500">Email</p>
-                                                <p className="mt-1 font-medium">{proFileData?.email || "Chưa cập nhật"}</p>
-                                            </div>
-                                            <div className="p-4">
-                                                <p className="text-sm text-slate-500">Ngày Sinh</p>
-                                                <p className="mt-1 font-medium">
-                                                    {proFileData?.ngaySinh 
-                                                        ? new Date(proFileData.ngaySinh).toLocaleDateString("vi-VN") 
-                                                        : "Chưa cập nhật"}
-                                                </p>
-                                            </div>
-                                            <div className="p-4">
-                                                <p className="text-sm text-slate-500">Địa chỉ</p>
-                                                <p className="mt-1 font-medium">{proFileData?.diaChi || "Chưa cập nhật"}</p>
-                                            </div>
-                                        </div>
+                                        <InputField
+                                            label="Email"
+                                            value={proFileData?.email || ""}
+                                            readOnly
+                                        />
+
+                                        <InputField
+                                            label="Số điện thoại"
+                                            value={proFileData?.soDienThoai || ""}
+                                            readOnly
+                                        />
+
+                                        <InputField
+                                            label="Ngày sinh"
+                                            value={
+                                                proFileData?.ngaySinh
+                                                    ? new Date(proFileData.ngaySinh).toLocaleDateString("vi-VN")
+                                                    : ""
+                                            }
+                                            readOnly
+                                        />
+
+                                        <InputField
+                                            label="Giới tính"
+                                            value={
+                                                proFileData
+                                                    ? proFileData.gioiTinh
+                                                        ? "Nam"
+                                                        : "Nữ"
+                                                    : ""
+                                            }
+                                            readOnly
+                                        />
+
+                                        <InputField
+                                            label="Địa chỉ"
+                                            value={proFileData?.diaChi || ""}
+                                            readOnly
+                                        />
                                     </div>
 
-                                    <div className="border-t border-slate-200 p-4 text-right">
-                                        <button 
+                                    <div className="mt-6 border-t border-slate-200 pt-4 text-right">
+                                        <button
                                             onClick={() => setIsModalOpen(true)}
-                                            className="rounded-lg bg-sky-500 px-4 py-2 text-white hover:bg-sky-600 transition"
+                                            className="rounded-lg bg-sky-500 px-4 py-2 text-white transition hover:bg-sky-600"
                                         >
                                             Cập nhật
                                         </button>
@@ -410,12 +421,12 @@ export default function ProfilePage() {
                     </main>
                 </div>
             </div>
-            <UpdateUserProfileModal 
+            <UpdateUserProfileModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 profileData={proFileData}
                 onUpdateSuccess={fetchProfile}
-            /> 
+            />
         </div>
     );
 }

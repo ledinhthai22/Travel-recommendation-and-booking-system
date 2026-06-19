@@ -110,12 +110,13 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddAuthorization(options =>
             {
                 options.AddPolicy("AdminOnly",
-                    policy => policy.RequireRole("Quản Trị Viên"));
+                    policy => policy.RequireRole("1"));
                 options.AddPolicy("StaffOnly",
-                    policy => policy.RequireRole("Nhân viên"));
-
+                    policy => policy.RequireRole("2"));
                 options.AddPolicy("UserOnly",
-                    policy => policy.RequireRole("Người Dùng"));
+                    policy => policy.RequireRole("4"));
+                options.AddPolicy("Admin&Staff",
+                    policy => policy.RequireRole("1", "2"));
             });
             builder.Services.AddCors(options =>
             {

@@ -4,10 +4,10 @@ import { Heart, User, LogOut } from "lucide-react";
 export default function AvatarDropdown({ user, onLogout }) {
     const [open, setOpen] = useState(false);
     const avatarUrl = user?.duongDanAnh
-    ? `https://localhost:7016${user.duongDanAnh}`
-    : user?.avatar 
-        ? `https://localhost:7016${user.avatar}` 
-        : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.hoTen || "User")}&background=0EA5E5&color=fff`;
+        ? `https://localhost:7016${user.duongDanAnh}`
+        : user?.avatar
+            ? `https://localhost:7016${user.avatar}`
+            : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.hoTen || "User")}&background=0EA5E5&color=fff`;
     return (
         <div className="relative">
             {/* Trigger */}
@@ -34,7 +34,11 @@ export default function AvatarDropdown({ user, onLogout }) {
                 <img
                     src={avatarUrl}
                     alt={user?.hoTen}
-                    className="h-10 w-10 rounded-xl object-cover ring-2 ring-white shadow"
+                    onError={(e) => {
+                        e.target.src =
+                            "https://ui-avatars.com/api/?name=User";
+                    }}
+                    className="h-10 w-10 rounded-xl object-cover"
                 />
             </button>
 
@@ -75,7 +79,7 @@ export default function AvatarDropdown({ user, onLogout }) {
 
                         <Link
                             to="/Thong-Tin-Ca-Nhan"
-                            className="flex items-center gap-3 px-5 py-2.5 text-sm hover:bg-slate-50 hover:text-[#0EA5E5]" 
+                            className="flex items-center gap-3 px-5 py-2.5 text-sm hover:bg-slate-50 hover:text-[#0EA5E5]"
                         >
                             <User size={14} />
                             Thông tin cá nhân
@@ -85,7 +89,7 @@ export default function AvatarDropdown({ user, onLogout }) {
 
                         <button
                             onClick={() => {
-                                onLogout?.(); 
+                                onLogout?.();
                                 setOpen(false);
                             }}
                             className="flex w-full items-center gap-3 px-5 py-3 text-sm text-red-600 hover:bg-red-50"
