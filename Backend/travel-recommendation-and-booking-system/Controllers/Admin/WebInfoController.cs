@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs.WebInfo;
 using travel_recommendation_and_booking_system.Interfaces;
 
@@ -6,7 +7,7 @@ namespace Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
-
+    [Authorize(Policy = "AdminOnly")]
     public class WebInfoController : ControllerBase
     {
         private readonly IWebInfoService _webInfoService;

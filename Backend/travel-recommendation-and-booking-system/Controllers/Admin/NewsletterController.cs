@@ -6,7 +6,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Policy = "AdminOnly")]
     public class NewsletterController : ControllerBase
     {
         private readonly INewsletterService _newsletter;

@@ -1,19 +1,18 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs.TypeLocation;
 using travel_recommendation_and_booking_system.Interfaces;
-using travel_recommendation_and_booking_system.Models;
 
 namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Policy = "Admin&Staff")]
     public class TypeLocationController : ControllerBase
     {
         private readonly ITypeLocationService _type;
-        public TypeLocationController(ITypeLocationService type) { 
+        public TypeLocationController(ITypeLocationService type)
+        {
             _type = type;
         }
         [HttpGet("get-all")]
@@ -78,7 +77,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var success =await _type.DeleteTypeLocationAsync(id);
+            var success = await _type.DeleteTypeLocationAsync(id);
             if (!success)
             {
                 return BadRequest(new { message = "xóa thất bại" });

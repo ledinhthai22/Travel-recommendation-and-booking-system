@@ -1,23 +1,27 @@
 import { Navigate, Outlet } from "react-router-dom";
 
-export default function ProtectedRoute({ allowedRoles }) {
-    const token = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
+export default function ProtectedRoute({
+    allowedRoles = [],
+}) {
+    try {
+        const token = localStorage.getItem("token");
+        const user = JSON.parse(
+            localStorage.getItem("user") || "{}"
+        );
 
-    if (!token || !storedUser) {
+        if (!token) {
+            return <Navigate to="/" replace />;
+        }
+
+        if (
+            allowedRoles.length > 0 &&
+            !allowedRoles.includes(String(user.maVaiTro))
+        ) {
+            return <Navigate to="/" replace />;
+        }
+
+        return <Outlet />;
+    } catch {
         return <Navigate to="/" replace />;
     }
-
-    const user = JSON.parse(storedUser);
-    const role = String(user?.maVaiTro);
-
-    // debug cực quan trọng
-    console.log("ROLE:", role);
-    console.log("ALLOWED:", allowedRoles);
-
-    if (allowedRoles && !allowedRoles.includes(role)) {
-        return <Navigate to="/" replace />;
-    }
-
-    return <Outlet />;
 }

@@ -120,7 +120,7 @@ export default function WishlistPage() {
 
     const [selectedTours, setSelectedTours] = useState([]);
 
-    const PAGE_SIZE = 6;
+    const PAGE_SIZE = 10;
 
     const paginatedTours = useMemo(() => {
         const start = (currentPage - 1) * PAGE_SIZE;
@@ -219,7 +219,7 @@ export default function WishlistPage() {
                 </div>
             ) : (
                 <>
-                    <div className="grid gap-6 md:grid-cols-3 xl:grid-cols-4">
+                    <div className="grid gap-6 md:grid-cols-3 xl:grid-cols-5">
                         {paginatedTours.map((tour) => {
                             const selected = selectedTours.includes(tour.id);
 

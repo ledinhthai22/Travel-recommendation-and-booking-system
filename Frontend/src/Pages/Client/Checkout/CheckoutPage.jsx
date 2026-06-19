@@ -129,8 +129,6 @@ export default function CheckoutPage() {
             return cleaned;
         });
     }, [passengers]);
-    console.log("singleRooms:", singleRooms);
-    console.log("singleRoomCount:", singleRoomCount);
     const handleSubmit = () => {
         if (step === 1) {
             if (

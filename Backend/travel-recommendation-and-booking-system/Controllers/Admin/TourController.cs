@@ -1,16 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using travel_recommendation_and_booking_system.DTOs.Hotel;
 using travel_recommendation_and_booking_system.DTOs.Tour;
 using travel_recommendation_and_booking_system.Interfaces;
-using travel_recommendation_and_booking_system.Services;
 
 namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Policy = "Admin&Staff")]
     public class TourController : ControllerBase
     {
         private readonly ITourService _tour;
@@ -20,9 +17,9 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetPaged([FromQuery] int pageNumber, [FromQuery] int pageSize, [FromQuery] string key="", [FromQuery] bool? status=null)
+        public async Task<IActionResult> GetPaged([FromQuery] int pageNumber, [FromQuery] int pageSize, [FromQuery] string key = "", [FromQuery] bool? status = null)
         {
-            var result = await _tour.GetPagedTourAsync(pageNumber,pageSize,key,status);
+            var result = await _tour.GetPagedTourAsync(pageNumber, pageSize, key, status);
 
             return Ok(result);
         }

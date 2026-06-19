@@ -1,20 +1,18 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using travel_recommendation_and_booking_system.DTOs.Banner;
 using travel_recommendation_and_booking_system.DTOs.Location;
 using travel_recommendation_and_booking_system.Interfaces;
-using travel_recommendation_and_booking_system.Models;
 
 namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Policy = "Admin&Staff")]
     public class LocationController : ControllerBase
     {
         private readonly ILocationService _location;
-        public LocationController(ILocationService location) {
+        public LocationController(ILocationService location)
+        {
             _location = location;
         }
         [HttpGet("get-location")]
@@ -57,8 +55,8 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             }
 
             return Ok(new { success = true, message = "Thêm location mới thành công" });
-            
-           
+
+
         }
 
         [HttpPut("{id}")]

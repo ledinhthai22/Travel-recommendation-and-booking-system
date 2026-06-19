@@ -7,7 +7,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Policy = "Admin&Staff")]
     public class TypeTourController : ControllerBase
     {
         private readonly ITypeTourService _tour;
@@ -26,7 +26,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         {
             try
             {
-                var result =await _tour.GetTypeTourAsync(pageNumber, pageSize, key, status);
+                var result = await _tour.GetTypeTourAsync(pageNumber, pageSize, key, status);
                 return Ok(result);
             }
             catch (Exception ex)

@@ -40,7 +40,6 @@ export default function ManagerCard({
     let statusText = '';
 
     const isOnline = item.trangThai;
-    console.log("ITEM:", item);
     if (type === 'location') {
         displayName = item.tenDiaDiem;
         displayLocation = item.tinhThanh;
@@ -206,10 +205,7 @@ export default function ManagerCard({
                                 {renderStars(item.soSao)}
                             </p>
 
-                            {/* <p className="flex items-center gap-1 text-[10px] font-bold text-slate-600 min-h-[15px]">
-                                <Phone size={10} />
-                                {subInfo2}
-                            </p> */}
+                            
                         </>
                     )}
                     {type === 'tour' && (
