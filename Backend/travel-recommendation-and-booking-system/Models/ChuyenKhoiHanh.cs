@@ -10,7 +10,7 @@ namespace travel_recommendation_and_booking_system.Models
         public int MaChuyen { get; set; }
 
         [ForeignKey("HuongDanVien")]
-        public int MaHDV { get; set; }
+        public int? MaHDV { get; set; }
 
         [ForeignKey("Tour")]
         public int MaTour { get; set; }

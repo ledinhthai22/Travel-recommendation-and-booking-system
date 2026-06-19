@@ -5,7 +5,7 @@ namespace travel_recommendation_and_booking_system.DTOs.Departure
     public class DepartureDTO
     {
         [Required(ErrorMessage = "Vui lòng chọn Hướng dẫn viên.")]
-        public int MaHDV { get; set; }
+        public int? MaHDV { get; set; }
 
         [Required(ErrorMessage = "Vui lòng chọn Tour.")]
         public int MaTour { get; set; }

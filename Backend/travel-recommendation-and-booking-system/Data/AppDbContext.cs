@@ -60,7 +60,21 @@ namespace travel_recommendation_and_booking_system.Data
                       .HasDatabaseName("IX_KS_TN_MaTienNghi");
             });
 
-            modelBuilder.Entity<Tour_KhachSan>().HasKey(tk => new { tk.MaTour, tk.MaKhachSan });
+            modelBuilder.Entity<Tour_KhachSan>(entity =>
+            {
+                entity.HasKey(tk => new { tk.MaTour, tk.MaKhachSan });
+
+                entity.HasOne(tk => tk.Tour)
+                      .WithMany(t => t.Tour_KhachSans)
+                      .HasForeignKey(tk => tk.MaTour);
+
+                entity.HasOne(tk => tk.KhachSan)
+                      .WithMany(ks => ks.Tour_KhachSans)
+                      .HasForeignKey(tk => tk.MaKhachSan);
+
+                entity.HasIndex(tk => tk.MaKhachSan)
+                      .HasDatabaseName("IX_Tour_KhachSan_MaKhachSan");
+            });
 
             modelBuilder.Entity<SoThichNguoiDung>().HasKey(sn => new { sn.MaNguoiDung, sn.MaLoaiTour });
 

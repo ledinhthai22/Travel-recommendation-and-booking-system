@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
+using travel_recommendation_and_booking_system.DTOs.ScheduleDetails;
 
 namespace travel_recommendation_and_booking_system.DTOs.Schedule
 {
@@ -16,5 +17,6 @@ namespace travel_recommendation_and_booking_system.DTOs.Schedule
         public DateTime NgayTao { get; set; }
         public DateTime NgayCapNhat { get; set; }
         public DateTime? NgayXoa { get; set; }
+        public List<ScheduleDetailsDTO> ChiTietLichTrinhs { get; set; }
     }
 }
