@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.ImageTour;
 using travel_recommendation_and_booking_system.DTOs.Tour;
+using travel_recommendation_and_booking_system.DTOs.Tour_KS;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
 
@@ -256,6 +257,27 @@ namespace travel_recommendation_and_booking_system.Services
             }
 
             return true;
+        }
+
+        public async Task<bool> AddToTourAsync(Tour_KSDTO dto)
+        {
+            var exists = await _context.Tour_KhachSans
+                .AnyAsync(x => x.MaTour == dto.MaTour && x.MaKhachSan == dto.MaKhachSan);
+            if (exists) return false;
+
+            var item = new Tour_KhachSan { MaTour = dto.MaTour, MaKhachSan = dto.MaKhachSan };
+            _context.Tour_KhachSans.Add(item);
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> RemoveFromTourAsync(int maTour, int maKhachSan)
+        {
+            var item = await _context.Tour_KhachSans
+                .FirstOrDefaultAsync(x => x.MaTour == maTour && x.MaKhachSan == maKhachSan);
+            if (item == null) return false;
+
+            _context.Tour_KhachSans.Remove(item);
+            return await _context.SaveChangesAsync() > 0;
         }
 
         //private
