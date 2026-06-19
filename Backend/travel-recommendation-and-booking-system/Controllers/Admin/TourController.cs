@@ -1,11 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs.Tour;
+using travel_recommendation_and_booking_system.DTOs.Tour_KS;
 using travel_recommendation_and_booking_system.Interfaces;
 
 namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
-    [Route("api/[controller]")]
+    [Route("api/admin/[controller]")]
     [ApiController]
     [Authorize(Policy = "Admin&Staff")]
     public class TourController : ControllerBase
@@ -100,6 +101,22 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
                 Message = "Xóa ảnh thành công",
                 Success = result
             });
+        }
+
+        [HttpPost("create-tour-ks")]
+        public async Task<IActionResult> Add([FromBody] Tour_KSDTO dto)
+        {
+            return await _tour.AddToTourAsync(dto)
+                ? Ok("Đã gán khách sạn vào tour")
+                : BadRequest("Không thể gán (có thể đã tồn tại)");
+        }
+
+        [HttpDelete("{maTour}/{maKhachSan}")]
+        public async Task<IActionResult> Remove(int maTour, int maKhachSan)
+        {
+            return await _tour.RemoveFromTourAsync(maTour, maKhachSan)
+                ? Ok("Đã gỡ khách sạn khỏi tour")
+                : NotFound();
         }
 
     }

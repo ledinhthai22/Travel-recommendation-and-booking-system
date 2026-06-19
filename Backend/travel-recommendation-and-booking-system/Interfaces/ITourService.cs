@@ -1,6 +1,7 @@
 ﻿using DTOs.Page;
 using travel_recommendation_and_booking_system.DTOs.Hotel;
 using travel_recommendation_and_booking_system.DTOs.Tour;
+using travel_recommendation_and_booking_system.DTOs.Tour_KS;
 
 namespace travel_recommendation_and_booking_system.Interfaces
 {
@@ -13,6 +14,8 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<bool> DeleteTourAsync(int id);
         Task<bool> SetMainImageAsync(int imageId);
         Task<bool> DeleteImageAsync(int imageId);
+        Task<bool> AddToTourAsync(Tour_KSDTO dto);
+        Task<bool> RemoveFromTourAsync(int maTour, int maKhachSan);
 
     }
 }

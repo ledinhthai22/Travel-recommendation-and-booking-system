@@ -29,11 +29,11 @@
 
 		<Folder Include="Job\" />
 		<Folder Include="Migrations\" />
-		<Folder Include="wwwroot\img\" />
 		<Folder Include="wwwroot\img\hotel\" />
 		<Folder Include="wwwroot\img\location\" />
 		<Folder Include="wwwroot\img\Logo_Trang\" />
 		<Folder Include="wwwroot\img\banner\" />
+		<Folder Include="wwwroot\img\schedules\" />
 	</ItemGroup>
 
 </Project>
