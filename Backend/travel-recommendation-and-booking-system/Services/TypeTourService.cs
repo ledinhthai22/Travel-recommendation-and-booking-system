@@ -91,7 +91,7 @@ namespace Services
 
             if(istypetour ==null || istypetour.NgayXoa !=null) return false;
 
-            bool isnametypetour = await _context.LoaiHinhTours.AnyAsync(x=>x.TenLoaiTour.Trim().ToLower() == typetour.TenLoaiTour.Trim().ToLower());
+            bool isnametypetour = await _context.LoaiHinhTours.AnyAsync(x=>x.TenLoaiTour.Trim().ToLower() == typetour.TenLoaiTour.Trim().ToLower() && x.MaLoaiTour != id);
             if(isnametypetour) return false;
 
             istypetour.TenLoaiTour = typetour.TenLoaiTour;

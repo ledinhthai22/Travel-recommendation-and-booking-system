@@ -6,7 +6,7 @@ using travel_recommendation_and_booking_system.DTOs.UserProfile;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Services;
 
-namespace travel_recommendation_and_booking_system.Controllers
+namespace Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
