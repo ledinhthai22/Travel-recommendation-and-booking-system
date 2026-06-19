@@ -30,8 +30,7 @@ import InputField from '../UI/Form/InputField';
 import { useNavigate } from 'react-router-dom';
 import { toastSuccess, toastError } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
-
-
+import SelectField from '../UI/Form/SelectField';
 const EMPTY_FORM = {
     fullName: '',
     phone: '',
@@ -197,7 +196,7 @@ export default function AuthModal({ open, onClose }) {
         password:
             !isForgot && submitted && !form.password
                 ? 'Vui lòng nhập mật khẩu'
-                : !isForgot && submitted && form.password.length <8
+                : !isForgot && submitted && form.password.length < 8
                     ? 'Mật khẩu tối thiểu 8 ký tự'
                     : '',
 
@@ -231,8 +230,8 @@ export default function AuthModal({ open, onClose }) {
     const handleChange = useCallback((e) => {
         const { name, value } = e.target;
         let finalValue = value;
-            if (value === "true") finalValue = true;
-            if (value === "false") finalValue = false;
+        if (value === "true") finalValue = true;
+        if (value === "false") finalValue = false;
         setForm((prev) => ({ ...prev, [name]: finalValue }));
         if (isForgot && forgotSent) setForgotSent(false);
     }, [isForgot, forgotSent]);
@@ -320,7 +319,7 @@ export default function AuthModal({ open, onClose }) {
                     hoTen: form.fullName.trim(),
                     email: form.email.trim(),
                     matKhau: form.password,
-                    gioiTinh:form.gioiTinh,
+                    gioiTinh: form.gioiTinh,
                     xacNhanMatKhau: form.confirmPassword,
                     soDienThoai: form.phone.trim(),
                 };
@@ -414,16 +413,27 @@ export default function AuthModal({ open, onClose }) {
                                     error={errors.fullName}
                                     Icon={User}
                                 />
-                                <InputField
-                                    as="select"
-                                    label="Giới tính"
-                                    name="gioiTinh"
-                                    value={form.gioiTinh}
-                                    onChange={handleChange}
-                                >
-                                    <option value="true">Nam</option>
-                                    <option value="false">Nữ</option>
-                                </InputField>
+                                <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Giới tính</label>
+                                <SelectField
+
+                                    value={String(form.gioiTinh)}
+                                    onChange={(value) =>
+                                        setForm((prev) => ({
+                                            ...prev,
+                                            gioiTinh: value === 'true',
+                                        }))
+                                    }
+                                    options={[
+                                        {
+                                            value: 'true',
+                                            label: 'Nam',
+                                        },
+                                        {
+                                            value: 'false',
+                                            label: 'Nữ',
+                                        },
+                                    ]}
+                                />
                                 <InputField
                                     label="Số điện thoại"
                                     name="phone"
@@ -442,7 +452,6 @@ export default function AuthModal({ open, onClose }) {
                                 <InputField
                                     label="Email"
                                     name="email"
-                                    type="email"
                                     value={form.email}
                                     onChange={handleChange}
                                     placeholder="you@example.com"

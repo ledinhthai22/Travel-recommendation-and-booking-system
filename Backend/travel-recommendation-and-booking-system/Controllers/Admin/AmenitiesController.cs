@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs.Amenities;
 using travel_recommendation_and_booking_system.Interfaces;
 
@@ -6,6 +7,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
+    [Authorize(Policy = "Admin&Staff")]
     public class AmenitiesController : ControllerBase
     {
         private readonly IAmenitiesService _amenitiesservice;

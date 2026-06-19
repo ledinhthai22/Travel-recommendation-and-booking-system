@@ -22,6 +22,9 @@ export default function Sidebar() {
     const { webInfo } = useWebInfo();
     const url = "https://localhost:7016";
 
+    const user = JSON.parse(localStorage.getItem("user"));
+    const role = user?.maVaiTro;
+
     const baseLinkClass =
         "flex items-center gap-3 px-4 py-3 text-slate-600 font-medium hover:bg-[#0EA5E5]/10 hover:text-[#0EA5E5] rounded-2xl transition-all duration-200 group text-[13px]";
 
@@ -34,6 +37,122 @@ export default function Sidebar() {
         </p>
     );
 
+    const menuGroups = [
+        {
+            heading: null,
+            items: [
+                {
+                    title: "Dashboard",
+                    path: "/Quan-ly",
+                    icon: LayoutDashboard,
+                    end: true
+                }
+            ]
+        },
+
+        {
+            heading: "Chuyến đi & Địa điểm",
+            items: [
+                {
+                    title: "Quản lý các chuyến đi",
+                    path: "/Quan-ly/Cac-chuyen-di",
+                    icon: Luggage
+                },
+                {
+                    title: "Quản lý địa điểm",
+                    path: "/Quan-ly/Dia-diem",
+                    icon: MapPin
+                },
+                {
+                    title: "Quản lý loại địa điểm",
+                    path: "/Quan-ly/Loai-Dia-Diem",
+                    icon: Tags
+                },
+                {
+                    title: "Quản lý đơn đặt",
+                    path: "/Quan-ly/Don-dat-cac-chuyen-di",
+                    icon: Ticket
+                },
+                {
+                    title: "Quản lý khách du lịch",
+                    path: "/Quan-ly/Khach-du-lich",
+                    icon: UserPen
+                }
+            ]
+        },
+
+        {
+            heading: "Khách sạn & Tiện ích",
+            items: [
+                {
+                    title: "Quản lý khách sạn",
+                    path: "/Quan-ly/Khach-san",
+                    icon: Building2
+                },
+                {
+                    title: "Quản lý tiện ích",
+                    path: "/Quan-ly/Tien-Ich",
+                    icon: HousePlus
+                }
+            ]
+        },
+
+        {
+            role: [1],
+            heading: "Người dùng",
+            items: [
+                {
+                    title: "Quản lý nhân sự",
+                    path: "/Quan-ly/Nhan-vien",
+                    icon: ContactRound
+                },
+                {
+                    title: "Quản lý tài khoản",
+                    path: "/Quan-ly/Tai-khoan",
+                    icon: User
+                }
+            ]
+        },
+
+        {
+            heading: "Hệ thống & Giao tiếp",
+            items: [
+                {
+                    title: "Quản lý liên hệ",
+                    path: "/Quan-ly/Lien-he",
+                    icon: Mailbox
+                }
+            ]
+        },
+
+        {
+            heading: null,
+            role: [1],
+            items: [
+                {
+                    title: "Quản lý newletters",
+                    path: "/Quan-ly/Newletter",
+                    icon: UserPlus2
+                },
+                {
+                    title: "Quản lý banner",
+                    path: "/Quan-ly/Banner",
+                    icon: Images
+                },
+                {
+                    title: "Quản lý ưu đãi",
+                    path: "/Quan-ly/Uu-Dai",
+                    icon: BadgePercent
+                },
+                {
+                    title: "Quản lý thông tin trang",
+                    path: "/Quan-ly/Thong-tin-trang",
+                    icon: Columns3Cog
+                }
+            ]
+        }
+    ];
+
     return (
         <aside className="h-full w-85 flex flex-col fixed left-0 top-0 bg-slate-50 border-r border-slate-200 z-[100] overflow-y-auto antialiased">
             <div className="flex flex-col min-h-full p-6">
@@ -42,10 +161,11 @@ export default function Sidebar() {
                     <div className="w-10 h-10 rounded-xl shrink-0 bg-white border border-sky-100 overflow-hidden flex items-center justify-center shadow-sm">
                         <img
                             src={`${url}${webInfo.logo_url}`}
-                            alt={`${webInfo.ten_trang}`}
+                            alt={webInfo.ten_trang}
                             className="w-full h-full object-fill"
                         />
                     </div>
+
                     <div className="flex-1 min-w-0">
                         <h1 className="text-[13px] font-black tracking-[-0.015em] text-slate-800 leading-none mb-1 uppercase">
                             {webInfo.ten_trang}
@@ -54,73 +174,42 @@ export default function Sidebar() {
                 </div>
 
                 <nav className="flex-1 space-y-1">
+                    {menuGroups.map((group, index) => {
 
-                    <NavLink to="/Quan-ly" end className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <LayoutDashboard size={16} />
-                        <span className="font-manrope tracking-tight">Dashboard</span>
-                    </NavLink>
-                    <MenuHeading title="Chuyến đi & Địa điểm" />
-                    <NavLink to="/Quan-ly/Cac-chuyen-di" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <Luggage size={16} />
-                        <span className="font-manrope tracking-tight">Quản lý các chuyến đi</span>
-                    </NavLink>
-                    <NavLink to="/Quan-ly/Dia-diem" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <MapPin size={16} />
-                        <span className="font-manrope tracking-tight">Quản lý địa điểm</span>
-                    </NavLink>
-                    <NavLink to="/Quan-ly/Loai-Dia-Diem" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <Tags size={16} />
-                        <span className="font-manrope tracking-tight">Quản lý loại địa điểm</span>
-                    </NavLink>
-                    <NavLink to="/Quan-ly/Don-dat-cac-chuyen-di" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <Ticket size={16} />
-                        <span className="font-manrope tracking-tight">Quản lý đơn đặt</span>
-                    </NavLink>
-                    <NavLink to="/Quan-ly/Khach-du-lich" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <UserPen size={16} />
-                        <span className="font-manrope tracking-tight">Quản lý khách du lịch</span>
-                    </NavLink>
-                    <MenuHeading title="Khách sạn & Tiện ích" />
-                    <NavLink to="/Quan-ly/Khach-san" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <Building2 size={16} />
-                        <span className="font-manrope tracking-tight">Quản lý khách sạn</span>
-                    </NavLink>
-                    <NavLink to="/Quan-ly/Tien-Ich" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <HousePlus size={16} />
-                        <span className="font-manrope tracking-tight">Quản lý tiện ích</span>
-                    </NavLink>
-                    <MenuHeading title="Người dùng" />
-                    <NavLink to="/Quan-ly/Nhan-vien" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <ContactRound size={16} />
-                        <span className="font-manrope tracking-tight">Quản lý nhân sự</span>
-                    </NavLink>
-                    <NavLink to="/Quan-ly/Tai-khoan" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <User size={16} />
-                        <span className="font-manrope tracking-tight">Quản lý tài khoản</span>
-                    </NavLink>
+                        if (group.role && !group.role.includes(role)) {
+                            return null;
+                        }
 
-                    <MenuHeading title="Hệ thống & Giao tiếp" />
+                        return (
+                            <div key={index}>
+                                {group.heading && (
+                                    <MenuHeading title={group.heading} />
+                                )}
 
-                    <NavLink to="/Quan-ly/Lien-he" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <Mailbox size={16} />
-                        <span className="font-manrope tracking-tight">Quản lý liên hệ</span>
-                    </NavLink>
-                    <NavLink to="/Quan-ly/Newletter" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <UserPlus2 size={16} />
-                        <span className="font-manrope tracking-tight">Quản lý newletters</span>
-                    </NavLink>
-                    <NavLink to="/Quan-ly/Banner" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <Images size={16} />
-                        <span className="font-manrope tracking-tight">Quản lý banner</span>
-                    </NavLink>
-                    <NavLink to="/Quan-ly/Uu-Dai" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <BadgePercent size={16} />
-                        <span className="font-manrope tracking-tight">Quản lý ưu đãi</span>
-                    </NavLink>
-                    <NavLink to="/Quan-ly/Thong-tin-trang" className={({ isActive }) => isActive ? activeLinkClass : baseLinkClass}>
-                        <Columns3Cog size={16} />
-                        <span className="font-manrope tracking-tight">Quản lý thông tin trang</span>
-                    </NavLink>
+                                {group.items.map((item) => {
+                                    const Icon = item.icon;
+
+                                    return (
+                                        <NavLink
+                                            key={item.path}
+                                            to={item.path}
+                                            end={item.end}
+                                            className={({ isActive }) =>
+                                                isActive
+                                                    ? activeLinkClass
+                                                    : baseLinkClass
+                                            }
+                                        >
+                                            <Icon size={16} />
+                                            <span className="font-manrope tracking-tight">
+                                                {item.title}
+                                            </span>
+                                        </NavLink>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })}
                 </nav>
             </div>
         </aside>

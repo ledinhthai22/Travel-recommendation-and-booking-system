@@ -68,18 +68,19 @@ function App() {
                         <Route path="Khach-san/:name" element={<HotelDetail />} />
                         <Route path="Lien-He" element={<ContactPage />} />
                         <Route path="Thanh-Toan" element={<CheckoutPage />} />
-                        <Route path="Thong-Tin-Ca-Nhan" element={<Profile />} />
-                        <Route path="Danh-Sach-Yeu-Thich" element={<Wishlist />} />
+                        <Route element={<ProtectedRoute />}>
+                            <Route path="Thong-Tin-Ca-Nhan" element={<Profile />} />
+                            <Route path="Danh-Sach-Yeu-Thich" element={<Wishlist />} />
+                        </Route>
                     </Route>
-
 
                     <Route element={<ProtectedRoute allowedRoles={["1", "2"]} />}>
                         <Route path="/Quan-ly" element={<AdminLayout />}>
                             <Route index element={<DashBoard />} />
-                            <Route path="Tai-khoan" element={<UserManager />} />
-                            <Route path="Cac-chuyen-di" element={<TourManager />} />
+                            <Route path="Khach-du-lich" element={<TouristManager />} />
                             <Route path="Dia-diem" element={<LocationManager />} />
                             <Route path="Loai-Dia-Diem" element={<TypeLocationManager />} />
+                            <Route path="Cac-chuyen-di" element={<TourManager />} />
                             <Route path="Khach-san">
                                 <Route index element={<HotelManager />} />
                                 <Route path="Them-Khach-San" element={<HotelCreatePage />} />
@@ -87,17 +88,20 @@ function App() {
                                 <Route path="Cap-nhat/:id" element={<HotelEditPage />} />
                             </Route>
                             <Route path="Tien-ich" element={<AmenitiesManager />} />
-
-                            <Route path="Nhan-vien" element={<StaffManager />} />
-                            <Route path="Khach-du-lich" element={<TouristManager />} />
                             <Route path="Don-dat-cac-chuyen-di" element={<BookingManager />} />
                             <Route path="Lien-he" element={<ContactManager />} />
-                            <Route path="Thong-tin-trang" element={<Webinfo />} />
+                        </Route>
+                    </Route>
+                    <Route element={<ProtectedRoute allowedRoles={["1"]} />}>
+                        <Route path="/Quan-ly" element={<AdminLayout />}>
+                            <Route path="Nhan-vien" element={<StaffManager />} />
+                            <Route path="Tai-khoan" element={<UserManager />} />
                             <Route path="Newletter" element={<NewlettersManager />} />
                             <Route path="Banner" element={<BannerManager />} />
-                            <Route path="Hoat-dong-he-thong" element={<ActivityLogManager />} />
-                            <Route path="Thong-doanh-thu-theo-cac-chuyen-di" element={<RevenueByTour />} />
                             <Route path="Uu-Dai" element={<PromotionManager />} />
+                            <Route path="Thong-tin-trang" element={<Webinfo />} />
+                            <Route path="Thong-doanh-thu-theo-cac-chuyen-di" element={<RevenueByTour />} />
+                            <Route path="Hoat-dong-he-thong" element={<ActivityLogManager />} />
                         </Route>
                     </Route>
 

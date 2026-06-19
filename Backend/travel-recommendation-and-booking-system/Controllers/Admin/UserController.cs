@@ -1,23 +1,18 @@
-﻿using DTOs.User;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Reflection;
-using System.Security.Claims;
 using travel_recommendation_and_booking_system.DTOs.User;
 using travel_recommendation_and_booking_system.Interfaces;
-using travel_recommendation_and_booking_system.Models;
-using travel_recommendation_and_booking_system.Services;
 
 namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Policy = "AdminOnly")]
     public class UserController : ControllerBase
     {
         private readonly IUserService _user;
-        public UserController(IUserService user) {
+        public UserController(IUserService user)
+        {
             _user = user;
         }
 
@@ -115,7 +110,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpGet("get-user")]
-        public async Task<IActionResult> GetUsers([FromQuery] int pageNumber = 1,[FromQuery] int pageSize = 10,[FromQuery] string? keyword = null,[FromQuery] int? status = null)
+        public async Task<IActionResult> GetUsers([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] string? keyword = null, [FromQuery] int? status = null)
         {
             try
             {

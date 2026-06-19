@@ -1,7 +1,5 @@
-﻿using Azure.Core;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics.Contracts;
 using travel_recommendation_and_booking_system.DTOs.Banner;
 using travel_recommendation_and_booking_system.Interfaces;
 
@@ -9,7 +7,7 @@ namespace Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Policy = "AdminOnly")]
     public class BannerController : ControllerBase
     {
         private readonly IBannerService _banner;
@@ -19,11 +17,11 @@ namespace Controllers.Admin
         }
 
         [HttpGet("get-banner")]
-        public async Task<IActionResult> GetBanner([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] string? key = null, [FromQuery] bool? status =null)
+        public async Task<IActionResult> GetBanner([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] string? key = null, [FromQuery] bool? status = null)
         {
             try
             {
-                var result = await _banner.GetBannerAsync(pageNumber, pageSize, key,status);
+                var result = await _banner.GetBannerAsync(pageNumber, pageSize, key, status);
                 return Ok(result);
             }
             catch (Exception ex)

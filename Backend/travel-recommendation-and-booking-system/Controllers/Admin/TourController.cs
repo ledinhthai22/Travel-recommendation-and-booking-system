@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using System.Text.Json;
@@ -9,13 +8,12 @@ using travel_recommendation_and_booking_system.DTOs.Schedule;
 using travel_recommendation_and_booking_system.DTOs.Tour;
 using travel_recommendation_and_booking_system.DTOs.Tour_KS;
 using travel_recommendation_and_booking_system.Interfaces;
-using travel_recommendation_and_booking_system.Services;
 
 namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Policy = "Admin&Staff")]
     public class TourController : ControllerBase
     {
         private readonly ITourService _tour;
@@ -23,30 +21,6 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         {
             _tour = tour;
         }
-
-        //[HttpGet]
-        //public async Task<IActionResult> GetPaged([FromQuery] int pageNumber, [FromQuery] int pageSize, [FromQuery] string key="", [FromQuery] bool? status=null)
-        //{
-        //    var result = await _tour.GetPagedTourAsync(pageNumber,pageSize,key,status);
-
-        //    return Ok(result);
-        //}
-
-        //[HttpGet("{id}")]
-        //public async Task<IActionResult> GetById(int id)
-        //{
-        //    var result = await _tour.GetTourByIdAsync(id);
-
-        //    if (result == null)
-        //    {
-        //        return NotFound(new
-        //        {
-        //            Message = "Không tìm thấy tour"
-        //        });
-        //    }
-
-        //    return Ok(result);
-        //}
 
         [HttpGet("paged")]
         public async Task<IActionResult> GetPagedTours([FromQuery] int page = 1,[FromQuery] int pageSize = 10,[FromQuery] string key = "",[FromQuery] bool? status = null)
