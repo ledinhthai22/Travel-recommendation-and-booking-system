@@ -1,16 +1,14 @@
 ﻿using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
-using travel_recommendation_and_booking_system.DTOs.Banner;
-using travel_recommendation_and_booking_system.DTOs.TypeLocation;
 using travel_recommendation_and_booking_system.DTOs.TypeTour;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
-using travelrecommendationandbookingsystem.Migrations;
+
 
 namespace Services
 {
-    public class TypeTourService:ITypeTourService
+    public class TypeTourService : ITypeTourService
     {
         private readonly AppDbContext _context;
         public TypeTourService(AppDbContext context)
@@ -55,7 +53,7 @@ namespace Services
                 .Take(pageSize)
                 .Select(n => new TypeTourReponseDTO
                 {
-                    MaLoaiTour= n.MaLoaiTour,
+                    MaLoaiTour = n.MaLoaiTour,
                     TrangThai = n.TrangThai,
                     NgayTao = n.NgayTao,
                     NgayCapNhat = n.NgayCapNhat,
@@ -72,14 +70,14 @@ namespace Services
         }
         public async Task<bool> CreateTypeTourAsync(TypeTourDTO typetour)
         {
-            bool istytour = await _context.LoaiHinhTours.AnyAsync( x => x.TenLoaiTour.Trim().ToLower() == typetour.TenLoaiTour.Trim().ToLower() && x.NgayXoa == null);
+            bool istytour = await _context.LoaiHinhTours.AnyAsync(x => x.TenLoaiTour.Trim().ToLower() == typetour.TenLoaiTour.Trim().ToLower() && x.NgayXoa == null);
             if (istytour) return false;
             var newtypetour = new CLoaiHinhTour
             {
-                TenLoaiTour= typetour.TenLoaiTour,
-                TrangThai=true,
-                NgayTao= DateTime.Now,
-                NgayCapNhat= DateTime.Now
+                TenLoaiTour = typetour.TenLoaiTour,
+                TrangThai = true,
+                NgayTao = DateTime.Now,
+                NgayCapNhat = DateTime.Now
             };
             _context.LoaiHinhTours.Add(newtypetour);
             await _context.SaveChangesAsync();
@@ -89,10 +87,10 @@ namespace Services
         {
             var istypetour = await _context.LoaiHinhTours.FindAsync(id);
 
-            if(istypetour ==null || istypetour.NgayXoa !=null) return false;
+            if (istypetour == null || istypetour.NgayXoa != null) return false;
 
-            bool isnametypetour = await _context.LoaiHinhTours.AnyAsync(x=>x.TenLoaiTour.Trim().ToLower() == typetour.TenLoaiTour.Trim().ToLower() && x.MaLoaiTour != id);
-            if(isnametypetour) return false;
+            bool isnametypetour = await _context.LoaiHinhTours.AnyAsync(x => x.TenLoaiTour.Trim().ToLower() == typetour.TenLoaiTour.Trim().ToLower() && x.MaLoaiTour != id);
+            if (isnametypetour) return false;
 
             istypetour.TenLoaiTour = typetour.TenLoaiTour;
             istypetour.TrangThai = typetour.TrangThai;
@@ -106,9 +104,9 @@ namespace Services
         public async Task<bool> SoftDeleteTypeTourAsync(int id)
         {
             var istypetour = await _context.LoaiHinhTours.FindAsync(id);
-            if(istypetour == null || istypetour.NgayXoa != null || istypetour.TrangThai == true) return false;
+            if (istypetour == null || istypetour.NgayXoa != null || istypetour.TrangThai == true) return false;
 
-            istypetour.NgayXoa= DateTime.Now;
+            istypetour.NgayXoa = DateTime.Now;
 
             _context.LoaiHinhTours.Update(istypetour);
             await _context.SaveChangesAsync();

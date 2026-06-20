@@ -10,7 +10,7 @@ export const getHotelApi = async (
     trangThai = null
 ) => {
     const response = await axiosClient.get(
-        '/admin/Hotel',
+        '/admin/Hotel/Paged',
         {
             params: {
                 pageNumber,

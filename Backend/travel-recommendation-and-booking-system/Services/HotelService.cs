@@ -17,6 +17,18 @@ namespace travel_recommendation_and_booking_system.Services
         {
             _context = context;
         }
+        public async Task<List<HotelDTO>> GetAllAsync()
+        {
+            return await _context.KhachSans
+                .Where(x => x.NgayXoa == null)
+                .OrderBy(x => x.TenKhachSan)
+                .Select(x => new HotelDTO
+                {
+                    MaKhachSan = x.MaKhachSan,
+                    TenKhachSan = x.TenKhachSan
+                })
+                .ToListAsync();
+        }
         public async Task<PageDTO<HotelResponseDTO>> GetPagedHotelAsync(int pageNumber, int pageSize, HotelDTO hotel)
         {
             pageNumber = pageNumber < 1 ? 1 : pageNumber;

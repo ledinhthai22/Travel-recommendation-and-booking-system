@@ -54,7 +54,7 @@ export default function Sidebar() {
             heading: "Chuyến đi & Địa điểm",
             items: [
                 {
-                    title: "Quản lý các chuyến đi",
+                    title: "Quản lý tour",
                     path: "/Quan-ly/Cac-chuyen-di",
                     icon: Luggage
                 },

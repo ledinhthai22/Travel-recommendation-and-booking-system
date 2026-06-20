@@ -39,7 +39,8 @@ import {
     HotelDetailPage,
     TypeLocationManager,
     AmenitiesManager,
-    LocationManager
+    LocationManager,
+    TourFormPage
 } from './Pages/admin';
 
 function App() {
@@ -80,7 +81,15 @@ function App() {
                             <Route path="Khach-du-lich" element={<TouristManager />} />
                             <Route path="Dia-diem" element={<LocationManager />} />
                             <Route path="Loai-Dia-Diem" element={<TypeLocationManager />} />
-                            <Route path="Cac-chuyen-di" element={<TourManager />} />
+                            <Route path="Cac-chuyen-di">
+                                <Route index element={<TourManager />} />
+
+                                <Route path="Them-Tour" element={<TourFormPage mode="add" />} />
+
+                                <Route path="Xem-chi-tiet/:id" element={<TourFormPage mode="view" />} />
+
+                                <Route path="Cap-nhat/:id" element={<TourFormPage mode="edit" />} />
+                            </Route>
                             <Route path="Khach-san">
                                 <Route index element={<HotelManager />} />
                                 <Route path="Them-Khach-San" element={<HotelCreatePage />} />

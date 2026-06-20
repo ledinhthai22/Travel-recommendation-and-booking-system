@@ -190,7 +190,7 @@ export default function LocationFormPage({
         <div >
             <div className="bg-white border border-slate-200 rounded-2xl shadow">
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 ">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4  justify-between items-center border-b border-slate-200 bg-slate-50 rounded-t-2xl">
                     <Link
                         to="/Quan-ly/Dia-diem"
                         onClick={onCancel}

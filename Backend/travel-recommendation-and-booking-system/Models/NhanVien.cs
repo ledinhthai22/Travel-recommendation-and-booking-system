@@ -8,8 +8,6 @@ namespace travel_recommendation_and_booking_system.Models
         [Key]
         public int MaNhanVien { get; set; }
 
-        [ForeignKey("VaiTro")]
-        public int MaVaiTro { get; set; }
 
         [Required]
         [StringLength(255)]
@@ -34,7 +32,9 @@ namespace travel_recommendation_and_booking_system.Models
         public DateTime NgayCapNhat { get; set; } = DateTime.Now;
         public DateTime? NgayXoa { get; set; }
         public int TrangThai { get; set; }
+        public int MaVaiTro { get; set; }
 
+        [ForeignKey("MaVaiTro")]
         public virtual VaiTro VaiTro { get; set; }
     }
 }
