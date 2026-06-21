@@ -1,5 +1,4 @@
 ﻿using DTOs.Staff;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs.Staff;
 using travel_recommendation_and_booking_system.Interfaces;
@@ -8,7 +7,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
-    [Authorize(Policy = "AdminOnly")]
+    //[Authorize(Policy = "AdminOnly")]
     public class StaffController : ControllerBase
     {
         private readonly IStaffService _staffService;
@@ -17,9 +16,13 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         {
             _staffService = staffService;
         }
-
-
-        [HttpGet]
+        [HttpGet("TourGuiDe")]
+        public async Task<IActionResult> GetTourGuiDe()
+        {
+            var result = await _staffService.GetTourGuiDe();
+            return Ok(result);
+        }
+        [HttpGet("Paged")]
         public async Task<IActionResult> GetPagedStaffs(
             [FromQuery] StaffFilterDTO staff,
             int pageNumber = 1,

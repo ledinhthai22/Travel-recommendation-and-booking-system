@@ -17,6 +17,18 @@ namespace travel_recommendation_and_booking_system.Services
             _context = context;
             _environment = environment;
         }
+        public async Task<List<StaffDTO>> GetTourGuiDe()
+        {
+            return await _context.NhanViens
+                .Where(n => n.NgayXoa == null && n.MaVaiTro == 3)
+                .OrderBy(n => n.HoTen)
+                .Select(n => new StaffDTO
+                {
+                    MaNhanVien = n.MaNhanVien,
+                    HoTen = n.HoTen
+                })
+                .ToListAsync();
+        }
         public async Task<PageDTO<StaffResponseDTO>> GetPagedStaffsAsync(int pageNumber, int pageSize, StaffFilterDTO filter)
         {
             if (pageNumber < 1) pageNumber = 1;

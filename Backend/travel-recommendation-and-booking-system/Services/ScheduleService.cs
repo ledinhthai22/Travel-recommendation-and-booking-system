@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Globalization;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Schedule;
 using travel_recommendation_and_booking_system.DTOs.ScheduleDetails;
@@ -10,40 +12,120 @@ namespace travel_recommendation_and_booking_system.Services
     public class ScheduleService : IScheduleService
     {
         private readonly AppDbContext _context;
+        private const string DEFAULT_SCHEDULE_IMAGE = "default-schedule.jpg";
 
         public ScheduleService(AppDbContext context)
         {
             _context = context;
         }
 
-        public async Task<bool> AddScheduleAsync(ScheduleDTO dto)
+        private static string ToSafeFileName(string value)
         {
-            string fileName = "";
+            if (string.IsNullOrWhiteSpace(value)) return "khong_co_ten";
 
-            if (dto.DuongDanAnh != null)
+            value = value.Trim().ToLowerInvariant();
+            value = value.Normalize(NormalizationForm.FormD);
+
+            var builder = new StringBuilder();
+
+            foreach (var c in value)
             {
-                if (dto.DuongDanAnh.Length > 10 * 1024 * 1024)
-                    throw new Exception("File ảnh không được vượt quá 10MB.");
-
-                string[] permittedExtensions = { ".jpg", ".jpeg", ".png", ".gif" };
-                var fileExtension = Path.GetExtension(dto.DuongDanAnh.FileName).ToLowerInvariant();
-                if (!permittedExtensions.Contains(fileExtension))
-                    throw new Exception("Chỉ chấp nhận file ảnh (JPG, PNG, GIF).");
-
-                string baseName = Path.GetFileNameWithoutExtension(dto.DuongDanAnh.FileName).Replace(" ", "_");
-                string timeStamp = DateTime.Now.ToString("yyyyMMddHHmmssfff");
-                string uniqueId = Guid.NewGuid().ToString().Substring(0, 6);
-                fileName = $"{baseName}_{timeStamp}_{uniqueId}{fileExtension}";
-
-                string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img/schedules");
-                if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
-
-                string path = Path.Combine(folderPath, fileName);
-                using (var stream = new FileStream(path, FileMode.Create))
+                var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
+                if (unicodeCategory != UnicodeCategory.NonSpacingMark)
                 {
-                    await dto.DuongDanAnh.CopyToAsync(stream);
+                    builder.Append(c);
                 }
             }
+
+            value = builder.ToString().Normalize(NormalizationForm.FormC);
+            value = value.Replace("đ", "d").Replace("Đ", "D");
+
+            foreach (char c in Path.GetInvalidFileNameChars())
+            {
+                value = value.Replace(c, '_');
+            }
+
+            value = value.Replace(" ", "_");
+
+            while (value.Contains("__"))
+            {
+                value = value.Replace("__", "_");
+            }
+
+            return value;
+        }
+
+        private async Task<string> SaveScheduleImageAsync(ScheduleDTO dto)
+        {
+            if (dto.DuongDanAnh == null) return "";
+
+            if (dto.DuongDanAnh.Length > 10 * 1024 * 1024)
+                throw new Exception("File ảnh không được vượt quá 10MB.");
+
+            string[] permittedExtensions = { ".jpg", ".jpeg", ".png", ".gif" };
+            var fileExtension = Path.GetExtension(dto.DuongDanAnh.FileName).ToLowerInvariant();
+
+            if (!permittedExtensions.Contains(fileExtension))
+                throw new Exception("Chỉ chấp nhận file ảnh JPG, PNG, GIF.");
+
+            var detailLocationIds = dto.ChiTietLichTrinh?
+                .Select(x => x.MaDiaDiem)
+                .Where(x => x > 0)
+                .Distinct()
+                .ToList() ?? new List<int>();
+
+            var tenDiemThamQuan = await _context.DiaDiems
+                .Where(x => detailLocationIds.Contains(x.MaDiaDiem))
+                .OrderBy(x => x.MaDiaDiem)
+                .Select(x => x.TenDiaDiem)
+                .FirstOrDefaultAsync();
+
+            string timeStamp = DateTime.Now.ToString("ssmmHHddMMyyyy");
+            string maTour = dto.MaTour.ToString();
+            string tenLichTrinh = ToSafeFileName(dto.TenLichTrinh);
+            string diemThamQuan = ToSafeFileName(tenDiemThamQuan ?? "khong_co_diem_tham_quan");
+
+            string fileName = $"{timeStamp}_{maTour}_{tenLichTrinh}_{diemThamQuan}{fileExtension}";
+
+            string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "schedules");
+            if (!Directory.Exists(folderPath))
+            {
+                Directory.CreateDirectory(folderPath);
+            }
+
+            string path = Path.Combine(folderPath, fileName);
+
+            using (var stream = new FileStream(path, FileMode.Create))
+            {
+                await dto.DuongDanAnh.CopyToAsync(stream);
+            }
+
+            return $"/img/schedules/{fileName}";
+        }
+
+        private void DeleteOldScheduleImage(string? fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName)) return;
+            if (fileName == DEFAULT_SCHEDULE_IMAGE) return;
+            var physicalFileName = Path.GetFileName(fileName);
+
+            string oldPath = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "wwwroot",
+                "img",
+                "schedules",
+                physicalFileName
+            );
+
+            if (File.Exists(oldPath))
+            {
+                File.Delete(oldPath);
+            }
+        }
+
+        public async Task<bool> AddScheduleAsync(ScheduleDTO dto)
+        {
+            string fileName = await SaveScheduleImageAsync(dto);
 
             var lichTrinh = new LichTrinh
             {
@@ -53,36 +135,70 @@ namespace travel_recommendation_and_booking_system.Services
                 SoThuTuNgay = dto.SoThuTuNgay,
                 HoatDongChinh = dto.HoatDongChinh,
                 LuuY = dto.LuuY,
-                DuongDanAnh = fileName,
+                DuongDanAnh = string.IsNullOrEmpty(fileName) ? DEFAULT_SCHEDULE_IMAGE : fileName,
                 TrangThai = true,
-                NgayTao = DateTime.Now
+                NgayTao = DateTime.Now,
+                NgayCapNhat = DateTime.Now
             };
 
             _context.LichTrinhs.Add(lichTrinh);
+            await _context.SaveChangesAsync();
+
+            var details = dto.ChiTietLichTrinh ?? new List<ScheduleDetailsDTO>();
+
+            foreach (var item in details)
+            {
+                _context.CTLichTrinhs.Add(new CTLichTrinh
+                {
+                    MaLichTrinh = lichTrinh.MaLichTrinh,
+                    MaDiaDiem = item.MaDiaDiem,
+                    GioBatDau = item.GioBatDau,
+                    GioKetThuc = item.GioKetThuc,
+                    HoatDong = item.HoatDong
+                });
+            }
+
             return await _context.SaveChangesAsync() > 0;
         }
 
+        // ĐỒNG BỘ: Đổi kiểu trả về thành List<ScheduleResponseDTO> gom nhóm dữ liệu lồng nhau
         public async Task<List<ScheduleReponseDTO>> GetByTourAsync(int maTour)
         {
             return await _context.LichTrinhs
-            .AsNoTracking()
-            .Where(x => x.MaTour == maTour && x.NgayXoa == null)
-            .OrderBy(x => x.SoThuTuNgay)
-            .Select(x => new ScheduleReponseDTO
-            {
-                MaLichTrinh = x.MaLichTrinh,
-                MaTour = x.MaTour,
-                TenLichTrinh = x.TenLichTrinh,
-                DuongDanAnh = x.DuongDanAnh,
-                BuaAn = x.BuaAn,
-                SoThuTuNgay = x.SoThuTuNgay,
-                HoatDongChinh = x.HoatDongChinh,
-                LuuY = x.LuuY
-            })
-            .ToListAsync();
+                .AsNoTracking()
+                .Where(x => x.MaTour == maTour && x.NgayXoa == null)
+                .OrderBy(x => x.SoThuTuNgay)
+                .Select(x => new ScheduleReponseDTO
+                {
+                    MaLichTrinh = x.MaLichTrinh,
+                    MaTour = x.MaTour,
+                    TenLichTrinh = x.TenLichTrinh,
+                    DuongDanAnh = x.DuongDanAnh,
+                    BuaAn = x.BuaAn,
+                    SoThuTuNgay = x.SoThuTuNgay,
+                    HoatDongChinh = x.HoatDongChinh,
+                    LuuY = x.LuuY,
+                    TrangThai = x.TrangThai,
+                    NgayTao = x.NgayTao,
+                    NgayCapNhat = x.NgayCapNhat,
+                    NgayXoa = x.NgayXoa,
+                    ChiTietLichTrinhs = x.CTLichTrinhs
+                        .OrderBy(ct => ct.GioBatDau)
+                        .Select(ct => new ScheduleDetailsDTO
+                        {
+                            MaCTLT = ct.MaCTLT,
+                            MaLichTrinh = ct.MaLichTrinh,
+                            MaDiaDiem = ct.MaDiaDiem,
+                            GioBatDau = ct.GioBatDau,
+                            GioKetThuc = ct.GioKetThuc,
+                            HoatDong = ct.HoatDong
+                        })
+                        .ToList()
+                })
+                .ToListAsync();
         }
 
-        public async Task<bool> UpdateSchdeduleAsync(int maLichTrinh, ScheduleDTO dto)
+        public async Task<bool> UpdateScheduleAsync(int maLichTrinh, ScheduleDTO dto)
         {
             var lt = await _context.LichTrinhs.FindAsync(maLichTrinh);
             if (lt == null) return false;
@@ -95,44 +211,89 @@ namespace travel_recommendation_and_booking_system.Services
             lt.TrangThai = dto.TrangThai;
             lt.NgayCapNhat = DateTime.Now;
 
+            string? oldImagePath = null;
+
             if (dto.DuongDanAnh != null)
             {
-                if (!string.IsNullOrEmpty(lt.DuongDanAnh))
+                dto.MaTour = dto.MaTour > 0 ? dto.MaTour : lt.MaTour;
+
+                var newFileName = await SaveScheduleImageAsync(dto);
+
+                if (!string.IsNullOrEmpty(newFileName))
                 {
-                    string oldPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img/schedules", lt.DuongDanAnh);
-                    if (File.Exists(oldPath))
-                    {
-                        File.Delete(oldPath);
-                    }
+                    oldImagePath = lt.DuongDanAnh;
+                    lt.DuongDanAnh = newFileName;
                 }
-
-                string fileExtension = Path.GetExtension(dto.DuongDanAnh.FileName).ToLowerInvariant();
-                string baseName = Path.GetFileNameWithoutExtension(dto.DuongDanAnh.FileName).Replace(" ", "_");
-                string timeStamp = DateTime.Now.ToString("yyyyMMddHHmmssfff");
-                string uniqueId = Guid.NewGuid().ToString().Substring(0, 6);
-                string newFileName = $"{baseName}_{timeStamp}_{uniqueId}{fileExtension}";
-
-                string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img/schedules");
-                if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
-
-                string newPath = Path.Combine(folderPath, newFileName);
-                using (var stream = new FileStream(newPath, FileMode.Create))
-                {
-                    await dto.DuongDanAnh.CopyToAsync(stream);
-                }
-
-                lt.DuongDanAnh = newFileName;
             }
 
-            return await _context.SaveChangesAsync() > 0;
+            var oldDetails = await _context.CTLichTrinhs
+                .Where(x => x.MaLichTrinh == maLichTrinh)
+                .ToListAsync();
+
+            var incomingDetails = dto.ChiTietLichTrinh ?? new List<ScheduleDetailsDTO>();
+
+            var incomingIds = incomingDetails
+                .Where(x => x.MaCTLT > 0)
+                .Select(x => x.MaCTLT)
+                .ToList();
+
+            var deletedDetails = oldDetails
+                .Where(x => !incomingIds.Contains(x.MaCTLT))
+                .ToList();
+
+            _context.CTLichTrinhs.RemoveRange(deletedDetails);
+
+            foreach (var item in incomingDetails)
+            {
+                if (item.MaCTLT > 0)
+                {
+                    var existing = oldDetails.FirstOrDefault(x => x.MaCTLT == item.MaCTLT);
+                    if (existing != null)
+                    {
+                        existing.MaDiaDiem = item.MaDiaDiem;
+                        existing.GioBatDau = item.GioBatDau;
+                        existing.GioKetThuc = item.GioKetThuc;
+                        existing.HoatDong = item.HoatDong;
+                    }
+
+                }
+                else
+                {
+                    _context.CTLichTrinhs.Add(new CTLichTrinh
+                    {
+                        MaLichTrinh = maLichTrinh,
+                        MaDiaDiem = item.MaDiaDiem,
+                        GioBatDau = item.GioBatDau,
+                        GioKetThuc = item.GioKetThuc,
+                        HoatDong = item.HoatDong
+                    });
+                }
+            }
+
+            var result = await _context.SaveChangesAsync() > 0;
+
+
+            if (result && oldImagePath != null)
+            {
+                DeleteOldScheduleImage(oldImagePath);
+            }
+
+            return result;
         }
 
         public async Task<bool> DeleteScheduleAsync(int maLichTrinh)
         {
             var lt = await _context.LichTrinhs.FindAsync(maLichTrinh);
-            if (lt == null || lt.NgayXoa != null || lt.TrangThai == true) return false;
+
+            if (lt == null || lt.NgayXoa != null)
+            {
+                return false;
+            }
 
             lt.NgayXoa = DateTime.Now;
+            lt.NgayCapNhat = DateTime.Now;
+            lt.TrangThai = false;
+
             return await _context.SaveChangesAsync() > 0;
         }
 
@@ -146,17 +307,19 @@ namespace travel_recommendation_and_booking_system.Services
                 GioKetThuc = dto.GioKetThuc,
                 HoatDong = dto.HoatDong
             };
+
             _context.CTLichTrinhs.Add(ctlt);
-            await _context.SaveChangesAsync();
-            return true;
+            return await _context.SaveChangesAsync() > 0;
         }
-        public async Task<List<ScheduleDettailsReponseDTO>> GetByLichTrinhAsync(int maLichTrinh)
+
+        // ĐỒNG BỘ: Sửa chính tả kiểu dữ liệu trả về thành ScheduleDetailsReponseDTO
+        public async Task<List<ScheduleDetailsReponseDTO>> GetByLichTrinhAsync(int maLichTrinh)
         {
             return await _context.CTLichTrinhs
                 .Include(x => x.DiaDiem)
                 .Where(x => x.MaLichTrinh == maLichTrinh)
                 .OrderBy(x => x.GioBatDau)
-                .Select(x => new ScheduleDettailsReponseDTO
+                .Select(x => new ScheduleDetailsReponseDTO
                 {
                     MaCTLT = x.MaCTLT,
                     MaLichTrinh = x.MaLichTrinh,
@@ -168,6 +331,7 @@ namespace travel_recommendation_and_booking_system.Services
                 })
                 .ToListAsync();
         }
+
         public async Task<bool> UpdateCTLTAsync(int maCTLT, ScheduleDetailsDTO dto)
         {
             var ctlt = await _context.CTLichTrinhs.FindAsync(maCTLT);
@@ -181,6 +345,7 @@ namespace travel_recommendation_and_booking_system.Services
 
             return await _context.SaveChangesAsync() > 0;
         }
+
         public async Task<bool> DeleteCTLTAsync(int maCTLT)
         {
             var ctlt = await _context.CTLichTrinhs.FindAsync(maCTLT);

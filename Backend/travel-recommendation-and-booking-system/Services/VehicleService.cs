@@ -1,7 +1,6 @@
 ﻿using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
-using travel_recommendation_and_booking_system.DTOs.Banner;
 using travel_recommendation_and_booking_system.DTOs.Vehicle;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
@@ -24,6 +23,7 @@ namespace travel_recommendation_and_booking_system.Services
                 {
                     MaPhuongTien = x.MaPhuongTien,
                     TenPhuongTien = x.TenPhuongTien,
+                    MaVietTat = x.MaVietTat,
                     Icon = x.Icon,
                     TrangThai = x.TrangThai,
                     NgayTao = x.NgayTao,
@@ -101,7 +101,7 @@ namespace travel_recommendation_and_booking_system.Services
         public async Task<bool> SoftDeleteVehicleAsync(int id)
         {
             var entity = await _context.PhuongTiens.FindAsync(id);
-            if (entity == null || entity.NgayXoa !=null || entity.TrangThai == true) return false;
+            if (entity == null || entity.NgayXoa != null || entity.TrangThai == true) return false;
             entity.NgayXoa = DateTime.Now;
             return await _context.SaveChangesAsync() > 0;
         }

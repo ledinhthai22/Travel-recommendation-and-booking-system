@@ -1,5 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace travel_recommendation_and_booking_system.Models
 {
@@ -17,7 +17,6 @@ namespace travel_recommendation_and_booking_system.Models
         public string MoTa { get; set; }
         [StringLength(255)]
         public string ThoiGianTour { get; set; }
-        public int SoLuongToiDa { get; set; }
         public int LuotDat { get; set; }
         public int LuotXem { get; set; }
         [StringLength(255)]
@@ -26,7 +25,8 @@ namespace travel_recommendation_and_booking_system.Models
         public DateTime NgayTao { get; set; } = DateTime.Now;
         public DateTime NgayCapNhat { get; set; } = DateTime.Now;
         public DateTime? NgayXoa { get; set; }
-
+        [Required]
+        public bool TrongNuoc { get; set; }
         public virtual CLoaiHinhTour LoaiHinhTour { get; set; }
         public virtual ICollection<HinhAnhTour> HinhAnhTours { get; set; } = new List<HinhAnhTour>();
         public virtual ICollection<LichTrinh> LichTrinhs { get; set; } = new List<LichTrinh>();

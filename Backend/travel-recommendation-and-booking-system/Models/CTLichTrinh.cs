@@ -1,5 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace travel_recommendation_and_booking_system.Models
 {
@@ -14,8 +14,8 @@ namespace travel_recommendation_and_booking_system.Models
 
         [ForeignKey("DiaDiem")]
         public int MaDiaDiem { get; set; }
-        public DateTime GioBatDau { get; set; }
-        public DateTime GioKetThuc { get; set; }
+        public string GioBatDau { get; set; }
+        public string GioKetThuc { get; set; }
         public string HoatDong { get; set; }
 
         public virtual LichTrinh LichTrinh { get; set; }

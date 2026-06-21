@@ -1,19 +1,28 @@
-﻿using Azure.Core;
-using DTOs.Page;
-using Microsoft.AspNetCore.Hosting;
+﻿using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
-using travel_recommendation_and_booking_system.DTOs.Banner;
 using travel_recommendation_and_booking_system.DTOs.Location;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
 
 namespace travel_recommendation_and_booking_system.Services
 {
-    public class LocationService:ILocationService
+    public class LocationService : ILocationService
     {
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment;
+        public async Task<List<LocationDTO>> GetAllAsync()
+        {
+            return await _context.DiaDiems
+                .Where(x => x.NgayXoa == null)
+                .OrderBy(x => x.TenDiaDiem)
+                .Select(x => new LocationDTO
+                {
+                    MaDiaDiem = x.MaDiaDiem,
+                    TenDiaDiem = x.TenDiaDiem
+                })
+                .ToListAsync();
+        }
         public LocationService(AppDbContext context, IWebHostEnvironment webHostEnvironment)
         {
             _context = context;

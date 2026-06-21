@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs.Schedule;
 using travel_recommendation_and_booking_system.DTOs.ScheduleDetails;
@@ -26,6 +25,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 
             try
             {
+                // ĐỒNG BỘ: Chỉ truyền duy nhất tham số dto vì bên trong dto đã gom sẵn List ChiTietLichTrinh
                 var result = await _service.AddScheduleAsync(dto);
                 return result ? Ok(new { message = "Thêm lịch trình thành công!" }) : BadRequest("Không thể thêm lịch trình.");
             }
@@ -49,7 +49,8 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 
             try
             {
-                var result = await _service.UpdateSchdeduleAsync(maLichTrinh, dto);
+                // ĐỒNG BỘ: Đổi tên phương thức gọi từ UpdateSchdeduleAsync thành UpdateScheduleAsync (bỏ chữ d thừa)
+                var result = await _service.UpdateScheduleAsync(maLichTrinh, dto);
                 return result ? Ok(new { message = "Cập nhật thành công!" }) : NotFound("Không tìm thấy lịch trình.");
             }
             catch (Exception ex)
