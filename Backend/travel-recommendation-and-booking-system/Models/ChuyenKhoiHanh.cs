@@ -1,5 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace travel_recommendation_and_booking_system.Models
 {
@@ -23,8 +23,6 @@ namespace travel_recommendation_and_booking_system.Models
         public string MaChuyenCode { get; set; }
         [Required]
         [StringLength(255)]
-        public string TenChuyen { get; set; }
-        [StringLength(255)]
         public string DiemKhoiHanh { get; set; }
         [StringLength(255)]
         public string DiemDen { get; set; }
@@ -37,7 +35,7 @@ namespace travel_recommendation_and_booking_system.Models
         public DateTime NgayTao { get; set; } = DateTime.Now;
         public DateTime NgayCapNhat { get; set; } = DateTime.Now;
         public DateTime? NgayXoa { get; set; }
-
+        public int TrangThai { get; set; }
         public virtual NguoiDung HuongDanVien { get; set; }
         public virtual Tour Tour { get; set; }
         public virtual PhuongTien PhuongTien { get; set; }

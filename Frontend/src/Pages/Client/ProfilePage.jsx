@@ -113,7 +113,7 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="min-h-[70vh] mt-30">
+        <div className="min-h-[calc(100vh-120px)] mt-30">
             <div className="mx-auto max-w-[1400px] bg-white">
 
                 {/* Layout */}

@@ -28,10 +28,10 @@ const InputField = ({
         ${Icon ? 'pl-10' : 'pl-4'}
         ${rightAction ? 'pr-10' : 'pr-4'}
         ${error
-            ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-4 focus:ring-red-100'
+            ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-1 focus:ring-red-100'
             : disabled
                 ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500'
-                : 'border-slate-200 bg-white text-slate-900 shadow-sm focus:border-sky-500 focus:ring-4 focus:ring-sky-100'
+                : 'border-slate-200 bg-white text-slate-900 focus:border-sky-500 focus:ring-1 focus:ring-sky-100'
         }
         ${className}
     `;

@@ -1,5 +1,14 @@
 import axiosClient from './axiosClient';
 
+
+export const getHotelListApi = async () => {
+    const response = await axiosClient.get(
+        "/admin/hotel"
+    );
+
+    return response.data;
+};
+
 export const getHotelApi = async (
     pageNumber,
     pageSize,
@@ -10,7 +19,7 @@ export const getHotelApi = async (
     trangThai = null
 ) => {
     const response = await axiosClient.get(
-        '/admin/Hotel',
+        '/admin/Hotel/Paged',
         {
             params: {
                 pageNumber,

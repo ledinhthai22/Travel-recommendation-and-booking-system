@@ -1,5 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace travel_recommendation_and_booking_system.Models
 {
@@ -11,6 +11,8 @@ namespace travel_recommendation_and_booking_system.Models
         [Required]
         [StringLength(255)]
         public string TenPhuongTien { get; set; }
+        [StringLength(10)]
+        public string MaVietTat { get; set; }
         [StringLength(255)]
         public string Icon { get; set; }
         public bool TrangThai { get; set; }

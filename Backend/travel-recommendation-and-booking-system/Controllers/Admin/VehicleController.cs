@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs.Vehicle;
 using travel_recommendation_and_booking_system.Interfaces;
 
@@ -8,7 +6,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
-    [Authorize]
+    //[Authorize]
     public class VehicleController : ControllerBase
     {
         private readonly IVehicleService _service;
@@ -23,7 +21,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         [HttpGet("paging")]
         public async Task<IActionResult> GetPaging([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] string? key = null, [FromQuery] bool? status = null)
         {
-           return Ok(await _service.GetVehicleAsync(pageNumber, pageSize, key, status));
+            return Ok(await _service.GetVehicleAsync(pageNumber, pageSize, key, status));
         }
 
         [HttpPost]

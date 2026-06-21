@@ -4,6 +4,7 @@ namespace travel_recommendation_and_booking_system.DTOs.Tour
 {
     public class TourDTO
     {
+        public int MaTour { get; set; }
         [Required(ErrorMessage = "Tên tour không được để trống.")]
         public string TenTour { get; set; }
 
@@ -16,12 +17,9 @@ namespace travel_recommendation_and_booking_system.DTOs.Tour
 
         [Required(ErrorMessage = "Thời gian tour không được để trống")]
         public string ThoiGianTour { get; set; }
-
-        [Required(ErrorMessage = "Số lượng khách tối đa không được để trống.")]
-        public int SoLuongToiDa { get; set; }
-
+        public bool TrongNuoc { get; set; }
         [Required(ErrorMessage = "Điểm khởi hành không được để trống.")]
-        public string DiemKhoiHanh { get; set; }    
+        public string? DiemKhoiHanh { get; set; }
         public bool TrangThai { get; set; }
     }
 }

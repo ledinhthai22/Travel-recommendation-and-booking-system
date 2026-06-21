@@ -55,7 +55,7 @@ const SelectField = ({
                         : disabled
                         ? 'cursor-not-allowed border-transparent bg-gray-50 text-gray-400'
                         : open
-                        ? 'border-[#0EA5E5] bg-white ring-4 ring-[#0EA5E5]/10'
+                        ? 'border-[#0EA5E5] bg-white ring-1 ring-[#0EA5E5]/10'
                         : 'border-gray-200 bg-white hover:border-[#0EA5E5]/40 hover:bg-gray-50'
                 }`}
             >

@@ -235,13 +235,11 @@ export default function HotelForm({
         executeSubmit();
     };
 
-
-
     return (
         <div >
             <div className="bg-white border border-slate-200 rounded-2xl shadow">
 
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 justify-between items-center border-b border-slate-200 bg-slate-50 rounded-t-2xl">
                     <Link
                         to="/Quan-ly/Khach-san"
                         onClick={onCancel}
@@ -428,7 +426,7 @@ export default function HotelForm({
                             </div>
                         )}
 
-                        <div className="p-5 border border-slate-200 rounded-2xl min-h-[100px] bg-slate-50/50">
+                        <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50/50">
                             {amenitiesSelected.length > 0 ? (
                                 <div className="flex flex-wrap gap-3">
                                     {amenitiesSelected.map((amenity) => (

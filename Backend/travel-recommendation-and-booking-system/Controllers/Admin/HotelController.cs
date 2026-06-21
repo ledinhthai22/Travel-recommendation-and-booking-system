@@ -16,8 +16,13 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         {
             _hotelService = hotelService;
         }
-
         [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            var result = await _hotelService.GetAllAsync();
+            return Ok(result);
+        }
+        [HttpGet("Paged")]
         public async Task<IActionResult> GetPaged([FromQuery] HotelDTO hotel, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             var result = await _hotelService.GetPagedHotelAsync(

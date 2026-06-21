@@ -2,16 +2,22 @@
 
 namespace travel_recommendation_and_booking_system.DTOs.ScheduleDetails
 {
-    public class ScheduleDetailsDTO {
+    public class ScheduleDetailsDTO
+    {
+        public int MaCTLT { get; set; }
+
         [Required(ErrorMessage = "lịch trình không được rỗng")]
         public int MaLichTrinh { get; set; }
+
         [Required(ErrorMessage = "Địa điểm không được rỗng")]
         public int MaDiaDiem { get; set; }
 
-        [Required(ErrorMessage ="Giờ bắt đầu không được rỗng")]
-        public DateTime GioBatDau { get; set; }
+        [Required(ErrorMessage = "Giờ bắt đầu không được rỗng")]
+        public string GioBatDau { get; set; }
+
         [Required(ErrorMessage = "Giờ kết thúc không được rỗng")]
-        public DateTime GioKetThuc { get; set; }
+        public string GioKetThuc { get; set; }
+
         [Required(ErrorMessage = "Hoạt động không được rỗng")]
         public string HoatDong { get; set; }
     }

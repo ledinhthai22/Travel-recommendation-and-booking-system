@@ -6,208 +6,148 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace travelrecommendationandbookingsystem.Migrations
 {
     /// <inheritdoc />
-    public partial class UpdateTourKhachSan : Migration
+    public partial class XoaTruongSoLuongToiDa : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_Tour_KhachSan_KhachSan_KhachSanMaKhachSan",
-                table: "Tour_KhachSan");
-
-            migrationBuilder.DropForeignKey(
-                name: "FK_Tour_KhachSan_Tour_TourMaTour",
-                table: "Tour_KhachSan");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Tour_KhachSan_KhachSanMaKhachSan",
-                table: "Tour_KhachSan");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Tour_KhachSan_TourMaTour",
-                table: "Tour_KhachSan");
-
             migrationBuilder.DropColumn(
-                name: "KhachSanMaKhachSan",
-                table: "Tour_KhachSan");
-
-            migrationBuilder.DropColumn(
-                name: "TourMaTour",
-                table: "Tour_KhachSan");
+                name: "SoLuongToiDa",
+                table: "Tour");
 
             migrationBuilder.UpdateData(
                 table: "NguoiDung",
                 keyColumn: "MaNguoiDung",
                 keyValue: 1,
                 columns: new[] { "MatKhau", "NgayCapNhat", "NgayTao" },
-                values: new object[] { "$2a$11$kjoMQUuUXkG5WiuZAf14EOPPVSYKz5I9pmc63hOAhClccv7rg3W5q", new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(6917), new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(6900) });
+                values: new object[] { "$2a$11$U97vcRqpE.BnaJcOZMNL7.8QsJNcrK6Hg86xdi6HYIeKc5eAbjdNa", new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6270), new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6240) });
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 1,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7293));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6797));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 2,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7300));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6804));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 3,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7301));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6806));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 4,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7315));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6824));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 5,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7316));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6825));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 7,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7317));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6825));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 8,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7321));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6832));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 9,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7329));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6847));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 10,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7330));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6849));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 11,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7331));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6850));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 12,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7332));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6851));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 13,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7333));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6852));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 14,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7334));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6852));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 15,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7336));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6853));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 16,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7337));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6854));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 17,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7338));
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6855));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 18,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 19, 21, 51, 54, 938, DateTimeKind.Local).AddTicks(7339));
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Tour_KhachSan_MaKhachSan",
-                table: "Tour_KhachSan",
-                column: "MaKhachSan");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_Tour_KhachSan_KhachSan_MaKhachSan",
-                table: "Tour_KhachSan",
-                column: "MaKhachSan",
-                principalTable: "KhachSan",
-                principalColumn: "MaKhachSan",
-                onDelete: ReferentialAction.Cascade);
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_Tour_KhachSan_Tour_MaTour",
-                table: "Tour_KhachSan",
-                column: "MaTour",
-                principalTable: "Tour",
-                principalColumn: "MaTour",
-                onDelete: ReferentialAction.Cascade);
+                value: new DateTime(2026, 6, 21, 10, 7, 2, 80, DateTimeKind.Local).AddTicks(6855));
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_Tour_KhachSan_KhachSan_MaKhachSan",
-                table: "Tour_KhachSan");
-
-            migrationBuilder.DropForeignKey(
-                name: "FK_Tour_KhachSan_Tour_MaTour",
-                table: "Tour_KhachSan");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Tour_KhachSan_MaKhachSan",
-                table: "Tour_KhachSan");
-
             migrationBuilder.AddColumn<int>(
-                name: "KhachSanMaKhachSan",
-                table: "Tour_KhachSan",
-                type: "int",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "TourMaTour",
-                table: "Tour_KhachSan",
+                name: "SoLuongToiDa",
+                table: "Tour",
                 type: "int",
                 nullable: false,
                 defaultValue: 0);
@@ -217,152 +157,126 @@ namespace travelrecommendationandbookingsystem.Migrations
                 keyColumn: "MaNguoiDung",
                 keyValue: 1,
                 columns: new[] { "MatKhau", "NgayCapNhat", "NgayTao" },
-                values: new object[] { "$2a$11$3rQNPCwij/Eg0QDpswxnhutvKPf7uo13bNsUjB8mYoZu/OAX0ALL2", new DateTime(2026, 6, 18, 10, 25, 58, 983, DateTimeKind.Local).AddTicks(9958), new DateTime(2026, 6, 18, 10, 25, 58, 983, DateTimeKind.Local).AddTicks(9923) });
+                values: new object[] { "$2a$11$vHIhA.0GB7HUdThmrmXU2ukh/sDHwrS4Gei7cp9jSKhmCdsTgU/tW", new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(5571), new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(5547) });
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 1,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(485));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6308));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 2,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(491));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6315));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 3,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(492));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6316));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 4,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(519));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6316));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 5,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(521));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6317));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 7,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(522));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6318));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 8,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(531));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6318));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 9,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(544));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6319));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 10,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(546));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6321));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 11,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(547));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6322));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 12,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(548));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6322));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 13,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(549));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6323));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 14,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(550));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6324));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 15,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(550));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6325));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 16,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(551));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6326));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 17,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(552));
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6327));
 
             migrationBuilder.UpdateData(
                 table: "ThongTinTrang",
                 keyColumn: "MaTTTrang",
                 keyValue: 18,
                 column: "NgayCapNhat",
-                value: new DateTime(2026, 6, 18, 10, 25, 58, 984, DateTimeKind.Local).AddTicks(553));
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Tour_KhachSan_KhachSanMaKhachSan",
-                table: "Tour_KhachSan",
-                column: "KhachSanMaKhachSan");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Tour_KhachSan_TourMaTour",
-                table: "Tour_KhachSan",
-                column: "TourMaTour");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_Tour_KhachSan_KhachSan_KhachSanMaKhachSan",
-                table: "Tour_KhachSan",
-                column: "KhachSanMaKhachSan",
-                principalTable: "KhachSan",
-                principalColumn: "MaKhachSan",
-                onDelete: ReferentialAction.Cascade);
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_Tour_KhachSan_Tour_TourMaTour",
-                table: "Tour_KhachSan",
-                column: "TourMaTour",
-                principalTable: "Tour",
-                principalColumn: "MaTour",
-                onDelete: ReferentialAction.Cascade);
+                value: new DateTime(2026, 6, 20, 16, 58, 17, 67, DateTimeKind.Local).AddTicks(6327));
         }
     }
 }

@@ -1,19 +1,14 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
-using System.Text.Json;
+﻿using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs.Departure;
-using travel_recommendation_and_booking_system.DTOs.Hotel;
 using travel_recommendation_and_booking_system.DTOs.Schedule;
 using travel_recommendation_and_booking_system.DTOs.Tour;
-using travel_recommendation_and_booking_system.DTOs.Tour_KS;
 using travel_recommendation_and_booking_system.Interfaces;
 
 namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
-    [Authorize(Policy = "Admin&Staff")]
+    //[Authorize(Policy = "Admin&Staff")]
     public class TourController : ControllerBase
     {
         private readonly ITourService _tour;
@@ -23,7 +18,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpGet("paged")]
-        public async Task<IActionResult> GetPagedTours([FromQuery] int page = 1,[FromQuery] int pageSize = 10,[FromQuery] string key = "",[FromQuery] bool? status = null)
+        public async Task<IActionResult> GetPagedTours([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string key = "", [FromQuery] bool? status = null)
         {
             var result = await _tour.GetPagedTourAsync(page, pageSize, key, status);
             return Ok(result);
@@ -33,7 +28,6 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> CreateFullTour([FromForm] TourDataForm form)
         {
-
             try
             {
                 var requestForm = await Request.ReadFormAsync();
@@ -71,15 +65,18 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
                 {
                     return BadRequest("Dữ liệu sau khi gom lại vẫn bị rỗng. Sếp check lại dư/thiếu dấu phẩy trong JSON nhé.");
                 }
-                //
+
                 ModelState.Clear();
                 if (!TryValidateModel(dto))
                 {
                     return BadRequest(ModelState);
                 }
-                //
-                var images = requestForm.Files.ToList();
-                var tourId = await _tour.CreateFullTourAsync(dto, images);
+
+                // TÁCH 2 LOẠI FILE THEO TÊN FIELD, KHÔNG GỘP CHUNG NỮA
+                var images = requestForm.Files.Where(f => f.Name == "Images").ToList();
+                var scheduleImages = requestForm.Files.Where(f => f.Name == "ScheduleFiles").ToList();
+
+                var tourId = await _tour.CreateFullTourAsync(dto, images, scheduleImages);
 
                 return Ok(new { Message = "Tạo tour thành công!", MaTour = tourId });
             }
@@ -95,7 +92,6 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpPut("{id}")]
-        [Consumes("multipart/form-data")]
         public async Task<IActionResult> UpdateTour(int id, [FromForm] TourDataForm form)
         {
             try
@@ -134,13 +130,17 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
                     return BadRequest(ModelState);
                 }
 
-                var images = requestForm.Files.ToList();
-                var success = await _tour.UpdateFullTourAsync(id, dto, images);
+
+                var images = requestForm.Files.Where(f => f.Name == "Images").ToList();
+                var scheduleImages = requestForm.Files.Where(f => f.Name == "ScheduleFiles").ToList();
+
+
+                var success = await _tour.UpdateFullTourAsync(id, dto, images, scheduleImages);
 
                 if (!success)
                     return NotFound($"Không tìm thấy tour với ID: {id}");
 
-                return Ok(new { Message = "Cập nhật tour thành công!" });
+                return Ok(new { Message = "Cập nhật thông tin chi tiết tour thành công!" });
             }
             catch (System.Text.Json.JsonException ex)
             {
@@ -183,43 +183,6 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             return Ok(new { Message = "Đã xóa mềm tour thành công!" });
         }
 
-        //[HttpPost]
-        //[Consumes("multipart/form-data")]
-        //public async Task<IActionResult> Create([FromForm] TourDTO tour, [FromForm] List<IFormFile> images, [FromForm] List<int>? danhSachMaKhachSan)
-        //{
-        //    var id = await _tour.CreateTourAsync(tour, images,danhSachMaKhachSan);
-
-        //    return Ok(new
-        //    {
-        //        Message = "Thêm tour thành công",
-        //        MaTour = id
-        //    });
-        //}
-
-        //[HttpPut("{id}")]
-        //[Consumes("multipart/form-data")]
-        //public async Task<IActionResult> Update(int id, [FromForm] TourDTO tour, [FromForm] List<IFormFile>? images ,[FromForm] List<int>? danhSachMaKhachSan)
-        //{
-        //    var result = await _tour.UpdateTourAsync(id, tour, images,danhSachMaKhachSan);
-
-        //    return Ok(new
-        //    {
-        //        Message = "Cập nhật tour thành công",
-        //        Success = result
-        //    });
-        //}
-
-        //[HttpDelete("{id}")]
-        //public async Task<IActionResult> Delete(int id)
-        //{
-        //    var result = await _tour.DeleteTourAsync(id);
-
-        //    return Ok(new
-        //    {
-        //        Message = "Xóa tour thành công",
-        //        Success = result
-        //    });
-        //}
 
         [HttpPatch("images/{imageId}/set-main")]
         public async Task<IActionResult> SetMainImage(int imageId)
@@ -245,21 +208,6 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             });
         }
 
-        //[HttpPost("create-tour-ks")]
-        //public async Task<IActionResult> Add([FromBody] Tour_KSDTO dto)
-        //{
-        //    return await _tour.AddToTourAsync(dto)
-        //        ? Ok("Đã gán khách sạn vào tour")
-        //        : BadRequest("Không thể gán (có thể đã tồn tại)");
-        //}
-
-        //[HttpDelete("{maTour}/{maKhachSan}")]
-        //public async Task<IActionResult> Remove(int maTour, int maKhachSan)
-        //{
-        //    return await _tour.RemoveFromTourAsync(maTour, maKhachSan)
-        //        ? Ok("Đã gỡ khách sạn khỏi tour")
-        //        : NotFound();
-        //}
 
     }
 }

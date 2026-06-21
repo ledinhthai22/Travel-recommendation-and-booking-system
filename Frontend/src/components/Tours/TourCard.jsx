@@ -20,10 +20,10 @@ function TourCard({
     return (
         <article
             className="
-                group flex h-[360px] w-full flex-col overflow-hidden rounded-2xl
-                border border-slate-100 bg-white shadow-sm
-                transition-all duration-300
-                hover:-translate-y-1 hover:border-[#0EA5E5]/30 
+            group flex h-[340px] w-full flex-col overflow-hidden rounded-2xl
+            border border-slate-100 bg-white shadow-sm
+            transition-all duration-300
+            hover:-translate-y-1 hover:border-[#0EA5E5]/30
             "
         >
             {/* 1. IMAGE - Giữ nguyên chiều cao cũ của bạn */}
@@ -91,16 +91,7 @@ function TourCard({
                         </div>
                         <div className="flex items-center gap-1.5">
                             <MapPin size={13} className="shrink-0 text-slate-400" />
-                            <span className="truncate text-[12px]">{duration || 'Liên hệ'}</span>
-                        </div>
-
-
-                        {/* Số chỗ còn nhận */}
-                        <div className="flex items-center gap-1.5">
-                            <Users size={13} className="shrink-0 text-slate-400" />
-                            <span className="truncate text-[12px]">
-                                Số chỗ còn nhận: <strong className="font-semibold  text-slate-700">{availableSlots != null ? availableSlots : '—'}</strong>
-                            </span>
+                            <span className="truncate text-[12px]">{destination || 'Liên hệ'}</span>
                         </div>
                     </div>
                 </div>

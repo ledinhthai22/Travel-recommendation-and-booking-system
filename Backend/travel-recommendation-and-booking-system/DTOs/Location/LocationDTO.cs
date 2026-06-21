@@ -2,7 +2,9 @@
 
 namespace travel_recommendation_and_booking_system.DTOs.Location
 {
-    public class LocationDTO {
+    public class LocationDTO
+    {
+        public int MaDiaDiem { get; set; }
         [Required(ErrorMessage = "Tên địa điểm không được để trống")]
         public string TenDiaDiem { get; set; }
         public IFormFile? DuongDanAnh { get; set; }
@@ -17,6 +19,6 @@ namespace travel_recommendation_and_booking_system.DTOs.Location
         [Required(ErrorMessage = "Quốc gia không được để trống")]
         public string QuocGia { get; set; }
         public bool KhuVuc { get; set; }
-        public bool TrangThai {  get; set; }
+        public bool TrangThai { get; set; }
     }
 }
