@@ -9,7 +9,7 @@ export const getStaffApi = async (
     trangThai = null
 ) => {
     const response = await axiosClient.get(
-        "/admin/staff",
+        "/admin/staff/Paged",
         {
             params: {
                 pageNumber,

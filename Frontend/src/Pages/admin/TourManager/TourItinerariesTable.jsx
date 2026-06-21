@@ -2,20 +2,34 @@ import React from "react";
 import { Utensils } from "lucide-react";
 import CustomDataTable from "~/components/UI/Table/CustomDataTable";
 import RowActionsButton from "~/components/UI/Table/Button/RowActionsButton";
+
 export default function TourItinerariesTable({
-    data,
+    data = [],
     onEdit,
-    onRemove,
-    onToggleStatus,
+    onDelete,
+    isViewMode = false,
     loading = false
 }) {
+    const safeData = Array.isArray(data) ? data : [];
+    const getImageUrl = (path) => {
+        if (!path) return null;
 
+        if (path.startsWith("blob:")) {
+            return path;
+        }
+
+        if (path.startsWith("/")) {
+            return `${import.meta.env.VITE_API_URL}${path}`;
+        }
+
+        return path;
+    };
     const columns = [
         {
             name: "Ngày",
             selector: (row) => row.soThuTuNgay,
             cell: (row) => (
-                <span className="inline-block px-2.5 py-1  text-xs font-bold  ">
+                <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-md">
                     Ngày {row.soThuTuNgay}
                 </span>
             ),
@@ -25,21 +39,37 @@ export default function TourItinerariesTable({
         },
         {
             name: "Hình ảnh",
-            cell: (row) => (
-                <div className="w-20 h-14 bg-slate-100 rounded-lg overflow-hidden border border-slate-200 shadow-sm flex-shrink-0 my-1">
-                    {row.preview ? (
-                        <img src={row.preview} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400 font-medium">
-                            Không ảnh
-                        </div>
-                    )}
-                </div>
-            ),
-            width: "110px",
+            width: "150px",
+            center: 'true',
+            cell: (row) => {
+                const imageSrc = row.preview
+                    ? row.preview
+                    : getImageUrl(row.duongDanAnh);
+
+                return (
+                    <div className="w-40 h-15 bg-slate-100 rounded-lg overflow-hidden border border-slate-200 flex-shrink-0 my-1">
+                        {imageSrc ? (
+                            <img
+                                src={imageSrc}
+                                alt="Ảnh ngày"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src =
+                                        "https://placehold.co/100x60?text=No+Image";
+                                }}
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400">
+                                Không ảnh
+                            </div>
+                        )}
+                    </div>
+                );
+            },
         },
         {
-            name: "Tiêu đề",
+            name: "Tiêu đề ngày",
             selector: (row) => row.tenLichTrinh || "---",
             cell: (row) => (
                 <p className="font-semibold text-slate-700 line-clamp-2" title={row.tenLichTrinh}>
@@ -48,9 +78,10 @@ export default function TourItinerariesTable({
             ),
             grow: 2,
             sortable: true,
+            center: 'true'
         },
         {
-            name: "Chế độ ăn",
+            name: "Bữa ăn",
             selector: (row) => row.buaAn || "",
             cell: (row) => (
                 row.buaAn ? (
@@ -59,10 +90,10 @@ export default function TourItinerariesTable({
                         {row.buaAn}
                     </span>
                 ) : (
-                    <span className="text-slate-400 italic text-xs">Không tính kèm</span>
+                    <span className="text-slate-400 italic text-xs">Không có</span>
                 )
             ),
-            width: "150px",
+            width: "160px",
         },
         {
             name: "Hoạt động chính",
@@ -73,19 +104,27 @@ export default function TourItinerariesTable({
                 </p>
             ),
             grow: 2,
+            center: 'true',
         },
         {
             name: "Hành động",
             cell: (row) => (
                 <RowActionsButton
                     row={row}
-                    onView={false}
-                    onEdit={onEdit}
-                    showDelete={false}
+                    onView={isViewMode ? () => onEdit(row) : null}
+                    onEdit={!isViewMode ? () => onEdit(row) : null}
+                    onDelete={
+                        !isViewMode && safeData.length > 1
+                            ? () => onDelete(row)
+                            : null
+                    }
+                    showDelete={
+                        !isViewMode && safeData.length > 1
+                    }
                 />
             ),
-            width: "130px",
-            center: true,
+            width: "180px",
+            center: 'true',
         },
     ];
 
@@ -93,8 +132,8 @@ export default function TourItinerariesTable({
         {
             when: (row) => !row.trangThai,
             style: {
-                backgroundColor: "rgba(248, 250, 252, 0.5)",
-                opacity: 0.6,
+                backgroundColor: "rgba(248, 250, 252, 0.6)",
+                opacity: 0.7,
             },
         },
     ];
@@ -102,9 +141,14 @@ export default function TourItinerariesTable({
     return (
         <CustomDataTable
             columns={columns}
-            data={data}
+            data={safeData}
             loading={loading}
             conditionalRowStyles={conditionalRowStyles}
+            noDataComponent={
+                <div className="py-10 text-center text-slate-500">
+                    Chưa có ngày nào trong lịch trình
+                </div>
+            }
         />
     );
 }

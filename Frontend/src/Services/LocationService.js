@@ -1,5 +1,11 @@
 import axiosClient from "./axiosClient";
+export const getLocatioListApi = async () => {
+    const response = await axiosClient.get(
+        "/admin/Location"
+    );
 
+    return response.data;
+};
 export const getLocationApi = async (
     pageNumber = 1,
     pageSize = 10,

@@ -74,17 +74,24 @@ export default function ManagerCard({
             ? 'Đang Hợp tác'
             : 'Ngưng hợp tác';
     }
-    if (type === 'tour') {
-        displayName = item.tenTour;
-        displayLocation = item.diemKhoiHanh;
-        imageUrl = item.duongDanAnh;
+    if (type === "tour") {
+        const mainImage =
+            item.images?.find(img => img.anhChinh);
 
-        subInfo1 = item.thoiGianTour;
-        subInfo2 = `${item.luotDat}/${item.soLuongToiDa} khách`;
+        imageUrl =
+            mainImage?.duongDanAnh ||
+            item.images?.[0]?.duongDanAnh ||
+            "";
+
+        displayName = item.tenTour;
+        displayLocation = "";
+
+        subInfo1 = item.diemKhoiHanh;
+        subInfo2 = item.thoiGianTour;
 
         statusText = isOnline
-            ? 'Hoạt động'
-            : 'Tạm ngưng';
+            ? "Hoạt động"
+            : "Tạm ngưng";
     }
 
     const toggleMenu = useCallback(() => {
@@ -161,15 +168,16 @@ export default function ManagerCard({
                     </span>
                 </div>
 
-                {/* LOCATION */}
-                <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-tto-transparent">
-                    <div className="flex justify-between items-center text-white text-[10px]">
-                        <span className="font-bold flex items-center gap-1">
-                            <MapPin size={14} />
-                            {displayLocation}
-                        </span>
+                {(type === 'location' || type === 'hotel') && (
+                    <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-t from-black/60 to-transparent">
+                        <div className="flex justify-between items-center text-white text-[10px]">
+                            <span className="font-bold flex items-center gap-1">
+                                <MapPin size={14} />
+                                {displayLocation}
+                            </span>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* CONTENT */}
@@ -205,18 +213,18 @@ export default function ManagerCard({
                                 {renderStars(item.soSao)}
                             </p>
 
-                            
+
                         </>
                     )}
                     {type === 'tour' && (
                         <>
                             <p className="flex items-center gap-1 text-[10px] font-bold text-slate-600">
-                                <Clock3 size={10} />
-                                {subInfo1}
+                                <MapPin size={10} />
+                                Điểm khởi hành: {subInfo1}
                             </p>
 
                             <p className="flex items-center gap-1 text-[10px] font-bold text-slate-600">
-                                <Users size={10} />
+                                <Clock3 size={10} />
                                 {subInfo2}
                             </p>
                         </>
