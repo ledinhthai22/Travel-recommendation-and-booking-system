@@ -15,7 +15,7 @@ import {
     getAmenitiesApi,
     getAmenitiesPageApi,
 } from '~/Services/Amenities';
-
+import SelectField from '~/components/UI/Form/SelectField';
 import CreateAmenityModal from "~/Pages/admin/AmenitiesManager/AddAmenityModal";
 import ConfirmModal from '~/components/UI/Modal/ConfirmModal';
 
@@ -43,7 +43,8 @@ export default function HotelForm({
     onCancel,
     onSave,
     onStatusChange,
-    onSetMainImage
+    onSetMainImage,
+    onRemoveOldImage
 }) {
     const isViewMode = mode === 'view';
     const isEditMode = mode === 'edit';
@@ -104,8 +105,8 @@ export default function HotelForm({
                 })));
             }
 
-            if (initialData.tienNghi) {
-                setAmenitiesSelected(initialData.tienNghi);
+            if (initialData.tienIch) {
+                setAmenitiesSelected(initialData.tienIch);
             }
         }
     }, [mode, initialData]);
@@ -169,6 +170,16 @@ export default function HotelForm({
     };
 
     const handleRemoveImage = (id) => {
+    const targetImg = images.find(img => img.id === id);
+
+    if (isEditMode && targetImg?.isFromUpdate && onRemoveOldImage) {
+        if(targetImg.anhChinh) {
+            toastError("Không thể xóa ảnh đang là ảnh chính! Hãy đặt ảnh khác làm ảnh chính trước.");
+            return;
+        }
+
+        onRemoveOldImage(id);
+    } else {
         setImages(prev => {
             const updated = prev.filter(img => img.id !== id);
             if (updated.length > 0 && !updated.some(img => img.anhChinh)) {
@@ -176,14 +187,15 @@ export default function HotelForm({
             }
             return updated.map((img, idx) => ({ ...img, soThuTu: idx + 1 }));
         });
-    };
+    }
+};
 
     const addAmenityFromDropdown = () => {
         if (!selectedAmenityId) return;
-        const amenity = allAmenities.find(a => a.maTienNghi === Number(selectedAmenityId));
+        const amenity = allAmenities.find(a => a.maTienIch === Number(selectedAmenityId));
         if (!amenity) return;
 
-        if (amenitiesSelected.some(a => a.maTienNghi === amenity.maTienNghi)) {
+        if (amenitiesSelected.some(a => a.maTienIch === amenity.maTienIch)) {
             toastError("Tiện nghi này đã được thêm!");
             return;
         }
@@ -193,8 +205,8 @@ export default function HotelForm({
         toastSuccess("Đã thêm tiện ích!");
     };
 
-    const removeAmenity = (maTienNghi) => {
-        setAmenitiesSelected(prev => prev.filter(a => a.maTienNghi !== maTienNghi));
+    const removeAmenity = (maTienIch)=> {
+        setAmenitiesSelected(prev => prev.filter(a => a.maTienIch !== maTienIch));
     };
 
     const validate = () => {
@@ -218,7 +230,7 @@ export default function HotelForm({
             const payload = {
                 ...formData,
                 soSao: parseInt(formData.soSao),
-                maTienNghi: amenitiesSelected.map(x => x.maTienNghi),
+                maTienIch: amenitiesSelected.map(x => x.maTienIch),
                 images,
             };
             await onSave?.(payload);
@@ -386,23 +398,18 @@ export default function HotelForm({
                         {!isViewMode && (
                             <div className="flex gap-3 mb-6">
                                 <div className="flex-1">
-                                    <Dropdown
+                                    <SelectField
                                         value={selectedAmenityId}
-                                        options={allAmenities
-                                            .filter(
-                                                a =>
-                                                    !amenitiesSelected.some(
-                                                        selected =>
-                                                            selected.maTienNghi === a.maTienNghi
-                                                    )
+                                        options={allAmenities.filter(
+                                            a => !amenitiesSelected.some(
+                                                s => s.maTienIch === a.maTienIch
                                             )
-                                            .map(a => ({
-                                                value: a.maTienNghi.toString(),
-                                                label: a.tenTienNghi
-                                            }))}
+                                        )}
+                                        valueKey="maTienIch"
+                                        labelKey="tenTienIch"
+                                        searchable
+                                        searchText="Tìm tiện ích..."
                                         onChange={setSelectedAmenityId}
-                                        placeholder="Chọn tiện ích..."
-                                        fullWidth
                                     />
                                 </div>
 
@@ -418,10 +425,10 @@ export default function HotelForm({
                                 <button
                                     type="button"
                                     onClick={() => setShowCreateAmenityModal(true)}
-                                    className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium flex items-center gap-2 shadow-sm transition-all"
+                                    className="px-6 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-medium flex items-center gap-2 shadow-sm transition-all"
                                 >
                                     <Plus size={16} strokeWidth={2.5} />
-                                    Thêm tiện ích
+                                    Thêm tiện ích mới
                                 </button>
                             </div>
                         )}
@@ -431,14 +438,14 @@ export default function HotelForm({
                                 <div className="flex flex-wrap gap-3">
                                     {amenitiesSelected.map((amenity) => (
                                         <div
-                                            key={amenity.maTienNghi}
+                                            key={amenity.maTienIch}
                                             className="group relative flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 shadow-sm text-sm font-medium text-slate-700 hover:border-sky-300 hover:shadow-md transition-all"
                                         >
                                             <span className="w-2 h-2 rounded-full bg-sky-500"></span>
-                                            <span>{amenity.tenTienNghi}</span>
+                                            <span>{amenity.tenTienIch}</span>
                                             {!isViewMode && (
                                                 <button
-                                                    onClick={() => removeAmenity(amenity.maTienNghi)}
+                                                    onClick={() => removeAmenity(amenity.maTienIch)}
                                                     className="ml-1 w-5 h-5 rounded-full flex items-center justify-center text-slate-400 hover:bg-red-100 hover:text-red-500 transition-all"
                                                 >
                                                     <X size={10} />

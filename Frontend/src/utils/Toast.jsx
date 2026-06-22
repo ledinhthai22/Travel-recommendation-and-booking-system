@@ -15,6 +15,9 @@ const show = ({
     toast.custom(
         (t) => (
             <div
+                style={{
+                    zIndex: 999999, 
+                }}
                 className={`
                     relative
                     w-[300px]

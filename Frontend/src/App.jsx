@@ -42,6 +42,7 @@ import {
     LocationManager,
     TourFormPage
 } from './Pages/admin';
+import TypeTourManager from './Pages/admin/TypeTour/TypeTourManager';
 
 function App() {
     return (
@@ -81,6 +82,7 @@ function App() {
                             <Route path="Khach-du-lich" element={<TouristManager />} />
                             <Route path="Dia-diem" element={<LocationManager />} />
                             <Route path="Loai-Dia-Diem" element={<TypeLocationManager />} />
+                            <Route path="Loai-Tour" element = {<TypeTourManager/>} />
                             <Route path="Cac-chuyen-di">
                                 <Route index element={<TourManager />} />
 

@@ -64,6 +64,17 @@ export const deleteTourApi = async (id) => {
 };
 
 
+export const changeTourStatusApi = async (id, trangThai) => {
+    const response = await axiosClient.patch(
+        `/admin/Tour/${id}/status`,
+        {
+            trangThai
+        }
+    );
+
+    return response.data;
+};
+
 export const setMainTourImageApi = async (imageId) => {
     const response = await axiosClient.patch(
         `/admin/Tour/images/${imageId}/set-main`

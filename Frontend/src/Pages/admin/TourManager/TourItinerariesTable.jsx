@@ -33,21 +33,21 @@ export default function TourItinerariesTable({
                     Ngày {row.soThuTuNgay}
                 </span>
             ),
-            width: "90px",
+            width: "100px",
             center: true,
             sortable: true,
         },
         {
             name: "Hình ảnh",
-            width: "150px",
-            center: 'true',
+            width: "170px",
+            center: true,
             cell: (row) => {
                 const imageSrc = row.preview
                     ? row.preview
                     : getImageUrl(row.duongDanAnh);
 
                 return (
-                    <div className="w-40 h-15 bg-slate-100 rounded-lg overflow-hidden border border-slate-200 flex-shrink-0 my-1">
+                    <div className="w-32 h-16 bg-slate-100 rounded-lg overflow-hidden border border-slate-200 my-1">
                         {imageSrc ? (
                             <img
                                 src={imageSrc}
@@ -72,39 +72,58 @@ export default function TourItinerariesTable({
             name: "Tiêu đề ngày",
             selector: (row) => row.tenLichTrinh || "---",
             cell: (row) => (
-                <p className="font-semibold text-slate-700 line-clamp-2" title={row.tenLichTrinh}>
+                <p
+                    className="font-semibold text-slate-700 line-clamp-2"
+                    title={row.tenLichTrinh}
+                >
                     {row.tenLichTrinh || "---"}
                 </p>
             ),
             grow: 2,
             sortable: true,
-            center: 'true'
         },
         {
             name: "Bữa ăn",
             selector: (row) => row.buaAn || "",
-            cell: (row) => (
+            cell: (row) =>
                 row.buaAn ? (
                     <span className="inline-flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full font-medium">
                         <Utensils size={13} className="text-amber-500" />
                         {row.buaAn}
                     </span>
                 ) : (
-                    <span className="text-slate-400 italic text-xs">Không có</span>
-                )
-            ),
-            width: "160px",
+                    <span className="text-slate-400 italic text-xs">
+                        Không có
+                    </span>
+                ),
+            width: "180px",
+            center: true,
         },
         {
             name: "Hoạt động chính",
             selector: (row) => row.hoatDongChinh || "",
             cell: (row) => (
-                <p className="text-xs text-slate-500 leading-relaxed line-clamp-2" title={row.hoatDongChinh}>
+                <p
+                    className="text-xs text-slate-500 leading-relaxed line-clamp-2"
+                    title={row.hoatDongChinh}
+                >
                     {row.hoatDongChinh || "---"}
                 </p>
             ),
-            grow: 2,
-            center: 'true',
+            grow: 2
+        },
+        {
+            name: "Lưu ý",
+            selector: (row) => row.luuY || "",
+            cell: (row) => (
+                <p
+                    className="text-xs text-slate-500 leading-relaxed line-clamp-2"
+                    title={row.luuY}
+                >
+                    {row.luuY || "---"}
+                </p>
+            ),
+            grow: 1,
         },
         {
             name: "Hành động",
@@ -123,30 +142,29 @@ export default function TourItinerariesTable({
                     }
                 />
             ),
-            width: "180px",
-            center: 'true',
+            width: "125px",
+            center: true,
         },
     ];
 
-    const conditionalRowStyles = [
-        {
-            when: (row) => !row.trangThai,
-            style: {
-                backgroundColor: "rgba(248, 250, 252, 0.6)",
-                opacity: 0.7,
-            },
-        },
-    ];
 
     return (
         <CustomDataTable
             columns={columns}
             data={safeData}
             loading={loading}
-            conditionalRowStyles={conditionalRowStyles}
+            paginationComponentOptions={{
+                rowsPerPageText: 'Số dòng:',
+                rangeSeparatorText: 'trên',
+                noRowsPerPage: false,
+                selectAllRowsItem: true,
+                selectAllRowsItemText: 'Tất cả',
+            }}
+            highlightOnHover
+            pointerOnHover
             noDataComponent={
-                <div className="py-10 text-center text-slate-500">
-                    Chưa có ngày nào trong lịch trình
+                <div className="py-9 text-center">
+                    <p className="text-slate-400 text-sm">Không có dữ liệu</p>
                 </div>
             }
         />

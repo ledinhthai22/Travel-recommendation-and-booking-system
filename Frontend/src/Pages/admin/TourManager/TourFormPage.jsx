@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Camera, MapPin, Clock, Plus, Save, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Camera, Clock, Plus, Save, Loader2, CheckCircle2 } from "lucide-react";
 import TourItinerariesSection from "./TourSection/TourItinerariesSection";
 import InputField from "~/components/UI/Form/InputField";
 import SelectField from "~/components/UI/Form/SelectField";
@@ -28,7 +28,25 @@ import {
     deleteDepartureApi
 } from "~/Services/DepartureService";
 
+
+
 const API_BASE = "https://localhost:7016";
+const DEFAULT_FORM_DATA = {
+    tenTour: "",
+    maLoaiTour: "",
+    maKhachSan: "",
+    moTa: "",
+    ngay: "",
+    dem: "",
+    trongNuoc: true,
+    trangThai: 1,
+    diemKhoiHanh: ""
+};
+const PHAN_LOAI_TOURS = [
+    { value: true, label: "Trong nước" },
+    { value: false, label: "Nước ngoài" }
+];
+
 
 const getVal = (e) => e?.target?.value ?? e;
 
@@ -47,13 +65,13 @@ const getErrorMessage = (err, fallback = "Có lỗi xảy ra trong quá trình g
 };
 
 const toNumber = (value, fallback = 0) => {
-    const number = Number(value);
-    return Number.isFinite(number) ? number : fallback;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
 };
 
 const isExistingId = (value) => {
-    const number = Number(value);
-    return Number.isInteger(number) && number > 0;
+    const n = Number(value);
+    return Number.isInteger(n) && n > 0;
 };
 
 const normalizeImageUrl = (path) => {
@@ -61,12 +79,15 @@ const normalizeImageUrl = (path) => {
     return path.startsWith("http") ? path : `${API_BASE}${path}`;
 };
 
+
+
 const mapScheduleDetailFromApi = (ct, maLichTrinh) => ({
     maCTLT: toNumber(ct.maCTLT),
     maLichTrinh: toNumber(ct.maLichTrinh || maLichTrinh),
     maDiaDiem: toNumber(ct.maDiaDiem),
     gioBatDau: ct.gioBatDau || "",
-    gioKetThuc: ct.gioKetThuc || "",
+
+    gioKetThuc: ct.gioKetThuc || null,
     hoatDong: ct.hoatDong || ""
 });
 
@@ -85,6 +106,13 @@ const mapScheduleFromApi = (lt) => ({
     )
 });
 
+const mapImageFromApi = (img) => ({
+    id: img.maAnhTour,
+    preview: normalizeImageUrl(img.duongDanAnh),
+    anhChinh: img.anhChinh ?? false,
+    file: null
+});
+
 const mapDepartureFromApi = (ch) => ({
     ...ch.chuyenKhoiHanh,
     maChuyen: ch.chuyenKhoiHanh?.maChuyen,
@@ -99,29 +127,144 @@ const mapDepartureFromApi = (ch) => ({
     }
 });
 
+
+
+const buildScheduleFormData = (lt, tourId) => {
+    const fd = new FormData();
+    fd.append("MaTour", tourId ? Number(tourId) : 0);
+    fd.append("TenLichTrinh", lt.tenLichTrinh || "");
+    fd.append("BuaAn", lt.buaAn || "");
+    fd.append("SoThuTuNgay", String(toNumber(lt.soThuTuNgay)));
+    fd.append("HoatDongChinh", lt.hoatDongChinh || "");
+    fd.append("LuuY", lt.luuY || "");
+    fd.append("TrangThai", String(lt.trangThai ?? true));
+
+    if (lt.file) fd.append("DuongDanAnh", lt.file);
+
+    (lt.chiTietLichTrinhs || []).forEach((ct, index) => {
+        fd.append(`ChiTietLichTrinh[${index}].MaCTLT`, toNumber(ct.maCTLT));
+        fd.append(`ChiTietLichTrinh[${index}].MaLichTrinh`, toNumber(ct.maLichTrinh || lt.id));
+        fd.append(`ChiTietLichTrinh[${index}].MaDiaDiem`, toNumber(ct.maDiaDiem));
+        fd.append(`ChiTietLichTrinh[${index}].GioBatDau`, ct.gioBatDau || "");
+        if (ct.gioKetThuc?.trim()) {
+            fd.append(`ChiTietLichTrinh[${index}].GioKetThuc`, ct.gioKetThuc);
+        }
+        fd.append(`ChiTietLichTrinh[${index}].HoatDong`, ct.hoatDong || "");
+    });
+
+    return fd;
+};
+
+const buildPricePayload = (ch) => ({
+    MaGia: toNumber(ch.gia?.maGia),
+    HangKhachSan: toNumber(ch.gia?.hangKhachSan),
+    GiaNguoiLon: toNumber(ch.gia?.giaNguoiLon),
+    GiaTreEm: toNumber(ch.gia?.giaTreEm),
+    GiaEmBe: toNumber(ch.gia?.giaEmBe),
+    PhuThuPhongDon: toNumber(ch.gia?.phuThuPhongDon)
+});
+
+const buildDeparturePayload = (ch, tourId) => ({
+    ChuyenKhoiHanh: {
+        MaChuyen: toNumber(ch.maChuyen),
+        MaTour: toNumber(tourId || 0),
+        MaHDV: toNumber(ch.maHDV),
+        MaPhuongTien: toNumber(ch.maPhuongTien),
+        DiemKhoiHanh: ch.diemKhoiHanh,
+        DiemDen: ch.diemDen,
+        NgayKhoiHanh: ch.ngayKhoiHanh,
+        NgayKetThuc: ch.ngayKetThuc,
+        GioDenNoiDi: ch.gioDenNoiDi,
+        GioDenNoiVe: ch.gioDenNoiVe,
+        SoChoToiDa: toNumber(ch.soChoToiDa),
+        GhiChu: ch.ghiChu
+    },
+    DanhSachGia: [buildPricePayload(ch)]
+});
+
+const buildCreateTourDto = (formDataObj, lichTrinhs, chuyenKhoiHanhs) => ({
+    TourInfo: {
+        TenTour: formDataObj.tenTour,
+        MaLoaiTour: toNumber(formDataObj.maLoaiTour),
+        MoTa: formDataObj.moTa,
+        Ngay: toNumber(formDataObj.ngay),
+        Dem: toNumber(formDataObj.dem),
+        TrongNuoc: formDataObj.trongNuoc,
+    },
+    DanhSachKhachSan: formDataObj.maKhachSan ? [toNumber(formDataObj.maKhachSan)] : [],
+    LichTrinh: lichTrinhs.map(lt => ({
+        TenLichTrinh: lt.tenLichTrinh,
+        BuaAn: lt.buaAn,
+        SoThuTuNgay: toNumber(lt.soThuTuNgay),
+        HoatDongChinh: lt.hoatDongChinh,
+        LuuY: lt.luuY,
+        TrangThai: lt.trangThai,
+        ChiTietLichTrinh: (lt.chiTietLichTrinhs || []).map(ct => ({
+            MaDiaDiem: toNumber(ct.maDiaDiem),
+            GioBatDau: ct.gioBatDau,
+
+            GioKetThuc: ct.gioKetThuc?.trim() || null,
+            HoatDong: ct.hoatDong
+        }))
+    })),
+    ChuyenKhoiHanhs: chuyenKhoiHanhs.map(ch => buildDeparturePayload(ch, 0))
+});
+
+
+
+const serializeSchedule = (lt) => JSON.stringify({
+    tenLichTrinh: lt.tenLichTrinh,
+    buaAn: lt.buaAn,
+    hoatDongChinh: lt.hoatDongChinh,
+    luuY: lt.luuY,
+    trangThai: lt.trangThai,
+    hasFile: !!lt.file,
+    chiTiet: (lt.chiTietLichTrinhs || []).map(ct => ({
+        maCTLT: ct.maCTLT,
+        maDiaDiem: ct.maDiaDiem,
+        gioBatDau: ct.gioBatDau,
+        gioKetThuc: ct.gioKetThuc || null,
+        hoatDong: ct.hoatDong
+    }))
+});
+
+
+const serializeDeparture = (ch) => JSON.stringify({
+    maChuyen: ch.maChuyen,
+    maHDV: ch.maHDV,
+    maPhuongTien: ch.maPhuongTien,
+    maChuyenCode: ch.maChuyenCode,
+    ngayKhoiHanh: ch.ngayKhoiHanh,
+    ngayKetThuc: ch.ngayKetThuc,
+    diemKhoiHanh: ch.diemKhoiHanh,
+    diemDen: ch.diemDen,
+    soChoToiDa: ch.soChoToiDa,
+    gia: ch.gia
+});
 function useSectionSaving() {
     const [state, setState] = useState("idle");
     const timerRef = useRef(null);
 
-    const markSaving = () => {
+    const markSaving = useCallback(() => {
         clearTimeout(timerRef.current);
         setState("saving");
-    };
+    }, []);
 
-    const markSaved = () => {
+    const markSaved = useCallback(() => {
         setState("saved");
         timerRef.current = setTimeout(() => setState("idle"), 2000);
-    };
+    }, []);
 
-    const markIdle = () => {
+    const markIdle = useCallback(() => {
         clearTimeout(timerRef.current);
         setState("idle");
-    };
+    }, []);
 
     useEffect(() => () => clearTimeout(timerRef.current), []);
 
     return { state, markSaving, markSaved, markIdle };
 }
+
 
 function SaveStatusBadge({ state }) {
     if (state === "idle") return null;
@@ -137,6 +280,7 @@ function SaveStatusBadge({ state }) {
     );
 }
 
+
 export default function TourFormPage({ mode }) {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -147,31 +291,23 @@ export default function TourFormPage({ mode }) {
     const fileInputRef = useRef(null);
     const tourScheduleRef = useRef(null);
     const originalDataRef = useRef(null);
-
+    const scheduleSnapshotRef = useRef({});
+    const departureSnapshotRef = useRef({});
     const [loading, setLoading] = useState(false);
     const [loaiTours, setLoaiTours] = useState([]);
     const [khachSans, setKhachSans] = useState([]);
     const [diaDiems, setDiaDiems] = useState([]);
-
-    const [formData, setFormData] = useState({
-        tenTour: "",
-        maLoaiTour: "",
-        maKhachSan: "",
-        moTa: "",
-        thoiGianTour: "",
-        diemKhoiHanh: "",
-        trongNuoc: true,
-        trangThai: true
-    });
-
+    const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
     const [images, setImages] = useState([]);
     const [lichTrinhs, setLichTrinhs] = useState([]);
     const [chuyenKhoiHanhs, setChuyenKhoiHanhs] = useState([]);
     const [errors, setErrors] = useState({});
+
     const infoSaving = useSectionSaving();
     const imgSaving = useSectionSaving();
     const scheduleSaving = useSectionSaving();
     const departureSaving = useSectionSaving();
+
 
     useEffect(() => {
         const fetchMasterData = async () => {
@@ -189,197 +325,110 @@ export default function TourFormPage({ mode }) {
 
                 if ((isEdit || isViewMode) && id) {
                     const tourData = await getTourDetailApi(id);
-                    originalDataRef.current = tourData;
-
-                    const info = tourData.tourInfo;
-
-                  
-                    const matchedKhachSan = tourData.maKhachSans?.length
-                        ? hotelRes.find(ks => ks.maKhachSan === tourData.maKhachSans[0])
-                        : hotelRes.find(ks => tourData.tenKhachSans?.includes(ks.tenKhachSan));
-
-                    setFormData({
-                        tenTour: info.tenTour || "",
-                        maLoaiTour: info.maLoaiTour?.toString() || "",
-                        maKhachSan: matchedKhachSan?.maKhachSan?.toString() || "",
-                        moTa: info.moTa || "",
-                        thoiGianTour: info.thoiGianTour || "",
-                        trongNuoc: typeof info.trongNuoc === "boolean" ? info.trongNuoc : true,
-                        diemKhoiHanh: info.diemKhoiHanh || "",
-                        trangThai: info.trangThai
-                    });
-
-                    setImages((tourData.images || []).map(img => ({
-                        id: img.maAnhTour,
-                        preview: normalizeImageUrl(img.duongDanAnh),
-                        anhChinh: img.anhChinh ?? false,
-                        file: null
-                    })));
-
-                    setLichTrinhs((tourData.lichTrinh || []).map(mapScheduleFromApi));
-                    setChuyenKhoiHanhs((tourData.chuyenKhoiHanhs || []).map(mapDepartureFromApi));
+                    applyTourData(tourData, hotelRes);
                 }
             } catch (error) {
-                toastError(
-                    "Tải dữ liệu thất bại",
-                    getErrorMessage(error, "Không thể tải dữ liệu cấu hình Tour!")
-                );
+                toastError("Tải dữ liệu thất bại", getErrorMessage(error, "Không thể tải dữ liệu cấu hình Tour!"));
             } finally {
                 setLoading(false);
             }
         };
 
         fetchMasterData();
-    }, [id, mode, isEdit, isViewMode]);
+    }, [id, mode]);
+
+    const applyTourData = (tourData, hotelRes) => {
+        originalDataRef.current = tourData;
+        const info = tourData.tourInfo;
+
+        const matchedKhachSan = tourData.maKhachSans?.length
+            ? hotelRes.find(ks => ks.maKhachSan === tourData.maKhachSans[0])
+            : hotelRes.find(ks => tourData.tenKhachSans?.includes(ks.tenKhachSan));
+
+        setFormData({
+            tenTour: info.tenTour || "",
+            maLoaiTour: info.maLoaiTour?.toString() || "",
+            maKhachSan: matchedKhachSan?.maKhachSan?.toString() || "",
+            moTa: info.moTa || "",
+            ngay: info.ngay,
+            dem: info.dem,
+            trongNuoc: typeof info.trongNuoc === "boolean" ? info.trongNuoc : true,
+            diemKhoiHanh: info.diemKhoiHanh || "",
+            trangThai: info.trangThai
+        });
+
+        setImages((tourData.images || []).map(mapImageFromApi));
+
+        const mapped = (tourData.lichTrinh || []).map(mapScheduleFromApi);
+        setLichTrinhs(mapped);
+
+        scheduleSnapshotRef.current = Object.fromEntries(
+            mapped.map(lt => [lt.id, serializeSchedule(lt)])
+        );
+
+        const mappedDepartures = (tourData.chuyenKhoiHanhs || []).map(mapDepartureFromApi);
+
+        departureSnapshotRef.current = Object.fromEntries(
+            mappedDepartures.map(ch => [ch.maChuyen, serializeDeparture(ch)])
+        );
+
+        setChuyenKhoiHanhs(mappedDepartures);
+
+        setChuyenKhoiHanhs((tourData.chuyenKhoiHanhs || []).map(mapDepartureFromApi));
+    };
 
     const refreshLichTrinhs = async () => {
         if (!id) return;
         try {
             const tourData = await getTourDetailApi(id);
             originalDataRef.current = tourData;
-            setLichTrinhs((tourData.lichTrinh || []).map(mapScheduleFromApi));
+            const mapped = (tourData.lichTrinh || []).map(mapScheduleFromApi);
+            setLichTrinhs(mapped);
+            scheduleSnapshotRef.current = Object.fromEntries(
+                mapped.map(lt => [lt.id, serializeSchedule(lt)])
+            );
         } catch (error) {
             toastError("Lỗi tải dữ liệu", getErrorMessage(error, "Không thể tải lại lịch trình!"));
         }
     };
 
-    const buildPricePayload = (ch) => ({
-        MaGia: toNumber(ch.gia?.maGia),
-        HangKhachSan: toNumber(ch.gia?.hangKhachSan),
-        GiaNguoiLon: toNumber(ch.gia?.giaNguoiLon),
-        GiaTreEm: toNumber(ch.gia?.giaTreEm),
-        GiaEmBe: toNumber(ch.gia?.giaEmBe),
-        PhuThuPhongDon: toNumber(ch.gia?.phuThuPhongDon)
-    });
-
-    const buildDeparturePayload = (ch, tourId) => ({
-        ChuyenKhoiHanh: {
-            MaChuyen: toNumber(ch.maChuyen),
-            MaTour: toNumber(tourId || 0),
-            MaHDV: toNumber(ch.maHDV),
-            MaPhuongTien: toNumber(ch.maPhuongTien),
-            MaChuyenCode: ch.maChuyenCode,
-            DiemKhoiHanh: ch.diemKhoiHanh,
-            DiemDen: ch.diemDen,
-            NgayKhoiHanh: ch.ngayKhoiHanh,
-            NgayKetThuc: ch.ngayKetThuc,
-            GioDenNoiDi: ch.gioDenNoiDi,
-            GioDenNoiVe: ch.gioDenNoiVe,
-            SoLuongCho: toNumber(ch.soLuongCho),
-            GhiChu: ch.ghiChu
-        },
-        DanhSachGia: [buildPricePayload(ch)]
-    });
-
-    const buildScheduleFormData = (lt, tourId) => {
-        const scheduleFd = new FormData();
-        scheduleFd.append("MaTour", tourId ? Number(tourId) : 0);
-        scheduleFd.append("TenLichTrinh", lt.tenLichTrinh || "");
-        scheduleFd.append("BuaAn", lt.buaAn || "");
-        scheduleFd.append("SoThuTuNgay", String(toNumber(lt.soThuTuNgay)));
-        scheduleFd.append("HoatDongChinh", lt.hoatDongChinh || "");
-        scheduleFd.append("LuuY", lt.luuY || "");
-        scheduleFd.append("TrangThai", String(lt.trangThai ?? true));
-
-        if (lt.file) scheduleFd.append("DuongDanAnh", lt.file);
-
-        (lt.chiTietLichTrinhs || []).forEach((ct, index) => {
-            scheduleFd.append(`ChiTietLichTrinh[${index}].MaCTLT`, toNumber(ct.maCTLT));
-            scheduleFd.append(`ChiTietLichTrinh[${index}].MaLichTrinh`, toNumber(ct.maLichTrinh || lt.id));
-            scheduleFd.append(`ChiTietLichTrinh[${index}].MaDiaDiem`, toNumber(ct.maDiaDiem));
-            scheduleFd.append(`ChiTietLichTrinh[${index}].GioBatDau`, ct.gioBatDau || "");
-            scheduleFd.append(`ChiTietLichTrinh[${index}].GioKetThuc`, ct.gioKetThuc || "");
-            scheduleFd.append(`ChiTietLichTrinh[${index}].HoatDong`, ct.hoatDong || "");
-        });
-
-        return scheduleFd;
-    };
-
-    const buildCreateTourDto = (formDataObj, snapshotLichTrinhs, snapshotChuyenKhoiHanhs) => ({
-        TourInfo: {
-            TenTour: formDataObj.tenTour,
-            MaLoaiTour: toNumber(formDataObj.maLoaiTour),
-            MoTa: formDataObj.moTa,
-            ThoiGianTour: formDataObj.thoiGianTour,
-            DiemKhoiHanh: formDataObj.diemKhoiHanh,
-            TrongNuoc: formDataObj.trongNuoc,
-            TrangThai: formDataObj.trangThai
-        },
-        DanhSachKhachSan: formDataObj.maKhachSan ? [toNumber(formDataObj.maKhachSan)] : [],
-        LichTrinh: snapshotLichTrinhs.map(lt => ({
-            TenLichTrinh: lt.tenLichTrinh,
-            BuaAn: lt.buaAn,
-            SoThuTuNgay: toNumber(lt.soThuTuNgay),
-            HoatDongChinh: lt.hoatDongChinh,
-            LuuY: lt.luuY,
-            TrangThai: lt.trangThai,
-            ChiTietLichTrinh: (lt.chiTietLichTrinhs || []).map(ct => ({
-                MaDiaDiem: toNumber(ct.maDiaDiem),
-                GioBatDau: ct.gioBatDau,
-                GioKetThuc: ct.gioKetThuc,
-                HoatDong: ct.hoatDong
-            }))
-        })),
-        ChuyenKhoiHanhs: snapshotChuyenKhoiHanhs.map(ch => buildDeparturePayload(ch, 0))
-    });
 
     const handleImageChange = async (e) => {
         if (isViewMode) return;
         const files = Array.from(e.target.files || []);
-        e.target.value = ""
+        e.target.value = "";
+
         if (images.length + files.length > 10) {
             toastWarning("Vượt giới hạn", "Chỉ cho phép tải tối đa 10 hình ảnh!");
             return;
         }
 
         if (!isEdit) {
-            const newImages = files.map((file, idx) => ({
-                id: `IMG-NEW-${Date.now()}-${idx}`,
-                file,
-                preview: URL.createObjectURL(file),
-                anhChinh: false
-            }));
             setImages(prev => {
-                const updated = [...prev, ...newImages];
-                if (!updated.some(img => img.anhChinh) && updated.length > 0) {
-                    updated[0].anhChinh = true;
-                }
+                const newImgs = files.map((file, idx) => ({
+                    id: `IMG-NEW-${Date.now()}-${idx}`,
+                    file,
+                    preview: URL.createObjectURL(file),
+                    anhChinh: false
+                }));
+                const updated = [...prev, ...newImgs];
+                if (!updated.some(img => img.anhChinh)) updated[0].anhChinh = true;
                 return updated;
             });
             return;
         }
+
         try {
             imgSaving.markSaving();
             const fd = new FormData();
-            fd.append("TourDataJson", JSON.stringify({
-                TourInfo: {
-                    TenTour: formData.tenTour,
-                    MaLoaiTour: Number(formData.maLoaiTour),
-                    MoTa: formData.moTa,
-                    ThoiGianTour: formData.thoiGianTour,
-                    DiemKhoiHanh: formData.diemKhoiHanh,
-                    TrongNuoc: formData.trongNuoc,
-                    TrangThai: formData.trangThai
-                },
-                DanhSachKhachSan: formData.maKhachSan
-                    ? [Number(formData.maKhachSan)]
-                    : [],
-                LichTrinh: [],
-                ChuyenKhoiHanhs: []
-            }));
-            files.forEach(file => {
-                fd.append("Images", file);
-            });
+            fd.append("TourDataJson", JSON.stringify(buildTourInfoJson()));
+            files.forEach(file => fd.append("Images", file));
+
             await updateFullTourApi(id, fd);
+
             const tourData = await getTourDetailApi(id);
             originalDataRef.current = { ...originalDataRef.current, images: tourData.images };
-            setImages((tourData.images || []).map(img => ({
-                id: img.maAnhTour,
-                preview: normalizeImageUrl(img.duongDanAnh),
-                anhChinh: img.anhChinh ?? false,
-                file: null
-            })));
-
+            setImages((tourData.images || []).map(mapImageFromApi));
             imgSaving.markSaved();
         } catch (err) {
             imgSaving.markIdle();
@@ -387,18 +436,15 @@ export default function TourFormPage({ mode }) {
         }
     };
 
-
     const handleRemoveImage = async (targetId) => {
         if (isViewMode) return;
 
         if (!isEdit) {
             setImages(prev => {
-                const targetImg = prev.find(img => img.id === targetId);
-                if (targetImg?.preview?.startsWith("blob:")) URL.revokeObjectURL(targetImg.preview);
+                const target = prev.find(img => img.id === targetId);
+                if (target?.preview?.startsWith("blob:")) URL.revokeObjectURL(target.preview);
                 const filtered = prev.filter(img => img.id !== targetId);
-                if (filtered.length > 0 && !filtered.some(img => img.anhChinh)) {
-                    filtered[0].anhChinh = true;
-                }
+                if (filtered.length > 0 && !filtered.some(img => img.anhChinh)) filtered[0].anhChinh = true;
                 return filtered;
             });
             return;
@@ -407,15 +453,11 @@ export default function TourFormPage({ mode }) {
         try {
             imgSaving.markSaving();
             await deleteTourImageApi(targetId);
-
             setImages(prev => {
                 const filtered = prev.filter(img => img.id !== targetId);
-                if (filtered.length > 0 && !filtered.some(img => img.anhChinh)) {
-                    filtered[0].anhChinh = true;
-                }
+                if (filtered.length > 0 && !filtered.some(img => img.anhChinh)) filtered[0].anhChinh = true;
                 return filtered;
             });
-
             imgSaving.markSaved();
         } catch (err) {
             imgSaving.markIdle();
@@ -444,9 +486,10 @@ export default function TourFormPage({ mode }) {
 
 
     const handleLichTrinhsChange = async (newLichTrinhs) => {
-        setLichTrinhs(newLichTrinhs);
-
-        if (!isEdit || !id) return;
+        if (!isEdit || !id) {
+            setLichTrinhs(newLichTrinhs);
+            return;
+        }
 
         try {
             scheduleSaving.markSaving();
@@ -456,6 +499,7 @@ export default function TourFormPage({ mode }) {
         } catch (err) {
             scheduleSaving.markIdle();
             toastError("Lỗi lưu lịch trình", getErrorMessage(err));
+            throw err;
         }
     };
 
@@ -469,27 +513,36 @@ export default function TourFormPage({ mode }) {
         });
 
 
+        const toUpsert = snapshotLichTrinhs.filter(lt => {
+            const scheduleId = toNumber(lt.id);
+            if (!isExistingId(scheduleId)) return true;
+            const prev = scheduleSnapshotRef.current[scheduleId];
+            return prev !== serializeSchedule(lt);
+        });
+
         const deleteResults = await Promise.allSettled(
             deletedSchedules.map(lt => deleteScheduleApi(toNumber(lt.maLichTrinh)))
         );
 
         const upsertResults = await Promise.allSettled(
-            snapshotLichTrinhs.map(lt => {
+            toUpsert.map(lt => {
                 const scheduleId = toNumber(lt.id);
-                const scheduleFd = buildScheduleFormData(lt, id);
+                const fd = buildScheduleFormData(lt, id);
                 return isExistingId(scheduleId)
-                    ? updateScheduleApi(scheduleId, scheduleFd)
-                    : createScheduleApi(scheduleFd);
+                    ? updateScheduleApi(scheduleId, fd)
+                    : createScheduleApi(fd);
             })
         );
 
         const failed = [...deleteResults, ...upsertResults].filter(r => r.status === "rejected");
         if (failed.length > 0) {
-            console.error("Một số lịch trình lưu thất bại:", failed.map(f => f.reason));
+            console.error(
+                "Chi tiết lỗi lịch trình:",
+                failed.map(f => f.reason?.response?.data ?? f.reason?.message ?? f.reason)
+            );
             throw new Error(`Có ${failed.length} thao tác lịch trình thất bại, vui lòng kiểm tra lại.`);
         }
     };
-
 
 
     const handleChuyenKhoiHanhsChange = async (newChuyen) => {
@@ -523,8 +576,15 @@ export default function TourFormPage({ mode }) {
             deletedDepartures.map(oc => deleteDepartureApi(toNumber(oc.chuyenKhoiHanh.maChuyen)))
         );
 
+        const toUpsert = snapshotChuyenKhoiHanhs.filter(ch => {
+            const maChuyen = toNumber(ch.maChuyen);
+            if (!isExistingId(maChuyen)) return true;
+            const prev = departureSnapshotRef.current[maChuyen];
+            return prev !== serializeDeparture(ch);
+        });
+
         const upsertResults = await Promise.allSettled(
-            snapshotChuyenKhoiHanhs.map(ch => {
+            toUpsert.map(ch => {                
                 const maChuyen = toNumber(ch.maChuyen);
                 const payload = buildDeparturePayload(ch, id);
                 return isExistingId(maChuyen)
@@ -535,19 +595,34 @@ export default function TourFormPage({ mode }) {
 
         const failed = [...deleteResults, ...upsertResults].filter(r => r.status === "rejected");
         if (failed.length > 0) {
-            console.error("Một số chuyến khởi hành lưu thất bại:", failed.map(f => f.reason));
+            console.error("Chi tiết lỗi chuyến khởi hành:", failed.map(f => f.reason));
             throw new Error(`Có ${failed.length} thao tác chuyến khởi hành thất bại, vui lòng kiểm tra lại.`);
         }
     };
 
 
+    const buildTourInfoJson = () => ({
+        TourInfo: {
+            TenTour: formData.tenTour,
+            MaLoaiTour: toNumber(formData.maLoaiTour),
+            MoTa: formData.moTa,
+            Ngay: formData.ngay,
+            Dem: formData.dem,
+            TrongNuoc: formData.trongNuoc,
+            DiemKhoiHanh: formData.diemKhoiHanh,
+            TrangThai: formData.trangThai
+        },
+        DanhSachKhachSan: formData.maKhachSan ? [toNumber(formData.maKhachSan)] : [],
+        LichTrinh: [],
+        ChuyenKhoiHanhs: []
+    });
 
     const validateBasicInfo = () => {
-        const tempErrors = {};
-        if (!formData.tenTour?.trim()) tempErrors.tenTour = "Tên tour không được để trống.";
-        if (!formData.maLoaiTour) tempErrors.maLoaiTour = "Vui lòng chọn loại danh mục tour.";
-        setErrors(prev => ({ ...prev, ...tempErrors }));
-        return Object.keys(tempErrors).length === 0;
+        const errs = {};
+        if (!formData.tenTour?.trim()) errs.tenTour = "Tên tour không được để trống.";
+        if (!formData.maLoaiTour) errs.maLoaiTour = "Vui lòng chọn loại danh mục tour.";
+        setErrors(prev => ({ ...prev, ...errs }));
+        return Object.keys(errs).length === 0;
     };
 
     const handleSaveBasicInfo = async () => {
@@ -556,20 +631,7 @@ export default function TourFormPage({ mode }) {
         try {
             infoSaving.markSaving();
             const fd = new FormData();
-            fd.append("TourDataJson", JSON.stringify({
-                TourInfo: {
-                    TenTour: formData.tenTour,
-                    MaLoaiTour: toNumber(formData.maLoaiTour),
-                    MoTa: formData.moTa,
-                    ThoiGianTour: formData.thoiGianTour,
-                    TrongNuoc: formData.trongNuoc,
-                    DiemKhoiHanh: formData.diemKhoiHanh,
-                    TrangThai: formData.trangThai ?? true
-                },
-                DanhSachKhachSan: formData.maKhachSan ? [toNumber(formData.maKhachSan)] : [],
-                LichTrinh: [],
-                ChuyenKhoiHanhs: []
-            }));
+            fd.append("TourDataJson", JSON.stringify(buildTourInfoJson()));
             await updateFullTourApi(id, fd);
             infoSaving.markSaved();
         } catch (err) {
@@ -579,28 +641,32 @@ export default function TourFormPage({ mode }) {
     };
 
 
-
     const validateCreate = () => {
-        const tempErrors = {};
+        const errs = {};
 
-        if (!formData.tenTour?.trim()) tempErrors.tenTour = "Tên tour không được để trống.";
-        if (!formData.maLoaiTour) tempErrors.maLoaiTour = "Vui lòng chọn loại danh mục tour.";
-        if (images.length === 0) tempErrors.images = "Bạn phải tải lên ít nhất 1 hình ảnh.";
+        if (!formData.tenTour?.trim()) errs.tenTour = "Tên tour không được để trống.";
+        if (!formData.maLoaiTour) errs.maLoaiTour = "Vui lòng chọn loại danh mục tour.";
+        if (images.length === 0) errs.images = "Bạn phải tải lên ít nhất 1 hình ảnh.";
 
         const scheduleWithoutDetail = lichTrinhs.find(
             lt => !lt.chiTietLichTrinhs || lt.chiTietLichTrinhs.length === 0
         );
         if (scheduleWithoutDetail) {
-            tempErrors.lichTrinhs = `Ngày ${scheduleWithoutDetail.soThuTuNgay} chưa có mốc chi tiết địa điểm tham quan nào.`;
+            errs.lichTrinhs = `Ngày ${scheduleWithoutDetail.soThuTuNgay} chưa có mốc chi tiết địa điểm tham quan nào.`;
             toastWarning(
                 "Thiếu thông tin lịch trình",
                 `Ngày ${scheduleWithoutDetail.soThuTuNgay} chưa có mốc chi tiết. Vui lòng thêm ít nhất 1 mốc.`
             );
         }
+        if (!formData.ngay)
+            errs.ngay = "Vui lòng nhập số ngày";
+
+        if (!formData.dem && formData.dem !== 0)
+            errs.dem = "Vui lòng nhập số đêm";
 
         const isDeparturesValid = tourScheduleRef.current?.validateAll?.() ?? true;
-        setErrors(tempErrors);
-        return Object.keys(tempErrors).length === 0 && isDeparturesValid;
+        setErrors(errs);
+        return Object.keys(errs).length === 0 && isDeparturesValid;
     };
 
     const handleCreateTour = async () => {
@@ -608,18 +674,15 @@ export default function TourFormPage({ mode }) {
 
         try {
             setLoading(true);
-
             const fd = new FormData();
             fd.append("TourDataJson", JSON.stringify(
                 buildCreateTourDto(formData, lichTrinhs, chuyenKhoiHanhs)
             ));
-
             images.forEach(img => {
                 if (img.file) fd.append("Images", img.file);
             });
-
             lichTrinhs.forEach(lt => {
-                fd.append("ScheduleFiles", lt.file ? lt.file : new Blob([]), "");
+                if (lt.file) fd.append("ScheduleFiles", lt.file, lt.file.name);
             });
 
             await createFullTourApi(fd);
@@ -631,19 +694,22 @@ export default function TourFormPage({ mode }) {
             setLoading(false);
         }
     };
+
     const isBasicInfoCompleted =
         formData.tenTour?.trim() &&
         formData.maLoaiTour &&
-        formData.thoiGianTour?.trim() &&
-        formData.diemKhoiHanh?.trim() &&
-        formData.maKhachSan && formData.moTa.trim();
+        formData.ngay !== "" && formData.ngay !== null && formData.ngay !== undefined &&
+        formData.dem !== "" && formData.dem !== null && formData.dem !== undefined &&
+        formData.maKhachSan &&
+        formData.moTa?.trim();
+
     const hasSchedule = lichTrinhs.length > 0;
-    const phanLoaiTours = [
-        { value: true, label: "Trong nước" },
-        { value: false, label: "Nước ngoài" }
-    ];
+
+
+
     return (
         <div className="bg-white border border-slate-200 rounded-2xl shadow">
+            {/* Header */}
             <div className="p-6 flex justify-between items-center border-b border-slate-200 bg-slate-50 rounded-t-2xl">
                 <button
                     onClick={() => navigate(-1)}
@@ -658,14 +724,16 @@ export default function TourFormPage({ mode }) {
                         disabled={loading}
                         className="text-white font-semibold px-8 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 transition disabled:opacity-70 flex items-center gap-2"
                     >
-                        {loading ? (
-                            <><Loader2 size={16} className="animate-spin" /> Đang tạo...</>
-                        ) : "Thêm Tour"}
+                        {loading
+                            ? <><Loader2 size={16} className="animate-spin" /> Đang tạo...</>
+                            : "Thêm Tour"
+                        }
                     </button>
                 )}
             </div>
 
             <div className="p-8 space-y-10">
+                {/* Images */}
                 <section>
                     <div className="flex items-center gap-3 mb-4">
                         <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
@@ -728,6 +796,8 @@ export default function TourFormPage({ mode }) {
                     />
                     {errors.images && <p className="text-red-600 text-sm mt-2">{errors.images}</p>}
                 </section>
+
+                {/* Basic Info */}
                 <section className="border-t border-slate-200 pt-8 space-y-6">
                     <div className="flex items-center justify-between">
                         <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
@@ -740,7 +810,7 @@ export default function TourFormPage({ mode }) {
                                     <button
                                         onClick={handleSaveBasicInfo}
                                         disabled={infoSaving.state === "saving"}
-                                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-sky-400/80 hover:bg-sky-400/60 rounded-xl transition disabled:opacity-60"
+                                        className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium text-white bg-sky-400/80 hover:bg-sky-400/60 rounded-xl transition disabled:opacity-60"
                                     >
                                         <Save size={10} />
                                         <span>Lưu thông tin</span>
@@ -762,6 +832,8 @@ export default function TourFormPage({ mode }) {
                         <div>
                             <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Loại tour *</label>
                             <SelectField
+                                searchable
+                                searchText="Tìm kiếm loại tour"
                                 value={formData.maLoaiTour}
                                 options={loaiTours}
                                 valueKey="maLoaiTour"
@@ -771,29 +843,30 @@ export default function TourFormPage({ mode }) {
                                 disabled={isViewMode}
                             />
                         </div>
-                        <InputField
-                            label="Thời gian tour"
-                            value={formData.thoiGianTour}
-                            onChange={(e) => setFormData(p => ({ ...p, thoiGianTour: getVal(e) }))}
-                            placeholder="Ví dụ: 3 ngày 2 đêm"
-                            icon={<Clock size={18} />}
-                            disabled={isViewMode}
-                        />
-                        <InputField
-                            label="Điểm khởi hành"
-                            value={formData.diemKhoiHanh}
-                            onChange={(e) => setFormData(p => ({ ...p, diemKhoiHanh: getVal(e) }))}
-                            icon={<MapPin size={18} />}
-                            disabled={isViewMode}
-                        />
-                        <div>
-                            <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Khách sạn</label>
-                            <SelectField
-                                value={formData.maKhachSan}
-                                options={khachSans}
-                                valueKey="maKhachSan"
-                                labelKey="tenKhachSan"
-                                onChange={(e) => setFormData(p => ({ ...p, maKhachSan: getVal(e) }))}
+                        <div className="grid grid-cols-2 gap-4">
+                            <InputField
+                                type="number"
+                                label="Số ngày"
+                                value={formData.ngay}
+                                onChange={(e) =>
+                                    setFormData(p => ({
+                                        ...p,
+                                        ngay: getVal(e)
+                                    }))
+                                }
+                                disabled={isViewMode}
+                            />
+
+                            <InputField
+                                type="number"
+                                label="Số đêm"
+                                value={formData.dem}
+                                onChange={(e) =>
+                                    setFormData(p => ({
+                                        ...p,
+                                        dem: getVal(e)
+                                    }))
+                                }
                                 disabled={isViewMode}
                             />
                         </div>
@@ -801,7 +874,7 @@ export default function TourFormPage({ mode }) {
                             <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Phân vùng tour *</label>
                             <SelectField
                                 value={formData.trongNuoc}
-                                options={phanLoaiTours}
+                                options={PHAN_LOAI_TOURS}
                                 valueKey="value"
                                 labelKey="label"
                                 onChange={(e) => {
@@ -811,8 +884,23 @@ export default function TourFormPage({ mode }) {
                                         trongNuoc: val === true || val === "true" || val === 1
                                     }));
                                 }}
+                                disabled={isViewMode}
                             />
                         </div>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Khách sạn</label>
+                        <SelectField
+                            searchable
+                            searchText="Tìm kiếm khách sạn"
+                            value={formData.maKhachSan}
+                            options={khachSans}
+                            valueKey="maKhachSan"
+                            labelKey="tenKhachSan"
+                            onChange={(e) => setFormData(p => ({ ...p, maKhachSan: getVal(e) }))}
+                            disabled={isViewMode}
+                        />
                     </div>
 
                     <InputField
@@ -826,6 +914,7 @@ export default function TourFormPage({ mode }) {
                     />
                 </section>
 
+                {/* Itineraries */}
                 <div>
                     <div className="flex items-center gap-3 mb-2">
                         {isEdit && <SaveStatusBadge state={scheduleSaving.state} />}
@@ -843,6 +932,8 @@ export default function TourFormPage({ mode }) {
                         <p className="text-red-600 text-sm mt-2">{errors.lichTrinhs}</p>
                     )}
                 </div>
+
+                {/* Departures */}
                 <section className="border-t border-slate-200 pt-8 space-y-4">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
@@ -852,7 +943,6 @@ export default function TourFormPage({ mode }) {
                             {isEdit && <SaveStatusBadge state={departureSaving.state} />}
                         </div>
                         {!isViewMode && (
-
                             <button
                                 type="button"
                                 disabled={!hasSchedule}
@@ -874,9 +964,11 @@ export default function TourFormPage({ mode }) {
                     ) : (
                         <TourSchedulesTable
                             data={chuyenKhoiHanhs}
-                            onView={(item) => tourScheduleRef.current?.openEditModal(item)}
+                            onView={isViewMode ? (item) => tourScheduleRef.current?.openEditModal(item) : null}
                             onEdit={!isViewMode ? (item) => tourScheduleRef.current?.openEditModal(item) : null}
                             loading={loading}
+                            showStatus={isEdit || isViewMode}
+                            showCodeChuyen = {isEdit || isViewMode}
                         />
                     )}
                 </section>

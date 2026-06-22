@@ -96,7 +96,7 @@ namespace travel_recommendation_and_booking_system.Services
                 .AsNoTracking()
                 .Include(x => x.HinhAnhSKs)
                 .Include(x => x.KS_TNs)
-                    .ThenInclude(x => x.TienNghi)
+                    .ThenInclude(x => x.TienIch)
                 .FirstOrDefaultAsync(x => x.MaKhachSan == id && x.NgayXoa == null);
 
             if (hotel == null) return null;
@@ -121,10 +121,10 @@ namespace travel_recommendation_and_booking_system.Services
                     SoThuTu = img.SoThuTu
                 }).ToList(),
 
-                TienNghi = hotel.KS_TNs.Select(tn => new AmenitiesDTO
+                TienIch = hotel.KS_TNs.Select(tn => new AmenitiesDTO
                 {
-                    MaTienNghi = tn.MaTienNghi,
-                    TenTienNghi = tn.TienNghi.TenTienNghi
+                    MaTienIch = tn.MaTienIch,
+                    TenTienIch = tn.TienIch.TenTienIch
                 }).ToList()
             };
         }
@@ -161,10 +161,10 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 foreach (var maTN in hotel.MaTienNghi)
                 {
-                    _context.KS_TNs.Add(new KS_TN
+                    _context.KS_TNs.Add(new KS_TI
                     {
                         MaKhachSan = enities.MaKhachSan,
-                        MaTienNghi = maTN
+                        MaTienIch = maTN
                     });
                 }
             }
@@ -194,7 +194,13 @@ namespace travel_recommendation_and_booking_system.Services
         {
             var entity = await _context.KhachSans
                 .FirstOrDefaultAsync(x => x.MaKhachSan == id && x.NgayXoa == null);
+            bool isUsed = await _context.DonDatTours.AnyAsync(x => x.MaKhachSan == id && x.TrangThaiDon != 4);
 
+            if (isUsed)
+            {
+                throw new Exception(
+                    "Khách sạn đang được sử dụng trong đơn đặt tour");
+            }
             if (entity == null)
             {
                 throw new Exception("Không tìm thấy khách sạn");
@@ -236,10 +242,10 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 foreach (var item in hotel.MaTienNghi)
                 {
-                    _context.KS_TNs.Add(new KS_TN
+                    _context.KS_TNs.Add(new KS_TI
                     {
                         MaKhachSan = id,
-                        MaTienNghi = item
+                        MaTienIch = item
                     });
                 }
             }

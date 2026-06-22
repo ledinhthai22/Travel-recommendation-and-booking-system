@@ -10,6 +10,7 @@ using travel_recommendation_and_booking_system.DTOs.ScheduleDetails;
 using travel_recommendation_and_booking_system.DTOs.Tour;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
+using travel_recommendation_and_booking_system.Validations;
 
 namespace travel_recommendation_and_booking_system.Services
 {
@@ -60,13 +61,7 @@ namespace travel_recommendation_and_booking_system.Services
             return value;
         }
 
-        private async Task<string> SaveScheduleImageAsync(
-            IFormFile file,
-            int maTour,
-            string tenLichTrinh,
-            List<ScheduleDetailsDTO>? chiTietLichTrinhs,
-            int soThuTuNgay
-        )
+        private async Task<string> SaveScheduleImageAsync(IFormFile file, int maTour, string tenLichTrinh, List<ScheduleDetailsDTO>? chiTietLichTrinhs, int soThuTuNgay)
         {
             if (file == null || file.Length == 0) return DEFAULT_SCHEDULE_IMAGE;
 
@@ -107,8 +102,73 @@ namespace travel_recommendation_and_booking_system.Services
             return $"/img/schedules/{fileName}";
         }
 
+
+        private void ValidateDuplicateScheduleDay(List<ScheduleDTO> schedules)
+        {
+            var duplicatedDays = schedules
+                .GroupBy(x => x.SoThuTuNgay)
+                .Where(x => x.Count() > 1)
+                .Select(x => x.Key)
+                .ToList();
+
+            if (duplicatedDays.Any())
+                throw new Exception($"Ngày lịch trình bị trùng: {string.Join(", ", duplicatedDays)}");
+        }
+
+        private void ValidateContinuousScheduleDay(List<ScheduleDTO> schedules)
+        {
+            var days = schedules
+                .Select(x => x.SoThuTuNgay)
+                .OrderBy(x => x)
+                .ToList();
+
+            for (int i = 0; i < days.Count; i++)
+            {
+                if (days[i] != i + 1)
+                    throw new Exception($"Thiếu ngày {i + 1} trong lịch trình.");
+            }
+        }
+
+
+        private void ValidateTourDuration(int soNgay, List<ScheduleDTO> schedules)
+        {
+            if (schedules.Count != soNgay)
+                throw new Exception(
+                    $"Tour {soNgay} ngày nhưng hiện có {schedules.Count} lịch trình.");
+        }
+
+
+        private void ValidateTourForOpen(Tour tour)
+        {
+            if (!tour.LichTrinhs.Any(x => x.NgayXoa == null))
+                throw new Exception("Tour chưa có lịch trình.");
+
+            if (!tour.HinhAnhTours.Any(x => x.NgayXoa == null))
+                throw new Exception("Tour chưa có hình ảnh.");
+
+
+            if (tour.HinhAnhTours.Count(x => x.NgayXoa == null && x.AnhChinh) != 1)
+                throw new Exception("Tour phải có đúng 1 ảnh chính.");
+
+
+            if (!tour.ChuyenKhoiHanhs.Any(x =>
+                    x.NgayXoa == null &&
+                    x.NgayKhoiHanh > DateTime.Now &&
+                    x.SoChoToiDa > 0))
+            {
+                throw new Exception(
+                    "Tour phải có ít nhất 1 chuyến khởi hành còn chỗ trong tương lai.");
+            }
+        }
+
         public async Task<int> CreateFullTourAsync(TourFullCreateDTO dto, List<IFormFile> images, List<IFormFile> scheduleImages)
         {
+
+            validatorSheduleTour.ValidateSchedules(dto.LichTrinh);
+            ValidateDuplicateScheduleDay(dto.LichTrinh);
+            ValidateContinuousScheduleDay(dto.LichTrinh);
+            ValidateTourDuration(dto.TourInfo.Ngay, dto.LichTrinh);
+
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
@@ -118,10 +178,10 @@ namespace travel_recommendation_and_booking_system.Services
                     TenTour = dto.TourInfo.TenTour,
                     MaLoaiTour = dto.TourInfo.MaLoaiTour,
                     MoTa = dto.TourInfo.MoTa,
-                    ThoiGianTour = dto.TourInfo.ThoiGianTour,
-                    DiemKhoiHanh = dto.TourInfo.DiemKhoiHanh,
+                    Ngay = dto.TourInfo.Ngay,
+                    Dem = dto.TourInfo.Dem,
                     TrongNuoc = dto.TourInfo.TrongNuoc,
-                    TrangThai = true,
+                    TrangThai = 1,
                     NgayTao = DateTime.Now,
                     NgayCapNhat = DateTime.Now
                 };
@@ -208,13 +268,32 @@ namespace travel_recommendation_and_booking_system.Services
                     {
                         var chuyen = dep.ChuyenKhoiHanh;
 
+
+                        if (chuyen.NgayKetThuc <= chuyen.NgayKhoiHanh)
+                            throw new Exception(
+                                $"Chuyến {chuyen.MaChuyenCode}: Ngày kết thúc phải lớn hơn ngày khởi hành.");
+
+                        if (chuyen.NgayKhoiHanh <= DateTime.Now)
+                            throw new Exception(
+                                $"Chuyến {chuyen.MaChuyenCode}: Ngày khởi hành phải ở tương lai.");
+
+
+                        if (dep.DanhSachGia == null || !dep.DanhSachGia.Any())
+                            throw new Exception(
+                                $"Chuyến {chuyen.MaChuyenCode}: Phải có ít nhất 1 mức giá.");
+                        //var trongNuoc = await GetTrongNuocAsync(dep.MaTour);
+                        var tenPhuongTien = await GetTenPhuongTienAsync(chuyen.MaPhuongTien);
+                        var maChuyenCode = await GenerateUniqueCodeAsync(
+                            dto.TourInfo.TrongNuoc,
+                            chuyen.DiemKhoiHanh,
+                            tenPhuongTien,
+                            chuyen.NgayKhoiHanh);
                         var depEntity = new ChuyenKhoiHanh
                         {
                             MaTour = tourEntity.MaTour,
                             MaHDV = chuyen.MaHDV,
                             MaPhuongTien = chuyen.MaPhuongTien,
-                            MaChuyenCode = chuyen.MaChuyenCode,
-                            //TenChuyen = chuyen.TenChuyen,
+                            MaChuyenCode = maChuyenCode,
                             NgayKhoiHanh = chuyen.NgayKhoiHanh,
                             NgayKetThuc = chuyen.NgayKetThuc,
                             DiemKhoiHanh = chuyen.DiemKhoiHanh,
@@ -222,42 +301,29 @@ namespace travel_recommendation_and_booking_system.Services
                             GioDenNoiDi = chuyen.GioDenNoiDi,
                             GioDenNoiVe = chuyen.GioDenNoiVe,
                             GhiChu = chuyen.GhiChu,
-                            SoLuongCho = chuyen.SoLuongCho,
-                            TrangThai = GetDepartureStatus(
-                                chuyen.NgayKhoiHanh,
-                                chuyen.SoLuongCho
-                            )
+                            SoChoToiDa = chuyen.SoChoToiDa,
+
+                            TrangThai = GetDepartureStatus(chuyen.NgayKhoiHanh, chuyen.NgayKetThuc)
                         };
 
                         _context.ChuyenKhoiHanhs.Add(depEntity);
 
-                        if (dep.DanhSachGia != null)
+                        foreach (var gia in dep.DanhSachGia)
                         {
-                            foreach (var gia in dep.DanhSachGia)
+                            _context.GiaChuyens.Add(new GiaChuyen
                             {
-                                _context.GiaChuyens.Add(new GiaChuyen
-                                {
-                                    ChuyenKhoiHanh = depEntity,
-                                    HangKhachSan = gia.HangKhachSan,
-                                    GiaNguoiLon = gia.GiaNguoiLon,
-                                    GiaTreEm = gia.GiaTreEm,
-                                    GiaEmBe = gia.GiaEmBe,
-                                    PhuThuPhongDon = gia.PhuThuPhongDon
-                                });
-                            }
+                                ChuyenKhoiHanh = depEntity,
+                                HangKhachSan = gia.HangKhachSan,
+                                GiaNguoiLon = gia.GiaNguoiLon,
+                                GiaTreEm = gia.GiaTreEm,
+                                GiaEmBe = gia.GiaEmBe,
+                                PhuThuPhongDon = gia.PhuThuPhongDon
+                            });
                         }
                     }
                 }
+
                 await _context.SaveChangesAsync();
-
-                var saved = await _context.ChuyenKhoiHanhs
-                    .OrderByDescending(x => x.MaChuyen)
-                    .FirstOrDefaultAsync();
-
-                Console.WriteLine(
-                    $"Saved TrangThai = {saved?.TrangThai}"
-                );
-
                 await transaction.CommitAsync();
                 return tourEntity.MaTour;
             }
@@ -268,55 +334,65 @@ namespace travel_recommendation_and_booking_system.Services
             }
         }
 
+
         public async Task<bool> UpdateFullTourAsync(int tourId, TourFullCreateDTO dto, List<IFormFile> images, List<IFormFile> scheduleImages)
         {
-            var existingTour = await _context.Tours
-                .Include(t => t.Tour_KhachSans)
-                .FirstOrDefaultAsync(t => t.MaTour == tourId);
+            using var transaction = await _context.Database.BeginTransactionAsync();
 
-            if (existingTour == null) return false;
-            if (dto?.TourInfo != null)
+            try
             {
-                existingTour.TenTour = dto.TourInfo.TenTour;
-                existingTour.MaLoaiTour = dto.TourInfo.MaLoaiTour;
-                existingTour.MoTa = dto.TourInfo.MoTa;
-                existingTour.ThoiGianTour = dto.TourInfo.ThoiGianTour;
-                existingTour.DiemKhoiHanh = dto.TourInfo.DiemKhoiHanh;
-                existingTour.TrongNuoc = dto.TourInfo.TrongNuoc;
-                existingTour.TrangThai = dto.TourInfo.TrangThai;
-            }
+                var existingTour = await _context.Tours
+                    .Include(t => t.Tour_KhachSans)
+                    .FirstOrDefaultAsync(t => t.MaTour == tourId);
 
-            if (images != null && images.Any())
-            {
-                await UploadImagesTourAsync(tourId, images);
-            }
+                if (existingTour == null) return false;
 
-            var incomingHotelIds = dto.DanhSachKhachSan ?? new List<int>();
-            var currentHotelLinks = existingTour.Tour_KhachSans.ToList();
-            var currentHotelIds = currentHotelLinks
-                .Select(tk => tk.MaKhachSan)
-                .ToList();
-
-            var hotelLinksToRemove = currentHotelLinks
-                .Where(tk => !incomingHotelIds.Contains(tk.MaKhachSan))
-                .ToList();
-
-            if (hotelLinksToRemove.Count > 0)
-            {
-                _context.Tour_KhachSans.RemoveRange(hotelLinksToRemove);
-            }
-
-            foreach (var maKS in incomingHotelIds.Except(currentHotelIds))
-            {
-                _context.Tour_KhachSans.Add(new Tour_KhachSan
+                if (dto?.TourInfo != null)
                 {
-                    MaTour = tourId,
-                    MaKhachSan = maKS
-                });
-            }
+                    existingTour.TenTour = dto.TourInfo.TenTour;
+                    existingTour.MaLoaiTour = dto.TourInfo.MaLoaiTour;
+                    existingTour.MoTa = dto.TourInfo.MoTa;
+                    existingTour.Ngay = dto.TourInfo.Ngay;
+                    existingTour.Dem = dto.TourInfo.Dem;
+                    existingTour.TrongNuoc = dto.TourInfo.TrongNuoc;
+                    existingTour.TrangThai = dto.TourInfo.TrangThai;
+                    existingTour.NgayCapNhat = DateTime.Now;
+                }
 
-            await _context.SaveChangesAsync();
-            return true;
+                if (images != null && images.Any())
+                {
+                    await UploadImagesTourAsync(tourId, images);
+                }
+
+                var incomingHotelIds = dto.DanhSachKhachSan ?? new List<int>();
+                var currentHotelLinks = existingTour.Tour_KhachSans.ToList();
+                var currentHotelIds = currentHotelLinks.Select(tk => tk.MaKhachSan).ToList();
+
+                var hotelLinksToRemove = currentHotelLinks
+                    .Where(tk => !incomingHotelIds.Contains(tk.MaKhachSan))
+                    .ToList();
+
+                if (hotelLinksToRemove.Count > 0)
+                    _context.Tour_KhachSans.RemoveRange(hotelLinksToRemove);
+
+                foreach (var maKS in incomingHotelIds.Except(currentHotelIds))
+                {
+                    _context.Tour_KhachSans.Add(new Tour_KhachSan
+                    {
+                        MaTour = tourId,
+                        MaKhachSan = maKS
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<TourReponseDTO?> GetTourDetailAsync(int tourId)
@@ -339,20 +415,20 @@ namespace travel_recommendation_and_booking_system.Services
                     TenTour = tour.TenTour,
                     MaLoaiTour = tour.MaLoaiTour,
                     MoTa = tour.MoTa,
-                    ThoiGianTour = tour.ThoiGianTour,
-                    DiemKhoiHanh = tour.DiemKhoiHanh,
+                    Ngay = tour.Ngay,
+                    Dem = tour.Dem,
                     TrongNuoc = tour.TrongNuoc,
                     TrangThai = tour.TrangThai
                 },
 
                 TenKhachSans = tour.Tour_KhachSans?
-                .Select(tk => tk.KhachSan?.TenKhachSan)
-                .Where(name => name != null)
-                .ToList() ?? new List<string>(),
+                    .Select(tk => tk.KhachSan?.TenKhachSan)
+                    .Where(name => name != null)
+                    .ToList() ?? new List<string>(),
 
                 MaKhachSans = tour.Tour_KhachSans?
-                .Select(tk => tk.MaKhachSan)
-                .ToList() ?? new List<int>(),
+                    .Select(tk => tk.MaKhachSan)
+                    .ToList() ?? new List<int>(),
 
                 Images = tour.HinhAnhTours?
                     .Where(a => a.NgayXoa == null)
@@ -401,14 +477,13 @@ namespace travel_recommendation_and_booking_system.Services
                             MaHDV = c.MaHDV,
                             MaPhuongTien = c.MaPhuongTien,
                             MaChuyenCode = c.MaChuyenCode,
-                            //TenChuyen = c.TenChuyen,
                             NgayKhoiHanh = c.NgayKhoiHanh,
                             NgayKetThuc = c.NgayKetThuc,
                             DiemKhoiHanh = c.DiemKhoiHanh,
                             DiemDen = c.DiemDen,
                             GioDenNoiDi = c.GioDenNoiDi,
                             GioDenNoiVe = c.GioDenNoiVe,
-                            SoLuongCho = c.SoLuongCho,
+                            SoChoToiDa = c.SoChoToiDa,
                             TrangThai = c.TrangThai,
                             GhiChu = c.GhiChu
                         },
@@ -425,32 +500,39 @@ namespace travel_recommendation_and_booking_system.Services
             };
         }
 
+
         public async Task<bool> SoftDeleteTourAsync(int tourId)
         {
-            var tour = await _context.Tours.FindAsync(tourId);
+            var tour = await _context.Tours
+                .Include(t => t.ChuyenKhoiHanhs)
+                .FirstOrDefaultAsync(t => t.MaTour == tourId);
+
             if (tour == null || tour.NgayXoa != null) return false;
+
+            bool hasRunningDeparture = tour.ChuyenKhoiHanhs.Any(x =>
+                x.NgayXoa == null && x.TrangThai == 2);
+
+            if (hasRunningDeparture)
+                throw new Exception("Tour đang có chuyến khởi hành diễn ra, không thể xóa.");
 
             tour.NgayXoa = DateTime.Now;
             tour.NgayCapNhat = DateTime.Now;
-            tour.TrangThai = false;
+            tour.TrangThai = 3;
             await _context.SaveChangesAsync();
             return true;
         }
-        public async Task<PageDTO<TourReponseDTO>> GetPagedTourAsync(int page, int pageSize, string? searchTerm, bool? status)
+
+        public async Task<PageDTO<TourReponseDTO>> GetPagedTourAsync(int page, int pageSize, string? searchTerm, int? status)
         {
             var query = _context.Tours
                 .Where(t => t.NgayXoa == null)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                query = query.Where(t => t.TenTour.Contains(searchTerm) || t.DiemKhoiHanh.Contains(searchTerm));
-            }
+                query = query.Where(t => t.TenTour.Contains(searchTerm));
 
             if (status.HasValue)
-            {
                 query = query.Where(t => t.TrangThai == status.Value);
-            }
 
             var totalCount = await query.CountAsync();
 
@@ -467,8 +549,8 @@ namespace travel_recommendation_and_booking_system.Services
                         MaLoaiTour = t.MaLoaiTour,
                         MoTa = t.MoTa,
                         TrongNuoc = t.TrongNuoc,
-                        ThoiGianTour = t.ThoiGianTour,
-                        DiemKhoiHanh = t.DiemKhoiHanh,
+                        Ngay = t.Ngay,
+                        Dem = t.Dem,
                         TrangThai = t.TrangThai
                     },
                     Images = t.HinhAnhTours
@@ -524,7 +606,7 @@ namespace travel_recommendation_and_booking_system.Services
             _context.HinhAnhTours.Remove(image);
             await _context.SaveChangesAsync();
 
-            DeleteFileFromTourFolder(oldPath);
+            DeletePhysicalFile(oldPath);
 
             if (isMainImage)
             {
@@ -543,18 +625,64 @@ namespace travel_recommendation_and_booking_system.Services
             return true;
         }
 
+        public async Task<bool> ChangeStatusAsync(int maTour, int trangThai)
+        {
+            var tour = await _context.Tours
+                .Include(t => t.LichTrinhs)
+                .Include(t => t.HinhAnhTours)
+                .Include(t => t.ChuyenKhoiHanhs)
+                .FirstOrDefaultAsync(t =>
+                    t.MaTour == maTour &&
+                    t.NgayXoa == null);
 
-        private void DeleteFileFromTourFolder(string? duongDanAnh)
+            if (tour == null)
+                throw new Exception("Không tìm thấy tour.");
+
+            if (tour.TrangThai == 3)
+                throw new Exception("Tour đã ngừng kinh doanh, không thể thay đổi.");
+
+            if (tour.TrangThai == trangThai)
+                return true;
+
+            switch (trangThai)
+            {
+                case 1: // Mở bán 
+                    ValidateTourForOpen(tour);
+                    break;
+
+                case 2: // Tạm ngưng
+                    break;
+
+                case 3: // Ngừng kinh doanh
+                    bool hasRunningDeparture = tour.ChuyenKhoiHanhs.Any(x =>
+                        x.NgayXoa == null && x.TrangThai == 2);
+
+                    if (hasRunningDeparture)
+                        throw new Exception(
+                            "Tour đang có chuyến khởi hành diễn ra, không thể ngừng kinh doanh.");
+                    break;
+
+                default:
+                    throw new Exception("Trạng thái không hợp lệ.");
+            }
+
+            tour.TrangThai = trangThai;
+            tour.NgayCapNhat = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+
+        private void DeletePhysicalFile(string? duongDanAnh)
         {
             if (string.IsNullOrEmpty(duongDanAnh)) return;
 
-            var physicalFileName = Path.GetFileName(duongDanAnh);
-            string filePath = Path.Combine(_env.WebRootPath, "img", "tour", physicalFileName);
+            var relativePath = duongDanAnh.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+            string filePath = Path.Combine(_env.WebRootPath, relativePath);
 
             if (File.Exists(filePath))
-            {
                 File.Delete(filePath);
-            }
         }
 
         private async Task UploadImagesTourAsync(int maTour, List<IFormFile> images)
@@ -563,9 +691,7 @@ namespace travel_recommendation_and_booking_system.Services
 
             var uploadFolder = Path.Combine(_env.WebRootPath, "img", "tour");
             if (!Directory.Exists(uploadFolder))
-            {
                 Directory.CreateDirectory(uploadFolder);
-            }
 
             bool hasMainImage = await _context.HinhAnhTours
                 .AnyAsync(x => x.MaTour == maTour && x.AnhChinh);
@@ -604,36 +730,86 @@ namespace travel_recommendation_and_booking_system.Services
         }
 
 
-        private int GetDepartureStatus(DateTime ngayKhoiHanh, int soLuongCho)
+        private int GetDepartureStatus(DateTime ngayKhoiHanh, DateTime ngayKetThuc)
         {
-            if (soLuongCho <= 0)
-                return 0;
+            var now = DateTime.Now;
 
-            var today = DateTime.Today;
+            if (now < ngayKhoiHanh)
+                return 1; // Sắp khởi hành
 
-            if (ngayKhoiHanh.Date < today)
-                return 2;
+            if (now >= ngayKhoiHanh && now <= ngayKetThuc)
+                return 2; // Đang diễn ra
 
-            // còn hơn 30 ngày mới mở bán
-            if ((ngayKhoiHanh.Date - today).TotalDays > 30)
-                return 3;
-
-            return 1;
+            return 3; // Đã kết thúc
         }
+
         private void ValidateImage(IFormFile file, int ngay)
         {
             if (file.Length > 10 * 1024 * 1024)
-            {
                 throw new Exception($"Ảnh ngày {ngay} vượt quá dung lượng 10MB");
-            }
 
             var extensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
 
             if (!extensions.Contains(extension))
-            {
                 throw new Exception($"Ảnh ngày {ngay} sai định dạng ảnh");
+        }
+        private static readonly Dictionary<string, string> LocationCodeMap = new()
+        {
+            ["Hồ Chí Minh"] = "HCM",
+            ["Hà Nội"] = "HN",
+            ["Đà Nẵng"] = "DN"
+        };
+
+        private static readonly Dictionary<string, string> VehicleCodeMap = new()
+        {
+            ["Máy Bay"] = "MB",
+            ["Ô tô Du Lịch"] = "OT",
+            ["Tàu Hỏa"] = "TH",
+            ["Tàu Thủy"] = "TT",
+            ["Xe Máy Trekking"] = "XM"
+        };
+
+        private async Task<string> GenerateUniqueCodeAsync(
+            bool trongNuoc,
+            string diemKhoiHanh,
+            string tenPhuongTien,
+            DateTime ngayKhoiHanh)
+        {
+            var regionCode = trongNuoc ? "TN" : "NN";
+            var locationCode = LocationCodeMap.GetValueOrDefault(diemKhoiHanh?.Trim() ?? "", "XX");
+            var vehicleCode = VehicleCodeMap.GetValueOrDefault(tenPhuongTien?.Trim() ?? "", "XX");
+            var dateCode = ngayKhoiHanh.ToString("ddMMyy");
+            var prefix = $"{regionCode}-{locationCode}-{vehicleCode}-{dateCode}-";
+
+            var existingCount = await _context.ChuyenKhoiHanhs
+                .CountAsync(c => c.MaChuyenCode.StartsWith(prefix));
+
+            int seq = existingCount + 1;
+            string code;
+            do
+            {
+                code = $"{prefix}{seq:D3}";
+                seq++;
             }
+            while (await _context.ChuyenKhoiHanhs.AnyAsync(c => c.MaChuyenCode == code));
+
+            return code;
+        }
+
+        private async Task<string> GetTenPhuongTienAsync(int maPhuongTien)
+        {
+            var pt = await _context.PhuongTiens
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.MaPhuongTien == maPhuongTien);
+            return pt?.TenPhuongTien ?? "";
+        }
+        private async Task<bool> GetTrongNuocAsync(int maTour)
+        {
+            var tour = await _context.Tours
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.MaTour == maTour);
+            return tour?.TrongNuoc ?? true;
         }
     }
 }

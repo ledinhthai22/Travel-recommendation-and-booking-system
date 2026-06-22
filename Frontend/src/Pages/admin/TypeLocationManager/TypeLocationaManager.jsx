@@ -49,9 +49,13 @@ export default function TypeLocationManager() {
             type: "danger",
             confirmText: "Xóa",
             action: async () => {
-                await deleteTypeLocationApi(row.maLoaiDD);
-                toastSuccess("Xóa thành công!");
-                fetchData();
+                try {
+                    await deleteTypeLocationApi(row.maLoaiDD);
+                    toastSuccess("Xóa thành công!");
+                    fetchData();
+                } catch (error) {
+                    toastError(getErrorMessage(error));
+                }
             }
         });
         setConfirmOpen(true);
@@ -122,7 +126,15 @@ export default function TypeLocationManager() {
                 isOpen={confirmOpen}
                 {...confirmConfig}
                 onCancel={() => setConfirmOpen(false)}
-                onConfirm={async () => { await confirmConfig.action(); setConfirmOpen(false); }}
+                onConfirm={async () => {
+                    try {
+                        await confirmConfig.action();
+                    } catch (error) {
+                        console.error("Lỗi thực thi hành động:", error);
+                    } finally {
+                        setConfirmOpen(false);
+                    }
+                }}
             />
         </div>
     );

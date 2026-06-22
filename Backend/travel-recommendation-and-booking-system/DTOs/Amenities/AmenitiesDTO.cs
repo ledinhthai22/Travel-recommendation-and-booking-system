@@ -2,7 +2,7 @@
 {
     public class AmenitiesDTO
     {
-        public int MaTienNghi { get; set; }
-        public string? TenTienNghi { get; set; }
+        public int MaTienIch { get; set; }
+        public string? TenTienIch { get; set; }
     }
 }

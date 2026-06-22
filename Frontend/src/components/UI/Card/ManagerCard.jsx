@@ -7,7 +7,8 @@ export default function ManagerCard({
     type,
     onView,
     onEdit,
-    onDelete
+    onDelete,
+    onChangeStatus
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [dropdownStyle, setDropdownStyle] = useState({});
@@ -38,8 +39,12 @@ export default function ManagerCard({
     let subInfo1 = '';
     let subInfo2 = '';
     let statusText = '';
+    let statusClass = '';
 
-    const isOnline = item.trangThai;
+    const isOnline =
+        type === "tour"
+            ? item.trangThai === 1
+            : item.trangThai;
     if (type === 'location') {
         displayName = item.tenDiaDiem;
         displayLocation = item.tinhThanh;
@@ -86,14 +91,32 @@ export default function ManagerCard({
         displayName = item.tenTour;
         displayLocation = "";
 
-        subInfo1 = item.diemKhoiHanh;
-        subInfo2 = item.thoiGianTour;
+        subInfo1 = item.trongNuoc
+            ? "Trong nước"
+            : "Nước ngoài";
 
-        statusText = isOnline
-            ? "Hoạt động"
-            : "Tạm ngưng";
+        subInfo2 = `${item.ngay} ngày ${item.dem} đếm`;
+
+        statusText =
+            item.trangThai === 1
+                ? "Mở bán"
+                : item.trangThai === 2
+                    ? "Tạm ngưng"
+                    : "Ngừng kinh doanh";
     }
-
+    if (type === "tour") {
+        statusClass =
+            item.trangThai === 1
+                ? "bg-emerald-500/70 text-white"
+                : item.trangThai === 2
+                    ? "bg-yellow-500/70 text-white"
+                    : "bg-red-500/70 text-white";
+    }
+    else {
+        statusClass = isOnline
+            ? "bg-emerald-500/70 text-white"
+            : "bg-slate-700 text-white";
+    }
     const toggleMenu = useCallback(() => {
         if (buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
@@ -159,10 +182,7 @@ export default function ManagerCard({
                 {/* STATUS */}
                 <div className="absolute top-0 left-2">
                     <span
-                        className={`px-2 py-1 rounded-md text-[8px] font-bold uppercase shadow-sm ${isOnline
-                            ? 'bg-emerald-500/70 text-white'
-                            : 'bg-slate-700 text-white'
-                            }`}
+                        className={`px-2 py-1 rounded-md text-[8px] font-bold uppercase shadow-sm ${statusClass}`}
                     >
                         {statusText}
                     </span>
@@ -219,13 +239,13 @@ export default function ManagerCard({
                     {type === 'tour' && (
                         <>
                             <p className="flex items-center gap-1 text-[10px] font-bold text-slate-600">
-                                <MapPin size={10} />
-                                Điểm khởi hành: {subInfo1}
+                                <Earth size={10} />
+                                Phân vùng tour: {subInfo1}
                             </p>
 
                             <p className="flex items-center gap-1 text-[10px] font-bold text-slate-600">
                                 <Clock3 size={10} />
-                                {subInfo2}
+                                Thời gian: {subInfo2}
                             </p>
                         </>
                     )}
@@ -251,6 +271,7 @@ export default function ManagerCard({
                         className="fixed bg-white rounded-xl shadow-2xl border border-gray-100 py-1.5 overflow-hidden"
                         style={dropdownStyle}
                     >
+
                         <button onClick={() => { onView?.(item); setIsOpen(false); }}
                             className="w-full px-4 py-2 flex items-center gap-2.5 hover:bg-slate-50 transition-colors">
                             <span className="material-symbols-outlined text-blue-600" style={{ fontSize: '15px' }}>visibility</span>
@@ -261,6 +282,38 @@ export default function ManagerCard({
                             <span className="material-symbols-outlined text-amber-500" style={{ fontSize: '15px' }}>edit_square</span>
                             <span className="text-[10px] font-medium text-gray-700">Cập nhật</span>
                         </button>
+                        {type === "tour" &&
+                            onChangeStatus &&
+                            item.trangThai !== 3 && (
+                                <>
+                                    <div className="h-px bg-gray-100 mx-3 my-1" />
+
+                                    <button
+                                        onClick={() => {
+                                            onChangeStatus?.(item);
+                                            setIsOpen(false);
+                                        }}
+                                        className="w-full px-4 py-2 flex items-center gap-2.5 hover:bg-yellow-50 transition-colors"
+                                    >
+                                        <span
+                                            className="material-symbols-outlined text-yellow-500"
+                                            style={{ fontSize: '15px' }}
+                                        >
+                                            sync
+                                        </span>
+
+                                        <span className="text-[10px] font-medium text-yellow-700">
+                                            {
+                                                item.trangThai === 1
+                                                    ? "Tạm ngưng"
+                                                    : item.trangThai === 2
+                                                        ? "Mở bán"
+                                                        : "Ngừng kinh doanh"
+                                            }
+                                        </span>
+                                    </button>
+                                </>
+                            )}
 
                         {onDelete && (
                             <div>

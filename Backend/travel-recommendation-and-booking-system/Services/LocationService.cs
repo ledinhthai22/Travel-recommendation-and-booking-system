@@ -204,7 +204,14 @@ namespace travel_recommendation_and_booking_system.Services
         public async Task<bool> SoftDeleteLocationAsync(int id)
         {
             var location = await _context.DiaDiems.FindAsync(id);
+            bool isUsed = await _context.CTLichTrinhs
+            .AnyAsync(x => x.MaDiaDiem == id);
 
+            if (isUsed)
+            {
+                throw new Exception(
+                    "Địa điểm đang được sử dụng trong lịch trình tour");
+            }
             if (location == null || location.NgayXoa != null || location.TrangThai == true)
             {
                 return false;

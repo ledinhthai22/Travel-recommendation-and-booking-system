@@ -14,8 +14,7 @@ namespace travel_recommendation_and_booking_system.DTOs.Departure
         [Required(ErrorMessage = "Vui lòng chọn Phương tiện.")]
         public int MaPhuongTien { get; set; }
 
-        [Required(ErrorMessage = "Mã chuyến không được để trống.")]
-        public string MaChuyenCode { get; set; }
+        public string? MaChuyenCode { get; set; }
 
         [Required(ErrorMessage = "Điểm khời hành không được để trống.")]
         public string DiemKhoiHanh { get; set; }
@@ -36,7 +35,9 @@ namespace travel_recommendation_and_booking_system.DTOs.Departure
         public int? TrangThai { get; set; }
 
         [Range(1, 9999, ErrorMessage = "Số lượng chỗ phải lớn hơn 0.")]
-        public int SoLuongCho { get; set; }
+        public int SoChoToiDa { get; set; }
+
+        public int? SoChoDaDat { get; set; }
 
         public string GhiChu { get; set; }
     }

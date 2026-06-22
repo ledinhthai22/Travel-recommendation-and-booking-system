@@ -23,16 +23,16 @@ namespace travel_recommendation_and_booking_system.Services
             if (pageSize < 1)
                 pageSize = 10;
 
-            var query = _context.TienNghis
+            var query = _context.TienIches
             .Where(x => x.NgayXoa == null)
             .AsNoTracking();
 
-            if (!string.IsNullOrWhiteSpace(amenities?.TenTienNghi))
+            if (!string.IsNullOrWhiteSpace(amenities?.TenTienIch))
             {
-                var keyword = amenities.TenTienNghi.Trim().ToLower();
+                var keyword = amenities.TenTienIch.Trim().ToLower();
 
                 query = query.Where(x =>
-                    x.TenTienNghi.ToLower().Contains(keyword)
+                    x.TenTienIch.ToLower().Contains(keyword)
                 );
             }
 
@@ -43,13 +43,13 @@ namespace travel_recommendation_and_booking_system.Services
 
             var items = await query
                 .OrderByDescending(x => x.NgayTao)
-                .ThenBy(x => x.MaTienNghi)
+                .ThenBy(x => x.MaTienIch)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Select(x => new AmenitiesDTO
                 {
-                    MaTienNghi = x.MaTienNghi,
-                    TenTienNghi = x.TenTienNghi
+                    MaTienIch = x.MaTienIch,
+                    TenTienIch = x.TenTienIch
 
                 })
                 .ToListAsync();
@@ -63,41 +63,41 @@ namespace travel_recommendation_and_booking_system.Services
         }
         public async Task<List<AmenitiesDTO>> GetAllAsync()
         {
-            return await _context.TienNghis
+            return await _context.TienIches
                 .Where(x => x.NgayXoa == null)
-                .OrderBy(x => x.TenTienNghi)
+                .OrderBy(x => x.TenTienIch)
                 .Select(x => new AmenitiesDTO
                 {
-                    MaTienNghi = x.MaTienNghi,
-                    TenTienNghi = x.TenTienNghi
+                    MaTienIch = x.MaTienIch,
+                    TenTienIch = x.TenTienIch
                 })
                 .ToListAsync();
         }
 
         public async Task<AmenitiesDTO?> GetByIdAsync(int id)
         {
-            return await _context.TienNghis
+            return await _context.TienIches
                 .Where(x =>
-                    x.MaTienNghi == id &&
+                    x.MaTienIch == id &&
                     x.NgayXoa == null)
                 .Select(x => new AmenitiesDTO
                 {
-                    MaTienNghi = x.MaTienNghi,
-                    TenTienNghi = x.TenTienNghi
+                    MaTienIch = x.MaTienIch,
+                    TenTienIch = x.TenTienIch
                 })
                 .FirstOrDefaultAsync();
         }
 
         public async Task<int> CreateAsync(AmenitiesDTO amenities)
         {
-            if (string.IsNullOrWhiteSpace(amenities.TenTienNghi))
+            if (string.IsNullOrWhiteSpace(amenities.TenTienIch))
             {
                 throw new Exception("Tên tiện nghi không được để trống");
             }
 
-            bool exists = await _context.TienNghis
+            bool exists = await _context.TienIches
                 .AnyAsync(x =>
-                    x.TenTienNghi == amenities.TenTienNghi &&
+                    x.TenTienIch == amenities.TenTienIch &&
                     x.NgayXoa == null);
 
             if (exists)
@@ -105,24 +105,24 @@ namespace travel_recommendation_and_booking_system.Services
                 throw new Exception("Tiện nghi đã tồn tại");
             }
 
-            var entity = new TienNghi
+            var entity = new TienIch
             {
-                TenTienNghi = amenities.TenTienNghi.Trim(),
+                TenTienIch = amenities.TenTienIch.Trim(),
                 NgayTao = DateTime.Now
             };
 
-            _context.TienNghis.Add(entity);
+            _context.TienIches.Add(entity);
 
             await _context.SaveChangesAsync();
 
-            return entity.MaTienNghi;
+            return entity.MaTienIch;
         }
 
         public async Task<bool> UpdateAsync(int id, AmenitiesDTO amenities)
         {
-            var entity = await _context.TienNghis
+            var entity = await _context.TienIches
                 .FirstOrDefaultAsync(x =>
-                    x.MaTienNghi == id &&
+                    x.MaTienIch == id &&
                     x.NgayXoa == null);
 
             if (entity == null)
@@ -130,15 +130,15 @@ namespace travel_recommendation_and_booking_system.Services
                 throw new Exception("Không tìm thấy tiện nghi");
             }
 
-            if (string.IsNullOrWhiteSpace(amenities.TenTienNghi))
+            if (string.IsNullOrWhiteSpace(amenities.TenTienIch))
             {
                 throw new Exception("Tên tiện nghi không được để trống");
             }
 
-            bool exists = await _context.TienNghis
+            bool exists = await _context.TienIches
                 .AnyAsync(x =>
-                    x.MaTienNghi != id &&
-                    x.TenTienNghi == amenities.TenTienNghi &&
+                    x.MaTienIch != id &&
+                    x.TenTienIch == amenities.TenTienIch &&
                     x.NgayXoa == null);
 
             if (exists)
@@ -146,7 +146,7 @@ namespace travel_recommendation_and_booking_system.Services
                 throw new Exception("Tên tiện nghi đã tồn tại");
             }
 
-            entity.TenTienNghi = amenities.TenTienNghi.Trim();
+            entity.TenTienIch = amenities.TenTienIch.Trim();
             entity.NgayCapNhat = DateTime.Now;
 
             await _context.SaveChangesAsync();
@@ -156,14 +156,18 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var entity = await _context.TienNghis
+            var entity = await _context.TienIches
                 .FirstOrDefaultAsync(x =>
-                    x.MaTienNghi == id &&
+                    x.MaTienIch == id &&
                     x.NgayXoa == null);
-
+            bool isUsed = await _context.KS_TNs.AnyAsync(x => x.MaTienIch == id);
             if (entity == null)
             {
                 throw new Exception("Không tìm thấy tiện nghi");
+            }
+            if (isUsed)
+            {
+                throw new Exception("Tiện nghi đang được sử dụng, không thể xóa");
             }
 
             entity.NgayXoa = DateTime.Now;
