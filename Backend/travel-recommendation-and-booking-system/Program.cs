@@ -81,6 +81,9 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<IPromotionService, PromotionService>();
             builder.Services.AddScoped<IHotelService, HotelService>();
             builder.Services.AddScoped<IAmenitiesService, AmenitiesService>();
+            builder.Services.AddScoped<ILogService, LogService>();
+            builder.Services.AddScoped<IRequestInfoService, RequestInfoService>();
+            builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
             builder.Services.AddScoped<PromotionStatusJob>();
             var jwtSettings = builder.Configuration.GetSection("Jwt");
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
@@ -130,6 +133,7 @@ namespace travel_recommendation_and_booking_system
                     });
             });
             builder.Services.AddAuthorization();
+            builder.Services.AddHttpContextAccessor();
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())

@@ -3,8 +3,8 @@
     public class PromotionResponseDTO
     {
         public int MaUuDai { get; set; }
-        public string MaCode { get; set; }
-        public string TenUuDai { get; set; }
+        public string? MaCode { get; set; }
+        public string? TenUuDai { get; set; }
         public decimal PhanTramGiam { get; set; }
         public decimal DieuKienApDung { get; set; }
         public DateTime NgayBatDau { get; set; }

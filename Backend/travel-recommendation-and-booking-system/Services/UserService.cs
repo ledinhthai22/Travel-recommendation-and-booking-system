@@ -1,8 +1,9 @@
 ﻿using DTOs.Page;
 using DTOs.User;
 using Microsoft.EntityFrameworkCore;
-using System.Reflection;
 using travel_recommendation_and_booking_system.Data;
+using travel_recommendation_and_booking_system.DTOs.Log;
+using travel_recommendation_and_booking_system.DTOs.LogSystem;
 using travel_recommendation_and_booking_system.DTOs.User;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
@@ -13,10 +14,14 @@ namespace travel_recommendation_and_booking_system.Services
     {
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment;
-        public UserService(AppDbContext context,IWebHostEnvironment webHost)
+        private readonly ILogService _logService;
+        private readonly ICurrentUserService _currentUserService;
+        public UserService(AppDbContext context, IWebHostEnvironment webHost, ILogService logService, ICurrentUserService currentUserService)
         {
             _context = context;
             _webHostEnvironment = webHost;
+            _logService = logService;
+            _currentUserService = currentUserService;
         }
         public async Task<UserProfileDTO?> GetMeAsync(int maNguoiDung)
         {
@@ -64,6 +69,26 @@ namespace travel_recommendation_and_booking_system.Services
             };
             _context.NguoiDungs.Add(newUser);
             await _context.SaveChangesAsync();
+            await _logService.LoggingAsync(new LogDTO
+            {
+                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                Email = _currentUserService.GetEmail(),
+                TenHanhDong = ActionLogDTO.Tao,
+
+                TenBangTacDong = TableNameDTO.NguoiDung,
+
+                MaDoiTuong = newUser.MaNguoiDung,
+
+                GiaTriSau = new
+                {
+                    newUser.HoTen,
+                    newUser.Email,
+                    newUser.SoDienThoai,
+                    newUser.MaVaiTro,
+                    newUser.TrangThai
+                }
+            });
             return true;
         }
         public async Task<bool> UpdateUserAsync(int id, UserUpdateDTO request)
@@ -104,6 +129,16 @@ namespace travel_recommendation_and_booking_system.Services
                 }
                 user.DuongDanAnh = $"/img/avatars/{newFileName}";
             }
+            var oldData = new
+            {
+                user.HoTen,
+                user.Email,
+                user.SoDienThoai,
+                user.DiaChi,
+                user.GioiTinh,
+                user.NgayCapNhat,
+                user.MaVaiTro,
+            };
 
             user.HoTen = request.HoTen;
             user.Email = request.Email;
@@ -116,7 +151,28 @@ namespace travel_recommendation_and_booking_system.Services
 
             _context.NguoiDungs.Update(user);
             await _context.SaveChangesAsync();
+            await _logService.LoggingAsync(new LogDTO
+            {
+                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
 
+                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                Email = _currentUserService.GetEmail(),
+                TenHanhDong = ActionLogDTO.CapNhat,
+
+                TenBangTacDong = TableNameDTO.NguoiDung,
+
+                MaDoiTuong = user.MaNguoiDung,
+
+                GiaTriTruoc = oldData,
+
+                GiaTriSau = new
+                {
+                    user.HoTen,
+                    user.Email,
+                    user.SoDienThoai,
+                    user.DiaChi
+                }
+            });
             return true;
         }
         public async Task<PageDTO<UserResponseDTO>> GetUsersAsync(int pageNumber, int pageSize, string? keyword, int? status)
@@ -126,7 +182,7 @@ namespace travel_recommendation_and_booking_system.Services
 
             var query = _context.NguoiDungs
                 .Include(n => n.VaiTro)
-                .Where(n => n.NgayXoa == null && n.MaVaiTro ==4)
+                .Where(n => n.NgayXoa == null && n.MaVaiTro == 4)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(keyword))
@@ -152,10 +208,10 @@ namespace travel_recommendation_and_booking_system.Services
                     MaNguoiDung = n.MaNguoiDung,
                     HoTen = n.HoTen,
                     Email = n.Email,
-                    NgaySinh=n.NgaySinh,
+                    NgaySinh = n.NgaySinh,
                     DiaChi = n.DiaChi,
-                    GioiTinh= n.GioiTinh,
-                    SoDienThoai= n.SoDienThoai,
+                    GioiTinh = n.GioiTinh,
+                    SoDienThoai = n.SoDienThoai,
                     DuongDanAnh = n.DuongDanAnh,
                     TenVaiTro = n.VaiTro.TenVaiTro,
                     TrangThai = n.TrangThai,
@@ -173,7 +229,7 @@ namespace travel_recommendation_and_booking_system.Services
         }
         public async Task<UserResponseDTO?> DetailUserAsync(int id)
         {
-            var user= await _context.NguoiDungs
+            var user = await _context.NguoiDungs
                 .AsNoTracking()
                 .Include(n => n.VaiTro)
                 .Where(n => n.MaNguoiDung == id && n.NgayXoa == null)
@@ -184,8 +240,8 @@ namespace travel_recommendation_and_booking_system.Services
                     Email = n.Email,
                     SoDienThoai = n.SoDienThoai,
                     DiaChi = n.DiaChi,
-                    GioiTinh=n.GioiTinh,
-                    NgaySinh = n.NgaySinh,     
+                    GioiTinh = n.GioiTinh,
+                    NgaySinh = n.NgaySinh,
                     DuongDanAnh = n.DuongDanAnh,
                     TenVaiTro = n.VaiTro.TenVaiTro,
                     TrangThai = n.TrangThai,
@@ -206,6 +262,28 @@ namespace travel_recommendation_and_booking_system.Services
 
                 _context.NguoiDungs.Update(user);
                 await _context.SaveChangesAsync();
+                await _logService.LoggingAsync(new LogDTO
+                {
+                    LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+
+                    MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                    Email = _currentUserService.GetEmail(),
+                    TenHanhDong = ActionLogDTO.CapNhatTrangThai,
+
+                    TenBangTacDong = TableNameDTO.NguoiDung,
+
+                    MaDoiTuong = user.MaNguoiDung,
+
+                    GiaTriTruoc = new
+                    {
+                        TrangThai = 1
+                    },
+
+                    GiaTriSau = new
+                    {
+                        TrangThai = 0
+                    }
+                });
                 return true;
             }
             catch (Exception ex)
@@ -225,6 +303,28 @@ namespace travel_recommendation_and_booking_system.Services
 
                 _context.NguoiDungs.Update(user);
                 await _context.SaveChangesAsync();
+                await _logService.LoggingAsync(new LogDTO
+                {
+                    LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                    Email = _currentUserService.GetEmail(),
+                    MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+
+                    TenHanhDong = ActionLogDTO.CapNhatTrangThai,
+
+                    TenBangTacDong = TableNameDTO.NguoiDung,
+
+                    MaDoiTuong = user.MaNguoiDung,
+
+                    GiaTriTruoc = new
+                    {
+                        TrangThai = 0
+                    },
+
+                    GiaTriSau = new
+                    {
+                        TrangThai = 1
+                    }
+                });
                 return true;
             }
             catch (Exception ex)

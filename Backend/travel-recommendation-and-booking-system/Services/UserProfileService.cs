@@ -1,22 +1,27 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
+using travel_recommendation_and_booking_system.DTOs.Log;
+using travel_recommendation_and_booking_system.DTOs.LogSystem;
 using travel_recommendation_and_booking_system.DTOs.UserProfile;
 using travel_recommendation_and_booking_system.Interfaces;
-using travel_recommendation_and_booking_system.Models;
 
 namespace travel_recommendation_and_booking_system.Services
 {
-    public class UserProfileService :IUserProfileService
+    public class UserProfileService : IUserProfileService
     {
         private readonly AppDbContext _context;
-        public UserProfileService(AppDbContext context)
+        private readonly ILogService _logService;
+        private readonly ICurrentUserService _currentUserService;
+        public UserProfileService(AppDbContext context, ILogService logService, ICurrentUserService currentUserService)
         {
             _context = context;
+            _logService = logService;
+            _currentUserService = currentUserService;
         }
         public async Task<UserProfileReponseDTO?> GetMyProfileAsync(int maNguoiDung)
         {
             var userProfile = await _context.NguoiDungs.AsNoTracking()
-            .Where(u => u.MaNguoiDung == maNguoiDung && u.NgayXoa == null && u.TrangThai ==1)
+            .Where(u => u.MaNguoiDung == maNguoiDung && u.NgayXoa == null && u.TrangThai == 1)
             .Select(u => new UserProfileReponseDTO
             {
                 MaNguoiDung = u.MaNguoiDung,
@@ -86,8 +91,39 @@ namespace travel_recommendation_and_booking_system.Services
             user.SoDienThoai = dto.SoDienThoai;
             user.GioiTinh = dto.GioiTinh;
             user.NgayCapNhat = DateTime.Now;
-
+            var oldData = new
+            {
+                user.HoTen,
+                user.Email,
+                user.DiaChi,
+                user.NgaySinh,
+                user.SoDienThoai,
+                user.GioiTinh,
+                user.NgayCapNhat,
+            };
             await _context.SaveChangesAsync();
+
+            var currentUserId = _currentUserService.GetUserId();
+            await _logService.LoggingAsync(new LogDTO
+            {
+                LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
+                Email = _currentUserService.GetEmail(),
+                MaTaiKhoan = currentUserId ?? 0,
+                TenHanhDong = ActionLogDTO.CapNhat,
+                TenBangTacDong = TableNameDTO.NguoiDung,
+                MaDoiTuong = user.MaNguoiDung,
+                GiaTriSau = new
+                {
+                    user.HoTen,
+                    user.Email,
+                    user.DiaChi,
+                    user.NgaySinh,
+                    user.SoDienThoai,
+                    user.GioiTinh,
+                    user.DuongDanAnh
+                }
+            });
+
             return true;
         }
     }

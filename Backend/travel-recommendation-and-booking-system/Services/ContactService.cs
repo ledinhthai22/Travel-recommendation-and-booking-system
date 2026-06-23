@@ -2,17 +2,23 @@
 using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
+using travel_recommendation_and_booking_system.DTOs.Log;
+using travel_recommendation_and_booking_system.DTOs.LogSystem;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
 
 namespace travel_recommendation_and_booking_system.Services
 {
-    public class ContactService: IContactService
+    public class ContactService : IContactService
     {
         private readonly AppDbContext _context;
-        public ContactService(AppDbContext context)
+        private readonly ILogService _logService;
+        private readonly ICurrentUserService _currentUserService;
+        public ContactService(AppDbContext context, ILogService logService, ICurrentUserService currentUserService)
         {
             _context = context;
+            _logService = logService;
+            _currentUserService = currentUserService;
         }
 
         public async Task<bool> SendContactAsync(ContactDTO contact)
@@ -31,6 +37,27 @@ namespace travel_recommendation_and_booking_system.Services
 
                 _context.LienHes.Add(lienhe);
                 await _context.SaveChangesAsync();
+                var currentUserId = _currentUserService.GetUserId();
+                await _logService.LoggingAsync(new LogDTO
+                {
+                    LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
+                    Email = _currentUserService.GetEmail(),
+                    MaTaiKhoan = currentUserId ?? 0,
+
+                    TenHanhDong = ActionLogDTO.GuilienHe,
+
+                    TenBangTacDong = "LienHe",
+
+                    MaDoiTuong = lienhe.MaLienHe,
+
+                    GiaTriSau = new
+                    {
+                        lienhe.Email,
+                        lienhe.HoTen,
+                        lienhe.SoDienThoai,
+                        lienhe.NoiDung
+                    }
+                });
                 return true;
             }
             catch
@@ -39,18 +66,18 @@ namespace travel_recommendation_and_booking_system.Services
             }
         }
 
-        public async Task<PageDTO<ContactResponseDTO>> GetPagedContactsAsync(int pageNumber, int pageSize,string ? key, bool ? status)
+        public async Task<PageDTO<ContactResponseDTO>> GetPagedContactsAsync(int pageNumber, int pageSize, string? key, bool? status)
         {
-            if(pageNumber < 1)
+            if (pageNumber < 1)
             {
                 pageNumber = 1;
             }
-            if(pageSize < 1)
+            if (pageSize < 1)
             {
                 pageSize = 10;
             }
 
-            var query = _context.LienHes.Where(l =>l.NgayXoa == null).AsNoTracking();
+            var query = _context.LienHes.Where(l => l.NgayXoa == null).AsNoTracking();
             if (status.HasValue)
             {
                 query = query.Where(l => l.TrangThai == status.Value);
@@ -66,10 +93,10 @@ namespace travel_recommendation_and_booking_system.Services
             int totalItems = await query.CountAsync();
 
             var items = await query
-                .OrderByDescending(l=>l.NgayTao)
-                .Skip((pageNumber-1)*pageSize)
+                .OrderByDescending(l => l.NgayTao)
+                .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
-                .Select(l=> new ContactResponseDTO
+                .Select(l => new ContactResponseDTO
                 {
                     MaLienHe = l.MaLienHe,
                     HoTen = l.HoTen,
@@ -93,18 +120,33 @@ namespace travel_recommendation_and_booking_system.Services
         {
             var contact = await _context.LienHes.FindAsync(id);
 
-            if (contact == null || contact.NgayXoa != null || contact.TrangThai ==false)
+            if (contact == null || contact.NgayXoa != null || contact.TrangThai == false)
             {
                 return false;
             }
             contact.NgayXoa = DateTime.Now;
             _context.LienHes.Update(contact);
             await _context.SaveChangesAsync();
+            await _logService.LoggingAsync(new LogDTO
+            {
+                LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
+                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                TenHanhDong = ActionLogDTO.Xoa,
+                TenBangTacDong = "LienHe",
+                MaDoiTuong = contact.MaLienHe,
+                GiaTriTruoc = new
+                {
+                    contact.Email,
+                    contact.HoTen,
+                    contact.SoDienThoai,
+                    contact.NoiDung
+                }
+            });
             return true;
         }
-         public async Task<ContactResponseDTO?> GetContactByIdAsync(int id)
+        public async Task<ContactResponseDTO?> GetContactByIdAsync(int id)
         {
-            var contact = await _context.LienHes.AsNoTracking().FirstOrDefaultAsync(l => l.MaLienHe == id && l.NgayXoa == null);
+            var contact = await _context.LienHes.FirstOrDefaultAsync(l => l.MaLienHe == id && l.NgayXoa == null);
             if (contact == null)
             {
                 return null;

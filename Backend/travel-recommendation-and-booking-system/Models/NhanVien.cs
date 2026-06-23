@@ -36,5 +36,6 @@ namespace travel_recommendation_and_booking_system.Models
 
         [ForeignKey("MaVaiTro")]
         public virtual VaiTro VaiTro { get; set; }
+        public ICollection<PhienDangNhap>? PhienDangNhaps { get; set; }
     }
 }

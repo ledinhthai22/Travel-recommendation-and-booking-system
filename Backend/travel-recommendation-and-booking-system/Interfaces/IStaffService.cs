@@ -15,5 +15,6 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<bool> UpdateStatusAsync(int maNguoiDung, int trangthai); // cập nhật trạng thái hoạt động của nhân viên
         Task<bool> DeleteAsync(int maNguoiDung); // xóa nhân viên
         Task<bool> ResetPasswordAsync(int maNguoiDung, string newPassword); // cấp mật khẩu mới cho nhân viên
+        Task<StaffResponseDTO?> GetStaffMeAsync(int maNhanVien);
     }
 }
