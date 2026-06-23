@@ -12,6 +12,7 @@ function TourCard({
     rating,
     reviewCount,
     availableSlots,
+    showWishlist = true,
 }) {
     const [wishlisted, setWishlisted] = useState(false);
 
@@ -49,17 +50,18 @@ function TourCard({
                 </div>
 
                 {/* Nút Yêu thích */}
-                <button
-                    type="button"
-                    onClick={() => setWishlisted((v) => !v)}
-                    aria-label={wishlisted ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
-                    className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow backdrop-blur-sm transition hover:scale-110 active:scale-95"
-                >
-                    <Heart
-                        size={15}
-                        className={wishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}
-                    />
-                </button>
+                {showWishlist && (
+                    <button
+                        type="button"
+                        onClick={() => setWishlisted((v) => !v)}
+                        className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow backdrop-blur-sm transition hover:scale-110 active:scale-95"
+                    >
+                        <Heart
+                            size={15}
+                            className={wishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}
+                        />
+                    </button>
+                )}
             </div>
 
             {/* 2. CONTENT + FOOTER BLOCK - Biến toàn bộ vùng bên dưới thành flex container */}

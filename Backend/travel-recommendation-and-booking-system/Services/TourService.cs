@@ -1,9 +1,10 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Text;
 using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Departure;
+using travel_recommendation_and_booking_system.DTOs.FavoriteTour;
 using travel_recommendation_and_booking_system.DTOs.ImageTour;
 using travel_recommendation_and_booking_system.DTOs.Schedule;
 using travel_recommendation_and_booking_system.DTOs.ScheduleDetails;
@@ -543,6 +544,88 @@ namespace travel_recommendation_and_booking_system.Services
             return true;
         }
 
+        public async Task<PageDTO<FavoriteTourRepnoseDTO>> GetFavoriteToursAsync(int userId, int pageNumber = 1, int pageSize = 10)
+        {
+            if (pageNumber <= 0) pageNumber = 1;
+            if (pageSize <= 0) pageSize = 10;
+            var query = _context.DanhSachYeuThichs.AsNoTracking().Where(y => y.MaNguoiDung == userId);
+
+            var totalCount = await query.CountAsync();
+
+            var rawData = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Select(y => new
+                {
+                    MaTour = y.Tour.MaTour,
+                    TenTour = y.Tour.TenTour,
+                    ThoiGianTour = y.Tour.ThoiGianTour,
+                    DiemKhoiHanh = y.Tour.DiemKhoiHanh,
+
+                    DuongDanAnh = y.Tour.HinhAnhTours.Where(a => a.AnhChinh == true).Select(a => a.DuongDanAnh).FirstOrDefault(),
+                    DanhSachGia = y.Tour.ChuyenKhoiHanhs.SelectMany(c => c.GiaChuyens).Select(g => g.GiaNguoiLon).ToList(),
+
+                    ReviewCount = y.Tour.DanhGias.Count(),
+                    CacDiemDanhGia = y.Tour.DanhGias.Select(d => d.DiemDanhGia).ToList()
+                })
+                .ToListAsync();
+
+            var favoriteTours = rawData.Select(x => new FavoriteTourRepnoseDTO
+            {
+                Matour = x.MaTour,
+                TenTour = x.TenTour,
+                ThoiGianTour = x.ThoiGianTour,
+                DiemKhoiHanh = x.DiemKhoiHanh,
+
+                DuongDanAnh = x.DuongDanAnh ?? "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200",
+
+                GiaTour = x.DanhSachGia.Any() ? (decimal)x.DanhSachGia.Min() : 0,
+
+                ReviewCount = x.ReviewCount,
+                DiemDanhGia = x.CacDiemDanhGia.Any()
+                         ? Math.Round(x.CacDiemDanhGia.Average(d => (double)d), 1)
+                         : 0
+            }).ToList();
+
+            return new PageDTO<FavoriteTourRepnoseDTO>
+            {
+                Items = favoriteTours,
+                TotalItems = totalCount,
+                PageSize = pageSize,
+                PageNumber = pageNumber
+            };
+        }
+
+        public async Task<bool> DeleteFavoriteToursAsync(int userId, List<int> tourIds)
+        {
+            if (tourIds == null || !tourIds.Any()) return false;
+
+            var Listitem = await _context.DanhSachYeuThichs.Where(y => y.MaNguoiDung == userId && tourIds.Contains(y.MaTour)).ToListAsync();
+
+            if (!Listitem.Any()) return false;
+
+            _context.DanhSachYeuThichs.RemoveRange(Listitem);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> AddFavoriteTourAsync(int userId, int tourId)
+        {
+            var item = await _context.DanhSachYeuThichs.AnyAsync(y => y.MaNguoiDung == userId && y.MaTour == tourId);
+
+            if (item) return false;
+
+            var newFavorite = new DanhSachYeuThich
+            {
+                MaNguoiDung = userId,
+                MaTour = tourId
+            };
+
+            _context.DanhSachYeuThichs.Add(newFavorite);
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
 
         private void DeleteFileFromTourFolder(string? duongDanAnh)
         {
@@ -556,7 +639,6 @@ namespace travel_recommendation_and_booking_system.Services
                 File.Delete(filePath);
             }
         }
-
         private async Task UploadImagesTourAsync(int maTour, List<IFormFile> images)
         {
             if (images == null || !images.Any()) return;
@@ -602,8 +684,6 @@ namespace travel_recommendation_and_booking_system.Services
 
             await _context.SaveChangesAsync();
         }
-
-
         private int GetDepartureStatus(DateTime ngayKhoiHanh, int soLuongCho)
         {
             if (soLuongCho <= 0)

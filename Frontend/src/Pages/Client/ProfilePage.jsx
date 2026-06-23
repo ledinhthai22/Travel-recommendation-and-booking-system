@@ -8,14 +8,25 @@ import {
     Camera
 } from "lucide-react";
 
-import { getUserProfileApi, updateUserProfileApi } from "~/Services/UserProfile";
-import { toastSuccess, toastError } from "~/utils/Toast";
+import { getUserProfileApi,getOverviewApi,getHistoryApi,getHistoryDetailApi } from "~/Services/UserProfile";
 import UpdateUserProfileModal from "../admin/UserProfileManager/UpdateUserProfileModal";
 import InputField from "~/components/UI/Form/InputField";
+import ChangePasswordModal from "../admin/UserProfileManager/ChangePasswordModal";
+import { formatCurrency } from "~/Helper/FormatCurrency";
+import Pagination from "~/components/Common/Pagination";
+import BookingDetailModal from "../admin/UserProfileManager/BookingDetailModal";
 export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState("overview");
     const [proFileData, setProFileData] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+    //overview
+    const [overviewData, setOverviewData] = useState(null);
+    const [isLoadingOverview, setIsLoadingOverview] = useState(true);
+    //history
+    const [historyData, setHistoryData] = useState({ items: [], pageNumber: 1, totalItems: 0, pageSize: 5 });
+    const [searchTerm, setSearchTerm] = useState("");
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
     const fetchProfile = async () => {
         try {
@@ -26,60 +37,64 @@ export default function ProfilePage() {
         }
     };
 
+    const fetchOverview = async () => {
+        setIsLoadingOverview(true);
+        try {
+            const data = await getOverviewApi();
+            setOverviewData(data);
+        } catch (error) {
+            console.error("Lỗi lấy dữ liệu tổng quan", error);
+        } finally {
+            setIsLoadingOverview(false);
+        }
+    };
+
+    const fetchHistory = async (page = 1, search = "") => {
+        setIsLoadingHistory(true);
+        try {
+            const data = await getHistoryApi(page, 5, search);
+            setHistoryData(data);
+        } catch (error) {
+            console.error("Lỗi lấy lịch sử đặt tour", error);
+        } finally {
+            setIsLoadingHistory(false);
+        }
+    };
+
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+const [selectedBooking, setSelectedBooking] = useState(null);
+
+const handleViewDetail = async (maDonDatTour) => {
+    try {
+        const data = await getHistoryDetailApi(maDonDatTour); 
+        setSelectedBooking(data);
+        setIsDetailModalOpen(true);
+    } catch (error) {
+        toastError("Không thể tải chi tiết đơn hàng!");
+    }
+};
+
     useEffect(() => {
         fetchProfile();
+        fetchOverview();
     }, []);
+
+    useEffect(() => {
+        if (activeTab === "history") {
+            fetchHistory(1, searchTerm);
+        }
+    }, [activeTab]);
+
+    const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') {
+        fetchHistory(1, searchTerm);
+    }
+};
 
     const user = {
         name: proFileData?.hoTen || "Người dùng",
         avatar: proFileData?.duongDanAnh ? `https://localhost:7016${proFileData.duongDanAnh}` : "https://i.pravatar.cc/200?img=32",
-        totalTours: 8,
-        totalReviews: 8,
-        totalSpent: 8,
     };
-
-    const tours = [
-        {
-            id: 1,
-            name: "Tên tour 1",
-            startDate: "Ngày khởi hành",
-            location: "Địa điểm khởi hành",
-            image:
-                "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=500",
-        },
-        {
-            id: 2,
-            name: "Tên tour 1",
-            startDate: "Ngày khởi hành",
-            location: "Địa điểm khởi hành",
-            image:
-                "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=500",
-        },
-        {
-            id: 3,
-            name: "Tên tour 1",
-            startDate: "Ngày khởi hành",
-            location: "Địa điểm khởi hành",
-            image:
-                "https://images.unsplash.com/photo-1511497584788-876760111969?w=500",
-        },
-        {
-            id: 4,
-            name: "Tên tour 1",
-            startDate: "Ngày khởi hành",
-            location: "Địa điểm khởi hành",
-            image:
-                "https://images.unsplash.com/photo-1494526585095-c41746248156?w=500",
-        },
-        {
-            id: 5,
-            name: "Tên tour 1",
-            startDate: "Ngày khởi hành",
-            location: "Địa điểm khởi hành",
-            image:
-                "https://images.unsplash.com/photo-1494526585095-c41746248156?w=500",
-        },
-    ];
 
     const menus = [
         {
@@ -97,11 +112,6 @@ export default function ProfilePage() {
             label: "Lịch sử đặt tour",
             icon: Clock3,
         },
-        {
-            id: "review",
-            label: "Đánh giá",
-            icon: Star,
-        },
     ];
 
     if (!proFileData) {
@@ -111,6 +121,23 @@ export default function ProfilePage() {
             </div>
         );
     }
+
+    const getStatusBadge = (status) => {
+    switch (status) {
+        case 1:
+            return <span className="inline-flex rounded-full bg-yellow-50 px-4 py-2 text-sm text-yellow-600 border border-yellow-100">Chờ xác nhận</span>;
+        case 2:
+            return <span className="inline-flex rounded-full bg-blue-50 px-4 py-2 text-sm text-blue-600 border border-blue-100">Đã duyệt</span>;
+        case 3:
+            return <span className="inline-flex rounded-full bg-emerald-50 px-4 py-2 text-sm text-emerald-600 border border-emerald-100">Hoàn tất</span>;
+        case 4:
+            return <span className="inline-flex rounded-full bg-red-50 px-4 py-2 text-sm text-red-600 border border-red-100">Đã hủy</span>;
+        default:
+            return <span className="inline-flex rounded-full bg-slate-50 px-4 py-2 text-sm text-slate-600 border border-slate-100">Không xác định</span>;
+        }
+    };
+
+    const totalPages = Math.ceil((historyData.totalItems || 0) / (historyData.pageSize || 5)) || 1;
 
     return (
         <div className="min-h-[calc(100vh-120px)] mt-30">
@@ -180,7 +207,7 @@ export default function ProfilePage() {
                                         </p>
 
                                         <p className="mt-2 text-3xl font-bold">
-                                            {user.totalTours}
+                                            {Number(overviewData?.tongTour || 0)}
                                         </p>
                                     </div>
 
@@ -190,7 +217,7 @@ export default function ProfilePage() {
                                         </p>
 
                                         <p className="mt-2 text-3xl font-bold">
-                                            {user.totalReviews}
+                                            {Number(overviewData?.tongDanhGia || 0)}
                                         </p>
                                     </div>
 
@@ -199,8 +226,8 @@ export default function ProfilePage() {
                                             Tổng tiền đã chi
                                         </p>
 
-                                        <p className="mt-2 text-3xl font-bold">
-                                            {user.totalSpent}
+                                        <p className="mt-2 text-3xl font-bold title={formatCurrency(overviewData?.tongTien)}">
+                                            {formatCurrency(overviewData?.tongTien)}
                                         </p>
                                     </div>
                                 </div>
@@ -212,50 +239,61 @@ export default function ProfilePage() {
                                             Các tour đã đi gần đây
                                         </h3>
 
-                                        <button className="text-sm text-sky-500 hover:text-sky-600">
+                                        <button className="text-sm text-sky-500 hover:text-sky-600"
+                                        onClick={() => setActiveTab("history")}
+                                        >
                                             Xem thêm
                                         </button>
                                     </div>
 
                                     <div className="space-y-6">
-                                        {tours.map((tour) => (
+                                        {overviewData?.tours && overviewData.tours.length > 0 ? (
+                                        overviewData.tours.map((tour,index) => (
                                             <div
-                                                key={tour.id}
+                                                key={tour.maDonDaTour || index}
                                                 className="grid items-center gap-4 md:grid-cols-[80px_1fr_120px_100px]"
                                             >
                                                 <img
-                                                    src={tour.image}
-                                                    alt=""
+                                                    src={tour.duongDanAnh ? `https://localhost:7016${tour.duongDanAnh}` : "https://placehold.co/150x100?text=No+Image"}
+                                                    alt={tour.tenTour}
                                                     className="h-16 w-20 rounded-lg object-cover"
                                                 />
 
                                                 <div>
                                                     <h4 className="font-medium">
-                                                        {tour.name}
+                                                        {tour.tenTour}
                                                     </h4>
 
                                                     <p className="text-sm text-slate-500">
-                                                        {tour.startDate}
+                                                        {tour.ngayBatDau}
                                                     </p>
 
                                                     <p className="text-sm text-slate-500">
-                                                        {tour.location}
+                                                        {tour.diaDiem}
                                                     </p>
                                                 </div>
 
                                                 <div>
-                                                    <span className="inline-flex rounded-full bg-emerald-50 px-4 py-2 text-sm text-emerald-600">
-                                                        Trạng thái
-                                                    </span>
+                                                    {getStatusBadge(tour.trangThai)}
                                                 </div>
 
-                                                <button className="text-sm text-sky-500 hover:text-sky-600">
+                                                <button className="text-sm text-sky-500 hover:text-sky-600"
+                                                onClick={() => handleViewDetail(tour.maDonDatTour)}
+                                                >
                                                     Xem chi tiết
                                                 </button>
                                             </div>
-                                        ))}
+                                        ))
+                                    ) : (
+                                        <p className="text-sm text-slate-500 italic py-4">Bạn chưa có lịch sử đặt tour nào gần đây.</p>
+                                    )}
                                     </div>
                                 </div>
+                                <BookingDetailModal
+                                    isOpen={isDetailModalOpen}
+                                    onClose={() => setIsDetailModalOpen(false)}
+                                    booking={selectedBooking}
+                                />
                             </>
                         )}
                         {activeTab === "profile" && (
@@ -313,6 +351,21 @@ export default function ProfilePage() {
                                         />
                                     </div>
 
+                                    <div className="mt-8 border-t border-slate-200 pt-6">
+                                        <h3 className="mb-4 text-lg font-bold text-slate-900">Bảo mật</h3>
+                                        <div className="flex items-center justify-between rounded-xl border border-slate-200 p-4">
+                                            <div>
+                                                <p className="font-medium text-slate-900">Mật khẩu</p>
+                                                <p className="text-sm text-slate-500">Cập nhật mật khẩu để bảo vệ tài khoản</p>
+                                            </div>
+                                            <button
+                                                onClick={() => setIsPasswordModalOpen(true)}
+                                                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                                            >
+                                                Đổi mật khẩu
+                                            </button>
+                                        </div>
+                                    </div>
                                     <div className="mt-6 border-t border-slate-200 pt-4 text-right">
                                         <button
                                             onClick={() => setIsModalOpen(true)}
@@ -327,95 +380,74 @@ export default function ProfilePage() {
                         {activeTab === "history" && (
                             <>
                                 <div className="mb-6 flex items-center justify-between">
-                                    <h2 className="text-xl font-bold">
-                                        Lịch sử đặt tour
-                                    </h2>
-
-                                    <input
-                                        placeholder="Tìm tour..."
-                                        className="rounded-lg border px-3 py-2"
-                                    />
+                                    <h2 className="text-xl font-bold">Lịch sử đặt tour</h2>
+                                    <div className="flex gap-2">
+                                        <input
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            onKeyDown={handleSearchKeyDown}
+                                            placeholder="Tìm tour..."
+                                            className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-sky-500"
+                                        />
+                                        <button 
+                                            onClick={() => fetchHistory(1, searchTerm)}
+                                            className="rounded-lg bg-sky-500 px-4 py-2 text-sm text-white hover:bg-sky-600 transition"
+                                        >
+                                            Tìm
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-4">
-                                    {tours.map((tour) => (
-                                        <div
-                                            key={tour.id}
-                                            className="grid items-center gap-4 rounded-xl border border-slate-200 p-4 md:grid-cols-[100px_1fr_150px_120px]"
-                                        >
-                                            <img
-                                                src={tour.image}
-                                                alt=""
-                                                className="h-20 w-full rounded-lg object-cover"
-                                            />
-
-                                            <div>
-                                                <h3 className="font-semibold">
-                                                    {tour.name}
-                                                </h3>
-
-                                                <p className="text-sm text-slate-500">
-                                                    Mã booking: BK0001
-                                                </p>
-
-                                                <p className="text-sm text-slate-500">
-                                                    Ngày khởi hành: 12/06/2026
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <span className="rounded-full bg-green-100 px-3 py-1 text-sm text-green-600">
-                                                    Đã thanh toán
-                                                </span>
-                                            </div>
-
-                                            <button className="text-sky-500">
-                                                Chi tiết
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </>
-                        )}
-                        {activeTab === "review" && (
-                            <>
-                                <h2 className="mb-6 text-xl font-bold">
-                                    Đánh giá của tôi
-                                </h2>
-
-                                <div className="space-y-4">
-                                    {[1, 2, 3].map((item) => (
-                                        <div
-                                            key={item}
-                                            className="rounded-xl border border-slate-200 p-4"
-                                        >
-                                            <div className="mb-2 flex items-center justify-between">
-                                                <h3 className="font-semibold">
-                                                    Tour Đà Lạt 3N2Đ
-                                                </h3>
-
-                                                <span className="text-yellow-500">
-                                                    ★★★★★
-                                                </span>
-                                            </div>
-
-                                            <p className="text-sm text-slate-600">
-                                                Tour rất tốt, hướng dẫn viên nhiệt tình,
-                                                khách sạn sạch sẽ.
-                                            </p>
-
-                                            <div className="mt-3 flex gap-3">
-                                                <button className="text-sky-500">
-                                                    Chỉnh sửa
-                                                </button>
-
-                                                <button className="text-red-500">
-                                                    Xóa
+                                    {isLoadingHistory ? (
+                                        <p className="text-center text-slate-500 py-8">Đang tải dữ liệu...</p>
+                                    ) : historyData.items && historyData.items.length > 0 ? (
+                                        historyData.items.map((tour, index) => (
+                                            <div
+                                                key={tour.maDonDatTour || index}
+                                                className="grid items-center gap-4 rounded-xl border border-slate-200 p-4 md:grid-cols-[100px_1fr_150px_120px] hover:shadow-md transition-shadow"
+                                            >
+                                                <img
+                                                    src={tour.duongDanAnh ? `https://localhost:7016${tour.duongDanAnh}` : "https://placehold.co/150x100?text=No+Image"}
+                                                    alt={tour.tenTour}
+                                                    className="h-20 w-full rounded-lg object-cover"
+                                                />
+                                                <div>
+                                                    <h3 className="font-semibold text-slate-900 line-clamp-1">{tour.tenTour}</h3>
+                                                    <p className="text-sm text-slate-500 mt-1">Mã booking: {tour.maDatCho}</p>
+                                                    <p className="text-sm text-slate-500">Ngày khởi hành: {tour.ngayBatDau}</p>
+                                                </div>
+                                                <div>
+                                                    {getStatusBadge(tour.trangThai)}
+                                                </div>
+                                                <button className="text-sky-500 font-medium hover:text-sky-600 transition"
+                                                onClick={() => handleViewDetail(tour.maDonDatTour)}
+                                                >
+                                                    Chi tiết
                                                 </button>
                                             </div>
+                                        ))
+                                    ) : (
+                                        <div className="rounded-xl border border-dashed border-slate-300 py-10 text-center">
+                                            <p className="text-slate-500">Không tìm thấy lịch sử đặt tour nào.</p>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
+
+                                {totalPages && (
+                                    <div className="mt-8">
+                                        <Pagination
+                                            currentPage={historyData.pageNumber}
+                                            totalPages={totalPages}
+                                            onPageChange={(newPage) => fetchHistory(newPage, searchTerm)}
+                                        />
+                                    </div>
+                                )}
+                                <BookingDetailModal
+                                    isOpen={isDetailModalOpen}
+                                    onClose={() => setIsDetailModalOpen(false)}
+                                    booking={selectedBooking}
+                                />
                             </>
                         )}
                     </main>
@@ -426,6 +458,10 @@ export default function ProfilePage() {
                 onClose={() => setIsModalOpen(false)}
                 profileData={proFileData}
                 onUpdateSuccess={fetchProfile}
+            />
+            <ChangePasswordModal
+                isOpen={isPasswordModalOpen}
+                onClose={() => setIsPasswordModalOpen(false)}
             />
         </div>
     );

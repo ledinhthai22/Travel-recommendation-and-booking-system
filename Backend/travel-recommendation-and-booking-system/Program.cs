@@ -81,7 +81,11 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<IPromotionService, PromotionService>();
             builder.Services.AddScoped<IHotelService, HotelService>();
             builder.Services.AddScoped<IAmenitiesService, AmenitiesService>();
+            builder.Services.AddScoped<IReviewService, ReviewService>();
             builder.Services.AddScoped<PromotionStatusJob>();
+            builder.Services.AddScoped<GeminiService>();
+            builder.Services.AddHttpContextAccessor();
+
             var jwtSettings = builder.Configuration.GetSection("Jwt");
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
@@ -148,6 +152,12 @@ namespace travel_recommendation_and_booking_system
             app.UseCustomHangfireJobs();
             app.MapHub<TravelRecommendationHub>("/TravelRecommendationHub");
             app.UseHangfireDashboard("/hangfire");
+
+            RecurringJob.AddOrUpdate<IReviewService>(
+                "auto-process-reviews-batch",
+                service => service.ProcessReviewsBatchAsync(),
+                Cron.Minutely() 
+            );
             app.Run();
         }
     }

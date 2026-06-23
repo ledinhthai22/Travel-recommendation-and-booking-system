@@ -80,3 +80,21 @@ export const deleteTourImageApi = async (imageId) => {
 
     return response.data;
 };
+
+
+//tour yêu thích
+
+export const getWishlistApi = async (pageNumber = 1, pageSize = 10) => {
+    return await axiosClient.get(`/customer/Tour/wishlist`, {
+        params: {
+            pageNumber,
+            pageSize
+        }
+    });
+};
+
+export const deleteWishlistApi = async (tourIds) => {
+    return await axiosClient.delete(`/customer/Tour/wishlist`, {
+        data: tourIds 
+    });
+};

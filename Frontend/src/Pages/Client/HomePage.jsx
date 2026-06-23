@@ -7,9 +7,11 @@ import TourCard from '~/components/Tours/TourCard';
 import SectionTitle from '~/components/Common/SectionTitle';
 import { destinations, bestTours, hotDeals } from '~/constants/Home.constants';
 import useBanner from '~/Hooks/useBanner';
-
+import { useReviews } from '~/Hooks/useReview';
+import { useState } from 'react';
 export default function HomePage() {
     const { banners, loading } = useBanner();
+    const {reviews,reviewsloading} = useReviews();
 
     const activeBanner = banners
     return (
@@ -105,85 +107,41 @@ export default function HomePage() {
                 </div>
             </section>
             <section className="border-t border-slate-100 py-20">
-                <div className="mx-auto max-w-[1440px] px-4 md:px-8">
+            <div className="mx-auto max-w-[1440px] px-4 md:px-8">
+                <div className="mb-12 text-center">
+                    <h2 className="text-4xl font-bold text-slate-900">Khách hàng nói gì về chúng tôi</h2>
+                    <p className="mt-3 text-slate-500">Những đánh giá chân thực từ khách hàng đã trải nghiệm dịch vụ</p>
+                </div>
 
-                    <div className="mb-12 text-center">
-                        <h2 className="text-4xl font-bold text-slate-900">
-                            Khách hàng nói gì về chúng tôi
-                        </h2>
-
-                        <p className="mt-3 text-slate-500">
-                            Những đánh giá chân thực từ khách hàng đã trải nghiệm dịch vụ
-                        </p>
-                    </div>
-
+                {loading ? (
+                    <div className="text-center">Đang tải đánh giá...</div>
+                ) : (
                     <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
-
-                        {[
-                            {
-                                id: 1,
-                                name: 'Nguyễn Văn A',
-                                avatar: 'https://i.pravatar.cc/150?img=12',
-                                review:
-                                    'Tour được tổ chức rất chuyên nghiệp. Hướng dẫn viên nhiệt tình và lịch trình hợp lý.',
-                            },
-                            {
-                                id: 2,
-                                name: 'Trần Thị B',
-                                avatar: 'https://i.pravatar.cc/150?img=24',
-                                review:
-                                    'Đặt tour nhanh chóng, hỗ trợ khách hàng tốt. Chắc chắn sẽ quay lại sử dụng dịch vụ.',
-                            },
-                            {
-                                id: 3,
-                                name: 'Lê Minh C',
-                                avatar: 'https://i.pravatar.cc/150?img=33',
-                                review:
-                                    'Khách sạn đẹp, xe đưa đón đúng giờ. Trải nghiệm vượt ngoài mong đợi.',
-                            },
-                        ].map((review) => (
-                            <div
-                                key={review.id}
-                                className="
-                        rounded-3xl border border-slate-200
-                        bg-white p-6 shadow-sm
-                        transition-all duration-300
-                        hover:-translate-y-1 hover:shadow-lg
-                    "
-                            >
+                        {reviews.map((review, index) => (
+                            <div key={index} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
                                 <div className="mb-4 flex items-center gap-4">
-
                                     <img
-                                        src={review.avatar}
-                                        alt={review.name}
+                                        // Dùng ảnh mặc định nếu chưa có avatar từ DB
+                                        src={`https://localhost:7016${review.duongDanAnh}`} 
+                                        alt={review.tenNguoiDung}
                                         className="h-14 w-14 rounded-full object-cover"
                                     />
-
                                     <div>
-                                        <h3 className="font-semibold text-slate-900">
-                                            {review.name}
-                                        </h3>
-
+                                        <h3 className="font-semibold text-slate-900">{review.tenNguoiDung}</h3>
                                         <div className="flex items-center gap-1">
-                                            {[...Array(5)].map((_, index) => (
-                                                <Star
-                                                    key={index}
-                                                    size={12}
-                                                    className="fill-amber-400 text-amber-400"
-                                                />
+                                            {[...Array(review.diemDanhGia || 5)].map((_, i) => (
+                                                <Star key={i} size={12} className="fill-amber-400 text-amber-400" />
                                             ))}
                                         </div>
                                     </div>
                                 </div>
-
-                                <p className="leading-7 text-slate-600">
-                                    "{review.review}"
-                                </p>
+                                <p className="leading-7 text-slate-600">"{review.noiDung}"</p>
                             </div>
                         ))}
                     </div>
-                </div>
-            </section>
+                )}
+            </div>
+        </section>
         </div>
     );
 }

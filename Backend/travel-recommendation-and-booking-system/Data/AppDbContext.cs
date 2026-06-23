@@ -78,7 +78,21 @@ namespace travel_recommendation_and_booking_system.Data
 
             modelBuilder.Entity<SoThichNguoiDung>().HasKey(sn => new { sn.MaNguoiDung, sn.MaLoaiTour });
 
-            modelBuilder.Entity<DanhSachYeuThich>().HasKey(dy => new { dy.MaNguoiDung, dy.MaTour });
+            modelBuilder.Entity<DanhSachYeuThich>(entity =>
+            {
+                entity.HasKey(yt => new { yt.MaNguoiDung, yt.MaTour });
+
+                entity.HasOne(yt => yt.NguoiDung)
+                      .WithMany(nd => nd.DanhSachYeuThichs)
+                      .HasForeignKey(yt => yt.MaNguoiDung);
+
+                entity.HasOne(yt => yt.Tour)
+                      .WithMany(t => t.DanhSachYeuThichs)
+                      .HasForeignKey(yt => yt.MaTour);
+
+                entity.HasIndex(yt => yt.MaTour)
+                      .HasDatabaseName("IX_DanhSachYeuThich_MaTour");
+            });
 
             modelBuilder.Entity<DonDatTour>()
                 .HasOne(d => d.NguoiDung)

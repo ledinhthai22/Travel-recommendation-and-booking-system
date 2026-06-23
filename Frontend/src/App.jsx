@@ -40,6 +40,7 @@ import {
     TypeLocationManager,
     AmenitiesManager,
     LocationManager,
+    ReviewManager,
     TourFormPage
 } from './Pages/admin';
 
@@ -107,6 +108,7 @@ function App() {
                             <Route path="Tai-khoan" element={<UserManager />} />
                             <Route path="Newletter" element={<NewlettersManager />} />
                             <Route path="Banner" element={<BannerManager />} />
+                             <Route path="Binh-Luan" element={<ReviewManager />} />
                             <Route path="Uu-Dai" element={<PromotionManager />} />
                             <Route path="Thong-tin-trang" element={<Webinfo />} />
                             <Route path="Thong-doanh-thu-theo-cac-chuyen-di" element={<RevenueByTour />} />

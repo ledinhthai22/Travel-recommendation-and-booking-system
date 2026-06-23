@@ -17,6 +17,8 @@ namespace travel_recommendation_and_booking_system.Models
         public int DiemDanhGia { get; set; }
         public string NoiDung { get; set; }
         public bool TrangThai { get; set; }
+        public string? GhiChuKiemDuyet { get; set; }
+        public bool IsProcessedByAI { get; set; } = false;
         public DateTime NgayTao { get; set; } = DateTime.Now;
         public DateTime NgayCapNhat { get; set; } = DateTime.Now;
         public DateTime? NgayXoa { get; set; }

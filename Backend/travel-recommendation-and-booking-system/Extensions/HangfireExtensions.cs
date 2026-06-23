@@ -1,4 +1,5 @@
 ﻿using Hangfire;
+using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Jobs;
 
 namespace travel_recommendation_and_booking_system.Extensions
@@ -18,5 +19,17 @@ namespace travel_recommendation_and_booking_system.Extensions
                 Cron.Minutely
             );
         }
+
+        public static void UseCustomHangfireReview(this WebApplication app)
+        {
+            using var scope = app.Services.CreateScope();
+
+            RecurringJob.AddOrUpdate<IReviewService>(
+                "auto-process-reviews-batch",
+                service => service.ProcessReviewsBatchAsync(),
+                Cron.Minutely()
+            );
+        }
+
     }
 }

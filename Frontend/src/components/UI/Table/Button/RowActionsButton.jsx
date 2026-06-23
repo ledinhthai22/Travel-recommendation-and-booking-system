@@ -9,6 +9,8 @@ export default function RowActionsButton({
     onLock,
     onUnlock,
     onResetPass,
+    onToggleStatus,
+    showToggle=true,
     showView = true,
     showEdit = true,
     showDelete = true,
@@ -138,6 +140,20 @@ export default function RowActionsButton({
                     </button>
                 </div>
 
+            )}
+
+            {showToggle && onToggleStatus && (
+                <button
+                    onClick={() => handleAction(onToggleStatus)}
+                    className="w-full px-3 py-2 flex items-center gap-2 hover:bg-slate-50 text-left text-xs font-medium cursor-pointer"
+                >
+                    <span className="material-symbols-outlined text-amber-600" style={{ fontSize: '12px' }}>
+                        {row?.trangThai ? 'visibility_off' : 'visibility'}
+                    </span>
+                    <span className="text-gray-900">
+                        {row?.trangThai ? 'Ẩn' : 'Hiển thị'}
+                    </span>
+                </button>
             )}
         </div>
     ) : null;

@@ -32,7 +32,7 @@ namespace travel_recommendation_and_booking_system.Models
         public decimal TongTien { get; set; }
         public bool TrangThaiThanhToan { get; set; }
         [StringLength(50)]
-        public string TrangThaiDon { get; set; }
+        public int TrangThaiDon { get; set; }
         public DateTime NgayCapNhat { get; set; } = DateTime.Now;
 
         public virtual NguoiDung NguoiDung { get; set; }

@@ -15,7 +15,8 @@ import {
     BadgePercent,
     Images,
     HousePlus,
-    Tags
+    Tags,
+    MessageSquare
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -138,6 +139,11 @@ export default function Sidebar() {
                     title: "Quản lý banner",
                     path: "/Quan-ly/Banner",
                     icon: Images
+                },
+                {
+                    title: "Quản lý bình luận",
+                    path: "/Quan-ly/Binh-Luan",
+                    icon: MessageSquare
                 },
                 {
                     title: "Quản lý ưu đãi",

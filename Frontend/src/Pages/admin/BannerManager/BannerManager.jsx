@@ -106,7 +106,7 @@ export default function BannerManager() {
         {
             name: 'Hình ảnh',
             width: '120px',
-            center: 'true',
+           center: true,
             selector: row => row.duongDanAnh,
             cell: row => (
                 <div className="p-2">
