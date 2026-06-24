@@ -7,10 +7,11 @@ namespace travel_recommendation_and_booking_system.DTOs.Tour
     public class TourReponseDTO
     {
         public TourDTO TourInfo { get; set; }
-        public List<string> TenKhachSans { get; set; }
+
         public List<ScheduleReponseDTO> LichTrinh { get; set; }
         public List<DepartureFullDTO> ChuyenKhoiHanhs { get; set; }
         public List<ImageTourResponseDTO> Images { get; set; }
         public List<int> MaKhachSans { get; set; } = new();
+        public List<HotelInfoDTO> KhachSans { get; set; }
     }
 }

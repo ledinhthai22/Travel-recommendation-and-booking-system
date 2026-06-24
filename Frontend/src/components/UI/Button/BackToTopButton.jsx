@@ -36,15 +36,15 @@ export default function BackToTopButton() {
             onClick={scrollToTop}
             aria-label="Quay lại đầu trang"
             className="
-                fixed bottom-24 right-6 z-50
-                flex h-12 w-12 items-center justify-center
+                fixed bottom-24 right-4 z-50
+                flex h-13 w-13 items-center justify-center
                 rounded-full bg-[#0EA5E5] text-white shadow-xl
                 transition-all duration-300
                 hover:-translate-y-1 hover:bg-[#0EA5E5] hover:shadow-2xl
                 active:scale-95
             "
         >
-            <ArrowUp size={22} />
+            <ArrowUp size={18} />
         </button>
     );
 }

@@ -15,10 +15,10 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
         {
             _hotelService = hotelService;
         }
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        [HttpGet("{slug}")]
+        public async Task<IActionResult> GetById(string slug)
         {
-            var result = await _hotelService.GetHotelByIdAsync(id);
+            var result = await _hotelService.GetHotelBySlugAsync(slug);
 
             if (result == null)
             {

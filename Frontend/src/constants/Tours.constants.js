@@ -21,4 +21,4 @@ export const SORTS = [
     { value: 'price_desc', label: 'Giá giảm dần' },
     { value: 'rating', label: 'Đánh giá cao' },
 ];
-export const PAGE_SIZE = 8;
+export const PAGE_SIZE = 12;

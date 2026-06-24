@@ -217,6 +217,7 @@ export default function HotelForm({
         if (!/^(03|05|07|08|09|01[2|6|8|9])+([0-9]{8})$/.test(formData.soDienThoai.trim())) {
             newErrors.soDienThoai = 'Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0).';
         }
+        if(!formData.soSao) newErrors.soSao = 'Vui lòng chọn hạng sao cho khách sạn';
         if (!formData.diaChi.trim()) newErrors.diaChi = 'Vui lòng nhập địa chỉ.';
         if (images.length === 0) newErrors.images = 'Vui lòng thêm ít nhất 1 hình ảnh.';
 
@@ -375,6 +376,7 @@ export default function HotelForm({
                             onChange={v => setFormData(p => ({ ...p, soSao: v }))}
                             disabled={isViewMode}
                             fullWidth
+                            error={errors.soSao}
                         />
                     </div>
 
@@ -417,7 +419,7 @@ export default function HotelForm({
                                     type="button"
                                     onClick={addAmenityFromDropdown}
                                     disabled={!selectedAmenityId}
-                                    className="px-6 py-3 bg-[#0EA5E5] hover:bg-[#0284c7] text-white rounded-xl font-medium disabled:opacity-50"
+                                    className="px-6 py-3 bg-[#0EA5E5] hover:bg-[#0284c7] text-white rounded-4xl font-medium disabled:opacity-50"
                                 >
                                     Thêm
                                 </button>
@@ -425,7 +427,7 @@ export default function HotelForm({
                                 <button
                                     type="button"
                                     onClick={() => setShowCreateAmenityModal(true)}
-                                    className="px-6 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-medium flex items-center gap-2 shadow-sm transition-all"
+                                    className="px-6 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-4xl font-medium flex items-center gap-2 shadow-sm transition-all"
                                 >
                                     <Plus size={16} strokeWidth={2.5} />
                                     Thêm tiện ích mới

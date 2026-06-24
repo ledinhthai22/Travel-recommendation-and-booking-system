@@ -9,7 +9,7 @@ namespace travel_recommendation_and_booking_system.Models
         [Key]
         public int MaChuyen { get; set; }
 
-        [ForeignKey("HuongDanVien")]
+        [ForeignKey(nameof(NhanVien))]
         public int? MaHDV { get; set; }
 
         [ForeignKey("Tour")]
@@ -38,7 +38,7 @@ namespace travel_recommendation_and_booking_system.Models
         public DateTime NgayCapNhat { get; set; } = DateTime.Now;
         public DateTime? NgayXoa { get; set; }
         public int TrangThai { get; set; }
-        public virtual NguoiDung HuongDanVien { get; set; }
+        public virtual NhanVien NhanVien { get; set; }
         public virtual Tour Tour { get; set; }
         public virtual PhuongTien PhuongTien { get; set; }
         public virtual ICollection<GiaChuyen> GiaChuyens { get; set; } = new List<GiaChuyen>();

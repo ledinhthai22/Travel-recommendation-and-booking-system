@@ -21,6 +21,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             var result = await _location.GetAllAsync();
             return Ok(result);
         }
+
         [HttpGet("get-location")]
         public async Task<IActionResult> GetLocation([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] string? key = null, [FromQuery] bool? status = null)
         {

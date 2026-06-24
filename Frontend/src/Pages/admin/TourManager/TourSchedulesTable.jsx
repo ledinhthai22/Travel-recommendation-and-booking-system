@@ -20,13 +20,17 @@ export default function TourSchedulesTable({
                     className: "bg-red-100 text-red-700"
                 },
                 1: {
-                    text: "Đang mở bán",
-                    className: "bg-green-100 text-green-700"
+                    text: "Đã kết thúc",
+                    className: "bg-gray-100 text-gray-700"
                 },
                 2: {
-                    text: "Đã khởi hành",
+                    text: "Đang khởi hành",
                     className: "bg-blue-100 text-blue-700"
                 },
+                3: {
+                    text: "Sắp khởi hành",
+                    className: "bg-green-100 text-green-700"
+                }
             };
 
             const status = map[row.trangThai] || {
@@ -112,9 +116,12 @@ export default function TourSchedulesTable({
             cell: (row) => (
                 <RowActionsButton
                     row={row}
-                    onEdit={onEdit}
+                    onEdit={
+                        row.trangThai === 2 || row.trangThai === 1
+                            ? null
+                            : onEdit
+                    }
                     onView={onView}
-                    showDelete={false}
                 />
             ),
             width: actionWidth,

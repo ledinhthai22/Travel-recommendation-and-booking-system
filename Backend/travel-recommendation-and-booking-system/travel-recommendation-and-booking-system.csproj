@@ -25,14 +25,15 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Folder Include="Helper\" />
 		<Folder Include="Migrations\" />
 		<Folder Include="wwwroot\img\hotel\" />
 		<Folder Include="wwwroot\img\location\" />
 		<Folder Include="wwwroot\img\Logo_Trang\" />
 		<Folder Include="wwwroot\img\banner\" />
 		<Folder Include="wwwroot\img\schedules\" />
+		<Folder Include="wwwroot\img\staff\" />
 		<Folder Include="wwwroot\img\tour\" />
+		<Folder Include="wwwroot\img\user\" />
 	</ItemGroup>
 
 </Project>

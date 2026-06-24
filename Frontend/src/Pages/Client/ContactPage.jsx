@@ -148,6 +148,7 @@ export default function Contact() {
             setLoading(false);
         }
     };
+    const mapUrl = webInfo?.Map_Trang_Lien_He?.replaceAll('"', '');
     return (
         <div className="bg-white/50 py-10 mt-20">
             <div className="mx-auto max-w-[1388px] ">
@@ -168,9 +169,13 @@ export default function Contact() {
                         <div className="overflow-hidden rounded-4xl border border-slate-200 ">
                             <iframe
                                 title="Google Map"
-                                src="https://maps.google.com/maps?q=10.850523,106.771914&z=16&output=embed"
-                                className="h-full  w-full"
+                                src={mapUrl}
+                                width="100%"
+                                height="650"
+                                style={{ border: 0 }}
+                                allowFullScreen
                                 loading="lazy"
+                                referrerPolicy="strict-origin-when-cross-origin"
                             />
                         </div>
                         <form

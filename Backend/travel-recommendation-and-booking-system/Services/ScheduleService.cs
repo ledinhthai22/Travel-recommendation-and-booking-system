@@ -139,6 +139,12 @@ namespace travel_recommendation_and_booking_system.Services
         public async Task<bool> AddScheduleAsync(ScheduleDTO dto)
         {
             validatorSheduleTour.ValidateSchedules(new List<ScheduleDTO> { dto });
+            if (await HasStartedDepartureAsync(dto.MaTour))
+            {
+                throw new Exception(
+                    "Tour đã có chuyến khởi hành hoặc đã kết thúc, không thể thêm lịch trình."
+                );
+            }
             string fileName = await SaveScheduleImageAsync(dto);
 
             var lichTrinh = new LichTrinh
@@ -237,7 +243,12 @@ namespace travel_recommendation_and_booking_system.Services
 
             var lt = await _context.LichTrinhs.FindAsync(maLichTrinh);
             if (lt == null) return false;
-
+            if (await HasStartedDepartureAsync(lt.MaTour))
+            {
+                throw new Exception(
+                    "Tour đã có chuyến khởi hành hoặc đã kết thúc, không thể chỉnh sửa lịch trình."
+                );
+            }
             var oldData = new
             {
                 lt.TenLichTrinh,
@@ -353,7 +364,12 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 return false;
             }
-
+            if (await HasStartedDepartureAsync(lt.MaTour))
+            {
+                throw new Exception(
+                    "Tour đã có chuyến khởi hành hoặc đã kết thúc, không thể xóa lịch trình."
+                );
+            }
             var oldData = new
             {
                 lt.MaLichTrinh,
@@ -512,6 +528,14 @@ namespace travel_recommendation_and_booking_system.Services
             });
 
             return true;
+        }
+        private async Task<bool> HasStartedDepartureAsync(int maTour)
+        {
+            return await _context.ChuyenKhoiHanhs
+                .AnyAsync(x =>
+                    x.MaTour == maTour &&
+                    x.NgayXoa == null &&
+                    (x.TrangThai == 1 || x.TrangThai == 2));
         }
     }
 }

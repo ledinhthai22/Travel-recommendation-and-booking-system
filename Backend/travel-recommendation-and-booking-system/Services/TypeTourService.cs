@@ -4,6 +4,7 @@ using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Log;
 using travel_recommendation_and_booking_system.DTOs.LogSystem;
 using travel_recommendation_and_booking_system.DTOs.TypeTour;
+using travel_recommendation_and_booking_system.Helper;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
 
@@ -82,6 +83,7 @@ namespace Services
             var newtypetour = new CLoaiHinhTour
             {
                 TenLoaiTour = typetour.TenLoaiTour,
+                Slug = SlugHelper.GenerateSlug(typetour.TenLoaiTour),
                 TrangThai = true,
                 NgayTao = DateTime.Now,
                 NgayCapNhat = DateTime.Now
@@ -127,6 +129,7 @@ namespace Services
                 istypetour.TrangThai
             };
             istypetour.TenLoaiTour = typetour.TenLoaiTour;
+            istypetour.Slug = SlugHelper.GenerateSlug(typetour.TenLoaiTour);
             istypetour.TrangThai = typetour.TrangThai;
             istypetour.NgayCapNhat = DateTime.Now;
 

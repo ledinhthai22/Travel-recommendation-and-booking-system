@@ -16,7 +16,8 @@ import {
     Images,
     HousePlus,
     Tags,
-    Layers // 1. Thêm icon Layers cho Loại tour
+    Layers, // 1. Thêm icon Layers cho Loại tour
+    FileLock
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -154,6 +155,11 @@ export default function Sidebar() {
                     title: "Quản lý thông tin trang",
                     path: "/Quan-ly/Thong-tin-trang",
                     icon: Columns3Cog
+                },
+                {
+                    title: "Hoạt động hệ thống",
+                    path: "/Quan-ly/Hoat-dong-he-thong",
+                    icon: FileLock
                 }
             ]
         }
@@ -161,7 +167,7 @@ export default function Sidebar() {
 
     return (
         <aside className="h-full w-85 flex flex-col fixed left-0 top-0 bg-slate-50 border-r border-slate-200 z-[100] overflow-y-auto antialiased">
-            <div className="flex flex-col min-h-full p-6">
+            <div className="flex flex-col min-h-full p-6 ">
 
                 <div className="mb-5 px-1 flex items-center gap-3 shrink-0">
                     <div className="w-10 h-10 rounded-xl shrink-0 bg-white border border-sky-100 overflow-hidden flex items-center justify-center shadow-sm">

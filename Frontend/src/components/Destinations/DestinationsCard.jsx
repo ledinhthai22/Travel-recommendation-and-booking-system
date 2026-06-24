@@ -8,6 +8,7 @@ function DestinationsCard({
     image,
     name,
     description,
+    province,
     toursCount = 0,
 }) {
     return (
@@ -31,6 +32,8 @@ function DestinationsCard({
                         group-hover:scale-105
                     "
                 />
+                <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-all duration-300"></div>
+
             </div>
 
             {/* 2. CONTENT - Áp dụng Font Poppins cho Heading & Inter cho Body */}
@@ -63,7 +66,7 @@ function DestinationsCard({
                 <p
                     style={{ fontFamily: "'Inter', sans-serif" }}
                     className="
-                        line-clamp-2 text-[12px] leading-relaxed text-slate-500 
+                        line-clamp-4 text-[12px] leading-relaxed text-slate-500 
                     "
                 >
                     {description}
@@ -83,17 +86,16 @@ function DestinationsCard({
                     className="flex min-w-0 items-center gap-1.5 text-xs text-slate-400"
                 >
                     <MapPin size={14} className="shrink-0 text-slate-400" />
-                    <span className="truncate leading-none text-[12px] font-semibold">{name}</span>
+                    <span className="truncate leading-none text-[12px] font-semibold">{province}</span>
                 </div>
 
-                {/* Nút xem chi tiết bên phải */}
                 <Link
-                    to={`/destinations/${slug || id}`}
+                    to={`/Cac-Chuyen-Di?diaDiem=${slug}`}
                     style={{ fontFamily: "'Inter', sans-serif", color: '#0EA5E5' }}
                     className="
-                        inline-flex shrink-0 items-center justify-center gap-1 px-3 py-2 rounded-2xl
-                        text-xs font-semibold transition-all duration-200 bg-[#0EA5E5]
-                        hover:opacity-80
+                    inline-flex shrink-0 items-center justify-center gap-1 px-3 py-2 rounded-2xl
+                    text-xs font-semibold transition-all duration-200 bg-[#0EA5E5]
+                    hover:opacity-80
                     "
                 >
                     <span className="text-[12px] text-white">Xem địa điểm</span>

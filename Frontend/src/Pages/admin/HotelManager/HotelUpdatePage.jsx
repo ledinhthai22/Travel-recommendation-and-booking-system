@@ -32,7 +32,7 @@ export default function HotelEditPage() {
                 moTa: data.moTa,
                 trangThai: data.trangThai,
                 hinhAnh: data.hinhAnh || [],
-                tienNghi: data.tienNghi || []
+                tienIch: data.tienIch || []
             });
         } catch (error) {
             toastError("Không thể tải thông tin khách sạn này!");
@@ -85,9 +85,9 @@ export default function HotelEditPage() {
             formData.append("MoTa", pendingData.moTa?.trim() || "");
             formData.append("TrangThai", pendingData.trangThai);
 
-            if (pendingData.maTienNghi && pendingData.maTienNghi.length > 0) {
-                pendingData.maTienNghi.forEach(idTienNghi => {
-                    formData.append("MaTienNghi", idTienNghi);
+            if (pendingData.maTienIch && pendingData.maTienIch.length > 0) {
+                pendingData.maTienIch.forEach(id => {
+                    formData.append("MaTienIch", id);
                 });
             }
 

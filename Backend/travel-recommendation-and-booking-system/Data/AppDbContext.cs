@@ -271,6 +271,12 @@ namespace travel_recommendation_and_booking_system.Data
                     MaTTTrang = 18,
                     Key = "faq_5_answer",
                     Trangthai = true
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 19,
+                    Key = "Map_Trang_Lien_He",
+                    Trangthai = true
                 }
 
             );

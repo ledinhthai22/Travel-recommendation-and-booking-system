@@ -69,12 +69,18 @@ namespace Services
 
         private static int CalcTrangThai(DateTime ngayKhoiHanh, DateTime ngayKetThuc, int soLuongCho)
         {
-            if (soLuongCho <= 0) return 0; // Hết chỗ
+            var now = DateTime.Now;
 
-            var today = DateTime.Today;
-            if (today < ngayKhoiHanh.Date) return 3; // Sắp khởi hành
-            if (today <= ngayKetThuc.Date) return 2; // Đang khởi hành
-            return 1;                                  // Đã kết thúc
+            if (soLuongCho <= 0)
+                return 0;
+
+            if (now < ngayKhoiHanh)
+                return 3;
+
+            if (now >= ngayKhoiHanh && now <= ngayKetThuc)
+                return 2;
+
+            return 1;
         }
 
 
@@ -154,7 +160,8 @@ namespace Services
                     }
                     await _context.SaveChangesAsync();
                 }
-
+                await UpdateTourGiaTuAsync(dep.MaTour);
+                await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 await _logService.LoggingAsync(new LogDTO
                 {
@@ -196,11 +203,25 @@ namespace Services
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
-
             {
+
                 var chuyen = await _context.ChuyenKhoiHanhs
                     .Include(c => c.GiaChuyens)
                     .FirstOrDefaultAsync(c => c.MaChuyen == maChuyen);
+                if (chuyen == null)
+                    return false;
+
+                if (DateTime.Now >= chuyen.NgayKhoiHanh)
+                {
+                    throw new Exception(
+                        "Chuyến đã khởi hành, không được phép chỉnh sửa."
+                    );
+                }
+
+                if (chuyen.TrangThai == 1)
+                {
+                    throw new Exception("Chuyến đã kết thúc, không được phép chỉnh sửa.");
+                }
                 var oldData = new
                 {
                     chuyen.MaHDV,
@@ -242,6 +263,7 @@ namespace Services
                 _context.GiaChuyens.RemoveRange(chuyen.GiaChuyens);
                 await _context.SaveChangesAsync();
 
+
                 if (dto.DanhSachGia?.Any() == true)
                 {
                     foreach (var item in dto.DanhSachGia)
@@ -261,7 +283,8 @@ namespace Services
                 }
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await UpdateTourGiaTuAsync(chuyen.MaTour);
+                await _context.SaveChangesAsync();
                 await _logService.LoggingAsync(new LogDTO
                 {
                     LoaiTaiKhoan = AccountTypeDTO.NhanVien,
@@ -342,7 +365,15 @@ namespace Services
 
             if (chuyen == null || chuyen.NgayXoa != null)
                 return false;
+            if (chuyen.TrangThai == 2)
+            {
+                throw new Exception("Chuyến đã khởi hành, không thể xóa.");
+            }
 
+            if (chuyen.TrangThai == 1)
+            {
+                throw new Exception("Chuyến đã kết thúc, không thể xóa.");
+            }
             var oldData = new
             {
                 chuyen.MaChuyen,
@@ -353,6 +384,7 @@ namespace Services
 
             chuyen.NgayXoa = DateTime.Now;
 
+            await UpdateTourGiaTuAsync(chuyen.MaTour);
             await _context.SaveChangesAsync();
 
             await _logService.LoggingAsync(new LogDTO
@@ -376,6 +408,33 @@ namespace Services
             });
 
             return true;
+        }
+        private async Task<bool> HasStartedDepartureAsync(int maTour)
+        {
+            var now = DateTime.Now;
+
+            return await _context.ChuyenKhoiHanhs
+                .AnyAsync(x =>
+                    x.MaTour == maTour &&
+                    x.NgayXoa == null &&
+                    x.NgayKhoiHanh <= now
+                );
+        }
+        private async Task UpdateTourGiaTuAsync(int maTour)
+        {
+            var giaMin = await _context.GiaChuyens
+                .Where(g =>
+                    g.ChuyenKhoiHanh.MaTour == maTour &&
+                    g.ChuyenKhoiHanh.NgayXoa == null)
+                .Select(g => (decimal?)g.GiaNguoiLon)
+                .MinAsync() ?? 0;
+
+            var tour = await _context.Tours.FindAsync(maTour);
+            if (tour != null)
+            {
+                tour.GiaTu = giaMin;
+                tour.NgayCapNhat = DateTime.Now;
+            }
         }
     }
 }

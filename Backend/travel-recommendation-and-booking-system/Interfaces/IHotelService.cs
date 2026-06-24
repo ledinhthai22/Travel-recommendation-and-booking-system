@@ -8,6 +8,7 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<List<HotelDTO>> GetAllAsync();
         Task<PageDTO<HotelResponseDTO>> GetPagedHotelAsync(int pageNumber, int pageSize, HotelDTO hotel);
         Task<HotelResponseDTO?> GetHotelByIdAsync(int id);
+        Task<HotelResponseDTO?> GetHotelBySlugAsync(string slug);
         Task<int> CreateHotelAsync(CreateHotelDTO hotel, List<IFormFile> images);
         Task<bool> UpdateHotelAsync(int id, CreateHotelDTO hotel, List<IFormFile>? images);
         Task<bool> UpdateStatusAsync(int id, bool status);

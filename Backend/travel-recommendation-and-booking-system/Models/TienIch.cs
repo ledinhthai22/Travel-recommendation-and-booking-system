@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace travel_recommendation_and_booking_system.Models
 {
-    [Table("TienNghi")]
+    [Table("TienIch")]
     public class TienIch
     {
         [Key]

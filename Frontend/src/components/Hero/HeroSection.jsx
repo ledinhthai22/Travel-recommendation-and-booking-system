@@ -64,13 +64,13 @@ export default function HeroSection({
                 <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-black/70" />
             </div>
 
-            <div className="relative z-10 w-full max-w-7xl px-4 text-center text-white -translate-y-8">
+            <div className="relative z-10 w-full max-w-10xl px-4 text-center text-white -translate-y-7">
 
                 <h1 className="text-[45px] md:text-5xl font-bold uppercase mb-3">
                     {title}
                 </h1>
 
-                <p className="text-base md:text-lg max-w-xl mx-auto mb-8">
+                <p className="text-base md:text-lg max-w-5xl mx-auto mb-8">
                     {subtitle}
                 </p>
 

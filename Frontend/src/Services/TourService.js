@@ -91,3 +91,18 @@ export const deleteTourImageApi = async (imageId) => {
 
     return response.data;
 };
+export const getTourBySlugApi = async (slug) => {
+    const response = await axiosClient.get(
+        `/PublicTour/slug/${slug}`
+    );
+
+    return response.data;
+};
+
+export const getToursByLocationSlugApi = async (locationSlug) => {
+    const response = await axiosClient.get(
+        `/PublicTour/location/${locationSlug}`
+    );
+
+    return response.data;
+};

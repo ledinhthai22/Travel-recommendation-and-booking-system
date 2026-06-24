@@ -5,6 +5,7 @@ import { formatCurrency } from '~/Helper/FormatCurrency';
 function TourCard({
     id,
     image,
+    slug,
     name,
     destination,
     duration,
@@ -38,6 +39,7 @@ function TourCard({
                         group-hover:scale-105
                     "
                 />
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all duration-300"></div>
 
                 {/* Badge số sao đánh giá */}
                 <div className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-slate-900/40 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm">
@@ -123,7 +125,7 @@ function TourCard({
 
                     {/* Nút Xem chi tiết */}
                     <Link
-                        to={`/Cac-Chuyen-Di/${name}`}
+                        to={`/Cac-Chuyen-Di/${slug}`}
 
                         className="
                             inline-flex shrink-0 items-center justify-center

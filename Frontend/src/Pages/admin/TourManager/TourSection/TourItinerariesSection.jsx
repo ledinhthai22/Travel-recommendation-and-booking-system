@@ -68,7 +68,8 @@ export default function TourItinerariesSection({
     diaDiems = [],
     isViewMode = false,
     loading = false,
-    canAddDay
+    canAddDay,
+    isLocked = false
 }) {
     const [showItineraryModal, setShowItineraryModal] = useState(false);
     const [currentItinerary, setCurrentItinerary] = useState(null);
@@ -134,8 +135,7 @@ export default function TourItinerariesSection({
         setEditingSubRow(null);
         setModalMode("EDIT");
         setShowItineraryModal(true);
-    }, []);
-
+    }, [])
     const handleCloseModal = () => {
         if (isSaving) return;
         setShowItineraryModal(false);
@@ -335,7 +335,7 @@ export default function TourItinerariesSection({
     };
 
 
-    const disabled = isViewMode || isSaving;
+   const disabled = isViewMode || isSaving || isLocked;
 
     return (
         <section className="border-t border-slate-200 pt-8 space-y-4">
@@ -350,7 +350,7 @@ export default function TourItinerariesSection({
                 {!isViewMode && (
                     <button
                         type="button"
-                        disabled={isSaving || loading || !canAddDay}
+                        disabled={isSaving || loading || !canAddDay | isLocked}
                         onClick={openAddModal}
                         className={`flex items-center gap-1.5 px-4 py-2 text-white font-medium text-xs rounded-xl shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed
                             ${!canAddDay ? "bg-slate-300 cursor-not-allowed" : "bg-sky-400/80 hover:bg-sky-400/60"}`}
@@ -368,6 +368,7 @@ export default function TourItinerariesSection({
                     onDelete={handleDeleteClick}
                     isViewMode={isViewMode}
                     loading={loading}
+                    isLocked={isLocked}
                 />
             </div>
 

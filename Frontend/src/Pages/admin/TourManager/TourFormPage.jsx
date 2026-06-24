@@ -308,7 +308,9 @@ export default function TourFormPage({ mode }) {
     const scheduleSaving = useSectionSaving();
     const departureSaving = useSectionSaving();
 
-
+    const isScheduleLocked = chuyenKhoiHanhs.some(
+        x => x.trangThai === 2 || x.trangThai === 1
+    );
     useEffect(() => {
         const fetchMasterData = async () => {
             try {
@@ -584,7 +586,7 @@ export default function TourFormPage({ mode }) {
         });
 
         const upsertResults = await Promise.allSettled(
-            toUpsert.map(ch => {                
+            toUpsert.map(ch => {
                 const maChuyen = toNumber(ch.maChuyen);
                 const payload = buildDeparturePayload(ch, id);
                 return isExistingId(maChuyen)
@@ -705,7 +707,24 @@ export default function TourFormPage({ mode }) {
 
     const hasSchedule = lichTrinhs.length > 0;
 
+    const handleNumberChange = (field, value) => {
+        const number = Number(value);
 
+        if (value === "") {
+            setFormData(prev => ({
+                ...prev,
+                [field]: ""
+            }));
+            return;
+        }
+
+        if (number < 0) return;
+
+        setFormData(prev => ({
+            ...prev,
+            [field]: number
+        }));
+    };
 
     return (
         <div className="bg-white border border-slate-200 rounded-2xl shadow">
@@ -803,7 +822,7 @@ export default function TourFormPage({ mode }) {
                         <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
                             Thông tin cơ bản
                         </p>
-                        {!isViewMode && (
+                        {isEdit && !isScheduleLocked && (
                             <div className="flex items-center gap-3">
                                 <SaveStatusBadge state={infoSaving.state} />
                                 {isEdit && (
@@ -826,7 +845,7 @@ export default function TourFormPage({ mode }) {
                             value={formData.tenTour}
                             onChange={(e) => setFormData(p => ({ ...p, tenTour: getVal(e) }))}
                             error={errors.tenTour}
-                            disabled={isViewMode}
+                            disabled={isViewMode || isScheduleLocked}
                             required
                         />
                         <div>
@@ -840,7 +859,7 @@ export default function TourFormPage({ mode }) {
                                 labelKey="tenLoaiTour"
                                 onChange={(e) => setFormData(p => ({ ...p, maLoaiTour: getVal(e) }))}
                                 error={errors.maLoaiTour}
-                                disabled={isViewMode}
+                                disabled={isViewMode || isScheduleLocked}
                             />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -849,12 +868,10 @@ export default function TourFormPage({ mode }) {
                                 label="Số ngày"
                                 value={formData.ngay}
                                 onChange={(e) =>
-                                    setFormData(p => ({
-                                        ...p,
-                                        ngay: getVal(e)
-                                    }))
+                                    handleNumberChange("ngay", getVal(e))
                                 }
-                                disabled={isViewMode}
+                                disabled={isViewMode || isScheduleLocked}
+                                min={1}
                             />
 
                             <InputField
@@ -862,12 +879,10 @@ export default function TourFormPage({ mode }) {
                                 label="Số đêm"
                                 value={formData.dem}
                                 onChange={(e) =>
-                                    setFormData(p => ({
-                                        ...p,
-                                        dem: getVal(e)
-                                    }))
+                                    handleNumberChange("dem", getVal(e))
                                 }
-                                disabled={isViewMode}
+                                disabled={isViewMode || isScheduleLocked}
+                                min={1}
                             />
                         </div>
                         <div>
@@ -884,7 +899,7 @@ export default function TourFormPage({ mode }) {
                                         trongNuoc: val === true || val === "true" || val === 1
                                     }));
                                 }}
-                                disabled={isViewMode}
+                                disabled={isViewMode || isScheduleLocked}
                             />
                         </div>
                     </div>
@@ -899,7 +914,7 @@ export default function TourFormPage({ mode }) {
                             valueKey="maKhachSan"
                             labelKey="tenKhachSan"
                             onChange={(e) => setFormData(p => ({ ...p, maKhachSan: getVal(e) }))}
-                            disabled={isViewMode}
+                            disabled={isViewMode || isScheduleLocked}
                         />
                     </div>
 
@@ -910,7 +925,7 @@ export default function TourFormPage({ mode }) {
                         value={formData.moTa}
                         onChange={(e) => setFormData(p => ({ ...p, moTa: getVal(e) }))}
                         placeholder="Mô tả chi tiết về tour..."
-                        disabled={isViewMode}
+                        disabled={isViewMode || isScheduleLocked}
                     />
                 </section>
 
@@ -927,6 +942,7 @@ export default function TourFormPage({ mode }) {
                         isViewMode={isViewMode}
                         loading={loading}
                         canAddDay={isBasicInfoCompleted}
+                        isLocked={isScheduleLocked}
                     />
                     {errors.lichTrinhs && (
                         <p className="text-red-600 text-sm mt-2">{errors.lichTrinhs}</p>
@@ -965,10 +981,14 @@ export default function TourFormPage({ mode }) {
                         <TourSchedulesTable
                             data={chuyenKhoiHanhs}
                             onView={isViewMode ? (item) => tourScheduleRef.current?.openEditModal(item) : null}
-                            onEdit={!isViewMode ? (item) => tourScheduleRef.current?.openEditModal(item) : null}
+                            onEdit={
+                                !isViewMode
+                                    ? (item) => tourScheduleRef.current?.openEditModal(item)
+                                    : null
+                            }
                             loading={loading}
                             showStatus={isEdit || isViewMode}
-                            showCodeChuyen = {isEdit || isViewMode}
+                            showCodeChuyen={isEdit || isViewMode}
                         />
                     )}
                 </section>

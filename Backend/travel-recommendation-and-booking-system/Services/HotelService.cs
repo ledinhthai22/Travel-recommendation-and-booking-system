@@ -4,6 +4,7 @@ using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Amenities;
 using travel_recommendation_and_booking_system.DTOs.Hotel;
 using travel_recommendation_and_booking_system.DTOs.ImageHotel;
+using travel_recommendation_and_booking_system.Helper;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
 
@@ -90,6 +91,7 @@ namespace travel_recommendation_and_booking_system.Services
                 PageSize = pageSize
             };
         }
+        // xem chi tiết bằng id
         public async Task<HotelResponseDTO?> GetHotelByIdAsync(int id)
         {
             var hotel = await _context.KhachSans
@@ -128,6 +130,46 @@ namespace travel_recommendation_and_booking_system.Services
                 }).ToList()
             };
         }
+        //xem chi tiết bằng slug
+        public async Task<HotelResponseDTO?> GetHotelBySlugAsync(string slug)
+        {
+            var hotel = await _context.KhachSans
+               .AsNoTracking()
+               .Include(x => x.HinhAnhSKs)
+               .Include(x => x.KS_TNs)
+                   .ThenInclude(x => x.TienIch)
+               .FirstOrDefaultAsync(x => x.Slug == slug.Trim().ToLower() && x.NgayXoa == null);
+
+            if (hotel == null) return null;
+
+            return new HotelResponseDTO
+            {
+                MaKhachSan = hotel.MaKhachSan,
+                TenKhachSan = hotel.TenKhachSan,
+                SoSao = hotel.SoSao,
+                DiaChi = hotel.DiaChi,
+                SoDienThoai = hotel.SoDienThoai,
+                MoTa = hotel.MoTa,
+                TrangThai = hotel.TrangThai,
+                NgayTao = hotel.NgayTao,
+                NgayCapNhat = hotel.NgayCapNhat,
+
+                HinhAnh = hotel.HinhAnhSKs.Select(img => new ImageHotelDTO
+                {
+                    MaAnhSK = img.MaAnhSK,
+                    DuongDanAnh = img.DuongDanAnh,
+                    AnhChinh = img.AnhChinh,
+                    SoThuTu = img.SoThuTu
+                }).ToList(),
+
+                TienIch = hotel.KS_TNs.Select(tn => new AmenitiesDTO
+                {
+                    MaTienIch = tn.MaTienIch,
+                    TenTienIch = tn.TienIch.TenTienIch
+                }).ToList()
+            };
+        }
+
         public async Task<int> CreateHotelAsync(CreateHotelDTO hotel, List<IFormFile> images)
         {
 
@@ -145,6 +187,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 TenKhachSan = hotel.TenKhachSan,
                 SoSao = hotel.SoSao,
+                Slug = SlugHelper.GenerateSlug(hotel.TenKhachSan),
                 DiaChi = hotel.DiaChi,
                 SoDienThoai = hotel.SoDienThoai,
                 MoTa = hotel.MoTa,
@@ -157,9 +200,9 @@ namespace travel_recommendation_and_booking_system.Services
 
             await UploadImagesAsync(enities.MaKhachSan, hotel.TenKhachSan, images);
 
-            if (hotel.MaTienNghi != null && hotel.MaTienNghi.Count > 0)
+            if (hotel.MaTienIch != null && hotel.MaTienIch.Count > 0)
             {
-                foreach (var maTN in hotel.MaTienNghi)
+                foreach (var maTN in hotel.MaTienIch)
                 {
                     _context.KS_TNs.Add(new KS_TI
                     {
@@ -229,6 +272,7 @@ namespace travel_recommendation_and_booking_system.Services
             ValidateHotel(hotel);
 
             entity.TenKhachSan = hotel.TenKhachSan;
+            entity.Slug = SlugHelper.GenerateSlug(hotel.TenKhachSan);
             entity.SoSao = hotel.SoSao;
             entity.DiaChi = hotel.DiaChi;
             entity.SoDienThoai = hotel.SoDienThoai;
@@ -238,9 +282,9 @@ namespace travel_recommendation_and_booking_system.Services
 
             _context.KS_TNs.RemoveRange(entity.KS_TNs);
 
-            if (hotel.MaTienNghi != null)
+            if (hotel.MaTienIch != null)
             {
-                foreach (var item in hotel.MaTienNghi)
+                foreach (var item in hotel.MaTienIch)
                 {
                     _context.KS_TNs.Add(new KS_TI
                     {
