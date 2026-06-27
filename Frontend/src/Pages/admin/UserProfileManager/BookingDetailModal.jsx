@@ -3,10 +3,17 @@ import { formatCurrency } from "~/Helper/FormatCurrency";
 import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
 import { cancelBookingApi } from "~/Services/UserProfile";
 import { toastError, toastSuccess } from "~/utils/Toast";
+import { createReviewApi } from "~/Services/ReviewService";
+import { Star } from "lucide-react";
 
 export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess }) {
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+
+    // đánh giá
+    const [rating, setRating] = useState(5);
+    const [comment, setComment] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
     
     const canCancel = booking?.trangThai === 1 || booking?.trangThai === 2;
 
@@ -25,6 +32,28 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
             setIsLoading(false);
         }
     };
+
+    const handleReviewSubmit = async () => {
+    setIsSubmitting(true);
+    console.log(booking)
+    try {
+        await createReviewApi({
+            maNguoiDung: booking.maNguoiDung,
+            maTour: booking.maTour,
+            diemDanhGia: parseInt(rating),
+            noiDung: comment
+        });
+        
+        toastSuccess("Gửi đánh giá thành công!");
+        onClose();
+        if (onSuccess) onSuccess();
+    } catch (error) {
+        console.error("Lỗi gửi đánh giá:", error);
+        toastError(error.response?.data?.message || "Có lỗi xảy ra!");
+    } finally {
+        setIsSubmitting(false);
+    }
+};
 
     if (!isOpen || !booking) return null;
 
@@ -74,6 +103,34 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
                             </button>
                         </div>
                     )}
+                    {/* {booking?.trangThai === 3 && !booking?.daDanhGia && ( */}
+                        <div className="mt-8 border-t pt-6">
+                            <h4 className="font-bold text-sky-600 mb-4">Đánh giá trải nghiệm</h4>
+                            <div className="flex items-center gap-2 mb-3">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star 
+                                        key={star} 
+                                        className={`cursor-pointer ${rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`}
+                                        onClick={() => setRating(star)}
+                                    />
+                                ))}
+                            </div>
+                            <textarea 
+                                className="w-full border border-slate-200 rounded-lg p-3 mb-3 focus:border-sky-500 outline-none"
+                                rows="3"
+                                placeholder="Sếp cảm thấy tour này thế nào?"
+                                value={comment}
+                                onChange={(e) => setComment(e.target.value)}
+                            />
+                            <button 
+                                onClick={handleReviewSubmit}
+                                disabled={isSubmitting}
+                                className="w-full bg-sky-500 text-white py-2 rounded-lg hover:bg-sky-600 transition"
+                            >
+                                {isSubmitting ? "Đang gửi..." : "Gửi đánh giá"}
+                            </button>
+                        </div>
+                    {/* )} */}
                 </div>
             </div>
 

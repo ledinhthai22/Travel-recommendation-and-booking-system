@@ -6,7 +6,7 @@ import { getLocationApi, deleteLocationApi } from '~/Services/LocationService';
 import { getAllTypeLocationApi } from '~/Services/TypeLocationService';
 import { toastError, toastSuccess, toastWarning } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
-
+import ConfirmModal from '~/components/UI/Modal/ConfirmModal';
 export default function LocationManager() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -21,7 +21,10 @@ export default function LocationManager() {
   const [showForm, setShowForm] = useState(false);
   const [formMode, setFormMode] = useState('add');
   const [selectedLocation, setSelectedLocation] = useState(null);
-
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState({
+    title: '', message: '', type: 'warning', confirmText: 'Xác nhận', action: null
+  });
   const fetchLocations = async () => {
     try {
       setLoading(true);
@@ -66,20 +69,33 @@ export default function LocationManager() {
     fetchLocations();
   };
 
-  const handleDelete = async (item) => {
+  const handleDelete = (item) => {
     if (item.trangThai === true) {
       toastWarning("Không thể xóa địa điểm đang hoạt động. Vui lòng chuyển sang trạng thái ẩn trước!");
       return;
     }
-    try {
-      await deleteLocationApi(item.maDiaDiem);
-      toastSuccess("Đã xóa địa điểm thành công!");
-      fetchLocations();
-    } catch (error) {
-      toastError("Xóa thất bại", getErrorMessage(error));
-    }
-  };
 
+
+    setConfirmConfig({
+      title: "Xóa địa điểm",
+      message: `Bạn có chắc chắn muốn xóa địa điểm "${item.tenDiaDiem || 'này'}" không? Hành động này không thể hoàn tác.`,
+      type: "danger",
+      confirmText: "Xóa",
+      action: async () => {
+        try {
+          setLoading(true);
+          await deleteLocationApi(item.maDiaDiem);
+          toastSuccess("Đã xóa địa điểm thành công!");
+          fetchLocations();
+        } catch (error) {
+          toastError(getErrorMessage(error));
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+    setConfirmOpen(true);
+  };
   if (showForm) {
     return (
       <div>
@@ -88,6 +104,8 @@ export default function LocationManager() {
           initialData={selectedLocation}
           onCancel={handleCloseForm}
           onSave={handleSuccess}
+          setConfirmConfig={setConfirmConfig}
+          setConfirmOpen={setConfirmOpen}
         />
       </div>
     );
@@ -136,7 +154,7 @@ export default function LocationManager() {
               onView={() => handleOpenForm('view', item)}
               onEdit={() => handleOpenForm('edit', item)}
               onDelete={item.trangThai === false
-                ? () => handleDelete(hotel)
+                ? () => handleDelete(item)
                 : null}
             />
           ))}
@@ -192,7 +210,26 @@ export default function LocationManager() {
             </button>
           </div>
         </div>
+
       )}
+      <ConfirmModal
+        isOpen={confirmOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        type={confirmConfig.type}
+        confirmText={confirmConfig.confirmText}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={async () => {
+          if (confirmConfig.action) {
+            try {
+              await confirmConfig.action();
+            } catch (err) {
+              console.error(err);
+            } finally {
+              setConfirmOpen(false); 
+            }
+          }
+        }} />
     </div>
   );
 }

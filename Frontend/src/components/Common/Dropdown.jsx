@@ -13,7 +13,8 @@ export default function Dropdown({
     clearable = false,
     placeholder = 'Chọn',
     fullWidth = true,
-    className = ""
+    className = "",
+    error
 }) {
     const [open, setOpen] = useState(false);
     const [keyword, setKeyword] = useState('');
@@ -83,7 +84,8 @@ export default function Dropdown({
                     {label}
                 </label>
             )}
-
+            
+           
             <div className="relative w-full">
                 <button
                     type="button"
@@ -229,7 +231,13 @@ export default function Dropdown({
                         </div>
                     </div>
                 )}
+                 {error && (
+                    <p className="absolute -bottom-5 left-0 text-red-600 text-xs font-medium whitespace-nowrap">
+                        {error}
+                    </p>
+                )}
             </div>
+
         </div>
     );
 }

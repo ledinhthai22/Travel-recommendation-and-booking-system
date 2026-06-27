@@ -1,14 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { toastSuccess,toastError } from '~/utils/Toast';
+import { toastSuccess, toastError } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
-import HotelForm from './HotelFormPage'; 
+import HotelForm from './HotelFormPage';
 import ConfirmModal from '~/components/UI/Modal/ConfirmModal';
 import {
     getHotelByIdApi,
     updateHotelApi,
-    changeHotelStatusApi,  
-    setMainHotelImageApi    
+    changeHotelStatusApi,
+    setMainHotelImageApi,
+    deleteHotelImageApi
 } from '~/Services/HotelService';
 
 export default function HotelEditPage() {
@@ -30,8 +31,8 @@ export default function HotelEditPage() {
                 soSao: data.soSao,
                 moTa: data.moTa,
                 trangThai: data.trangThai,
-                hinhAnh: data.hinhAnh || [], 
-                tienNghi: data.tienNghi || [] 
+                hinhAnh: data.hinhAnh || [],
+                tienNghi: data.tienNghi || []
             });
         } catch (error) {
             toastError("Không thể tải thông tin khách sạn này!");
@@ -74,7 +75,7 @@ export default function HotelEditPage() {
 
     const handleConfirmUpdate = async () => {
         if (!pendingData) return;
-        
+
         try {
             const formData = new FormData();
             formData.append("TenKhachSan", pendingData.tenKhachSan.trim());
@@ -99,7 +100,7 @@ export default function HotelEditPage() {
             }
 
             await updateHotelApi(id, formData);
-            toastSuccess("Cập nhật thông tin khách sạn thành công",formData.tenKhachSan);
+            toastSuccess("Cập nhật thông tin khách sạn thành công", formData.tenKhachSan);
             navigate("/Quan-ly/Khach-san");
         } catch (error) {
             toastError(getErrorMessage(error));
@@ -108,7 +109,18 @@ export default function HotelEditPage() {
             setPendingData(null);
         }
     };
-
+    const handleRemoveOldImage = async (imageId) => {
+        try {
+            // Gọi API xóa trực tiếp dưới DB backend
+            await deleteHotelImageApi(imageId);
+            toastSuccess("Xóa hình ảnh thành công!");
+            // Load lại dữ liệu khách sạn để cập nhật state đồng bộ
+            await loadHotelDetail();
+        } catch (error) {
+            console.error("Lỗi xóa ảnh:", error);
+            toastError("Không thể xóa hình ảnh này.");
+        }
+    };
     if (loading) {
         return (
             <div className="flex h-64 w-full items-center justify-center text-slate-500 font-medium">
@@ -124,8 +136,9 @@ export default function HotelEditPage() {
                 initialData={initialData}
                 onSave={handleFormSubmit}
                 onCancel={() => navigate("/Quan-ly/Khach-san")}
-                onStatusChange={handleStatusChange} 
-                onSetMainImage={handleSetMainImage} 
+                onStatusChange={handleStatusChange}
+                onSetMainImage={handleSetMainImage}
+                onRemoveOldImage={handleRemoveOldImage}
             />
 
             <ConfirmModal

@@ -10,6 +10,7 @@ export const AuthContext = createContext();
 export default function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [showLoginModal, setShowLoginModal] = useState(false);
 
     useEffect(() => {
         loadCurrentUser();
@@ -81,6 +82,11 @@ export default function AuthProvider({ children }) {
         }
     }, []);
 
+    const refreshUser = async () => {
+        const updatedData = await getProfileApi();
+        setUser(updatedData);
+    };
+
     return (
         <AuthContext.Provider
             value={{
@@ -90,6 +96,9 @@ export default function AuthProvider({ children }) {
                 logout,
                 loading,
                 isAuthenticated: !!user,
+                refreshUser,
+                showLoginModal,
+                setShowLoginModal
             }}
         >
             {children}

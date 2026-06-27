@@ -5,43 +5,43 @@ import { updateAmenityApi } from '~/Services/Amenities';
 import { toastError, toastSuccess } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
 import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
-export default function UpdateAmenityModal({
-    isOpen,
-    initialData = null,
-    onClose,
-    onSuccess
-}) {
-    const [tenTienNghi, setTenTienNghi] = useState('');
+
+export default function UpdateAmenityModal({ isOpen, initialData = null, onClose, onSuccess }) {
+    const [tenTienIch, setTenTienIch] = useState('');
     const [loading, setLoading] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
+
+    // Lấy ID an toàn bất kể Backend cấu hình camelCase hay giữ nguyên PascalCase
+    const amenityId = initialData?.maTienIch ?? initialData?.MaTienIch;
+
     useEffect(() => {
         if (initialData) {
-            setTenTienNghi(initialData.tenTienNghi || '');
+            setTenTienIch(initialData.tenTienIch ?? initialData.TenTienIch ?? '');
         }
     }, [initialData]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        if (!tenTienNghi.trim()) {
+        if (!tenTienIch.trim()) {
             toastError("Lỗi", "Vui lòng nhập tên tiện nghi");
             return;
         }
 
         setShowConfirm(true);
     };
+
     const handleUpdate = async () => {
-        if (!tenTienNghi.trim() || !initialData?.maTienNghi) return;
+        if (!tenTienIch.trim() || !amenityId) return;
 
         setLoading(true);
-
         try {
-            await updateAmenityApi(initialData.maTienNghi, {
-                tenTienNghi: tenTienNghi.trim()
+            // Gửi dữ liệu đồng bộ dạng Object DTO lên endpoint /admin/Amenities/{id}
+            await updateAmenityApi(amenityId, {
+                TenTienIch: tenTienIch.trim()
             });
 
             toastSuccess("Cập nhật tiện nghi thành công!");
-
             onSuccess?.();
             onClose();
         } catch (error) {
@@ -51,6 +51,7 @@ export default function UpdateAmenityModal({
             setShowConfirm(false);
         }
     };
+
     if (!isOpen) return null;
 
     return (
@@ -67,8 +68,8 @@ export default function UpdateAmenityModal({
                     <InputField
                         label="Tên tiện nghi"
                         placeholder="Nhập tên tiện nghi..."
-                        value={tenTienNghi}
-                        onChange={(e) => setTenTienNghi(e.target.value)}
+                        value={tenTienIch}
+                        onChange={(e) => setTenTienIch(e.target.value)}
                         required
                         disabled={loading}
                     />
@@ -84,7 +85,7 @@ export default function UpdateAmenityModal({
                         </button>
                         <button
                             type="submit"
-                            disabled={loading || !tenTienNghi.trim()}
+                            disabled={loading || !tenTienIch.trim()}
                             className="flex-1 py-3 px-6 rounded-xl bg-[#0EA5E5] hover:bg-[#0284c7] text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
@@ -93,10 +94,11 @@ export default function UpdateAmenityModal({
                     </div>
                 </form>
             </div>
+            
             <ConfirmModal
                 isOpen={showConfirm}
                 title="Xác nhận cập nhật"
-                message={`Bạn có chắc muốn cập nhật tiện nghi "${tenTienNghi}" không?`}
+                message={`Bạn có chắc muốn cập nhật tiện nghi "${tenTienIch}" không?`}
                 onConfirm={handleUpdate}
                 onCancel={() => setShowConfirm(false)}
             />

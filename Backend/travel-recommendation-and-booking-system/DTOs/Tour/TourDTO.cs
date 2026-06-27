@@ -15,11 +15,11 @@ namespace travel_recommendation_and_booking_system.DTOs.Tour
         [Required(ErrorMessage = "Mô tả tour không được để trống.")]
         public string MoTa { get; set; }
 
-        [Required(ErrorMessage = "Thời gian tour không được để trống")]
-        public string ThoiGianTour { get; set; }
+        public int Ngay { get; set; }
+        public int Dem { get; set; }
         public bool TrongNuoc { get; set; }
         [Required(ErrorMessage = "Điểm khởi hành không được để trống.")]
-        public string? DiemKhoiHanh { get; set; }
-        public bool TrangThai { get; set; }
+        public int TrangThai { get; set; }
+        public DateTime? NgayCapNhat { get; set; }
     }
 }

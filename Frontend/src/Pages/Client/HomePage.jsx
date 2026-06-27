@@ -7,12 +7,15 @@ import TourCard from '~/components/Tours/TourCard';
 import SectionTitle from '~/components/Common/SectionTitle';
 import { destinations, bestTours, hotDeals } from '~/constants/Home.constants';
 import useBanner from '~/Hooks/useBanner';
+import { useDestinations } from '~/Hooks/useDestination';
 import { useReviews } from '~/Hooks/useReview';
+import { useBestTours } from "~/Hooks/useBestTours";
 import { useState } from 'react';
 export default function HomePage() {
     const { banners, loading } = useBanner();
     const {reviews,reviewsloading} = useReviews();
-
+    const { tours: bestTours, loading: bestToursLoading } = useBestTours();
+    const { destinations, destinationsloading, error } = useDestinations();
     const activeBanner = banners
     return (
         <div className="min-h-screen bg-white">
@@ -45,13 +48,12 @@ export default function HomePage() {
                         autoPlayMs={4500}
                         renderItem={(dest) => (
                             <DestinationsCard
-                                id={dest.id || dest.slug}
-                                image={dest.image || dest.img}
-                                name={dest.name}
-                                country={dest.country}
-                                description={dest.description || dest.desc || 'Khám phá điểm đến nổi bật với nhiều tour hấp dẫn.'}
-                                toursCount={dest.toursCount || dest.tours || 0}
-                                rating={dest.rating || '0.0'}
+                                id={dest.maDiemDen}
+                                image={`https://localhost:7016${dest.duongDanAnh}`}
+                                name={dest.tenDiemDen}
+                                country={dest.quocGia}
+                                description={dest.mota}
+                                toursCount={dest.soLuongTour|| 0}
                             />
                         )}
                     />
@@ -75,7 +77,17 @@ export default function HomePage() {
                     />
                     <FeaturedCarousel
                         items={bestTours.slice(0, 6)}
-                        renderItem={(tour) => <TourCard {...tour} />}
+                        renderItem={(tour) => <TourCard id={tour.maTour}
+                        name={tour.tenTour}
+                        image={`https://localhost:7016${tour.duongDanAnh}`}
+                        duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
+                        destination={tour.diemDen || "Đang cập nhật"}
+                        price={tour.giaThapNhat}
+                        rating={tour.diemDanhGia}
+                        reviewCount={tour.soLuongDanhGia} 
+                        initialWishlist={tour.isFavorite}
+                        />
+                    }
                         itemsPerPage={4}
                         gap={30}
                         autoPlayMs={5000}
@@ -106,13 +118,14 @@ export default function HomePage() {
                     />
                 </div>
             </section>
+
+            {/*Top 3 đánh giá tốt nhất*/}
             <section className="border-t border-slate-100 py-20">
             <div className="mx-auto max-w-[1440px] px-4 md:px-8">
                 <div className="mb-12 text-center">
                     <h2 className="text-4xl font-bold text-slate-900">Khách hàng nói gì về chúng tôi</h2>
                     <p className="mt-3 text-slate-500">Những đánh giá chân thực từ khách hàng đã trải nghiệm dịch vụ</p>
                 </div>
-
                 {loading ? (
                     <div className="text-center">Đang tải đánh giá...</div>
                 ) : (
@@ -121,7 +134,6 @@ export default function HomePage() {
                             <div key={index} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
                                 <div className="mb-4 flex items-center gap-4">
                                     <img
-                                        // Dùng ảnh mặc định nếu chưa có avatar từ DB
                                         src={`https://localhost:7016${review.duongDanAnh}`} 
                                         alt={review.tenNguoiDung}
                                         className="h-14 w-14 rounded-full object-cover"
@@ -141,7 +153,7 @@ export default function HomePage() {
                     </div>
                 )}
             </div>
-        </section>
+            </section>
         </div>
     );
 }

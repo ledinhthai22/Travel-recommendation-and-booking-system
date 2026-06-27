@@ -1,5 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace travel_recommendation_and_booking_system.Models
 {
@@ -9,32 +9,52 @@ namespace travel_recommendation_and_booking_system.Models
         [Key]
         public int MaDonDatTour { get; set; }
 
-        [ForeignKey("NguoiDung")]
         public int MaNguoiDung { get; set; }
 
-        [ForeignKey("ChuyenKhoiHanh")]
         public int MaChuyen { get; set; }
-        [StringLength(255)]
+
         public string MaDatCho { get; set; }
 
-        [ForeignKey("KhachSan")]
         public int? MaKhachSan { get; set; }
 
-        [ForeignKey("UuDai")]
         public int? MaUuDai { get; set; }
 
         public int SoNguoiLon { get; set; }
+
         public int SoTreEm { get; set; }
+
         public int SoEmBe { get; set; }
+
         public DateTime NgayDat { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
-        public decimal TongTien { get; set; }
-        public bool TrangThaiThanhToan { get; set; }
-        [StringLength(50)]
-        public int TrangThaiDon { get; set; }
-        public DateTime NgayCapNhat { get; set; } = DateTime.Now;
+        public decimal GiaNguoiLonTaiDat { get; set; }
 
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal GiaTreEmTaiDat { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal GiaEmBeTaiDat { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal PhuThuPhongDonTaiDat { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal GiaTriGiamTaiDat { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal TongTien { get; set; }
+
+        public bool TrangThaiThanhToan { get; set; }
+
+        public int TrangThaiDon { get; set; }
+
+        public int? MaNhanVienDuyet { get; set; }
+
+        public DateTime? NgayDuyet { get; set; }
+
+        public DateTime NgayCapNhat { get; set; }
+        public virtual NhanVien NhanVien { get; set; }
         public virtual NguoiDung NguoiDung { get; set; }
         public virtual ChuyenKhoiHanh ChuyenKhoiHanh { get; set; }
         public virtual KhachSan KhachSan { get; set; }

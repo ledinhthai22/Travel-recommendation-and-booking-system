@@ -11,10 +11,11 @@ namespace travel_recommendation_and_booking_system.Data
         public DbSet<NhanVien> NhanViens { get; set; }
         public DbSet<DiaDiem> DiaDiems { get; set; }
         public DbSet<KhachSan> KhachSans { get; set; }
+        public DbSet<SoThichDiaDiemNguoiDung> SoThichDiaDiemNguoiDungs { get; set; }
         public DbSet<HinhAnhSK> HinhAnhSKs { get; set; }
-        public DbSet<TienNghi> TienNghis { get; set; }
+        public DbSet<TienIch> TienIches { get; set; }
         public DbSet<LoaiDiaDiem> LoaiDiaDiem { get; set; }
-        public DbSet<KS_TN> KS_TNs { get; set; }
+        public DbSet<KS_TI> KS_TNs { get; set; }
         public DbSet<CLoaiHinhTour> LoaiHinhTours { get; set; }
         public DbSet<Tour> Tours { get; set; }
         public DbSet<HinhAnhTour> HinhAnhTours { get; set; }
@@ -41,23 +42,23 @@ namespace travel_recommendation_and_booking_system.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<KS_TN>(entity =>
+            modelBuilder.Entity<KS_TI>(entity =>
             {
 
-                entity.HasKey(kt => new { kt.MaKhachSan, kt.MaTienNghi });
+                entity.HasKey(kt => new { kt.MaKhachSan, kt.MaTienIch });
 
 
                 entity.HasOne(x => x.KhachSan)
                       .WithMany(x => x.KS_TNs)
                       .HasForeignKey(x => x.MaKhachSan);
 
-                entity.HasOne(x => x.TienNghi)
+                entity.HasOne(x => x.TienIch)
                       .WithMany(x => x.KS_TNs)
-                      .HasForeignKey(x => x.MaTienNghi);
+                      .HasForeignKey(x => x.MaTienIch);
 
 
-                entity.HasIndex(x => x.MaTienNghi)
-                      .HasDatabaseName("IX_KS_TN_MaTienNghi");
+                entity.HasIndex(x => x.MaTienIch)
+                      .HasDatabaseName("IX_KS_TN_MaTienIch");
             });
 
             modelBuilder.Entity<Tour_KhachSan>(entity =>
@@ -127,6 +128,48 @@ namespace travel_recommendation_and_booking_system.Data
                         NgayCapNhat = DateTime.Now
                     }
                 );
+            modelBuilder.Entity<PhuongTien>().HasData(
+                new PhuongTien
+                {
+                    MaPhuongTien = 1,
+                    TenPhuongTien = "Máy Bay",
+                    MaVietTat = "MB",
+                    Icon = "Plane",
+                    TrangThai = true,
+                    NgayTao = new DateTime(2025, 1, 1),
+                    NgayCapNhat = new DateTime(2025, 1, 1)
+                },
+                new PhuongTien
+                {
+                    MaPhuongTien = 2,
+                    TenPhuongTien = "Ô Tô",
+                    MaVietTat = "OT",
+                    Icon = "Bus",
+                    TrangThai = true,
+                    NgayTao = new DateTime(2025, 1, 1),
+                    NgayCapNhat = new DateTime(2025, 1, 1)
+                },
+                new PhuongTien
+                {
+                    MaPhuongTien = 3,
+                    TenPhuongTien = "Tàu Hỏa",
+                    MaVietTat = "TH",
+                    Icon = "Train",
+                    TrangThai = true,
+                    NgayTao = new DateTime(2025, 1, 1),
+                    NgayCapNhat = new DateTime(2025, 1, 1)
+                },
+                new PhuongTien
+                {
+                    MaPhuongTien = 4,
+                    TenPhuongTien = "Tàu Thủy",
+                    MaVietTat = "TT",
+                    Icon = "Ship",
+                    TrangThai = true,
+                    NgayTao = new DateTime(2025, 1, 1),
+                    NgayCapNhat = new DateTime(2025, 1, 1)
+                }
+            );
             modelBuilder.Entity<ThongTinTrang>().HasData(
                 new ThongTinTrang
                 {

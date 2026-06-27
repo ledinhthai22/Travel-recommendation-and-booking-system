@@ -1,7 +1,11 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState ,useEffect} from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Heart, Calendar, Users, ArrowRight, MapPin } from 'lucide-react';
 import { formatCurrency } from '~/Helper/FormatCurrency';
+import { useContext } from 'react';
+import { AuthContext } from '~/Context/AuthContext';
+import { addToWishlistApi, deleteWishlistApi } from '~/Services/TourService';   
+
 function TourCard({
     id,
     image,
@@ -13,11 +17,39 @@ function TourCard({
     reviewCount,
     availableSlots,
     showWishlist = true,
+    initialWishlist = false
+    
 }) {
-    const [wishlisted, setWishlisted] = useState(false);
+   const { isAuthenticated, setShowLoginModal } = useContext(AuthContext);
+   const [wishlisted, setWishlisted] = useState(initialWishlist);
 
+   useEffect(() => {
+        setWishlisted(initialWishlist);
+    }, [initialWishlist]);
 
+   const handleWishlistClick = async () => {
+        if (!isAuthenticated) {
+            setShowLoginModal(true);
+            return;
+        }
 
+        const previousState = wishlisted;
+        try {
+            // Optimistic Update: Cập nhật giao diện ngay
+            setWishlisted(!previousState);
+
+            if (!previousState) {
+                await addToWishlistApi(id);
+            } else {
+                await deleteWishlistApi([id]);
+            }
+        } catch (error) {
+            // Rollback nếu có lỗi từ server
+            setWishlisted(previousState);
+            console.error("Lỗi cập nhật yêu thích:", error);
+        }
+    }
+    
     return (
         <article
             className="
@@ -53,12 +85,13 @@ function TourCard({
                 {showWishlist && (
                     <button
                         type="button"
-                        onClick={() => setWishlisted((v) => !v)}
+                        onClick={handleWishlistClick}
                         className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow backdrop-blur-sm transition hover:scale-110 active:scale-95"
                     >
                         <Heart
                             size={15}
                             className={wishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}
+                            // className="text-slate-400"
                         />
                     </button>
                 )}
@@ -89,11 +122,11 @@ function TourCard({
                         {/* Lịch trình */}
                         <div className="flex items-center gap-1.5">
                             <Calendar size={13} className="shrink-0 text-slate-400" />
-                            <span className="truncate text-[12px]">{duration || 'Liên hệ'}</span>
+                            <span className="truncate text-[12px]">{duration || 'Thời gian'}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <MapPin size={13} className="shrink-0 text-slate-400" />
-                            <span className="truncate text-[12px]">{destination || 'Liên hệ'}</span>
+                            <span className="truncate text-[12px]">{destination || 'Điểm đến'}</span>
                         </div>
                     </div>
                 </div>

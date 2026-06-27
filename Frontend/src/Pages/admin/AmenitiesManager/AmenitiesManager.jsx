@@ -19,30 +19,24 @@ export default function AmenitiesManager() {
     const [totalRows, setTotalRows] = useState(0);
     const [loading, setLoading] = useState(false);
 
-    // Trạng thái đóng/mở Modal
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
     const [selectedAmenity, setSelectedAmenity] = useState(null);
 
-    // Trạng thái Confirm Modal để xóa
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmConfig, setConfirmConfig] = useState({
-        title: '',
-        message: '',
-        type: 'danger',
-        confirmText: 'Xác nhận',
-        action: null
+        title: '', message: '', type: 'danger', confirmText: 'Xác nhận', action: null
     });
 
-    // Hàm gọi API lấy danh sách tiện nghi phân trang
     const fetchAmenities = async () => {
         try {
             setLoading(true);
             const response = await getAmenitiesPageApi(currentPage, perPage, searchTerm);
             
-            // Map đúng cấu trúc dữ liệu trả về từ API phân trang
-            setAmenities(response.items || []);
-            setTotalRows(response.totalItems || 0);
+            // Map JSON trả về từ PageDTO (C# mapping thường giữ nguyên PascalCase hoặc CamelCase tùy cấu hình)
+            // Đảm bảo lấy đúng mảng items và totalItems từ PageDTO
+            setAmenities(response.items || response.Items || []);
+            setTotalRows(response.totalItems || response.TotalItems || 0);
         } catch (error) {
             toastError('Tải danh sách tiện nghi thất bại', getErrorMessage(error));
         } finally {
@@ -50,12 +44,10 @@ export default function AmenitiesManager() {
         }
     };
 
-    // Gọi lại API khi có thay đổi trang hoặc tìm kiếm
     useEffect(() => {
         fetchAmenities();
     }, [currentPage, perPage, searchTerm]);
 
-    // Xử lý xác nhận hành động trong ConfirmModal (Xóa)
     const handleConfirm = async () => {
         try {
             await confirmConfig.action?.();
@@ -66,15 +58,18 @@ export default function AmenitiesManager() {
         }
     };
 
-    // Kích hoạt ConfirmModal khi bấm nút Xóa
     const handleDelete = (row) => {
+        // Lấy đúng mã và tên theo DTO Backend (Hỗ trợ cả trường hợp config tự biến đổi camelCase)
+        const currentId = row.maTienIch ?? row.MaTienIch;
+        const currentName = row.tenTienIch ?? row.TenTienIch;
+
         setConfirmConfig({
             title: "Xóa Tiện Nghi",
-            message: `Bạn có chắc chắn muốn xóa tiện nghi "${row.tenTienNghi}" không?`,
+            message: `Bạn có chắc chắn muốn xóa tiện nghi "${currentName}" không?`,
             type: "danger",
             confirmText: "Xóa",
             action: async () => {
-                await deleteAmenityApi(row.maTienNghi);
+                await deleteAmenityApi(currentId);
                 toastSuccess("Xóa tiện nghi thành công!");
                 fetchAmenities();
             }
@@ -82,13 +77,11 @@ export default function AmenitiesManager() {
         setConfirmOpen(true);
     };
 
-    // Kích hoạt Modal cập nhật khi bấm nút Sửa
     const handleEdit = (row) => {
         setSelectedAmenity(row);
         setIsUpdateModalOpen(true);
     };
 
-    // Định nghĩa các cột cho bảng dữ liệu
     const columns = useMemo(() => [
         {
             name: 'STT',
@@ -103,9 +96,11 @@ export default function AmenitiesManager() {
         {
             name: 'Tên tiện nghi',
             sortable: true,
-            selector: row => row.tenTienNghi || '',
+            selector: row => row.tenTienIch ?? row.TenTienIch ?? '',
             cell: row => (
-                <span className="font-semibold text-slate-900">{row.tenTienNghi}</span>
+                <span className="font-medium text-slate-900">
+                    {row.tenTienIch ?? row.TenTienIch}
+                </span>
             ),
         },
         {
@@ -136,7 +131,6 @@ export default function AmenitiesManager() {
                 onAddClick={() => setIsCreateModalOpen(true)}
                 showExcel={false}
             />
-
 
             <CustomDataTable
                 columns={columns}
@@ -174,7 +168,6 @@ export default function AmenitiesManager() {
                 }}
             />
 
-      
             <UpdateAmenityModal
                 isOpen={isUpdateModalOpen}
                 onClose={() => {

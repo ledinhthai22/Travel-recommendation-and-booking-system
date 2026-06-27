@@ -16,12 +16,15 @@ namespace travel_recommendation_and_booking_system.Models
         public string TenTour { get; set; }
         public string MoTa { get; set; }
         [StringLength(255)]
-        public string ThoiGianTour { get; set; }
+        public int Ngay { get; set; }
+        public int Dem { get; set; }
         public int LuotDat { get; set; }
         public int LuotXem { get; set; }
-        [StringLength(255)]
-        public string DiemKhoiHanh { get; set; }
-        public bool TrangThai { get; set; }
+
+        public int TrangThai { get; set; }
+        //1 = MoBan
+        //2 = TamNgung
+        //3 = NgungKinhDoanh
         public DateTime NgayTao { get; set; } = DateTime.Now;
         public DateTime NgayCapNhat { get; set; } = DateTime.Now;
         public DateTime? NgayXoa { get; set; }

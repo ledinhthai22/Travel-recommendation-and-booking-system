@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import ManagerCard from "~/components/UI/Card/ManagerCard";
 import ManagerToolbar from "~/components/UI/ToolBar/ToolBar";
 import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
-import { getPagedToursApi, deleteTourApi } from "~/Services/TourService"
+import { getPagedToursApi, deleteTourApi, changeTourStatusApi } from "~/Services/TourService"
 import { toastSuccess, toastWarning } from "~/utils/Toast";
 
 const PAGE_SIZE_OPTIONS = [8, 16, 24, 32];
@@ -24,7 +24,8 @@ export default function TourManager() {
   const [keyword, setKeyword] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedTour, setSelectedTour] = useState(null);
-
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [selectedStatusTour, setSelectedStatusTour] = useState(null);
   const fetchTours = async () => {
     try {
       setLoading(true);
@@ -35,7 +36,7 @@ export default function TourManager() {
         searchTerm,
         statusFilter === ""
           ? null
-          : statusFilter === "true"
+          : Number(statusFilter)
       );
 
       const mappedTours = (data.items || []).map(x => ({
@@ -131,7 +132,34 @@ export default function TourManager() {
     setSelectedTour(tour);
     setConfirmOpen(true);
   };
+  const handleChangeStatus = (tour) => {
+    setSelectedStatusTour(tour);
+    setStatusModalOpen(true);
+  };
+  const executeChangeStatus = async () => {
+    try {
+      const newStatus =
+        selectedStatusTour.trangThai === 1
+          ? 2
+          : 1;
 
+      await changeTourStatusApi(
+        selectedStatusTour.maTour,
+        newStatus
+      );
+
+      toastSuccess(
+        "Cập nhật trạng thái thành công"
+      );
+
+      setStatusModalOpen(false);
+
+      await fetchTours();
+    }
+    catch (error) {
+      console.log(error);
+    }
+  };
   return (
     <div className="p-4 space-y-6">
       <ManagerToolbar
@@ -152,9 +180,10 @@ export default function TourManager() {
             },
             options: [
               { value: "", label: "Tất cả" },
-              { value: "true", label: "Đang hoạt động" },
-              { value: "false", label: "Ngưng hoạt động" },
-            ],
+              { value: "1", label: "Mở bán" },
+              { value: "2", label: "Tạm ngưng" },
+              { value: "3", label: "Ngừng kinh doanh" }
+            ]
           },
         ]}
       />
@@ -177,6 +206,7 @@ export default function TourManager() {
                   ? () => handleDelete(tour)
                   : null
               }
+              onChangeStatus={() => handleChangeStatus(tour)}
             />
           ))}
         </div>
@@ -239,7 +269,19 @@ export default function TourManager() {
           </div>
         </div>
       )}
-
+      <ConfirmModal
+        isOpen={statusModalOpen}
+        title="Xác nhận thay đổi trạng thái"
+        message={
+          selectedStatusTour?.trangThai === 1
+            ? `Bạn có muốn tạm ngưng tour "${selectedStatusTour?.tenTour}" không?`
+            : `Bạn có muốn mở bán lại tour "${selectedStatusTour?.tenTour}" không?`
+        }
+        type="warning"
+        confirmText="Xác nhận"
+        onCancel={() => setStatusModalOpen(false)}
+        onConfirm={executeChangeStatus}
+      />
       <ConfirmModal
         isOpen={confirmOpen}
         title="Xác nhận xóa tour"

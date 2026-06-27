@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using travel_recommendation_and_booking_system.Constants;
 using travel_recommendation_and_booking_system.Interfaces;
 
 namespace travel_recommendation_and_booking_system.Controllers.Customer
@@ -12,9 +14,11 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
     public class TourController : ControllerBase
     {
         private readonly ITourService _tour;
-        public TourController(ITourService tour)
+        private readonly IRecommendationService _recommen;
+        public TourController(ITourService tour, IRecommendationService recommendationService)
         {
             _tour = tour;
+            _recommen = recommendationService;
         }
 
         [HttpGet("wishlist")]
@@ -52,6 +56,11 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
 
                 if (isSuccess)
                 {
+                    var tour = await _tour.GetTourByIdAsync(tourId);
+                    if (tour != null)
+                    {
+                        await _recommen.UpdatePreference(maNguoiDung, tour.MaLoaiTour, RecommendationWeights.WishlistTour);
+                    }
                     return Ok(new { message = "Đã thêm vào danh sách yêu thích thành công!" });
                 }
 
@@ -88,5 +97,38 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
                 return StatusCode(500, new { message = $"Lỗi hệ thống: {ex.Message}" });
             }
         }
+
+        // theo dõi hành vi người dùng
+        [HttpGet("Details/{id}")]
+        public async Task<IActionResult> Details(int id)
+        {
+            var tour = await _tour.GetTourByIdAsync(id);
+
+            if (tour == null) return NotFound();
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out int maNguoiDung))
+            {
+                await _recommen.UpdatePreference(maNguoiDung, tour.MaLoaiTour, RecommendationWeights.ViewTour);
+            }
+
+            return Ok(tour);
+        }
+
+        [HttpPost("confirm-interest/{id}")]
+        public async Task<IActionResult> ConfirmInterest(int id)
+        {
+            var tour = await _tour.GetTourByIdAsync(id);
+            if (tour == null) return NotFound();
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out int maNguoiDung))
+            {
+                await _recommen.UpdatePreference(maNguoiDung, tour.MaLoaiTour, RecommendationWeights.ConfirmInterest);
+            }
+            return Ok();
+        }
+
     }
 }

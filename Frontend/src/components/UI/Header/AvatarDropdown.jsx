@@ -1,13 +1,25 @@
-import { useState } from "react";
+import { useState,useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Heart, User, LogOut } from "lucide-react";
 export default function AvatarDropdown({ user, onLogout }) {
     const [open, setOpen] = useState(false);
-    const avatarUrl = user?.duongDanAnh
-        ? `https://localhost:7016${user.duongDanAnh}`
-        : user?.avatar
-            ? `https://localhost:7016${user.avatar}`
-            : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.hoTen || "User")}&background=0EA5E5&color=fff`;
+   const avatarUrl = useMemo(() => {
+    const timestamp = new Date().getTime();
+        
+        if (user?.duongDanAnh?.startsWith("blob:")) {
+            return user.duongDanAnh;
+        }
+
+        if (user?.duongDanAnh) {
+            return `https://localhost:7016${user.duongDanAnh}?t=${timestamp}`;
+        }
+        
+        if (user?.avatar) {
+            return `https://localhost:7016${user.avatar}?t=${timestamp}`;
+        }
+
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.hoTen || "User")}&background=0EA5E5&color=fff`;
+    }, [user?.duongDanAnh, user?.avatar, user?.hoTen]);
     return (
         <div className="relative">
             {/* Trigger */}

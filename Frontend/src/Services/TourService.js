@@ -64,6 +64,17 @@ export const deleteTourApi = async (id) => {
 };
 
 
+export const changeTourStatusApi = async (id, trangThai) => {
+    const response = await axiosClient.patch(
+        `/admin/Tour/${id}/status`,
+        {
+            trangThai
+        }
+    );
+
+    return response.data;
+};
+
 export const setMainTourImageApi = async (imageId) => {
     const response = await axiosClient.patch(
         `/admin/Tour/images/${imageId}/set-main`
@@ -97,4 +108,8 @@ export const deleteWishlistApi = async (tourIds) => {
     return await axiosClient.delete(`/customer/Tour/wishlist`, {
         data: tourIds 
     });
+};
+
+export const addToWishlistApi = async (tourId) => {
+    return await axiosClient.post(`/customer/Tour/wishlist/${tourId}`);
 };

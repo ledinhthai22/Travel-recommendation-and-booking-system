@@ -37,3 +37,14 @@ export const getApprovedReviewsApi = async () => {
     const response = await axiosClient.get("/Review/approved");
     return response.data;
 };
+
+// thêm đánh giá
+export const createReviewApi = async (reviewData) => {
+    const response = await axiosClient.post("/customer/Review", {
+        maNguoiDung: reviewData.maNguoiDung,
+        maTour: reviewData.maTour,
+        diemDanhGia: reviewData.diemDanhGia,
+        noiDung: reviewData.noiDung
+    });
+    return response.data;
+};

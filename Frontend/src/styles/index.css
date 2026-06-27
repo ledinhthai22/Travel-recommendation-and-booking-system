@@ -138,3 +138,6 @@ html, body, #root {
 .animate-progress {
     animation: progress 3s linear forwards;
 }
+
+/* Nhân đôi class để tăng độ ưu tiên (Specificity) lên tối đa */
+/* Thay thế đoạn @utility custom-datepicker cũ bằng đoạn này: */

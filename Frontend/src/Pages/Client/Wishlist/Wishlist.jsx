@@ -34,7 +34,7 @@ export default function WishlistPage() {
                 id: t.matour,
                 name: t.tenTour,
                 image: t.duongDanAnh? `https://localhost:7016${t.duongDanAnh}` : 'https://placehold.co/1200x800?text=No+Image',
-                destination: t.diemKhoiHanh,
+                destination: t.diemDen,
                 duration: t.thoiGianTour,
                 availableSlots: t.soLuongToiDa,
                 rating: t.diemDanhGia,

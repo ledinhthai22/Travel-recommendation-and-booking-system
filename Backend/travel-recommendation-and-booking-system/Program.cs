@@ -1,10 +1,12 @@
 ﻿
 using System.Text;
 using Hangfire;
+using Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Services;
+using travel_recommendation_and_booking_system.Controllers.Client;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.Extensions;
 using travel_recommendation_and_booking_system.Interfaces;
@@ -81,9 +83,11 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<IPromotionService, PromotionService>();
             builder.Services.AddScoped<IHotelService, HotelService>();
             builder.Services.AddScoped<IAmenitiesService, AmenitiesService>();
-            builder.Services.AddScoped<IReviewService, ReviewService>();
+            builder.Services.AddScoped<IRecommendationService,RecommendationService>();
+            builder.Services.AddScoped<IDestinationService, DestinationService>();
+            builder.Services.AddTransient<IReviewService, ReviewService>();
             builder.Services.AddScoped<PromotionStatusJob>();
-            builder.Services.AddScoped<GeminiService>();
+            builder.Services.AddTransient<GeminiService>();
             builder.Services.AddHttpContextAccessor();
 
             var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -150,14 +154,9 @@ namespace travel_recommendation_and_booking_system
             app.UseAuthorization();
             app.MapControllers();
             app.UseCustomHangfireJobs();
+            app.UseCustomHangfireReview();
             app.MapHub<TravelRecommendationHub>("/TravelRecommendationHub");
             app.UseHangfireDashboard("/hangfire");
-
-            RecurringJob.AddOrUpdate<IReviewService>(
-                "auto-process-reviews-batch",
-                service => service.ProcessReviewsBatchAsync(),
-                Cron.Minutely() 
-            );
             app.Run();
         }
     }

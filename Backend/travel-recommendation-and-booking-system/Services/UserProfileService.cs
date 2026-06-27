@@ -214,6 +214,8 @@ namespace travel_recommendation_and_booking_system.Services
                 .Where(d => d.MaDonDatTour == maDonDatTour && d.MaNguoiDung == userid)
                 .Select(d => new HistoryTourDetailDTO
                 {
+                    MaTour = d.ChuyenKhoiHanh.MaTour,
+                    MaNguoiDung= d.MaNguoiDung,
                     MaDonDatTour = d.MaDonDatTour,
                     MaDatCho = d.MaDatCho,
                     TrangThai = d.TrangThaiDon,
@@ -226,7 +228,9 @@ namespace travel_recommendation_and_booking_system.Services
                     SoLuongTreEm = d.SoTreEm,
                     SoLuongEmBe = d.SoEmBe,
                     TongTien = d.TongTien,
-                    PhuongThucThanhToan = d.ThanhToans.FirstOrDefault().PhuongThucThanhToan == true ? "Chuyển khoản" : "tiền mặt"
+                    PhuongThucThanhToan = d.ThanhToans.FirstOrDefault() == null ? "Chưa thanh toán" :
+                        (d.ThanhToans.FirstOrDefault().PhuongThucThanhToan == 1 ? "VNPay" :
+                        (d.ThanhToans.FirstOrDefault().PhuongThucThanhToan == 2 ? "Tiền mặt" : "Chuyển khoản"))
                 })
                 .FirstOrDefaultAsync();
         }

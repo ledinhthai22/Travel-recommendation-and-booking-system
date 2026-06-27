@@ -21,3 +21,4 @@ export {default as HotelEditPage} from "./HotelManager/HotelUpdatePage"
 export {default as TypeLocationManager} from "./TypeLocationManager/TypeLocationaManager"
 export {default as AmenitiesManager} from "./AmenitiesManager/AmenitiesManager"
 export {default as ReviewManager} from './ReviewManager/ReviewManager'
+export {default as TypeTourManager } from "./TypeLocationManager/TypeLocationaManager"

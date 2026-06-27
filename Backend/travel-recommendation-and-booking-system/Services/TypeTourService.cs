@@ -54,6 +54,7 @@ namespace Services
                 .Select(n => new TypeTourReponseDTO
                 {
                     MaLoaiTour = n.MaLoaiTour,
+                    TenLoaiTour = n.TenLoaiTour,
                     TrangThai = n.TrangThai,
                     NgayTao = n.NgayTao,
                     NgayCapNhat = n.NgayCapNhat,
@@ -104,12 +105,16 @@ namespace Services
         public async Task<bool> SoftDeleteTypeTourAsync(int id)
         {
             var istypetour = await _context.LoaiHinhTours.FindAsync(id);
-            if (istypetour == null || istypetour.NgayXoa != null || istypetour.TrangThai == true) return false;
+
+            if (istypetour == null ||
+                istypetour.NgayXoa != null ||
+                istypetour.TrangThai == true)
+                return false;
 
             istypetour.NgayXoa = DateTime.Now;
 
-            _context.LoaiHinhTours.Update(istypetour);
             await _context.SaveChangesAsync();
+
             return true;
         }
     }

@@ -5,7 +5,7 @@
         public int MaUuDai { get; set; }
         public string? MaCode { get; set; }
         public string? TenUuDai { get; set; }
-        public float PhanTramGiam { get; set; }
+        public decimal PhanTramGiam { get; set; }
         public decimal DieuKienApDung { get; set; }
         public DateTime NgayBatDau { get; set; }
         public DateTime NgayHetHan { get; set; }

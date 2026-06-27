@@ -1,4 +1,3 @@
-// AddAmenityModal.jsx
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import InputField from '~/components/UI/Form/InputField';
@@ -7,22 +6,26 @@ import { toastError, toastSuccess } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
 
 export default function AddAmenityModal({ isOpen, onClose, onSuccess }) {
-    const [tenTienNghi, setTenTienNghi] = useState('');
+    const [tenTienIch, setTenTienIch] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!tenTienNghi.trim()) {
-            setError('Vui lòng nhập tên loại địa điểm.');
+        if (!tenTienIch.trim()) {
+            setError('Vui lòng nhập tên tiện nghi.');
             return;
         }
         setLoading(true);
         try {
-            await createAmenityApi({ tenTienNghi: tenTienNghi.trim() });
+            // Gửi Object đúng cấu trúc thuộc tính PascalCase của AmenitiesDTO
+            await createAmenityApi({ 
+                TenTienIch: tenTienIch.trim() 
+            });
+            
             toastSuccess("Thêm tiện nghi thành công!");
-            setTenTienNghi('');
+            setTenTienIch('');
             onSuccess?.();
             onClose();
         } catch (error) {
@@ -48,8 +51,8 @@ export default function AddAmenityModal({ isOpen, onClose, onSuccess }) {
                     <InputField
                         label="Tên tiện nghi"
                         placeholder="Ví dụ: Bể bơi vô cực, Wifi miễn phí..."
-                        value={tenTienNghi}
-                        onChange={(e) => setTenTienNghi(e.target.value)}
+                        value={tenTienIch}
+                        onChange={(e) => setTenTienIch(e.target.value)}
                         required
                         disabled={loading}
                         error={error}

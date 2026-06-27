@@ -7,6 +7,7 @@ import SelectField from "~/components/UI/Form/SelectField";
 import { updateUserProfileApi } from "~/Services/UserProfile";
 import useAuth from "~/Hooks/useAuth";
 
+// import { AuthContext } from "~/Context/AuthContext";
 import { toastSuccess, toastError } from "~/utils/Toast";
 
 export default function UpdateUserProfileModal({
@@ -22,6 +23,8 @@ export default function UpdateUserProfileModal({
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState("");
     const [errors, setErrors] = useState({});
+    // const [confirmAction, setConfirmAction] = useState(null);//
+    // const [confirmOpen, setConfirmOpen] = useState(false);
 
     const [formData, setFormData] = useState({
         maNguoiDung: 0,
@@ -43,12 +46,8 @@ export default function UpdateUserProfileModal({
             soDienThoai: profileData.soDienThoai || "",
             diaChi: profileData.diaChi || "",
             gioiTinh: profileData.gioiTinh ?? true,
-            ngaySinh: profileData.ngaySinh
-                ? new Date(profileData.ngaySinh)
-                    .toISOString()
-                    .split("T")[0]
-                : ""
-        });
+           ngaySinh: profileData.ngaySinh ? new Date(profileData.ngaySinh).toLocaleDateString('en-CA'):""
+            });
 
         setPreviewUrl(
             profileData.duongDanAnh
@@ -102,6 +101,7 @@ export default function UpdateUserProfileModal({
 
         img.src = URL.createObjectURL(file);
     };
+    
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -180,16 +180,18 @@ export default function UpdateUserProfileModal({
                 "Cập nhật thông tin thành công"
             );
 
-            onUpdateSuccess?.();
+            const currentUser = JSON.parse(localStorage.getItem("user"));
 
-            setUser((prev) => ({
-                ...prev,
+            const updatedUser = {
+                ...currentUser,
                 hoTen: formData.hoTen,
                 email: formData.email,
-                duongDanAnh: selectedFile
-                    ? URL.createObjectURL(selectedFile)
-                    : prev.duongDanAnh
-            }));
+                duongDanAnh: previewUrl.startsWith("blob:") ? previewUrl : (res.newImagePath || currentUser.duongDanAnh)
+            };
+
+            localStorage.setItem("user", JSON.stringify(updatedUser));
+            setUser(updatedUser);
+            onUpdateSuccess?.();
 
             onClose();
         } catch (error) {

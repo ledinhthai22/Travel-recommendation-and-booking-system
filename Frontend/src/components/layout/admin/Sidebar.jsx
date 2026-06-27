@@ -16,7 +16,8 @@ import {
     Images,
     HousePlus,
     Tags,
-    MessageSquare
+    MessageSquare,
+    Layers 
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -58,6 +59,11 @@ export default function Sidebar() {
                     title: "Quản lý tour",
                     path: "/Quan-ly/Cac-chuyen-di",
                     icon: Luggage
+                },
+                {
+                    title: "Quản lý loại tour",
+                    path: "/Quan-ly/Loai-Tour",
+                    icon: Layers
                 },
                 {
                     title: "Quản lý địa điểm",

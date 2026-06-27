@@ -43,8 +43,13 @@ import {
     ReviewManager,
     TourFormPage
 } from './Pages/admin';
+import TypeTourManager from './Pages/admin/TypeTour/TypeTourManager';
+import { useContext } from 'react';
+import { AuthContext } from '~/Context/AuthContext';
+import AuthModal from './components/Auth/AuthModal';
 
 function App() {
+    const { showLoginModal, setShowLoginModal } = useContext(AuthContext);
     return (
         <BrowserRouter>
             <RouteReset />
@@ -60,7 +65,10 @@ function App() {
                 }
             >
                 <Toaster position="top-right" reverseOrder={false} gutter={12} />
-
+                <AuthModal 
+                open={showLoginModal} 
+                onClose={() => setShowLoginModal(false)} 
+            />
                 <Routes>
 
                     <Route path="/" element={<MainLayout />}>
@@ -82,6 +90,7 @@ function App() {
                             <Route path="Khach-du-lich" element={<TouristManager />} />
                             <Route path="Dia-diem" element={<LocationManager />} />
                             <Route path="Loai-Dia-Diem" element={<TypeLocationManager />} />
+                            <Route path="Loai-Tour" element = {<TypeTourManager/>} />
                             <Route path="Cac-chuyen-di">
                                 <Route index element={<TourManager />} />
 

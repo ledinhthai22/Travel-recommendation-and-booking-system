@@ -27,8 +27,6 @@
 
 	<ItemGroup>
 		<Folder Include="Helper\" />
-
-		<Folder Include="Job\" />
 		<Folder Include="Migrations\" />
 		<Folder Include="wwwroot\img\hotel\" />
 		<Folder Include="wwwroot\img\location\" />

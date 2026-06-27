@@ -62,7 +62,7 @@ namespace travel_recommendation_and_booking_system.Services
                     TenNguoiDung = d.NguoiDung.HoTen,
                     TenTour = d.Tour.TenTour,
                     DiemDanhGia = d.DiemDanhGia,
-                    IsProcessedByAI = d.IsProcessedByAI,
+                    IsProcessedByAI = d.IsProcessed,
                     GhiChuKiemDuyet = d.GhiChuKiemDuyet,
                     NoiDung = d.NoiDung,
                     TrangThai = d.TrangThai,
@@ -79,6 +79,7 @@ namespace travel_recommendation_and_booking_system.Services
 
             var adminName = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Name)?.Value ?? "Quản trị viên";
             review.TrangThai = trangThai;
+            review.IsProcessed = true;
             review.GhiChuKiemDuyet = $"{adminName} cập nhật thủ công lúc {DateTime.Now:HH:mm dd/MM}";
             review.NgayCapNhat = DateTime.Now;
             return await _context.SaveChangesAsync() > 0;
@@ -94,12 +95,18 @@ namespace travel_recommendation_and_booking_system.Services
                     .SetProperty(r => r.TrangThai, trangThai)
                     .SetProperty(r => r.NgayCapNhat, DateTime.Now)
                     .SetProperty(r => r.GhiChuKiemDuyet,ghiChu)
+                    .SetProperty(r => r.IsProcessed,true)
                 );
         }
 
         // user
         public async Task AddReviewAsync(ReviewDTO dto)
         {
+            if (dto.MaNguoiDung <= 0 || dto.MaTour <= 0)
+            {
+                throw new Exception("Thông tin người dùng hoặc tour không hợp lệ!");
+            }
+
             var daDanhGia = await _context.DanhGias.AnyAsync(d => d.MaNguoiDung == dto.MaNguoiDung && d.MaTour == dto.MaTour && d.NgayXoa == null);
 
             if (daDanhGia)
@@ -112,35 +119,45 @@ namespace travel_recommendation_and_booking_system.Services
                 MaTour = dto.MaTour,
                 NoiDung = dto.NoiDung,
                 DiemDanhGia = dto.DiemDanhGia,
-
                 TrangThai = false,
-                IsProcessedByAI = false,
+                IsProcessed = false,
                 GhiChuKiemDuyet = "Đang chờ xử lý...",
                 NgayTao = DateTime.Now
             };
 
-            await _context.DanhGias.AddAsync(newReview);
+             _context.DanhGias.Add(newReview);
             await _context.SaveChangesAsync();
         }
 
         public async Task ProcessReviewsBatchAsync()
         {
             var pendingReviews = await _context.DanhGias
-                .Where(r => !r.IsProcessedByAI)
+                .Where(r => !r.IsProcessed)
                 .OrderBy(r => r.NgayTao)
-                .Take(10) // Tối đa 10 cái 1 phút
+                .Take(20)
                 .ToListAsync();
 
-            if (!pendingReviews.Any()) return; // Kho trống thì nghỉ
+            if (!pendingReviews.Any()) return;
 
             foreach (var review in pendingReviews)
             {
-                var sentiment = await _geminiService.AnalyzeReviewSentiment(review.NoiDung);
-                bool isPositive = (sentiment == "Positive");
+                if (review.IsProcessed) continue;
+                try
+                {
+                    var sentiment = await _geminiService.AnalyzeReviewSentiment(review.NoiDung);
+                    string cleanResult = sentiment.Trim().Replace(".", "").Replace("\n", "").Replace("\r", "").Replace(" ", "");
+                    bool isPositive = cleanResult.Equals("Positive", StringComparison.OrdinalIgnoreCase);
 
-                review.TrangThai = isPositive;
-                review.IsProcessedByAI = true;
-                review.GhiChuKiemDuyet = isPositive ? "Tự động duyệt: Tích cực" : "Tự động đánh dấu: Tiêu cực/Cần xem lại";
+                    review.TrangThai = isPositive;
+                    review.IsProcessed = true;
+                    review.GhiChuKiemDuyet = isPositive ? "Tự động duyệt: Tích cực" : "Tự động đánh dấu: Tiêu cực/Cần xem lại";
+                    await Task.Delay(12000);
+                }
+                catch (Exception ex)
+                {
+                    review.IsProcessed = true;
+                    review.GhiChuKiemDuyet = "Lỗi AI: " + ex.Message;
+                }
             }
 
             await _context.SaveChangesAsync();
@@ -149,14 +166,12 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 maDanhGia = r.MaDanhGia,
                 trangThai = r.TrangThai,
-                isProcessedByAI = r.IsProcessedByAI,
+                isProcessedByAI = r.IsProcessed,
                 ghiChuKiemDuyet = r.GhiChuKiemDuyet
             }).ToList();
-
             await _hubContext.Clients.All.SendAsync("ReviewStatusUpdated", updatedData);
         }
 
-        //client
         public async Task<List<ReviewReponseDTO>> GetTop3ReviewAsync()
         {
             return await _context.DanhGias

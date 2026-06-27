@@ -9,64 +9,123 @@ namespace Services
     public class DepartureService : IDepartureService
     {
         private readonly AppDbContext _context;
+
+        private static readonly Dictionary<string, string> LocationCodeMap = new()
+        {
+            ["Hồ Chí Minh"] = "HCM",
+            ["Hà Nội"] = "HN",
+            ["Đà Nẵng"] = "DN"
+        };
+
+        private static readonly Dictionary<string, string> VehicleCodeMap = new()
+        {
+            ["Máy Bay"] = "MB",
+            ["Ô tô Du Lịch"] = "OT",
+            ["Tàu Hỏa"] = "TH",
+            ["Tàu Thủy"] = "TT",
+            ["Xe Máy Trekking"] = "XM"
+        };
+
         public DepartureService(AppDbContext context)
         {
             _context = context;
         }
 
+        // ── Sinh mã chuyến server-side, đảm bảo unique ───────────────────────
+        private async Task<string> GenerateUniqueCodeAsync(
+            bool trongNuoc,
+            string diemKhoiHanh,
+            string tenPhuongTien,
+            DateTime ngayKhoiHanh)
+        {
+            var regionCode = trongNuoc ? "TN" : "NN";
+            var locationCode = LocationCodeMap.GetValueOrDefault(diemKhoiHanh?.Trim() ?? "", "XX");
+            var vehicleCode = VehicleCodeMap.GetValueOrDefault(tenPhuongTien?.Trim() ?? "", "XX");
+            var dateCode = ngayKhoiHanh.ToString("ddMMyy");
+            var prefix = $"{regionCode}-{locationCode}-{vehicleCode}-{dateCode}-";
+
+            // Đếm số chuyến có cùng prefix trong DB để tạo sequence đúng
+            var existingCount = await _context.ChuyenKhoiHanhs
+                .CountAsync(c => c.MaChuyenCode.StartsWith(prefix));
+
+            // Thử lần lượt cho đến khi tìm được mã chưa tồn tại
+            int seq = existingCount + 1;
+            string code;
+            do
+            {
+                code = $"{prefix}{seq:D3}";
+                seq++;
+            }
+            while (await _context.ChuyenKhoiHanhs
+                       .AnyAsync(c => c.MaChuyenCode == code));
+
+            return code;
+        }
+
+        private static int CalcTrangThai(DateTime ngayKhoiHanh, DateTime ngayKetThuc, int soLuongCho)
+        {
+            if (soLuongCho <= 0) return 0; // Hết chỗ
+
+            var today = DateTime.Today;
+            if (today < ngayKhoiHanh.Date) return 3; // Sắp khởi hành
+            if (today <= ngayKetThuc.Date) return 2; // Đang khởi hành
+            return 1;                                  // Đã kết thúc
+        }
+
+        // ── Helper lấy tên phương tiện ────────────────────────────────────────
+        private async Task<string> GetTenPhuongTienAsync(int maPhuongTien)
+        {
+            var pt = await _context.PhuongTiens
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.MaPhuongTien == maPhuongTien);
+            return pt?.TenPhuongTien ?? "";
+        }
+
+        // ── Helper lấy trongNuoc từ tour ──────────────────────────────────────
+        private async Task<bool> GetTrongNuocAsync(int maTour)
+        {
+            var tour = await _context.Tours
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.MaTour == maTour);
+            return tour?.TrongNuoc ?? true;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
         public async Task<bool> AddDepartureFullAsync(DepartureFullDTO dto)
         {
-            var isCodeExisted = await _context.ChuyenKhoiHanhs
-            .AnyAsync(c => c.MaChuyenCode.Trim().ToLower() == dto.ChuyenKhoiHanh.MaChuyenCode.Trim().ToLower());
-            if (isCodeExisted)
-            {
-                throw new Exception("Mã chuyến khởi hành đã tồn tại trong hệ thống.");
-            }
+            var dep = dto.ChuyenKhoiHanh;
 
-            if (dto.ChuyenKhoiHanh.NgayKhoiHanh >= dto.ChuyenKhoiHanh.NgayKetThuc)
-            {
+            // Validate ngày
+            if (dep.NgayKhoiHanh >= dep.NgayKetThuc)
                 throw new Exception("Ngày khởi hành phải nhỏ hơn ngày kết thúc.");
-            }
 
-            if (dto.ChuyenKhoiHanh.NgayKhoiHanh < DateTime.Now.Date)
-            {
+            if (dep.NgayKhoiHanh.Date < DateTime.Today)
                 throw new Exception("Ngày khởi hành không được là ngày trong quá khứ.");
-            }
+
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                int trangThai;
+                // Sinh mã server-side
+                var trongNuoc = await GetTrongNuocAsync(dep.MaTour);
+                var tenPhuongTien = await GetTenPhuongTienAsync(dep.MaPhuongTien);
+                var maChuyenCode = await GenerateUniqueCodeAsync(
+                    trongNuoc, dep.DiemKhoiHanh, tenPhuongTien, dep.NgayKhoiHanh);
 
-                if (dto.ChuyenKhoiHanh.NgayKhoiHanh.Date > DateTime.Now.Date)
-                {
-                    trangThai = 3; // Sắp khởi hành
-                }
-                else if (
-                    dto.ChuyenKhoiHanh.NgayKhoiHanh.Date == DateTime.Now.Date
-                )
-                {
-                    trangThai = 2; // Đang khởi hành
-                }
-                else
-                {
-                    trangThai = 1; // Đã khởi hành hoặc đã kết thúc
-                }
                 var chuyen = new ChuyenKhoiHanh
                 {
-                    MaHDV = dto.ChuyenKhoiHanh.MaHDV,
-                    MaTour = dto.ChuyenKhoiHanh.MaTour,
-                    MaPhuongTien = dto.ChuyenKhoiHanh.MaPhuongTien,
-                    MaChuyenCode = dto.ChuyenKhoiHanh.MaChuyenCode,
-                    //TenChuyen = dto.ChuyenKhoiHanh.TenChuyen,
-                    DiemKhoiHanh = dto.ChuyenKhoiHanh.DiemKhoiHanh,
-                    DiemDen = dto.ChuyenKhoiHanh.DiemDen,
-                    NgayKhoiHanh = dto.ChuyenKhoiHanh.NgayKhoiHanh,
-                    GioDenNoiDi = dto.ChuyenKhoiHanh.GioDenNoiDi,
-                    NgayKetThuc = dto.ChuyenKhoiHanh.NgayKetThuc,
-                    GioDenNoiVe = dto.ChuyenKhoiHanh.GioDenNoiVe,
-                    SoLuongCho = dto.ChuyenKhoiHanh.SoLuongCho,
-                    TrangThai = trangThai,
-                    GhiChu = dto.ChuyenKhoiHanh.GhiChu,
+                    MaHDV = dep.MaHDV,
+                    MaTour = dep.MaTour,
+                    MaPhuongTien = dep.MaPhuongTien,
+                    MaChuyenCode = maChuyenCode,         // <-- server sinh, không nhận từ client
+                    DiemKhoiHanh = dep.DiemKhoiHanh,
+                    DiemDen = dep.DiemDen,
+                    NgayKhoiHanh = dep.NgayKhoiHanh,
+                    GioDenNoiDi = dep.GioDenNoiDi,
+                    NgayKetThuc = dep.NgayKetThuc,
+                    GioDenNoiVe = dep.GioDenNoiVe,
+                    SoChoToiDa = dep.SoChoToiDa,
+                    TrangThai = CalcTrangThai(dep.NgayKhoiHanh, dep.NgayKetThuc, dep.SoChoToiDa),
+                    GhiChu = dep.GhiChu,
                     NgayTao = DateTime.Now,
                     NgayCapNhat = DateTime.Now
                 };
@@ -74,11 +133,11 @@ namespace Services
                 _context.ChuyenKhoiHanhs.Add(chuyen);
                 await _context.SaveChangesAsync();
 
-                if (dto.DanhSachGia != null && dto.DanhSachGia.Any())
+                if (dto.DanhSachGia?.Any() == true)
                 {
                     foreach (var item in dto.DanhSachGia)
                     {
-                        var gia = new GiaChuyen
+                        _context.GiaChuyens.Add(new GiaChuyen
                         {
                             Machuyen = chuyen.MaChuyen,
                             HangKhachSan = item.HangKhachSan,
@@ -88,8 +147,7 @@ namespace Services
                             PhuThuPhongDon = item.PhuThuPhongDon,
                             NgayTao = DateTime.Now,
                             NgayCapNhat = DateTime.Now
-                        };
-                        _context.GiaChuyens.Add(gia);
+                        });
                     }
                     await _context.SaveChangesAsync();
                 }
@@ -97,104 +155,82 @@ namespace Services
                 await transaction.CommitAsync();
                 return true;
             }
-            catch (Exception ex)
+            catch
             {
                 await transaction.RollbackAsync();
-                return false;
+                throw; // QUAN TRỌNG: throw lại để controller trả lỗi đúng cho client
             }
         }
 
+        // ─────────────────────────────────────────────────────────────────────
         public async Task<bool> UpdateDepartureAsync(int maChuyen, DepartureFullDTO dto)
         {
-            Console.WriteLine(
-            $"UPDATE maChuyen = {maChuyen}"
-            );
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
+
             {
                 var chuyen = await _context.ChuyenKhoiHanhs
                     .Include(c => c.GiaChuyens)
                     .FirstOrDefaultAsync(c => c.MaChuyen == maChuyen);
 
                 if (chuyen == null) return false;
-                if (dto.ChuyenKhoiHanh.NgayKhoiHanh >= dto.ChuyenKhoiHanh.NgayKetThuc)
-                {
+
+                var dep = dto.ChuyenKhoiHanh;
+
+                if (dep.NgayKhoiHanh >= dep.NgayKetThuc)
                     throw new Exception("Ngày khởi hành phải nhỏ hơn ngày kết thúc.");
-                }
-                int trangThai;
 
-                if (dto.ChuyenKhoiHanh.NgayKhoiHanh.Date > DateTime.Now.Date)
-                {
-                    trangThai = 3; // Sắp khởi hành
-                }
-                else if (dto.ChuyenKhoiHanh.NgayKhoiHanh.Date == DateTime.Now.Date)
-                {
-                    trangThai = 2; // Đang khởi hành
-                }
-                else
-                {
-                    trangThai = 1; // Đã khởi hành / kết thúc
-                }
-                var isCodeExisted = await _context.ChuyenKhoiHanhs
-                    .AnyAsync(x =>
-                        x.MaChuyen != maChuyen &&
-                        x.MaChuyenCode.Trim().ToLower() ==
-                        dto.ChuyenKhoiHanh.MaChuyenCode.Trim().ToLower());
-
-                if (isCodeExisted)
-                {
-                    throw new Exception("Mã chuyến khởi hành đã tồn tại.");
-                }
-                chuyen.MaHDV = dto.ChuyenKhoiHanh.MaHDV;
-                chuyen.MaPhuongTien = dto.ChuyenKhoiHanh.MaPhuongTien;
-                chuyen.MaChuyenCode = dto.ChuyenKhoiHanh.MaChuyenCode;
-                //chuyen.TenChuyen = dto.ChuyenKhoiHanh.TenChuyen;
-                chuyen.DiemKhoiHanh = dto.ChuyenKhoiHanh.DiemKhoiHanh;
-                chuyen.DiemDen = dto.ChuyenKhoiHanh.DiemDen;
-                chuyen.NgayKhoiHanh = dto.ChuyenKhoiHanh.NgayKhoiHanh;
-                chuyen.GioDenNoiDi = dto.ChuyenKhoiHanh.GioDenNoiDi;
-                chuyen.NgayKetThuc = dto.ChuyenKhoiHanh.NgayKetThuc;
-                chuyen.GioDenNoiVe = dto.ChuyenKhoiHanh.GioDenNoiVe;
-                chuyen.SoLuongCho = dto.ChuyenKhoiHanh.SoLuongCho;
-                chuyen.TrangThai = trangThai;
-                chuyen.GhiChu = dto.ChuyenKhoiHanh.GhiChu;
+                // Không cho phép sửa MaChuyenCode từ client — giữ nguyên mã gốc
+                chuyen.MaHDV = dep.MaHDV;
+                chuyen.MaPhuongTien = dep.MaPhuongTien;
+                chuyen.DiemKhoiHanh = dep.DiemKhoiHanh;
+                chuyen.DiemDen = dep.DiemDen;
+                chuyen.NgayKhoiHanh = dep.NgayKhoiHanh;
+                chuyen.GioDenNoiDi = dep.GioDenNoiDi;
+                chuyen.NgayKetThuc = dep.NgayKetThuc;
+                chuyen.GioDenNoiVe = dep.GioDenNoiVe;
+                chuyen.SoChoToiDa = dep.SoChoToiDa;
+                chuyen.SoChoDaDat = dep.SoChoDaDat ?? 0;
+                chuyen.TrangThai = CalcTrangThai(dep.NgayKhoiHanh, dep.NgayKetThuc, dep.SoChoToiDa);
+                chuyen.GhiChu = dep.GhiChu;
                 chuyen.NgayCapNhat = DateTime.Now;
 
+                // Xóa giá cũ, thêm giá mới
                 _context.GiaChuyens.RemoveRange(chuyen.GiaChuyens);
                 await _context.SaveChangesAsync();
 
-                foreach (var item in dto.DanhSachGia)
+                if (dto.DanhSachGia?.Any() == true)
                 {
-                    var giaMoi = new GiaChuyen
+                    foreach (var item in dto.DanhSachGia)
                     {
-                        Machuyen = chuyen.MaChuyen,
-                        HangKhachSan = item.HangKhachSan,
-                        GiaNguoiLon = item.GiaNguoiLon,
-                        GiaTreEm = item.GiaTreEm,
-                        GiaEmBe = item.GiaEmBe,
-                        PhuThuPhongDon = item.PhuThuPhongDon,
-                        NgayTao = DateTime.Now,
-                        NgayCapNhat = DateTime.Now
-                    };
-                    _context.GiaChuyens.Add(giaMoi);
+                        _context.GiaChuyens.Add(new GiaChuyen
+                        {
+                            Machuyen = chuyen.MaChuyen,
+                            HangKhachSan = item.HangKhachSan,
+                            GiaNguoiLon = item.GiaNguoiLon,
+                            GiaTreEm = item.GiaTreEm,
+                            GiaEmBe = item.GiaEmBe,
+                            PhuThuPhongDon = item.PhuThuPhongDon,
+                            NgayTao = DateTime.Now,
+                            NgayCapNhat = DateTime.Now
+                        });
+                    }
                 }
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 return true;
             }
-            catch (Exception ex)
+            catch
             {
                 await transaction.RollbackAsync();
-                throw new Exception(
-                    $"UpdateDepartureAsync Error: {ex.Message}"
-                );
+                throw;
             }
         }
 
         public async Task<List<DepartureFullDTO>> GetByTourAsync(int maTour)
         {
-            var list = await _context.ChuyenKhoiHanhs
+            return await _context.ChuyenKhoiHanhs
                 .Include(c => c.GiaChuyens)
                 .Where(c => c.MaTour == maTour && c.NgayXoa == null && c.NgayKhoiHanh >= DateTime.Now)
                 .OrderByDescending(c => c.NgayKhoiHanh)
@@ -202,18 +238,20 @@ namespace Services
                 {
                     ChuyenKhoiHanh = new DepartureDTO
                     {
+                        MaChuyen = c.MaChuyen,
                         MaHDV = c.MaHDV,
                         MaTour = c.MaTour,
                         MaPhuongTien = c.MaPhuongTien,
                         MaChuyenCode = c.MaChuyenCode,
-                        //TenChuyen = c.TenChuyen,
                         DiemKhoiHanh = c.DiemKhoiHanh,
                         DiemDen = c.DiemDen,
                         NgayKhoiHanh = c.NgayKhoiHanh,
                         GioDenNoiDi = c.GioDenNoiDi,
                         NgayKetThuc = c.NgayKetThuc,
                         GioDenNoiVe = c.GioDenNoiVe,
-                        SoLuongCho = c.SoLuongCho,
+                        SoChoToiDa = c.SoChoToiDa,
+                        SoChoDaDat = c.SoChoDaDat,
+                        TrangThai = c.TrangThai,
                         GhiChu = c.GhiChu
                     },
                     DanhSachGia = c.GiaChuyens.Select(g => new GiaChuyenDTO
@@ -226,8 +264,6 @@ namespace Services
                     }).ToList()
                 })
                 .ToListAsync();
-
-            return list;
         }
 
         public async Task<bool> DeleteDepartureAsync(int maChuyen)
@@ -238,7 +274,5 @@ namespace Services
             chuyen.NgayXoa = DateTime.Now;
             return await _context.SaveChangesAsync() > 0;
         }
-
-
     }
 }

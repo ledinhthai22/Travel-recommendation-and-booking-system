@@ -1,6 +1,8 @@
 ﻿namespace travel_recommendation_and_booking_system.DTOs.UserProfile
 {
     public class HistoryTourDetailDTO {
+        public int MaTour { get; set; }
+        public int MaNguoiDung { get; set; }
         public int MaDonDatTour { get; set; }
         public string MaDatCho { get; set; }
         public int TrangThai { get; set; }

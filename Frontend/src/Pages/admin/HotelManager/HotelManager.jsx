@@ -60,16 +60,17 @@ export default function HotelManager() {
         try {
             await deleteHotelApi(hotel.maKhachSan);
 
-            toastSuccess(
-                `Đã xóa khách sạn "${hotel.tenKhachSan}" thành công!`
-            );
+            toastSuccess(`Đã xóa khách sạn "${hotel.tenKhachSan}" thành công!`);
+            const newTotal = totalRows - 1;
+            const maxPage = Math.ceil(newTotal / perPage);
 
-            fetchHotels();
+            if (currentPage > maxPage) {
+                setCurrentPage(maxPage);
+            } else {
+                fetchHotels();
+            }
         } catch (error) {
-            toastError(
-                "Xóa thất bại",
-                getErrorMessage(error)
-            );
+            toastError("Xóa thất bại", getErrorMessage(error));
         }
     };
     const handleDelete = (hotel) => {

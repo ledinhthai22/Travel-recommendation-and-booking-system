@@ -49,7 +49,7 @@ export default function ReviewManager() {
     // Kết nối Signalr
     useEffect(() => {
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl("https://localhost:7084/TravelRecommendationHub")
+            .withUrl("https://localhost:7016/TravelRecommendationHub")
             .withAutomaticReconnect()
             .build();
 

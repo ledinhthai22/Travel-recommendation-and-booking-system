@@ -19,7 +19,7 @@ namespace travel_recommendation_and_booking_system.DTOs.Hotel
         public bool TrangThai { get; set; }
         public DateTime NgayTao { get; set; } = DateTime.Now;
         public DateTime? NgayCapNhat { get; set; } = DateTime.Now;
-        public List<AmenitiesDTO> TienNghi { get; set; }
+        public List<AmenitiesDTO> TienIch { get; set; }
         public List<ImageHotelDTO> HinhAnh { get; set; }
 
     }

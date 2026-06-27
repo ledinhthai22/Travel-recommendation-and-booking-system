@@ -5,11 +5,21 @@ import { updateUserApi } from "~/Services/UserService";
 import Dropdown from "~/components/Common/Dropdown";
 import { toastSuccess, toastError } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
+import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
 
 export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }) {
     const [loading, setLoading] = useState(false);
     const [previewImage, setPreviewImage] = useState(null);
     const [errors, setErrors] = useState({});
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmConfig, setConfirmConfig] = useState({
+        title: '',
+        message: '',
+        type: 'warning',
+        confirmText: 'Xác nhận',
+        action: null
+    });
+
     const [form, setForm] = useState({
         hoTen: "",
         email: "",
@@ -24,7 +34,11 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
     useEffect(() => {
         if (isOpen && userData) {
             setErrors({});
-
+            if (userData.duongDanAnh) {
+            setPreviewImage(`https://localhost:7016${userData.duongDanAnh}`);
+                } else {
+                    setPreviewImage(null);
+                }
             setForm({
                 hoTen: userData.hoTen || "",
                 email: userData.email || "",
@@ -100,6 +114,7 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
 
         return Object.keys(newErrors).length === 0;
     };
+
     const handleSubmit = async () => {
         if (!validate()) return;
         try {
@@ -133,6 +148,20 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleConfirmUpdate = () => {
+    if (!validate()) return;
+
+        setConfirmConfig({
+            title: "Xác nhận cập nhật",
+            message: `Bạn có chắc muốn cập nhật tài khoản "${form.hoTen}" không?`,
+            type: "warning",
+            confirmText: "Cập nhật",
+            action: handleSubmit
+        });
+
+        setConfirmOpen(true);
     };
 
     const handleClose = () => {
@@ -237,7 +266,7 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
                     </button>
 
                     <button
-                        onClick={handleSubmit}
+                        onClick={handleConfirmUpdate}
                         disabled={loading}
                         className="px-6 py-2.5 rounded-xl bg-sky-500 text-white font-semibold hover:bg-sky-600 transition-colors disabled:opacity-50 flex items-center gap-2"
                     >
@@ -246,6 +275,18 @@ export default function UpdateUserModal({ isOpen, onClose, onSuccess, userData }
                     </button>
                 </div>
             </div>
+           <ConfirmModal
+                isOpen={confirmOpen}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                type={confirmConfig.type}
+                confirmText={loading ? "Đang xử lý..." : confirmConfig.confirmText}
+                onCancel={() => setConfirmOpen(false)}
+                onConfirm={async () => {
+                    await confirmConfig.action?.();
+                    setConfirmOpen(false);
+                }}
+            />
         </div>
     );
 }

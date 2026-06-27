@@ -6,6 +6,7 @@ using travel_recommendation_and_booking_system.DTOs.Schedule;
 using travel_recommendation_and_booking_system.DTOs.ScheduleDetails;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
+using travel_recommendation_and_booking_system.Validations;
 
 namespace travel_recommendation_and_booking_system.Services
 {
@@ -125,6 +126,7 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<bool> AddScheduleAsync(ScheduleDTO dto)
         {
+            validatorSheduleTour.ValidateSchedules(new List<ScheduleDTO> { dto });
             string fileName = await SaveScheduleImageAsync(dto);
 
             var lichTrinh = new LichTrinh
@@ -161,7 +163,7 @@ namespace travel_recommendation_and_booking_system.Services
             return await _context.SaveChangesAsync() > 0;
         }
 
-        // ĐỒNG BỘ: Đổi kiểu trả về thành List<ScheduleResponseDTO> gom nhóm dữ liệu lồng nhau
+
         public async Task<List<ScheduleReponseDTO>> GetByTourAsync(int maTour)
         {
             return await _context.LichTrinhs
@@ -200,6 +202,7 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<bool> UpdateScheduleAsync(int maLichTrinh, ScheduleDTO dto)
         {
+            validatorSheduleTour.ValidateSchedules(new List<ScheduleDTO> { dto });
             var lt = await _context.LichTrinhs.FindAsync(maLichTrinh);
             if (lt == null) return false;
 

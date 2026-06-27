@@ -1,13 +1,17 @@
 
-﻿using Microsoft.AspNetCore.Authorization;
+using Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Newtonsoft.Json;
 using System.Security.Claims;
 using System.Text.Json;
+using travel_recommendation_and_booking_system.Constants;
 using travel_recommendation_and_booking_system.DTOs.Departure;
 using travel_recommendation_and_booking_system.DTOs.Schedule;
 using travel_recommendation_and_booking_system.DTOs.Tour;
 using travel_recommendation_and_booking_system.Interfaces;
+using travel_recommendation_and_booking_system.Models;
 using travel_recommendation_and_booking_system.Services;
 
 namespace travel_recommendation_and_booking_system.Controllers.Admin
@@ -24,7 +28,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpGet("paged")]
-        public async Task<IActionResult> GetPagedTours([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string key = "", [FromQuery] bool? status = null)
+        public async Task<IActionResult> GetPagedTours([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string key = "", [FromQuery] int? status = null)
         {
             var result = await _tour.GetPagedTourAsync(page, pageSize, key, status);
             return Ok(result);
@@ -77,8 +81,13 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
                 {
                     return BadRequest(ModelState);
                 }
+                foreach (var file in requestForm.Files)
+                {
+                    Console.WriteLine(
+                        $"Name={file.Name} | FileName={file.FileName} | Length={file.Length}"
+                    );
+                }
 
-                // TÁCH 2 LOẠI FILE THEO TÊN FIELD, KHÔNG GỘP CHUNG NỮA
                 var images = requestForm.Files.Where(f => f.Name == "Images").ToList();
                 var scheduleImages = requestForm.Files.Where(f => f.Name == "ScheduleFiles").ToList();
 
@@ -135,7 +144,14 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
                 {
                     return BadRequest(ModelState);
                 }
+                Console.WriteLine("===== ALL FILES =====");
 
+                foreach (var file in requestForm.Files)
+                {
+                    Console.WriteLine(
+                        $"Name={file.Name} | FileName={file.FileName} | Length={file.Length}"
+                    );
+                }
 
                 var images = requestForm.Files.Where(f => f.Name == "Images").ToList();
                 var scheduleImages = requestForm.Files.Where(f => f.Name == "ScheduleFiles").ToList();
@@ -159,6 +175,19 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             }
         }
 
+        [HttpPatch("{id}/status")]
+        public async Task<IActionResult> ChangeStatus(int id, [FromBody] ChangeTourStatusDTO dto)
+        {
+            var result = await _tour.ChangeStatusAsync(
+                id,
+                dto.TrangThai);
+
+            return Ok(new
+            {
+                Success = result,
+                Message = "Cập nhật trạng thái thành công"
+            });
+        }
         [HttpGet("{id}")]
         public async Task<IActionResult> GetTourDetail(int id)
         {
