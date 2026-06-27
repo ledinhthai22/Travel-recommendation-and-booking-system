@@ -107,9 +107,10 @@ namespace travel_recommendation_and_booking_system.Services
             newsletter.NgayXoa = DateTime.Now;
             _context.Newsletters.Update(newsletter);
             await _context.SaveChangesAsync();
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien: AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                 Email = _currentUserService.GetEmail(),
                 TenHanhDong = ActionLogDTO.Xoa,

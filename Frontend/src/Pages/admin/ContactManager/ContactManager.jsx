@@ -9,13 +9,13 @@ import { getErrorMessage } from '~/utils/errorHelper';
 import ConfirmModal from '~/components/UI/Modal/ConfirmModal';
 import { data } from 'react-router-dom';
 export default function ContactManager() {
-  //quản lý các state(biến) truyền xuống BE  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
 
-  //(biến) state lưu dữ liệu Be trả về 
+
   const [contacts, setContacts] = useState([]);
   const [totalRows,setTotalRows] =useState(0);
   const [loading, setLoading] = useState(false);

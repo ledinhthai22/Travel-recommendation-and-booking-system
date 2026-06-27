@@ -18,10 +18,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetPagedPromotionsAsync(
-            [FromQuery] int pageNumber,
-            [FromQuery] int pageSize,
-            [FromQuery] PromotionDTO promotion)
+        public async Task<IActionResult> GetPagedPromotionsAsync( [FromQuery] int pageNumber,[FromQuery] int pageSize, [FromQuery] PromotionDTO promotion)
         {
             var result = await _promotionService.GetPagedPromotionsAsync(
                 pageNumber,
@@ -31,6 +28,28 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             return Ok(result);
         }
 
+        [HttpGet("booking-select")]
+        public async Task<IActionResult> GetPromotionsForBookingSelect( [FromQuery] int? status = null)
+        {
+            try
+            {
+                var promotions = await _promotionService.GetPromotionsForSelectAsync(status);
+                return Ok(new
+                {
+                    success = true,
+                    data = promotions
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Lỗi khi lấy danh sách ưu đãi",
+                    error = ex.Message
+                });
+            }
+        }
         [HttpGet("{id}")]
         public async Task<IActionResult> GetPromotionByIdAsync(int id)
         {
@@ -47,9 +66,9 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             return Ok(result);
         }
 
+
         [HttpPost]
-        public async Task<IActionResult> CreateAsync(
-            [FromBody] PromotionDTO promotion)
+        public async Task<IActionResult> CreateAsync( [FromBody] PromotionDTO promotion)
         {
             var result = await _promotionService.CreateAsync(promotion);
 
@@ -61,9 +80,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateAsync(
-            int id,
-            [FromBody] PromotionDTO promotion)
+        public async Task<IActionResult> UpdateAsync( int id,[FromBody] PromotionDTO promotion)
         {
             var result = await _promotionService.UpdateAsync(id, promotion);
 
@@ -83,9 +100,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpPatch("{id}/status")]
-        public async Task<IActionResult> ChangeStatusAsync(
-            int id,
-            [FromBody] ChangePromotionStatusDTO request)
+        public async Task<IActionResult> ChangeStatusAsync( int id, [FromBody] ChangePromotionStatusDTO request)
         {
             var success = await _promotionService.ChangeStatusAsync(
                 id,

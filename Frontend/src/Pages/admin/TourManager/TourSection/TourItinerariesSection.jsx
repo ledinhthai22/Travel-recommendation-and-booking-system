@@ -19,8 +19,6 @@ const timeToMinutes = (time) => {
     return hour * 60 + minute;
 };
 
-const MIN_TIME = timeToMinutes("05:00");
-const MAX_TIME = timeToMinutes("23:00");
 
 const hasTimeOverlap = (rows, newStart, newEnd) =>
     rows.some(row => {
@@ -172,11 +170,6 @@ export default function TourItinerariesSection({
 
         const newStart = timeToMinutes(newSubRow.gioBatDau);
         const newEnd = timeToMinutes(newSubRow.gioKetThuc || newSubRow.gioBatDau);
-
-        if (newStart < MIN_TIME || newEnd > MAX_TIME) {
-            setTimelineError("Thời gian phải nằm trong khoảng 05:00 - 23:00");
-            return;
-        }
 
         if (newSubRow.gioKetThuc && timeToMinutes(newSubRow.gioKetThuc) <= newStart) {
             setTimelineError("Giờ kết thúc phải lớn hơn giờ bắt đầu");
@@ -335,7 +328,7 @@ export default function TourItinerariesSection({
     };
 
 
-   const disabled = isViewMode || isSaving || isLocked;
+    const disabled = isViewMode || isSaving || isLocked;
 
     return (
         <section className="border-t border-slate-200 pt-8 space-y-4">
@@ -347,7 +340,7 @@ export default function TourItinerariesSection({
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">Tổng số: {safeData.length} ngày hành trình</p>
                 </div>
-                {!isViewMode && (
+                {!isViewMode && !isLocked && (
                     <button
                         type="button"
                         disabled={isSaving || loading || !canAddDay | isLocked}
@@ -361,7 +354,7 @@ export default function TourItinerariesSection({
             </div>
 
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+            <div>
                 <TourItinerariesTable
                     data={safeData}
                     onEdit={handleEditClick}
@@ -379,7 +372,7 @@ export default function TourItinerariesSection({
 
                         <div className="flex justify-between items-center p-6 border-b border-slate-200 bg-slate-50">
                             <h2 className="text-lg font-bold text-slate-800">
-                                {isViewMode ? "Chi tiết Lịch trình" : modalMode === "ADD" ? "Thêm mới Lịch trình" : "Cấu hình Lịch trình"}
+                                {isViewMode || isLocked ? "Chi tiết Lịch trình" : modalMode === "ADD" ? "Thêm mới Lịch trình" : "Cấu hình Lịch trình"}
                                 : Ngày {currentItinerary.soThuTuNgay}
                             </h2>
                             <button
@@ -448,7 +441,7 @@ export default function TourItinerariesSection({
 
                             <div className={`border rounded-xl overflow-visible bg-white ${modalErrors.chiTietLichTrinhs ? "border-red-400" : "border-slate-200"}`}>
 
-                                {!isViewMode && (
+                                {!isViewMode && !isLocked && (
                                     <div className="p-4 bg-slate-50 border-b border-slate-100 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                                         <div className="sm:col-span-3">
                                             <label className="text-[11px] font-semibold text-slate-500 mb-1 block">Bắt đầu <span className="text-red-500">*</span></label>
@@ -519,13 +512,13 @@ export default function TourItinerariesSection({
                                             <th className="p-3 w-32 ">Khoảng thời gian</th>
                                             <th className="p-3">Địa điểm</th>
                                             <th className="p-3">Hoạt động</th>
-                                            {!isViewMode && <th className="p-3 text-center w-24">Thao tác</th>}
+                                            {!isViewMode && !isLocked && (<th className="p-3 text-center w-24">Thao tác</th>)}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {(currentItinerary.chiTietLichTrinhs || []).length === 0 ? (
                                             <tr>
-                                                <td colSpan={isViewMode ? 3 : 4} className="p-4 text-center text-slate-400 italic">
+                                                <td colSpan={isViewMode || isLocked ? 3 : 4} className="p-4 text-center text-slate-400 italic">
                                                     Chưa có mốc chi tiết timeline nào.
                                                 </td>
                                             </tr>
@@ -588,7 +581,7 @@ export default function TourItinerariesSection({
                                                         </td>
 
                                                         {/* Actions cell */}
-                                                        {!isViewMode && (
+                                                        {!isViewMode && !isLocked && (
                                                             <td className="p-3 text-center">
                                                                 <div className="flex justify-center gap-2">
                                                                     {isEditing ? (
@@ -634,9 +627,9 @@ export default function TourItinerariesSection({
                                 onClick={handleCloseModal}
                                 className="px-5 py-2 text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition disabled:opacity-50"
                             >
-                                {isViewMode ? "Đóng" : "Hủy bỏ"}
+                                {isViewMode || isLocked ? "Đóng" : "Hủy bỏ"}
                             </button>
-                            {!isViewMode && (
+                            {!isViewMode && !isLocked && (
                                 <button
                                     disabled={isSaving}
                                     onClick={handleSaveItineraryModal}

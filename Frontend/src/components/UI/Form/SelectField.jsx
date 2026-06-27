@@ -1,179 +1,343 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Search } from "lucide-react";
+import React, {
+    useState,
+    useRef,
+    useEffect,
+    useCallback,
+} from "react";
 
-const SelectField = ({
+import { createPortal } from "react-dom";
+import { ChevronDown, Search, Loader2 } from "lucide-react";
+
+export default function SelectField({
     label,
     value,
     onChange,
     options = [],
-    valueKey = 'value',
-    labelKey = 'label',
-    placeholder = 'Chọn...',
-    error = '',
+    valueKey = "value",
+    labelKey = "label",
+    placeholder = "Chọn...",
+    error = "",
     disabled = false,
     searchable = false,
-    searchText = "",
+    searchText = "Tìm kiếm...",
     IconComponent = null,
-}) => {
+
+    onSearch = null,
+    searchDebounce = 300,
+    searching = false,
+}) {
     const [open, setOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    const ref = useRef(null);
+
+    const triggerRef = useRef(null);
+    const dropdownRef = useRef(null);
     const searchInputRef = useRef(null);
+    const debounceTimer = useRef(null);
+
+    const [position, setPosition] = useState({
+        top: 0,
+        left: 0,
+        width: 0,
+    });
+
     const selectedOption = options.find(
-        (opt) => String(opt[valueKey]) === String(value)
+        (x) => String(x[valueKey]) === String(value)
     );
 
-    const selectedLabel = selectedOption ? selectedOption[labelKey] : placeholder;
-    const filteredOptions = searchable
-        ? options.filter((option) =>
-            String(option[labelKey] || "")
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase())
-        )
-        : options;
+    const selectedLabel = selectedOption
+        ? selectedOption[labelKey]
+        : placeholder;
+
+    const filteredOptions =
+        searchable && !onSearch
+            ? options.filter((x) =>
+                String(x[labelKey] || "")
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase())
+            )
+            : options;
+
+    const updatePosition = useCallback(() => {
+        if (!triggerRef.current) return;
+
+        const rect =
+            triggerRef.current.getBoundingClientRect();
+
+        setPosition({
+            top: rect.bottom + 4,
+            left: rect.left,
+            width: rect.width,
+        });
+    }, []);
+
+    useEffect(() => {
+        if (!open) return;
+
+        updatePosition();
+
+        const handleScrollResize = () => {
+            updatePosition();
+        };
+
+        window.addEventListener(
+            "scroll",
+            handleScrollResize,
+            true
+        );
+
+        window.addEventListener(
+            "resize",
+            handleScrollResize
+        );
+
+        return () => {
+            window.removeEventListener(
+                "scroll",
+                handleScrollResize,
+                true
+            );
+
+            window.removeEventListener(
+                "resize",
+                handleScrollResize
+            );
+        };
+    }, [open, updatePosition]);
+
+    useEffect(() => {
+        const handleOutsideClick = (e) => {
+            const clickedTrigger =
+                triggerRef.current?.contains(e.target);
+
+            const clickedDropdown =
+                dropdownRef.current?.contains(e.target);
+
+            if (!clickedTrigger && !clickedDropdown) {
+                setOpen(false);
+            }
+        };
+
+        document.addEventListener(
+            "mousedown",
+            handleOutsideClick
+        );
+
+        return () => {
+            document.removeEventListener(
+                "mousedown",
+                handleOutsideClick
+            );
+        };
+    }, []);
+
     useEffect(() => {
         if (open && searchable) {
             setTimeout(() => {
                 searchInputRef.current?.focus();
             }, 50);
         }
+
+        if (!open) {
+            setSearchTerm("");
+        }
     }, [open, searchable]);
+
+    const handleSearch = useCallback(
+        (keyword) => {
+            setSearchTerm(keyword);
+
+            if (!onSearch) return;
+
+            clearTimeout(debounceTimer.current);
+
+            debounceTimer.current = setTimeout(() => {
+                onSearch(keyword);
+            }, searchDebounce);
+        },
+        [onSearch, searchDebounce]
+    );
+
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (ref.current && !ref.current.contains(event.target)) {
-                setOpen(false);
-                setSearchTerm("");
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, []);
+        if (open && onSearch && searchTerm === "") {
+            onSearch("");
+        }
+    }, [open]);
 
     const handleSelect = (option) => {
-        if (disabled) return;
-
-        onChange(String(option[valueKey]));
-        setSearchTerm("");
+        onChange(option[valueKey]);
         setOpen(false);
     };
-    return (
-        <div ref={ref} className="relative w-full">
-            <button
-                type="button"
-                disabled={disabled}
-                onClick={() => !disabled && setOpen((prev) => !prev)}
-                className={`group relative flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all outline-none ${error
-                    ? 'border-[#ba1a1a]/50 bg-red-50/50 focus:ring-4 focus:ring-[#ba1a1a]/10'
-                    : disabled
-                        ? 'cursor-not-allowed border-transparent bg-gray-50 text-gray-400'
-                        : open
-                            ? 'border-[#0EA5E5] bg-white ring-1 ring-[#0EA5E5]/10'
-                            : 'border-gray-200 bg-white hover:border-[#0EA5E5]/40 hover:bg-gray-50'
-                    }`}
-            >
-                {IconComponent && (
-                    <IconComponent
-                        size={22}
-                        className={`shrink-0 transition-transform ${disabled
-                            ? 'text-gray-300'
-                            : error
-                                ? 'text-[#ba1a1a]'
-                                : 'text-[#0EA5E5] group-hover:scale-110'
-                            }`}
-                    />
-                )}
 
-                <div className="flex min-w-0 flex-1 flex-col items-start">
-                    {label && (
-                        <span
-                            className={`text-[10px] font-bold uppercase tracking-wider ${error ? 'text-[#ba1a1a]' : 'text-gray-400'
-                                }`}
-                        >
-                            {label}
-                        </span>
+    return (
+        <>
+            <div
+                ref={triggerRef}
+                className="relative w-full"
+            >
+                <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() =>
+                        !disabled &&
+                        setOpen((prev) => !prev)
+                    }
+                    className={`group flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all
+                    ${error
+                            ? "border-red-300 bg-red-50"
+                            : disabled
+                                ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
+                                : open
+                                    ? "border-sky-500 ring-1 ring-sky-100"
+                                    : "border-gray-200 hover:border-sky-300"
+                        }`}
+                >
+                    {IconComponent && (
+                        <IconComponent
+                            size={20}
+                            className="text-sky-500"
+                        />
                     )}
 
-                    <span
-                        className={`mt-0.5 truncate text-sm font-medium ${selectedOption
-                            ? 'text-gray-800'
-                            : 'text-gray-400'
-                            }`}
-                    >
-                        {selectedLabel}
-                    </span>
-                </div>
-
-                <ChevronDown
-                    size={16}
-                    className={`shrink-0 transition-transform duration-300 ${open ? 'rotate-180 text-[#0EA5E5]' : 'text-gray-400'
-                        }`}
-                />
-            </button>
-
-            {open && !disabled && (
-                <div className="absolute left-0 top-[110%] z-50 mt-1 w-full overflow-hidden rounded-xl border border-gray-100 bg-white text-left shadow-xl animate-in fade-in zoom-in-95 duration-200">
-                    {searchable && (
-                        <div className="relative p-3">
-                            <Search
-                                size={16}
-                                className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400"
-                            />
-
-                            <input
-                                ref={searchInputRef}
-                                type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder={searchText}
-                                className="w-full rounded-lg border border-gray-200 pl-10 pr-3 py-2 text-sm outline-none focus:border-sky-500"
-                            />
-                        </div>)}
-                    <div
-                        className={`overflow-y-auto py-2 ${filteredOptions.length > 4
-                                ? "max-h-45"
-                                : ""
-                            }`}
-                    >
-                        {filteredOptions.length > 0 ? (
-                            filteredOptions.map((option, index) => {
-                                const optionValue = String(option[valueKey]);
-                                const optionLabel = option[labelKey];
-                                const active = String(value) === optionValue;
-
-                                return (
-                                    <button
-                                        key={optionValue || index}
-                                        type="button"
-                                        onClick={() => handleSelect(option)}
-                                        className={`w-full px-4 py-3 text-left text-sm font-medium transition-colors ${active
-                                            ? 'bg-slate-50 text-[#0EA5E5]'
-                                            : 'text-gray-700 hover:bg-slate-50 hover:text-[#0EA5E5]'
-                                            }`}
-                                    >
-                                        {optionLabel}
-                                    </button>
-                                );
-                            })
-                        ) : (
-                            <div className="px-4 py-3 text-sm text-gray-400 text-center">
-                                Không tìm thấy kết quả
+                    <div className="flex-1 min-w-0">
+                        {label && (
+                            <div className="text-[10px] uppercase font-bold text-gray-400">
+                                {label}
                             </div>
                         )}
+
+                        <div
+                            className={`text-sm truncate ${selectedOption
+                                    ? "text-gray-800"
+                                    : "text-gray-400"
+                                }`}
+                        >
+                            {selectedLabel}
+                        </div>
                     </div>
-                </div>
-            )}
 
-            {error && (
-                <p className="mt-1.5 flex items-center gap-1 text-xs text-[#ba1a1a] font-medium">
-                    {error}
-                </p>
-            )}
-        </div>
+                    {searching ? (
+                        <Loader2
+                            size={16}
+                            className="animate-spin"
+                        />
+                    ) : (
+                        <ChevronDown
+                            size={16}
+                            className={`transition ${open
+                                    ? "rotate-180"
+                                    : ""
+                                }`}
+                        />
+                    )}
+                </button>
+
+                {error && (
+                    <p className="mt-1 text-xs text-red-500">
+                        {error}
+                    </p>
+                )}
+            </div>
+
+            {open &&
+                createPortal(
+                    <div
+                        ref={dropdownRef}
+                        className="fixed z-[999999] rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden"
+                        style={{
+                            top: position.top,
+                            left: position.left,
+                            width: position.width,
+                        }}
+                    >
+                        {searchable && (
+                            <div className="p-3">
+                                <div className="relative">
+                                    <Search
+                                        size={14}
+                                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                                    />
+
+                                    <input
+                                        ref={
+                                            searchInputRef
+                                        }
+                                        value={
+                                            searchTerm
+                                        }
+                                        onChange={(e) =>
+                                            handleSearch(
+                                                e.target
+                                                    .value
+                                            )
+                                        }
+                                        placeholder={
+                                            searchText
+                                        }
+                                        /* Đổi sang border-gray-200 và thêm trạng thái focus mượt mà */
+                                        className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm transition-all focus:border-sky-400 focus:ring-1 focus:ring-sky-100 outline-none"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="max-h-60 overflow-y-auto py-1">
+                            {searching &&
+                                filteredOptions.length ===
+                                0 ? (
+                                <div className="p-4 text-center text-sm text-gray-400">
+                                    Đang tải...
+                                </div>
+                            ) : filteredOptions.length >
+                                0 ? (
+                                filteredOptions.map(
+                                    (option) => {
+                                        const active =
+                                            String(
+                                                value
+                                            ) ===
+                                            String(
+                                                option[
+                                                valueKey
+                                                ]
+                                            );
+
+                                        return (
+                                            <button
+                                                key={
+                                                    option[
+                                                    valueKey
+                                                    ]
+                                                }
+                                                type="button"
+                                                onClick={() =>
+                                                    handleSelect(
+                                                        option
+                                                    )
+                                                }
+                                                className={`block w-full px-4 py-2 text-left text-sm transition
+                                                ${active
+                                                        ? "bg-sky-50 text-sky-600"
+                                                        : "hover:bg-gray-50"
+                                                    }`}
+                                            >
+                                                {
+                                                    option[
+                                                    labelKey
+                                                    ]
+                                                }
+                                            </button>
+                                        );
+                                    }
+                                )
+                            ) : (
+                                <div className="p-4 text-center text-sm text-gray-400">
+                                    Không có dữ liệu
+                                </div>
+                            )}
+                        </div>
+                    </div>,
+                    document.body
+                )}
+        </>
     );
-};
-
-export default SelectField;
+}

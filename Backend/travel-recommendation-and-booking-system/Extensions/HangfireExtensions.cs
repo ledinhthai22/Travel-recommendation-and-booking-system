@@ -1,4 +1,5 @@
 ﻿using Hangfire;
+using travel_recommendation_and_booking_system.Job;
 using travel_recommendation_and_booking_system.Jobs;
 
 namespace travel_recommendation_and_booking_system.Extensions
@@ -16,6 +17,31 @@ namespace travel_recommendation_and_booking_system.Extensions
                 "promotion-status-job",
                 job => job.UpdatePromotionStatus(),
                 Cron.Minutely
+            );
+        }
+        public static void UseCleanExpriedReservationsJob(this WebApplication app)
+        {
+            using var scope = app.Services.CreateScope();
+
+            var recurringJobManager =
+                scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+            RecurringJob.AddOrUpdate<CleanExpiredReservationsJob>(
+                "clean-expired-reservations",
+                job => job.ExecuteAsync(),
+                "*/5 * * * *"
+            );
+        }
+        public static void UseDepartureChangeStatusJoc(this WebApplication app)
+        {
+            using var scope = app.Services.CreateScope();
+
+            var recurringJobManager =
+                scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+
+            RecurringJob.AddOrUpdate<DepartureChangeStatus>(
+                "Departure-Change-Status",
+                job => job.UpdateStatusesAsync(),
+                Cron.Daily
             );
         }
     }

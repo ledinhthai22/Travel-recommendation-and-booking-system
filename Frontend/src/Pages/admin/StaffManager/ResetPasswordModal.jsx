@@ -53,7 +53,7 @@ export default function ResetPasswordModal({
             setLoading(true);
 
             await resetStaffPasswordApi(
-                staff.maNguoiDung,
+                staff.maNhanVien,
                 password
             );
 

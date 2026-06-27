@@ -16,6 +16,7 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<bool> ChangeStatusAsync(int maTour, int trangThai);
         Task<bool> SetMainImageAsync(int imageId);
         Task<bool> DeleteImageAsync(int imageId);
+        Task<List<TourSelectDTO>> GetToursForSelectAsync(string? keyword = null, int? status = null);
 
 
     }

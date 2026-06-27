@@ -309,7 +309,7 @@ export default function TourFormPage({ mode }) {
     const departureSaving = useSectionSaving();
 
     const isScheduleLocked = chuyenKhoiHanhs.some(
-        x => x.trangThai === 2 || x.trangThai === 1
+        x => x.trangThai === 2 || x.trangThai === 3 || x.soChoDaDat > 0
     );
     useEffect(() => {
         const fetchMasterData = async () => {
@@ -980,7 +980,7 @@ export default function TourFormPage({ mode }) {
                     ) : (
                         <TourSchedulesTable
                             data={chuyenKhoiHanhs}
-                            onView={isViewMode ? (item) => tourScheduleRef.current?.openEditModal(item) : null}
+                           onView={(item) => tourScheduleRef.current?.openEditModal(item)}
                             onEdit={
                                 !isViewMode
                                     ? (item) => tourScheduleRef.current?.openEditModal(item)

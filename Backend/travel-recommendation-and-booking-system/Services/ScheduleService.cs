@@ -179,10 +179,10 @@ namespace travel_recommendation_and_booking_system.Services
             }
 
             await _context.SaveChangesAsync();
-
+            var currentAccount = _currentUserService.GetUserId() == 1? AccountTypeDTO.QuanTriVien: AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                 TenHanhDong = ActionLogDTO.Tao,
@@ -332,10 +332,10 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 DeleteOldScheduleImage(oldImagePath);
             }
-
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                 TenHanhDong = ActionLogDTO.CapNhat,
@@ -385,10 +385,10 @@ namespace travel_recommendation_and_booking_system.Services
 
             var result = await _context.SaveChangesAsync() > 0;
             if (!result) return false;
-
+            var currentAccount = _currentUserService.GetUserId() == 1? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                 TenHanhDong = ActionLogDTO.Xoa,
@@ -535,7 +535,7 @@ namespace travel_recommendation_and_booking_system.Services
                 .AnyAsync(x =>
                     x.MaTour == maTour &&
                     x.NgayXoa == null &&
-                    (x.TrangThai == 1 || x.TrangThai == 2));
+                    (x.TrangThai == 2 || x.TrangThai == 3 || x.SoChoDaDat > 0));
         }
     }
 }

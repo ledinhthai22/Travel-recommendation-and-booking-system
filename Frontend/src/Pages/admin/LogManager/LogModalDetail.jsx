@@ -18,7 +18,7 @@ const ACTION_COLOR_MAP = {
 
 function InfoRow({ label, value }) {
     return (
-        <div className="flex flex-col gap-1"> {/* Giảm bớt gap từ 4 xuống 1 cho gọn gàng */}
+        <div className="flex flex-col gap-1"> 
             <span className="text-xs text-slate-400 font-medium uppercase tracking-wide">
                 {label}
             </span>
@@ -45,7 +45,7 @@ function JsonBlock({ label, value }) {
         parsed = JSON.parse(value);
         isJson = true;
     } catch {
-        // Fallback
+       
     }
 
     return (
@@ -90,10 +90,7 @@ export default function LogDetailModal({ isOpen, onClose, logId }) {
 
     return (
         <div className="fixed inset-0 bg-black/50 z-[999] flex items-center justify-center p-4">
-            {/* Thêm flex và flex-col để chia không gian Header - Content - Footer */}
             <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-xl">
-
-                {/* Header: Giữ cố định, thêm padding */}
                 <div className="flex items-center justify-between p-6 border-b border-slate-100">
                     <div className="flex items-center gap-3">
                         <h2 className="text-2xl font-bold">Chi tiết nhật ký</h2>
@@ -108,8 +105,6 @@ export default function LogDetailModal({ isOpen, onClose, logId }) {
                         <X size={20} />
                     </button>
                 </div>
-
-                {/* Content: Khu vực cuộn chính (overflow-y-auto và flex-1) */}
                 <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                     {loading ? (
                         <div className="py-20 text-center text-slate-400">Đang tải dữ liệu...</div>
@@ -117,13 +112,12 @@ export default function LogDetailModal({ isOpen, onClose, logId }) {
                         <div className="py-20 text-center text-red-500">Không tìm thấy bản ghi log</div>
                     ) : (
                         <div className="space-y-6">
-                            {/* Thông tin chính */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <InfoRow label="Loại tài khoản" value={log.loaiTaiKhoan} />
                                 <InfoRow label="Mã tài khoản" value={log.maTaiKhoan ? `#${log.maTaiKhoan}` : ''} />
                                 <InfoRow label="Hành động" value={log.tenHanhDong} />
                                 <InfoRow label="Module tác động" value={log.tenBangTacDong} />
-                                <InfoRow label="Mã đối tượng" value={log.maDoiTuong} />
+                                <InfoRow label="Email" value={log.email} />
                                 <InfoRow label="Địa chỉ IP" value={log.diaChiIP} />
                                 <InfoRow label="Trình duyệt" value={log.trinhDuyet} />
                                 <InfoRow
@@ -133,12 +127,7 @@ export default function LogDetailModal({ isOpen, onClose, logId }) {
                                         : '—'}
                                 />
                             </div>
-                            
-                            <div>
-                                <InfoRow label="Email" value={log.email} />
-                            </div>
 
-                            {/* Dữ liệu trước / sau */}
                             <div className="grid grid-cols-1 gap-6 pt-4 border-t border-slate-100">
                                 <JsonBlock label="Giá trị trước" value={log.giaTriTruoc} />
                                 <JsonBlock label="Giá trị sau" value={log.giaTriSau} />
@@ -146,17 +135,6 @@ export default function LogDetailModal({ isOpen, onClose, logId }) {
                         </div>
                     )}
                 </div>
-
-                {/* Footer: Giữ cố định ở dưới */}
-                <div className="flex justify-end p-6 border-t border-slate-100 bg-slate-50/50 rounded-b-3xl">
-                    <button
-                        onClick={onClose}
-                        className="px-6 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-bold shadow-sm transition-colors"
-                    >
-                        Đóng
-                    </button>
-                </div>
-
             </div>
         </div>
     );

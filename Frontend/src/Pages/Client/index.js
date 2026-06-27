@@ -7,3 +7,4 @@ export {default as ContactPage} from './ContactPage'
 export {default as CheckoutPage} from './Checkout/CheckoutPage'
 export {default as Profile} from './ProfilePage'
 export {default as Wishlist} from './Wishlist/Wishlist'
+export {default as PaymentReturnPage} from "./PaymentReturnPage"

@@ -13,5 +13,6 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<UserResponseDTO?> DetailUserAsync(int id); // xem chi tiết
         Task<bool> LockUserAsync(int id); // khóa tk
         Task<bool> UnLockUserAsync(int id); // mở khóa tk
+        Task<List<UserResponseDTO>> GetUsersForSelectAsync(string? keyword, int? status);
     }
 }

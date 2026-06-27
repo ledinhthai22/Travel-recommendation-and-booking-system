@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import InputField from '~/components/UI/Form/InputField';
-// Đảm bảo trỏ đúng về TypeTourService
 import { updateTypeTourApi } from '~/Services/TypeTourService';
 import { toastError, toastSuccess } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
@@ -34,7 +33,6 @@ export default function UpdateTypeTourModal({ isOpen, initialData = null, onClos
 
         setLoading(true);
         try {
-            // Chuyển đổi dữ liệu sang FormData vì API yêu cầu multipart/form-data
             const formData = new FormData();
             formData.append('TenLoaiTour', tenLoaiTour.trim());
             formData.append('TrangThai', trangThai);
@@ -75,26 +73,34 @@ export default function UpdateTypeTourModal({ isOpen, initialData = null, onClos
                     />
 
                     <div className="flex items-center gap-3">
-                        <label className="text-sm font-medium text-slate-700">Trạng thái hoạt động:</label>
-                        <input
-                            type="checkbox"
-                            checked={trangThai}
-                            onChange={(e) => setTrangThai(e.target.checked)}
+                        <label className="text-sm font-medium text-slate-700">
+                            Trạng thái hoạt động:
+                        </label>
+
+                        <button
+                            type="button"
+                            onClick={() => setTrangThai(!trangThai)}
                             disabled={loading}
-                            className="w-4 h-4 text-[#0EA5E5] border-slate-300 rounded focus:ring-[#0EA5E5]"
-                        />
-                        <span className="text-sm text-slate-600">{trangThai ? "Kích hoạt" : "Khóa"}</span>
+                            className={`
+                                relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+                                ${trangThai ? "bg-sky-500" : "bg-slate-300"}
+                                ${loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+                            `}
+                        >
+                            <span
+                                className={`
+                                    inline-block h-4 w-4 transform rounded-full bg-white transition
+                                    ${trangThai ? "translate-x-6" : "translate-x-1"}
+                                `}
+                            />
+                        </button>
+
+                        <span className="text-sm text-slate-600">
+                            {trangThai ? "Hoạt động" : "Ngưng hoạt động"}
+                        </span>
                     </div>
 
                     <div className="flex gap-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 py-3 px-6 rounded-xl border border-slate-300 font-medium text-slate-700 hover:bg-slate-50"
-                            disabled={loading}
-                        >
-                            Hủy
-                        </button>
                         <button
                             type="submit"
                             disabled={loading || !tenLoaiTour.trim()}
@@ -106,7 +112,7 @@ export default function UpdateTypeTourModal({ isOpen, initialData = null, onClos
                     </div>
                 </form>
             </div>
-            
+
             <ConfirmModal
                 isOpen={showConfirm}
                 title="Xác nhận cập nhật"

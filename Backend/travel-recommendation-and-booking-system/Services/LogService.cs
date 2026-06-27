@@ -1,11 +1,13 @@
 ﻿using System.Text.Encodings.Web;
 using System.Text.Json;
 using DTOs.Page;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Log;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
+using travel_recommendation_and_booking_system.SignalR;
 
 namespace travel_recommendation_and_booking_system.Services
 {
@@ -13,10 +15,13 @@ namespace travel_recommendation_and_booking_system.Services
     {
         private readonly AppDbContext _context;
         private readonly IRequestInfoService _requestInfoService;
-        public LogService(AppDbContext context, IRequestInfoService requestInfoService)
+        private readonly IHubContext<TravelRecommendationHub> _hubContext;
+
+        public LogService(AppDbContext context, IRequestInfoService requestInfoService, IHubContext<TravelRecommendationHub> hubContext)
         {
             _context = context;
             _requestInfoService = requestInfoService;
+            _hubContext = hubContext;
         }
 
         public async Task LoggingAsync(LogDTO request)
@@ -44,10 +49,23 @@ namespace travel_recommendation_and_booking_system.Services
 
                 ThoiGianTao = DateTime.Now
             };
-
+            Console.WriteLine("SignalR Send Activity Log");
             _context.NhatKyHeThongs.Add(log);
 
             await _context.SaveChangesAsync();
+            await _hubContext.Clients.All.SendAsync(
+            "ReceiveActivityLog",
+            new
+            {
+                log.MaNhatKy,
+                log.LoaiTaiKhoan,
+                log.DiaChiIP,
+                log.TrinhDuyet,
+                log.Email,
+                log.TenHanhDong,
+                log.TenBangTacDong,
+                log.ThoiGianTao
+            });
         }
         public async Task<PageDTO<LogResponseDTO>> GetPagedLogsAsync(int page, int size, string? key, string? accountType, int? accountId)
         {

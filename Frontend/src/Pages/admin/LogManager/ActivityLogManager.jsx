@@ -4,7 +4,7 @@ import RowActionsButton from '~/components/UI/Table/Button/RowActionsButton';
 import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
 import logService from '~/Services/LogService';
 import LogDetailModal from './LogModalDetail';
-
+import {connection} from "~/Services/signalRService";
 const ACTION_COLOR_MAP = {
     'Tạo': 'bg-emerald-100 text-emerald-700',
     'Cập nhật': 'bg-amber-100 text-amber-700',
@@ -44,7 +44,50 @@ export default function ActivityLogManager() {
     useEffect(() => {
         fetchLogs(pageNumber, pageSize, searchTerm);
     }, [pageNumber, pageSize]);
+    useEffect(() => {
 
+        const connectSignalR = async () => {
+            try {
+
+                if (connection.state === "Disconnected") {
+                    await connection.start();
+                }
+
+                console.log("SignalR Connected");
+
+                connection.on(
+                    "ReceiveActivityLog",
+                    (newLog) => {
+
+                        console.log(
+                            "Realtime Log:",
+                            newLog
+                        );
+
+                        setLogs(prev => [
+                            newLog,
+                            ...prev
+                        ]);
+
+                        setTotalRows(prev => prev + 1);
+                    }
+                );
+
+            } catch (error) {
+                console.error(
+                    "SignalR Error:",
+                    error
+                );
+            }
+        };
+
+        connectSignalR();
+
+        return () => {
+            connection.off("ReceiveActivityLog");
+        };
+
+    }, []);
     useEffect(() => {
         const timer = setTimeout(() => {
             setPageNumber(1);
@@ -74,27 +117,6 @@ export default function ActivityLogManager() {
                 </span>
             )
         },
-        // {
-        //     name: 'Email',
-        //     sortable: true,
-        //     selector: row => row.email,
-        //     cell: row => (
-        //         <span className="text-[12px] font-bold   tracking-wide">
-        //             {row.email}
-        //         </span>
-        //     )
-        // },
-        {
-            name: 'Mã tài khoản',
-            sortable: true,
-            width: '130px',
-            selector: row => row.maTaiKhoan,
-            cell: row => (
-                <span className="font-mono text-sm">
-                    #{row.maTaiKhoan}
-                </span>
-            )
-        },
         {
             name: 'Hành động',
             sortable: true,
@@ -116,16 +138,16 @@ export default function ActivityLogManager() {
             ),
             minWidth: '60px',
         },
-        // {
-        //     name: 'Trình duyệt',
-        //     minWidth: '180px',
-        //     selector: row => row.trinhDuyet,
-        //     cell: row => (
-        //         <p className="text-xs text-slate-500 truncate" title={row.trinhDuyet}>
-        //             {row.trinhDuyet ?? '—'}
-        //         </p>
-        //     )
-        // },
+        {
+            name: 'Trình duyệt',
+            minWidth: '180px',
+            selector: row => row.trinhDuyet,
+            cell: row => (
+                <p className="text-xs text-slate-500 truncate" title={row.trinhDuyet}>
+                    {row.trinhDuyet ?? '—'}
+                </p>
+            )
+        },
         {
             name: 'Thời gian',
             sortable: true,

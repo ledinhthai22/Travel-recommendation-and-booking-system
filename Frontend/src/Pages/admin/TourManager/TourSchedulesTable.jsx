@@ -15,24 +15,23 @@ export default function TourSchedulesTable({
         name: "Trạng thái",
         cell: (row) => {
             const map = {
-                0: {
-                    text: "Hết chỗ",
-                    className: "bg-red-100 text-red-700"
-                },
                 1: {
-                    text: "Đã kết thúc",
-                    className: "bg-gray-100 text-gray-700"
+                    text: "Sắp khởi hành",
+                    className: "bg-yellow-100 text-yellow-700"
                 },
                 2: {
                     text: "Đang khởi hành",
                     className: "bg-blue-100 text-blue-700"
                 },
                 3: {
-                    text: "Sắp khởi hành",
-                    className: "bg-green-100 text-green-700"
+                    text: "Đã kết thúc",
+                    className: "bg-gray-100 text-gray-700"
+                },
+                "": {
+                    text: "Không xác định",
+                    className: "bg-gray-100 text-gray-700"
                 }
             };
-
             const status = map[row.trangThai] || {
                 text: "Không xác định",
                 className: "bg-gray-100 text-gray-600"
@@ -96,13 +95,6 @@ export default function TourSchedulesTable({
             sortable: true,
             idth: locationWidth,
         },
-        // {
-        //     name: "Ghi chú chuyến đi",
-        //     selector: (row) => row.ghiChu,
-        //     cell: (row) => row.ghiChu,
-        //     sortable: true,
-        //     idth: locationWidth,
-        // },
 
         ...(showStatus ? [statusColumn] : []),
         {
@@ -117,11 +109,15 @@ export default function TourSchedulesTable({
                 <RowActionsButton
                     row={row}
                     onEdit={
-                        row.trangThai === 2 || row.trangThai === 1
+                        row.trangThai === 2 || row.trangThai === 3 || row.trangThai === 4 || row.soChoDaDat > 0
                             ? null
                             : onEdit
                     }
-                    onView={onView}
+                    onView={
+                        row.trangThai === 2 || row.trangThai === 3 || row.trangThai === 4 || row.soChoDaDat > 0
+                            ? onView
+                            : null
+                    }
                 />
             ),
             width: actionWidth,

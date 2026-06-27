@@ -5,7 +5,7 @@ import { Link, useParams } from "react-router-dom";
 import TourCard from "~/components/Tours/TourCard";
 import SectionTitle from "~/components/Common/SectionTitle";
 import FeaturedCarousel from "~/components/Common/FeaturedCarousel";
-
+import AuthModal from "~/components/Auth/AuthModal";
 import { SchedulePicker } from "~/components/TourDetail/ScherdulePicker";
 import { ImageGallery } from "~/components/TourDetail/ImageGallery";
 import { Itinerary } from "~/components/TourDetail/Itinerary";
@@ -18,7 +18,7 @@ import Breadcrumb from "~/components/UI/Breadcrumbs/Breadcrumbs";
 import useAuth from "~/Hooks/useAuth";
 export default function TourDetail() {
     const { slug } = useParams();
-
+    const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [tour, setTour] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selectedDeparture, setSelectedDeparture] = useState(null);
@@ -30,8 +30,6 @@ export default function TourDetail() {
                 setLoading(true);
                 const res = await getTourBySlugApi(slug);
                 setTour(res);
-
-                // Đồng bộ API: Chọn chuyến khởi hành đầu tiên mặc định
                 if (res?.chuyenKhoiHanhs && res.chuyenKhoiHanhs.length > 0) {
                     setSelectedDeparture(res.chuyenKhoiHanhs[0]);
                 } else {
@@ -139,6 +137,8 @@ export default function TourDetail() {
                         <BookingCard
                             tour={tourInfo}
                             departure={selectedDeparture}
+                            hotel = {tour.khachSans}
+                            onOpenAuthModal={() => setIsAuthOpen(true)}
                         />
                     </aside>
                 </div>
@@ -164,6 +164,7 @@ export default function TourDetail() {
                         />
                     </section>
                 )}
+                <AuthModal open={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
             </div>
         </div>
     );

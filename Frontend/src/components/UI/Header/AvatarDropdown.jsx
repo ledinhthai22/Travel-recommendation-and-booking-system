@@ -42,9 +42,6 @@ export default function AvatarDropdown({ user, onLogout }) {
                     <p className={`text-[11px] font-semibold ${open ? "text-[#0EA5E5]" : "text-slate-900"}`}>
                         {user?.hoTen}
                     </p>
-                    <p className={`text-[10px] ${open ? "text-[#0EA5E5]" : "text-slate-500"}`}>
-                        {user?.email}
-                    </p>
                 </div>
 
                 <img

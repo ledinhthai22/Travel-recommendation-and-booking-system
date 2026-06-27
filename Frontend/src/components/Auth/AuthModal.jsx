@@ -128,8 +128,6 @@ export default function AuthModal({ open, onClose }) {
     const isRegister = mode === 'register';
     const isForgot = mode === 'forgot';
 
-    // ── Reset ──────────────────────────────────────────────────────────────
-
     const resetModal = useCallback(() => {
         setMode('login');
         setOtpSent(false);
@@ -154,8 +152,7 @@ export default function AuthModal({ open, onClose }) {
         setOtpVerified(false);
     }, []);
 
-    // ── Effects ────────────────────────────────────────────────────────────
-
+ 
     useEffect(() => {
         if (!open) return;
         const handleEsc = (e) => { if (e.key === 'Escape') onClose?.(); };
@@ -171,7 +168,6 @@ export default function AuthModal({ open, onClose }) {
         if (!open) resetModal();
     }, [open, resetModal]);
 
-    // ── Validation ─────────────────────────────────────────────────────────
 
     const errors = useMemo(() => ({
         fullName:
@@ -225,7 +221,6 @@ export default function AuthModal({ open, onClose }) {
         [errors]
     );
 
-    // ── Handlers ───────────────────────────────────────────────────────────
 
     const handleChange = useCallback((e) => {
         const { name, value } = e.target;
@@ -365,7 +360,7 @@ export default function AuthModal({ open, onClose }) {
                 type="button"
                 aria-label="Đóng modal"
                 onClick={onClose}
-                className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
+                className="absolute inset-0 bg-slate-950/30 backdrop-blur-sm"
             />
 
             <div className="relative max-h-[92vh] w-full max-w-[430px] overflow-y-auto rounded-[28px] bg-white shadow-2xl">
@@ -487,7 +482,7 @@ export default function AuthModal({ open, onClose }) {
                             />
                         )}
 
-                        {/* Forgot — step 1: email */}
+                        
                         {isForgot && !otpSent && (
                             <InputField
                                 label="Email"

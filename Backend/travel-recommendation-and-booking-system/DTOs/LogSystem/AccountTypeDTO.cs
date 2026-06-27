@@ -2,8 +2,10 @@
 {
     public class AccountTypeDTO
     {
-        public const string NguoiDung = "NguoiDung";
+        public const string NguoiDung = "Người dùng";
 
-        public const string NhanVien = "NhanVien";
+        public const string NhanVien = "Nhân viên";
+
+        public const string QuanTriVien = "Quản trị viên";
     }
 }

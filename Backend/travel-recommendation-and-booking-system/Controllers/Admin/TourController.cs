@@ -4,6 +4,7 @@ using travel_recommendation_and_booking_system.DTOs.Departure;
 using travel_recommendation_and_booking_system.DTOs.Schedule;
 using travel_recommendation_and_booking_system.DTOs.Tour;
 using travel_recommendation_and_booking_system.Interfaces;
+using travel_recommendation_and_booking_system.Services;
 
 namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
@@ -24,8 +25,29 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             var result = await _tour.GetPagedTourAsync(page, pageSize, key, status);
             return Ok(result);
         }
-
-        [HttpPost("create-full")]
+        [HttpGet("booking-select")]
+        public async Task<IActionResult> GetToursForBookingSelect([FromQuery] string? keyword = null,[FromQuery] int? status = null)
+        {
+            try
+            {
+                var tours = await _tour.GetToursForSelectAsync(keyword, status);
+                return Ok(new
+                {
+                    success = true,
+                    data = tours
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Lỗi khi lấy danh sách tour",
+                    error = ex.Message
+                });
+            }
+        }
+            [HttpPost("create-full")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> CreateFullTour([FromForm] TourDataForm form)
         {

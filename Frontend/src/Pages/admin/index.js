@@ -4,8 +4,6 @@ export {default as DashBoard} from './DashBoard/DashBoard'
 export {default as StaffManager} from './StaffManager/StaffManager'
 export {default as HotelManager} from './HotelManager/HotelManager'
 export {default as LocationManager} from './LocationManager/LocationManager'
-export {default as RevenueByTour} from './RevenueByTour/RevenueByTour'
-export {default as TouristManager} from './TouristManager/TouristManager'
 export {default as TourManager} from './TourManager/TourManager'
 export {default as TourFormPage} from './TourManager/TourFormPage'
 export {default as UserManager} from './UserManager/UserManager'
@@ -20,4 +18,4 @@ export {default as HotelCreatePage} from "./HotelManager/HotelCreatePage"
 export {default as HotelEditPage} from "./HotelManager/HotelUpdatePage"
 export {default as TypeLocationManager} from "./TypeLocationManager/TypeLocationaManager"
 export {default as AmenitiesManager} from "./AmenitiesManager/AmenitiesManager"
-export {default as TypeTourManager } from "./TypeLocationManager/TypeLocationaManager"
+export {default as TypeTourManager } from "./TypeTour/TypeTourManager"

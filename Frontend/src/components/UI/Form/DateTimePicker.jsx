@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Calendar, Clock } from "lucide-react";
 import {
     format,
@@ -39,25 +39,26 @@ const DateTimePicker = ({
         value instanceof Date && isValid(value) ? value : new Date()
     );
 
+
     useEffect(() => {
         if (value instanceof Date && isValid(value)) {
             setCurrentMonth(value);
         }
     }, [value]);
 
-    // Scroll đến giờ hiện tại khi mở picker
+
     useEffect(() => {
         if (isOpen && timeListRef.current) {
-            const now = new Date();
-            const currentHour = now.getHours();
-            const currentMinute = Math.floor(now.getMinutes() / 15) * 15;
+            const activeDate = value instanceof Date && isValid(value) ? value : new Date();
+            const currentHour = activeDate.getHours();
+            const currentMinute = Math.floor(activeDate.getMinutes() / 15) * 15;
             const index = currentHour * 4 + currentMinute / 15;
-            const itemHeight = 34;
+            const itemHeight = 34; 
             timeListRef.current.scrollTop = index * itemHeight;
         }
-    }, [isOpen]);
+    }, [isOpen, value]);
 
-    // Click ngoài đóng — chỉ gọi onBlur khi đang mở
+
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (
@@ -87,14 +88,12 @@ const DateTimePicker = ({
         const baseDate = value instanceof Date && isValid(value) ? value : new Date();
         const updatedDate = setMinutes(setHours(date, baseDate.getHours()), baseDate.getMinutes());
         onChange?.(updatedDate);
-        setIsOpen(false);
     };
 
     const handleTimeClick = (hours, minutes) => {
         const baseDate = value instanceof Date && isValid(value) ? value : new Date();
         const updatedDate = setMinutes(setHours(baseDate, hours), minutes);
         onChange?.(updatedDate);
-        setIsOpen(false);
     };
 
     const daysInMonth = eachDayOfInterval({
@@ -102,9 +101,10 @@ const DateTimePicker = ({
         end: endOfMonth(currentMonth),
     });
 
+
     const times = [];
     for (let h = 0; h < 24; h++) {
-        for (let m = 0; m < 60; m += 15) {
+        for (let m = 0; m < 60; m += 5) {
             times.push({
                 hours: h,
                 minutes: m,
@@ -130,7 +130,20 @@ const DateTimePicker = ({
                             ? format(value, "dd/MM/yyyy HH:mm")
                             : ""
                     }
-                    onClick={() => !disabled && setIsOpen((prev) => !prev)}
+                    onClick={() => {
+                        if (!disabled) {
+                            if (!value) {
+                                const today = new Date();
+                                let defaultDate = minDate && today < startOfDay(minDate) ? minDate : today;
+                                const currentMinutes = defaultDate.getMinutes();
+                                const roundedMinutes = Math.floor(currentMinutes / 15) * 15;
+                                defaultDate = setMinutes(defaultDate, roundedMinutes);
+
+                                onChange?.(defaultDate);
+                            }
+                            setIsOpen((prev) => !prev);
+                        }
+                    }}
                     className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition-all cursor-pointer
                         ${error
                             ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-100"
@@ -142,9 +155,8 @@ const DateTimePicker = ({
             </div>
 
             {isOpen && (
-                <div className="absolute top-full left-0 mt-2 z-[10000] flex gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
-                    {/* CALENDAR */}
-                    <div className="w-64">
+                <div className="absolute top-full left-0 mt-2 z-[10000] flex w-full min-w-[320px] gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex-1">
                         <div className="mb-3 flex items-center justify-between">
                             <button
                                 type="button"
@@ -153,7 +165,7 @@ const DateTimePicker = ({
                                 className={`p-1 rounded-lg ${canGoPreviousMonth
                                     ? "hover:bg-slate-100 text-slate-600"
                                     : "text-slate-300 cursor-not-allowed"
-                                    }`}
+                                }`}
                             >
                                 ‹
                             </button>
@@ -171,7 +183,7 @@ const DateTimePicker = ({
 
                         <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-slate-400">
                             {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
-                                <div key={d}>{d}</div>
+                                <div key={d} className="py-1">{d}</div>
                             ))}
                         </div>
 
@@ -179,7 +191,7 @@ const DateTimePicker = ({
                             {Array.from({
                                 length: (startOfMonth(currentMonth).getDay() + 6) % 7,
                             }).map((_, i) => (
-                                <div key={i} />
+                                <div key={i} className="aspect-square" />
                             ))}
 
                             {daysInMonth.map((date, idx) => {
@@ -195,7 +207,7 @@ const DateTimePicker = ({
                                         type="button"
                                         disabled={disabled}
                                         onClick={() => handleDateClick(date)}
-                                        className={`h-8 w-8 rounded-lg text-xs font-medium flex items-center justify-center transition-all
+                                        className={`w-full aspect-square rounded-lg text-xs font-medium flex items-center justify-center transition-all
                                             ${isSelected
                                                 ? "bg-sky-500 text-white font-bold shadow-md"
                                                 : disabled
@@ -210,15 +222,15 @@ const DateTimePicker = ({
                         </div>
                     </div>
 
-                    <div className="w-px bg-slate-100" />
+                    <div className="w-px bg-slate-100 self-stretch" />
 
-                    {/* TIME */}
-                    <div className="w-24 flex flex-col">
+
+                    <div className="w-20 shrink-0 flex flex-col">
                         <div className="mb-2 flex items-center justify-center gap-1 border-b border-slate-100 pb-2 text-xs font-bold text-slate-700">
                             <Clock size={12} />
                             Giờ
                         </div>
-                        <div ref={timeListRef} className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                        <div ref={timeListRef} className="max-h-[220px] overflow-y-auto space-y-1 pr-1 scrollbar-thin">
                             {times.map((t) => {
                                 const isSelected =
                                     value instanceof Date &&
@@ -231,7 +243,7 @@ const DateTimePicker = ({
                                         key={t.label}
                                         type="button"
                                         onClick={() => handleTimeClick(t.hours, t.minutes)}
-                                        className={`w-full rounded-lg px-3 py-1.5 text-left text-xs font-medium transition-all
+                                        className={`w-full rounded-lg py-1.5 text-center text-xs font-medium transition-all
                                             ${isSelected
                                                 ? "bg-sky-500 text-white font-bold"
                                                 : "text-slate-600 hover:bg-slate-100"

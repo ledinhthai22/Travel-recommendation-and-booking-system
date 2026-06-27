@@ -1,3 +1,4 @@
+// Services/UserService.js
 import axiosClient from "./axiosClient";
 
 export const getUserApi = async (
@@ -6,13 +7,13 @@ export const getUserApi = async (
     keyword='',
     status=null
 ) =>{
-    const reponse =await axiosClient.get(
+    const response = await axiosClient.get(
         "/admin/User/get-user",
         {
             params:{pageNumber,pageSize,keyword:keyword||undefined, status:status ??undefined}
         }
     );
-    return reponse.data;
+    return response.data;
 };
 
 export const getUserDetailApi = async (id) => {
@@ -45,5 +46,21 @@ export const lockUserApi = async (id) => {
 
 export const unlockUserApi = async (id) => {
     const response = await axiosClient.patch(`/admin/User/${id}/unlock`);
+    return response.data;
+};
+
+export const getUsersForBookingSelectApi = async (
+    keyword = '',
+    status = 1
+) => {
+    const response = await axiosClient.get(
+        "/admin/User/booking-select",
+        {
+            params: {
+                keyword: keyword || undefined,
+                status: status ?? undefined
+            }
+        }
+    );
     return response.data;
 };

@@ -305,11 +305,11 @@ namespace travel_recommendation_and_booking_system.Services
                 }
 
                 await transaction.CommitAsync();
-
+                var currentAccount = _currentUserService.GetUserId() == 1? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
 
                 await _logService.LoggingAsync(new LogDTO
                 {
-                    LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                    LoaiTaiKhoan = currentAccount,
                     Email = _currentUserService.GetEmail(),
                     MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                     TenHanhDong = ActionLogDTO.Tao,
@@ -426,11 +426,11 @@ namespace travel_recommendation_and_booking_system.Services
 
                 if (oldImagePath != null)
                     DeletePhysicalImage(oldImagePath);
-
+                var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
 
                 await _logService.LoggingAsync(new LogDTO
                 {
-                    LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                    LoaiTaiKhoan = currentAccount,
                     Email = _currentUserService.GetEmail(),
                     MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                     TenHanhDong = ActionLogDTO.CapNhat,
@@ -503,10 +503,10 @@ namespace travel_recommendation_and_booking_system.Services
 
             entity.NgayXoa = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                 TenHanhDong = ActionLogDTO.Xoa,
@@ -536,10 +536,10 @@ namespace travel_recommendation_and_booking_system.Services
             staff.NgayCapNhat = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             var maTaiKhoan = _currentUserService.GetUserId() ?? 0;
-            Console.WriteLine(maTaiKhoan);
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
                 MaTaiKhoan = maTaiKhoan,
                 TenHanhDong = ActionLogDTO.CapNhatTrangThai,
@@ -569,10 +569,10 @@ namespace travel_recommendation_and_booking_system.Services
             staff.MatKhau = BCrypt.Net.BCrypt.HashPassword(newPassword);
             staff.NgayCapNhat = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                 TenHanhDong = "Đặt lại mật khẩu",

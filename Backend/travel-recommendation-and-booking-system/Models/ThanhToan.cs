@@ -8,20 +8,32 @@ namespace travel_recommendation_and_booking_system.Models
     {
         [Key]
         public int MaThanhToan { get; set; }
-        public int PhuongThucThanhToan { get; set; }
-        //1 = VNPay
-        //2 = Tiền mặt
-        //3 = Chuyển khoản
-        [ForeignKey("DonDatTour")]
+
+        [ForeignKey(nameof(DonDatTour))]
         public int MaDonDatTour { get; set; }
-        public string MaGiaoDich { get; set; }
-        public string NoiDung { get; set; }
+
+        public int PhuongThucThanhToan { get; set; }
+        // 1 = VNPay
+        // 2 = Tiền mặt
+        // 3 = Chuyển khoản
+
+        [MaxLength(100)]
+        public string? MaGiaoDich { get; set; }
+
+        [MaxLength(500)]
+        public string? NoiDung { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal TongTienThanhToan { get; set; }
+
         public DateTime NgayThanhToan { get; set; }
+
         public int TrangThaiThanhToan { get; set; }
         // 0 = Chờ thanh toán
-        //1 = Thành công
-        //2 = Thất bại
-        //3 = Hoàn tiền
-        public virtual DonDatTour DonDatTour { get; set; }
+        // 1 = Thành công
+        // 2 = Thất bại
+        // 3 = Hoàn tiền
+
+        public virtual DonDatTour DonDatTour { get; set; } = null!;
     }
 }

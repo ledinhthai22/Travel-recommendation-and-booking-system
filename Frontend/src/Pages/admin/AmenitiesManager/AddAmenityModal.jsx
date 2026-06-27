@@ -19,7 +19,6 @@ export default function AddAmenityModal({ isOpen, onClose, onSuccess }) {
         }
         setLoading(true);
         try {
-            // Gửi Object đúng cấu trúc thuộc tính PascalCase của AmenitiesDTO
             await createAmenityApi({ 
                 TenTienIch: tenTienIch.trim() 
             });
@@ -59,14 +58,6 @@ export default function AddAmenityModal({ isOpen, onClose, onSuccess }) {
                     />
 
                     <div className="flex gap-3 pt-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 py-3 px-6 rounded-xl border border-slate-300 font-medium text-slate-700 hover:bg-slate-50"
-                            disabled={loading}
-                        >
-                            Hủy
-                        </button>
                         <button
                             type="submit"
                             disabled={loading}

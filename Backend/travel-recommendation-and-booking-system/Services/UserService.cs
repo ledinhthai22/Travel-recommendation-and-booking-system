@@ -69,9 +69,10 @@ namespace travel_recommendation_and_booking_system.Services
             };
             _context.NguoiDungs.Add(newUser);
             await _context.SaveChangesAsync();
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan =currentAccount,
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                 Email = _currentUserService.GetEmail(),
                 TenHanhDong = ActionLogDTO.Tao,
@@ -151,9 +152,10 @@ namespace travel_recommendation_and_booking_system.Services
 
             _context.NguoiDungs.Update(user);
             await _context.SaveChangesAsync();
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
 
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                 Email = _currentUserService.GetEmail(),
@@ -262,9 +264,10 @@ namespace travel_recommendation_and_booking_system.Services
 
                 _context.NguoiDungs.Update(user);
                 await _context.SaveChangesAsync();
+                var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
                 await _logService.LoggingAsync(new LogDTO
                 {
-                    LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                    LoaiTaiKhoan = currentAccount,
 
                     MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                     Email = _currentUserService.GetEmail(),
@@ -303,9 +306,10 @@ namespace travel_recommendation_and_booking_system.Services
 
                 _context.NguoiDungs.Update(user);
                 await _context.SaveChangesAsync();
+                var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
                 await _logService.LoggingAsync(new LogDTO
                 {
-                    LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                    LoaiTaiKhoan = currentAccount,
                     Email = _currentUserService.GetEmail(),
                     MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
 
@@ -332,6 +336,38 @@ namespace travel_recommendation_and_booking_system.Services
                 Console.WriteLine($"Lỗi khi mở khóa người dùng: {ex.Message}");
                 return false;
             }
+        }
+        public async Task<List<UserResponseDTO>> GetUsersForSelectAsync(string? keyword, int? status)
+        {
+            var query = _context.NguoiDungs
+                .Where(n => n.NgayXoa == null && n.MaVaiTro == 4 && n.TrangThai == 1) // Chỉ lấy user (không phải admin)
+                .AsQueryable();
+
+            // Lọc theo từ khóa
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                var lowerKey = keyword.ToLower();
+                query = query.Where(n => n.HoTen.ToLower().Contains(lowerKey)
+                                      || n.Email.ToLower().Contains(lowerKey)
+                                      || n.SoDienThoai.Contains(keyword));
+            }
+
+            // Lọc theo trạng thái
+            if (status.HasValue)
+            {
+                query = query.Where(n => n.TrangThai == status.Value);
+            }
+
+            var users = await query
+                .OrderBy(n => n.HoTen)
+                .Select(n => new UserResponseDTO
+                {
+                    MaNguoiDung = n.MaNguoiDung,
+                    HoTen = n.HoTen
+                })
+                .ToListAsync();
+
+            return users;
         }
     }
 }

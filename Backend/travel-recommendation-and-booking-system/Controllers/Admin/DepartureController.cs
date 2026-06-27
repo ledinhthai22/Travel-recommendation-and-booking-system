@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Services;
 using travel_recommendation_and_booking_system.DTOs.Departure;
 using travel_recommendation_and_booking_system.Interfaces;
 
@@ -77,6 +78,28 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         {
             var result = await _service.DeleteDepartureAsync(maChuyen);
             return result ? Ok(new { message = "Xóa thành công!" }) : NotFound();
+        }
+        [HttpGet("booking-select")]
+        public async Task<IActionResult> GetDeparturesForBookingSelect( [FromQuery] int? tourId = null, [FromQuery] string? keyword = null)
+        {
+            try
+            {
+                var departures = await _service.GetDeparturesForSelectAsync(tourId, keyword);
+                return Ok(new
+                {
+                    success = true,
+                    data = departures
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Lỗi khi lấy danh sách chuyến khởi hành",
+                    error = ex.Message
+                });
+            }
         }
     }
 }

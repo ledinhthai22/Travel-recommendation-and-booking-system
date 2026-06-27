@@ -418,6 +418,7 @@ namespace travel_recommendation_and_booking_system.Services
                             GioDenNoiDi = c.GioDenNoiDi,
                             GioDenNoiVe = c.GioDenNoiVe,
                             SoChoToiDa = c.SoChoToiDa,
+                            SoChoDaDat = c.SoChoDaDat,
                             TrangThai = c.TrangThai,
                             GhiChu = c.GhiChu
                         },
@@ -436,6 +437,7 @@ namespace travel_recommendation_and_booking_system.Services
         //xem chi tiết bằng Slug cho client
         public async Task<TourReponseDTO?> GetTourDetailBySlugAsync(string slug)
         {
+            var now = DateTime.Now;
             var tour = await _context.Tours
                 .Include(t => t.Tour_KhachSans).ThenInclude(tk => tk.KhachSan)
                 .Include(t => t.LichTrinhs).ThenInclude(l => l.CTLichTrinhs).ThenInclude(d => d.DiaDiem)
@@ -513,6 +515,8 @@ namespace travel_recommendation_and_booking_system.Services
                     }).ToList() ?? new List<ScheduleReponseDTO>(),
 
                 ChuyenKhoiHanhs = tour.ChuyenKhoiHanhs?
+                    .Where(c => c.NgayXoa == null && c.NgayKhoiHanh >= now && c.TrangThai != 3 && c.TrangThai != 4)
+                    .OrderBy(c => c.NgayKhoiHanh)
                     .Select(c => new DepartureFullDTO
                     {
                         ChuyenKhoiHanh = new DepartureDTO
@@ -530,6 +534,7 @@ namespace travel_recommendation_and_booking_system.Services
                             GioDenNoiDi = c.GioDenNoiDi,
                             GioDenNoiVe = c.GioDenNoiVe,
                             SoChoToiDa = c.SoChoToiDa,
+                            SoChoDaDat = c.SoChoDaDat,
                             TrangThai = c.TrangThai,
                             GhiChu = c.GhiChu
                         },
@@ -708,6 +713,44 @@ namespace travel_recommendation_and_booking_system.Services
                 PageNumber = page,
                 PageSize = pageSize
             };
+        }
+        public async Task<List<TourSelectDTO>> GetToursForSelectAsync(string? keyword = null, int? status = null)
+        {
+            var query = _context.Tours
+                .Where(t => t.NgayXoa == null)
+                .AsQueryable();
+
+            // Lọc theo từ khóa
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                var lowerKey = keyword.ToLower();
+                query = query.Where(t =>
+                    t.TenTour.ToLower().Contains(lowerKey) 
+                );
+            }
+
+            // Lọc theo trạng thái
+            if (status.HasValue)
+            {
+                query = query.Where(t => t.TrangThai == status.Value);
+            }
+            else
+            {
+                // Mặc định chỉ lấy tour đang hoạt động
+                query = query.Where(t => t.TrangThai == 1);
+            }
+
+            var tours = await query
+                .OrderBy(t => t.TenTour)
+                .Select(t => new TourSelectDTO
+                {
+                    MaTour = t.MaTour,
+                    TenTour = t.TenTour,
+                    TrongNuoc = t.TrongNuoc,
+                })
+                .ToListAsync();
+
+            return tours;
         }
 
         public async Task<bool> SetMainImageAsync(int imageId)

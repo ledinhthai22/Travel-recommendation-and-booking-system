@@ -127,10 +127,12 @@ namespace travel_recommendation_and_booking_system.Services
             contact.NgayXoa = DateTime.Now;
             _context.LienHes.Update(contact);
             await _context.SaveChangesAsync();
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
+                LoaiTaiKhoan = currentAccount,
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                Email = _currentUserService.GetEmail(),
                 TenHanhDong = ActionLogDTO.Xoa,
                 TenBangTacDong = "LienHe",
                 MaDoiTuong = contact.MaLienHe,

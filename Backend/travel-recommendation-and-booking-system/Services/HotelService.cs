@@ -237,13 +237,6 @@ namespace travel_recommendation_and_booking_system.Services
         {
             var entity = await _context.KhachSans
                 .FirstOrDefaultAsync(x => x.MaKhachSan == id && x.NgayXoa == null);
-            bool isUsed = await _context.DonDatTours.AnyAsync(x => x.MaKhachSan == id && x.TrangThaiDon != 4);
-
-            if (isUsed)
-            {
-                throw new Exception(
-                    "Khách sạn đang được sử dụng trong đơn đặt tour");
-            }
             if (entity == null)
             {
                 throw new Exception("Không tìm thấy khách sạn");

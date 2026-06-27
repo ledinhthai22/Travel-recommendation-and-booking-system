@@ -131,22 +131,18 @@ export default function TourItinerariesTable({
             cell: (row) => (
                 <RowActionsButton
                     row={row}
-                    onView={isViewMode ? () => onEdit(row) : null}
+                    onView={isViewMode || isLocked ? () => onEdit(row) : null}
                     onEdit={
                         !isViewMode && !isLocked
                             ? () => onEdit(row)
                             : null
                     }
                     onDelete={
-                        !isViewMode &&
-                            !isLocked &&
-                            safeData.length > 1
+                        !isViewMode && !isLocked && safeData.length > 1
                             ? () => onDelete(row)
                             : null
                     }
-                    showDelete={
-                        !isViewMode && safeData.length > 1
-                    }
+                    showDelete={!isViewMode && !isLocked && safeData.length > 1}
                 />
             ),
             width: "125px",

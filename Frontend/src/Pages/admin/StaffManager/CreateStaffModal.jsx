@@ -3,6 +3,7 @@ import { X, Upload } from "lucide-react";
 
 import InputField from "~/components/UI/Form/InputField";
 import Dropdown from "~/components/Common/Dropdown";
+import DatePicker from "~/components/UI/Form/DatePicker"; 
 
 import { createStaffApi } from "~/Services/StaffService";
 import { toastSuccess, toastError } from "~/utils/Toast";
@@ -13,7 +14,6 @@ export default function CreateStaffModal({
     onClose,
     onSuccess
 }) {
-
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
     const [previewImage, setPreviewImage] = useState(null);
@@ -27,7 +27,7 @@ export default function CreateStaffModal({
         duongDanAnh: null,
         diaChi: "",
         cccd: "",
-        ngaySinh: "",
+        ngaySinh: "", 
         trangThai: 2,
         maVaiTro: 2
     });
@@ -47,9 +47,9 @@ export default function CreateStaffModal({
             }));
         }
     };
+
     const handleImageChange = (e) => {
         const file = e.target.files[0];
-
         if (!file) return;
 
         if (file.size > 2 * 1024 * 1024) {
@@ -61,60 +61,44 @@ export default function CreateStaffModal({
             ...prev,
             duongDanAnh: file
         }));
-
         setPreviewImage(URL.createObjectURL(file));
     };
 
     const validate = () => {
         const newErrors = {};
 
-        if (!form.hoTen.trim())
-            newErrors.hoTen = "Vui lòng nhập họ tên";
-
-        if (!form.email.trim())
-            newErrors.email = "Vui lòng nhập email";
+        if (!form.hoTen.trim()) newErrors.hoTen = "Vui lòng nhập họ tên";
+        if (!form.email.trim()) newErrors.email = "Vui lòng nhập email";
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
         if (form.email && !emailRegex.test(form.email))
             newErrors.email = "Email không hợp lệ";
 
-        if (!form.matkhau.trim())
-            newErrors.matkhau = "Vui lòng nhập mật khẩu";
+        if (!form.matkhau.trim()) newErrors.matkhau = "Vui lòng nhập mật khẩu";
         else if (form.matkhau.length < 8)
             newErrors.matkhau = "Mật khẩu tối thiểu 8 ký tự";
 
-        if (!form.cccd.trim())
-            newErrors.cccd = "Vui lòng nhập CCCD";
+        if (!form.cccd.trim()) newErrors.cccd = "Vui lòng nhập CCCD";
 
         const cccdRegex = /^\d{12}$/;
-
         if (form.cccd && !cccdRegex.test(form.cccd))
             newErrors.cccd = "CCCD phải gồm 12 số";
 
         const phoneRegex = /^0\d{9}$/;
-
         if (!phoneRegex.test(form.soDienThoai))
             newErrors.soDienThoai = "Số điện thoại không hợp lệ";
 
-        if (!form.ngaySinh)
-            newErrors.ngaySinh = "Vui lòng chọn ngày sinh";
-
-        if (!form.diaChi.trim())
-            newErrors.diaChi = "Vui lòng nhập địa chỉ";
+        if (!form.ngaySinh) newErrors.ngaySinh = "Vui lòng chọn ngày sinh";
+        if (!form.diaChi.trim()) newErrors.diaChi = "Vui lòng nhập địa chỉ";
 
         setErrors(newErrors);
-
         return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async () => {
-
         if (!validate()) return;
         try {
-
             setLoading(true);
-
             const formData = new FormData();
 
             formData.append("HoTen", form.hoTen);
@@ -123,195 +107,100 @@ export default function CreateStaffModal({
             formData.append("SoDienThoai", form.soDienThoai);
             formData.append("GioiTinh", form.gioiTinh);
             formData.append("DiaChi", form.diaChi);
-            formData.append("Cccd", form.cccd)
+            formData.append("Cccd", form.cccd);
             formData.append("NgaySinh", form.ngaySinh);
             formData.append("TrangThai", form.trangThai);
             formData.append("MaVaiTro", form.maVaiTro);
 
             if (form.duongDanAnh) {
-                formData.append(
-                    "DuongDanAnh",
-                    form.duongDanAnh
-                );
+                formData.append("DuongDanAnh", form.duongDanAnh);
             }
 
             await createStaffApi(formData);
-
-            toastSuccess(
-                "Thêm nhân viên thành công"
-            );
-
+            toastSuccess("Thêm nhân viên thành công");
             onSuccess?.();
             onClose();
-
         } catch (error) {
-
-            toastError(
-                getErrorMessage(error)
-            );
-
+            toastError(getErrorMessage(error));
         } finally {
-
             setLoading(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-999 flex items-center justify-center">
-
+        <div className="fixed inset-0 bg-black/50 z-[999] flex items-center justify-center">
             <div className="bg-white rounded-3xl w-full max-w-4xl p-6">
-
                 <div className="flex justify-between items-center mb-8">
-                    <h2 className="text-2xl font-bold">
-                        Thêm nhân viên
-                    </h2>
-
+                    <h2 className="text-2xl font-bold">Thêm nhân viên</h2>
                     <button onClick={onClose}>
                         <X size={22} />
                     </button>
                 </div>
 
                 <div className="flex gap-6 mb-6">
-
                     <div className="w-40 h-40 shrink-0">
-
-                        <label
-                            className="
-                            border-2 border-dashed
-                            border-slate-300
-                            rounded-2xl
-                            h-full w-full
-                            flex flex-col
-                            items-center
-                            justify-center
-                            cursor-pointer
-                            overflow-hidden
-                        "
-                        >
-
+                        <label className="border-2 border-dashed border-slate-300 rounded-2xl h-full w-full flex flex-col items-center justify-center cursor-pointer overflow-hidden">
                             {previewImage ? (
-                                <img
-                                    src={previewImage}
-                                    alt=""
-                                    className="
-                                    w-full
-                                    h-full
-                                    object-cover
-                                "
-                                />
+                                <img src={previewImage} alt="" className="w-full h-full object-cover" />
                             ) : (
                                 <>
                                     <Upload size={28} />
-                                    <span className="text-xs text-center">
-                                        Upload ảnh
-                                    </span>
+                                    <span className="text-xs text-center">Upload ảnh</span>
                                 </>
                             )}
-
-                            <input
-                                hidden
-                                type="file"
-                                accept="image/*"
-                                onChange={handleImageChange}
-                            />
+                            <input hidden type="file" accept="image/*" onChange={handleImageChange} />
                         </label>
-
                     </div>
 
                     <div className="flex-1">
                         <InputField
                             label="Họ tên"
                             value={form.hoTen}
-                            onChange={(e) =>
-                                handleChange("hoTen", e.target.value)
-                            }
+                            onChange={(e) => handleChange("hoTen", e.target.value)}
                             error={errors.hoTen}
                         />
                         <div className="mt-5">
                             <InputField
                                 label="Email"
                                 value={form.email}
-                                onChange={(e) =>
-                                    handleChange("email", e.target.value)
-                                }
+                                onChange={(e) => handleChange("email", e.target.value)}
                                 error={errors.email}
                             />
                         </div>
-
-
                     </div>
-
                 </div>
 
                 <div className="grid grid-cols-2 gap-5">
-
                     <InputField
                         label="CCCD"
                         value={form.cccd}
-                        onChange={(e) =>
-                            handleChange("cccd", e.target.value)
-                        }
+                        onChange={(e) => handleChange("cccd", e.target.value)}
                         error={errors.cccd}
                     />
+                    <DatePicker
+                        label="Ngày sinh"
+                        placeholderText="Chọn ngày sinh..."
+                        value={form.ngaySinh}
+                        onChange={(formattedDate) => handleChange("ngaySinh", formattedDate)}
+                        maxDate={new Date()} 
+                        error={errors.ngaySinh}
+                    />
+
                     <InputField
                         label="Số điện thoại"
                         value={form.soDienThoai}
-                        onChange={(e) =>
-                            handleChange("soDienThoai", e.target.value)
-                        }
+                        onChange={(e) => handleChange("soDienThoai", e.target.value)}
                         error={errors.soDienThoai}
                     />
-
                     <InputField
                         label="Mật khẩu"
                         type="password"
                         value={form.matkhau}
-                        onChange={(e) =>
-                            handleChange("matkhau", e.target.value)
-                        }
+                        onChange={(e) => handleChange("matkhau", e.target.value)}
                         error={errors.matkhau}
                     />
 
-                    <InputField
-                        label="Ngày sinh"
-                        type="date"
-                        value={form.ngaySinh}
-                        onChange={(e) =>
-                            handleChange("ngaySinh", e.target.value)
-                        }
-                        error={errors.ngaySinh}
-                    />
-                    <InputField
-                        label="Địa chỉ"
-                        value={form.diaChi}
-                        onChange={(e) =>
-                            handleChange("diaChi", e.target.value)
-                        }
-                        error={errors.diaChi}
-                    />
 
-                    <Dropdown
-                        label="Giới tính"
-                        placeholder="Giới tính"
-                        value={form.gioiTinh}
-                        onChange={(value) =>
-                            handleChange(
-                                "gioiTinh",
-                                value
-                            )
-                        }
-                        options={[
-                            {
-                                value: true,
-                                label: "Nam"
-                            },
-                            {
-                                value: false,
-                                label: "Nữ"
-                            }
-                        ]}
-                        error={errors.gioiTinh}
-                    />
 
                     <Dropdown
                         label="Chức danh"
@@ -323,46 +212,42 @@ export default function CreateStaffModal({
                             { value: "3", label: "Hướng dẫn viên" }
                         ]}
                     />
+                    <Dropdown
+                        label="Giới tính"
+                        placeholder="Giới tính"
+                        value={form.gioiTinh}
+                        onChange={(value) => handleChange("gioiTinh", value)}
+                        options={[
+                            { value: true, label: "Nam" },
+                            { value: false, label: "Nữ" }
+                        ]}
+                        error={errors.gioiTinh}
+                    />
 
 
-
-
+                </div>
+                <div className="mt-2">
+                    <InputField
+                        label="Địa chỉ"
+                        value={form.diaChi}
+                        onChange={(e) => handleChange("diaChi", e.target.value)}
+                        error={errors.diaChi}
+                    />
                 </div>
 
                 <div className="flex justify-end gap-3 mt-8">
-
-                    <button
-                        onClick={onClose}
-                        className="
-                        px-6 py-2
-                        rounded-xl
-                        bg-slate-100
-                    "
-                    >
+                    <button onClick={onClose} className="px-6 py-2 rounded-xl bg-slate-100">
                         Hủy
                     </button>
-
                     <button
                         onClick={handleSubmit}
                         disabled={loading}
-                        className="
-                        px-6 py-2
-                        rounded-xl
-                        bg-sky-500
-                        text-white
-                    "
+                        className="px-6 py-2 rounded-xl bg-sky-500 text-white"
                     >
-                        {loading
-                            ? "Đang lưu..."
-                            : "Lưu"}
+                        {loading ? "Đang lưu..." : "Lưu"}
                     </button>
-
                 </div>
-
             </div>
-
         </div>
     );
-
-
 }
