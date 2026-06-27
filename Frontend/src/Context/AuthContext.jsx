@@ -1,16 +1,37 @@
 import { createContext, useCallback, useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
 import {
     logoutApi,
-    getMeApi
+    getMeApi,
+    getStaffMeApi 
 } from "~/Services/AuthService";
 
 export const AuthContext = createContext();
+
+const decodeToken = (token) => {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+
+        const jsonPayload = decodeURIComponent(
+            atob(base64)
+                .split('')
+                .map(function (c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                })
+                .join('')
+        );
+
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        return null;
+    }
+};
 
 export default function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showLoginModal, setShowLoginModal] = useState(false);
+    const [isStaff, setIsStaff] = useState(false);
 
     useEffect(() => {
         loadCurrentUser();
@@ -25,33 +46,60 @@ export default function AuthProvider({ children }) {
                 return;
             }
 
-            const profile = await getMeApi();
+            const decoded = decodeToken(token);
+            const accountTypeFromToken = decoded?.account_type;
+
+            let profile = null;
+
+            if (accountTypeFromToken === "NhanVien") {
+                setIsStaff(true);
+                profile = await getStaffMeApi();
+            } else {
+                setIsStaff(false);
+                profile = await getMeApi();
+            }
 
             setUser(profile);
+
             localStorage.setItem(
                 "user",
                 JSON.stringify(profile)
             );
+
+            localStorage.setItem(
+                "account_type",
+                accountTypeFromToken || "KhachHang"
+            );
+
         } catch (error) {
-            const status = error?.response?.status;
-
-            if (status === 401 || status === 403) {
-                localStorage.removeItem("token");
-                localStorage.removeItem("user");
-                localStorage.removeItem("refreshToken");
-            }
-
-            setUser(null);
+            console.error("Lỗi tự động đăng nhập:", error);
+            handleForceLogout();
         } finally {
             setLoading(false);
         }
     };
 
-    const login = async (res) => {
+    const login = async (res, isStaffLogin = false) => {
         localStorage.setItem("token", res.token);
         localStorage.setItem("refreshToken", res.refreshToken);
 
-        const profile = await getMeApi();
+        const decoded = decodeToken(res.token);
+
+        const actualType =
+            decoded?.account_type ||
+            (isStaffLogin ? "NhanVien" : "KhachHang");
+
+        localStorage.setItem("account_type", actualType);
+
+        setIsStaff(actualType === "NhanVien");
+
+        let profile = null;
+
+        if (actualType === "NhanVien") {
+            profile = await getStaffMeApi();
+        } else {
+            profile = await getMeApi();
+        }
 
         localStorage.setItem(
             "user",
@@ -63,15 +111,20 @@ export default function AuthProvider({ children }) {
         return profile;
     };
 
-    const logout = useCallback(async () => {
-        const refreshToken =
-            localStorage.getItem("refreshToken");
-
+    const handleForceLogout = () => {
         localStorage.removeItem("token");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("user");
+        localStorage.removeItem("account_type");
 
         setUser(null);
+        setIsStaff(false);
+    };
+
+    const logout = useCallback(async () => {
+        const refreshToken = localStorage.getItem("refreshToken");
+
+        handleForceLogout();
 
         try {
             if (refreshToken) {
@@ -98,7 +151,8 @@ export default function AuthProvider({ children }) {
                 isAuthenticated: !!user,
                 refreshUser,
                 showLoginModal,
-                setShowLoginModal
+                setShowLoginModal,
+                isStaff
             }}
         >
             {children}

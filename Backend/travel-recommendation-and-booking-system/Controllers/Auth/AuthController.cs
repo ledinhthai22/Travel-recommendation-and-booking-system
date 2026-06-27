@@ -12,11 +12,13 @@ namespace Controllers.Auth
     {
         private readonly IAuthService _authService;
         private readonly IUserService _userService;
+        private readonly IStaffService _staffService;
 
-        public AuthController(IAuthService authService, IUserService userService)
+        public AuthController(IAuthService authService, IUserService userService, IStaffService staffService)
         {
             _authService = authService;
             _userService = userService;
+            _staffService = staffService;
         }
 
         [HttpPost("register")]
@@ -187,6 +189,36 @@ namespace Controllers.Auth
             {
                 return StatusCode(500, new { message = "Lỗi hệ thống: " + ex.Message });
             }
+        }
+        [Authorize]
+        [HttpGet("staff-me")]
+        public async Task<IActionResult> GetStaffMe()
+        {
+
+            var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(staffIdClaim))
+            {
+                return Unauthorized(new { message = "Không tìm thấy thông tin định danh nhân viên." });
+            }
+
+            var accountType = User.FindFirst("account_type")?.Value;
+            if (accountType != "NhanVien")
+            {
+                return Forbid("Tài khoản của bạn không có quyền truy cập thông tin nhân viên.");
+            }
+
+            int maNhanVien = int.Parse(staffIdClaim);
+
+
+            var staffProfile = await _staffService.GetStaffMeAsync(maNhanVien);
+
+            if (staffProfile == null)
+            {
+                return NotFound(new { message = "Tài khoản Admin/Nhân viên không tồn tại hoặc đã bị xóa." });
+            }
+
+
+            return Ok(staffProfile);
         }
     }
 }

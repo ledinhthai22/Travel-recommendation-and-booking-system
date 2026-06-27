@@ -1,4 +1,3 @@
-
 using Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +6,8 @@ using Newtonsoft.Json;
 using System.Security.Claims;
 using System.Text.Json;
 using travel_recommendation_and_booking_system.Constants;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs.Departure;
 using travel_recommendation_and_booking_system.DTOs.Schedule;
 using travel_recommendation_and_booking_system.DTOs.Tour;
@@ -206,6 +207,36 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             {
                 return StatusCode(500, $"Lỗi hệ thống: {ex.Message}");
             }
+        }
+        [HttpGet("detail/{slug}")]
+        public async Task<IActionResult> GetTourDetailBySlug(string slug)
+        {
+            if (string.IsNullOrWhiteSpace(slug))
+            {
+                return BadRequest(new { message = "Slug không được để trống." });
+            }
+
+            var tourDetail = await _tour.GetTourDetailBySlugAsync(slug);
+
+            if (tourDetail == null)
+            {
+                return NotFound(new { message = "Không tìm thấy thông tin tour yêu cầu." });
+            }
+
+            return Ok(tourDetail);
+        }
+        [HttpGet("dia-diem/{slug}")]
+        public async Task<IActionResult> GetToursByLocationSlug(string slug)
+        {
+            if (string.IsNullOrWhiteSpace(slug))
+            {
+                return BadRequest(new { message = "Slug địa điểm không được để trống." });
+            }
+
+            var tours = await _tour.GetToursByLocationSlugAsync(slug);
+
+
+            return Ok(tours);
         }
 
         [HttpDelete("{id}")]

@@ -92,7 +92,6 @@ export const deleteTourImageApi = async (imageId) => {
     return response.data;
 };
 
-
 //tour yêu thích
 
 export const getWishlistApi = async (pageNumber = 1, pageSize = 10) => {
@@ -112,4 +111,20 @@ export const deleteWishlistApi = async (tourIds) => {
 
 export const addToWishlistApi = async (tourId) => {
     return await axiosClient.post(`/customer/Tour/wishlist/${tourId}`);
+}
+    
+export const getTourBySlugApi = async (slug) => {
+    const response = await axiosClient.get(
+        `/PublicTour/slug/${slug}`
+    );
+
+    return response.data;
+};
+
+export const getToursByLocationSlugApi = async (locationSlug) => {
+    const response = await axiosClient.get(
+        `/PublicTour/location/${locationSlug}`
+    );
+
+    return response.data;
 };

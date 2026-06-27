@@ -27,7 +27,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
             _destination = destination;
         }
 
-        //Địa Điểm nổi bật (Đánh giá + số lượng tour)
+        //Địa Điểm nổi bật (số lượng tour)
         [HttpGet("get-top-destinations")]
         public async Task<IActionResult> GetTopDestinations()
         {

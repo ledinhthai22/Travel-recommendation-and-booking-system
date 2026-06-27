@@ -9,6 +9,6 @@
         public string MoTa { get; set; }
         public bool TrangThai { get; set; }
 
-        public List<int>? MaTienNghi { get; set; }
+        public List<int>? MaTienIch { get; set; }
     }
 }

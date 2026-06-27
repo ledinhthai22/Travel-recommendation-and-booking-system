@@ -13,7 +13,8 @@ namespace travel_recommendation_and_booking_system.DTOs.Departure
 
         [Required(ErrorMessage = "Vui lòng chọn Phương tiện.")]
         public int MaPhuongTien { get; set; }
-
+        public string TenPhuongTien { get; set; }
+        public string Icon { get; set; }
         public string? MaChuyenCode { get; set; }
 
         [Required(ErrorMessage = "Điểm khời hành không được để trống.")]

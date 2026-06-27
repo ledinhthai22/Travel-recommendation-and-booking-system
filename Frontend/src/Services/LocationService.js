@@ -39,3 +39,9 @@ export const deleteLocationApi = async (id) => {
     const response = await axiosClient.delete(`/admin/Location/${id}`);
     return response.data;
 };
+export const getHomeLocationCardsApi = async (limit = 4) => {
+    const response = await axiosClient.get("/PublicLocation/cards", {
+        params: { limit }
+    });
+    return response.data;
+};

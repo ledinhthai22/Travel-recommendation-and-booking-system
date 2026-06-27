@@ -23,8 +23,6 @@ export default function UpdateUserProfileModal({
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState("");
     const [errors, setErrors] = useState({});
-    // const [confirmAction, setConfirmAction] = useState(null);//
-    // const [confirmOpen, setConfirmOpen] = useState(false);
 
     const [formData, setFormData] = useState({
         maNguoiDung: 0,

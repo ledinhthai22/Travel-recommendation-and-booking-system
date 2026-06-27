@@ -1,11 +1,15 @@
-﻿using System.Security.Claims;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 using DTOs.Auth;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using travel_recommendation_and_booking_system.Data;
+using travel_recommendation_and_booking_system.DTOs.Log;
+using travel_recommendation_and_booking_system.DTOs.LogSystem;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
-
 namespace travel_recommendation_and_booking_system.Services
 {
     public class AuthService : IAuthService
@@ -13,11 +17,16 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IEmailService _emailService;
-        public AuthService(AppDbContext context, IConfiguration configuration, IEmailService emailService)
+        private readonly ILogService _logService;
+        private readonly ICurrentUserService _currentUserService;
+
+
+        public AuthService(AppDbContext context, IConfiguration configuration, IEmailService emailService, ILogService logService)
         {
             _context = context;
             _configuration = configuration;
             _emailService = emailService;
+            _logService = logService;
         }
 
         public async Task<Dictionary<string, List<string>>?> RegisterAsync(RegisterDTO register)
@@ -64,7 +73,28 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 _context.NguoiDungs.Add(newNguoiDung);
                 await _context.SaveChangesAsync();
+                await _logService.LoggingAsync(new LogDTO
+                {
+                    LoaiTaiKhoan = "NguoiDung",
+
+                    MaTaiKhoan = newNguoiDung.MaNguoiDung,
+
+                    TenHanhDong = ActionLogDTO.DangKy,
+
+                    TenBangTacDong = "NguoiDung",
+
+                    MaDoiTuong = newNguoiDung.MaNguoiDung,
+
+                    GiaTriSau = new
+                    {
+                        newNguoiDung.HoTen,
+                        newNguoiDung.Email,
+                        newNguoiDung.SoDienThoai,
+                        newNguoiDung.GioiTinh,
+                    }
+                });
                 return null;
+
             }
             catch (Exception ex)
             {
@@ -75,59 +105,277 @@ namespace travel_recommendation_and_booking_system.Services
         public async Task<LoginResultDTO> LoginAsync(LoginDTO login, string? ipAddress)
         {
             var errors = new Dictionary<string, List<string>>();
-            var user = await _context.NguoiDungs.FirstOrDefaultAsync(u => u.Email == login.Email && u.NgayXoa == null);
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(login.MatKhau, user.MatKhau))
+            var user = await _context.NguoiDungs
+                .FirstOrDefaultAsync(u =>
+                    u.Email == login.Email &&
+                    u.NgayXoa == null);
+
+
+            if (user != null)
             {
-                errors["TaiKhoan"] = new List<string> { "Tài khoản hoặc mật khẩu không chính xác" };
-                return new LoginResultDTO { IsSuccess = false, Errors = errors };
+                if (!BCrypt.Net.BCrypt.Verify(login.MatKhau, user.MatKhau))
+                {
+                    errors["TaiKhoan"] = new List<string>
+                    {
+                        "Tài khoản hoặc mật khẩu không chính xác"
+                    };
+
+                    return new LoginResultDTO
+                    {
+                        IsSuccess = false,
+                        Errors = errors
+                    };
+                }
+
+
+                if (user.TrangThai == 0)
+                {
+                    errors["TaiKhoan"] = new List<string>
+                    {
+                        "Tài khoản đã bị khóa"
+                    };
+
+                    return new LoginResultDTO
+                    {
+                        IsSuccess = false,
+                        Errors = errors
+                    };
+                }
+
+
+                var accessToken = GenerateUserToken(user);
+
+                var refreshToken = GenerateRefreshToken();
+
+
+                var phienMoi = new PhienDangNhap
+                {
+                    MaNguoiDung = user.MaNguoiDung,
+                    RefreshToken = refreshToken,
+                    NgayHetHan = DateTime.Now.AddDays(7),
+                    DiaChiIp = ipAddress
+                };
+                try
+                {
+                    _context.PhienDangNhaps.Add(phienMoi);
+
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                    throw;
+                }
+
+
+                await _logService.LoggingAsync(new LogDTO
+                {
+                    LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
+
+                    MaTaiKhoan = user.MaNguoiDung,
+
+                    Email = user.Email,
+
+                    TenHanhDong = ActionLogDTO.DangNhap,
+
+                    TenBangTacDong = TableNameDTO.NguoiDung,
+
+                    MaDoiTuong = user.MaNguoiDung,
+
+                    GiaTriSau = new
+                    {
+                        user.Email,
+                        user.HoTen,
+                        user.MaVaiTro
+                    }
+                });
+
+
+
+                return new LoginResultDTO
+                {
+                    IsSuccess = true,
+
+                    Token = accessToken,
+
+                    RefreshToken = refreshToken,
+
+                    HoTen = user.HoTen,
+
+                    MaVaiTro = user.MaVaiTro
+                };
             }
 
-            if (user.TrangThai == 0 || user.TrangThai == 4)
+
+            var staff = await _context.NhanViens
+                .FirstOrDefaultAsync(n =>
+                    n.Email == login.Email &&
+                    n.NgayXoa == null);
+
+
+
+            if (staff != null)
             {
-                errors["TaiKhoan"] = new List<string> { "Tài khoản của bạn đã bị khóa hoặc vô hiệu hóa" };
-                return new LoginResultDTO { IsSuccess = false, Errors = errors };
+
+                if (!BCrypt.Net.BCrypt.Verify(login.MatKhau, staff.MatKhau))
+                {
+                    errors["TaiKhoan"] = new List<string>
+                    {
+                        "Tài khoản hoặc mật khẩu không chính xác"
+                    };
+
+                    return new LoginResultDTO
+                    {
+                        IsSuccess = false,
+                        Errors = errors
+                    };
+                }
+
+
+
+                if (staff.TrangThai == 0)
+                {
+                    errors["TaiKhoan"] = new List<string>
+                    {
+                        "Tài khoản nhân viên đã bị khóa"
+                    };
+
+                    return new LoginResultDTO
+                    {
+                        IsSuccess = false,
+                        Errors = errors
+                    };
+                }
+
+
+                var accessToken = GenerateStaffToken(staff);
+
+                var refreshToken = GenerateRefreshToken();
+
+                var phien = new PhienDangNhap
+                {
+                    MaNhanVien = staff.MaNhanVien,
+
+                    RefreshToken = refreshToken,
+
+                    NgayHetHan = DateTime.Now.AddDays(7),
+
+                    DiaChiIp = ipAddress
+                };
+
+                _context.PhienDangNhaps.Add(phien);
+                await _context.SaveChangesAsync();
+                await _logService.LoggingAsync(new LogDTO
+                {
+                    LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                    Email = staff.Email,
+                    MaTaiKhoan = staff.MaNhanVien,
+                    TenHanhDong = ActionLogDTO.DangNhap,
+                    TenBangTacDong = TableNameDTO.NhanVien,
+                    MaDoiTuong = staff.MaNhanVien,
+                    GiaTriSau = new
+                    {
+                        staff.Email,
+                        staff.HoTen,
+                        staff.MaVaiTro
+                    }
+                });
+
+
+
+                return new LoginResultDTO
+                {
+                    IsSuccess = true,
+
+                    Token = accessToken,
+
+                    RefreshToken = refreshToken,
+
+                    HoTen = staff.HoTen,
+
+                    MaVaiTro = staff.MaVaiTro
+                };
             }
 
-            var accessToken = GenerateJwtToken(user);
-            var refreshToken = GenerateRefreshToken();
 
-            var phienMoi = new PhienDangNhap
+
+
+
+            errors["TaiKhoan"] = new List<string>
             {
-                MaNguoiDung = user.MaNguoiDung,
-                RefreshToken = refreshToken,
-                NgayHetHan = DateTime.Now.AddDays(7),
-                DiaChiIp = ipAddress
+                "Tài khoản hoặc mật khẩu không chính xác"
             };
 
-            _context.PhienDangNhaps.Add(phienMoi);
-            await _context.SaveChangesAsync();
 
-            return new LoginResultDTO { IsSuccess = true, Token = accessToken, RefreshToken = refreshToken, HoTen = user.HoTen, MaVaiTro = user.MaVaiTro };
+            return new LoginResultDTO
+            {
+                IsSuccess = false,
+
+                Errors = errors
+            };
         }
         public async Task<LoginResultDTO> RenewTokenAsync(TokenModelDTO token)
         {
+            var errors = new Dictionary<string, List<string>>();
+
+            var phien = await _context.PhienDangNhaps
+                .Include(x => x.NguoiDung)
+                .Include(x => x.NhanVien)
+                .FirstOrDefaultAsync(x =>
+                    x.RefreshToken == token.RefreshToken);
+
+            if (phien == null || phien.NgayHetHan <= DateTime.Now)
             {
-                var errors = new Dictionary<string, List<string>>();
-
-                var phien = await _context.PhienDangNhaps.Include(p => p.NguoiDung).FirstOrDefaultAsync(p => p.RefreshToken == token.RefreshToken);
-
-                if (phien == null || phien.NgayHetHan <= DateTime.Now)
+                errors["Token"] = new List<string>
                 {
-                    errors["Token"] = new List<string> { "Phiên đăng nhập không hợp lệ hoặc đã hết hạn" };
-                    return new LoginResultDTO { IsSuccess = false, Errors = errors };
-                }
+                    "Phiên đăng nhập không hợp lệ hoặc đã hết hạn"
+                };
 
-                var newAccessToken = GenerateJwtToken(phien.NguoiDung);
-                var newRefreshToken = GenerateRefreshToken();
-
-                phien.RefreshToken = newRefreshToken;
-                phien.NgayHetHan = DateTime.Now.AddMinutes(2);
-
-                await _context.SaveChangesAsync();
-
-                return new LoginResultDTO { IsSuccess = true, Token = newAccessToken, RefreshToken = newRefreshToken };
+                return new LoginResultDTO
+                {
+                    IsSuccess = false,
+                    Errors = errors
+                };
             }
+
+            string accessToken;
+
+            if (phien.NguoiDung != null)
+            {
+                accessToken = GenerateUserToken(phien.NguoiDung);
+            }
+            else if (phien.NhanVien != null)
+            {
+                accessToken = GenerateStaffToken(phien.NhanVien);
+            }
+            else
+            {
+                errors["Token"] = new List<string>
+                {
+                    "Không xác định được chủ sở hữu phiên đăng nhập"
+                };
+
+                return new LoginResultDTO
+                {
+                    IsSuccess = false,
+                    Errors = errors
+                };
+            }
+
+            var refreshToken = GenerateRefreshToken();
+
+            phien.RefreshToken = refreshToken;
+            phien.NgayHetHan = DateTime.Now.AddDays(7);
+
+            await _context.SaveChangesAsync();
+
+            return new LoginResultDTO
+            {
+                IsSuccess = true,
+                Token = accessToken,
+                RefreshToken = refreshToken
+            };
         }
         public async Task<bool> LogoutAsync(string refreshToken)
         {
@@ -136,6 +384,18 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 _context.PhienDangNhaps.Remove(phien);
                 await _context.SaveChangesAsync();
+                await _logService.LoggingAsync(new LogDTO
+                {
+                    LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
+                    Email = _currentUserService.GetEmail(),
+                    MaTaiKhoan = phien.MaNguoiDung ?? 0,
+
+                    TenHanhDong = ActionLogDTO.DangXuat,
+
+                    TenBangTacDong = "PhienDangNhap",
+
+                    MaDoiTuong = phien.MaPhien
+                });
                 return true;
             }
             return false;
@@ -163,6 +423,22 @@ namespace travel_recommendation_and_booking_system.Services
                 <p>Mã này sẽ hết hạn trong vòng <strong>5 phút</strong>. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>";
 
             await _emailService.SendEmailAsync(user.Email, subject, body);
+            await _logService.LoggingAsync(new LogDTO
+            {
+                LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
+                MaTaiKhoan = user.MaNguoiDung,
+                Email = _currentUserService.GetEmail(),
+                TenHanhDong = ActionLogDTO.YeuCauOTP,
+
+                TenBangTacDong = "NguoiDung",
+
+                MaDoiTuong = user.MaNguoiDung,
+
+                GiaTriSau = new
+                {
+                    user.Email
+                }
+            });
             return true;
         }
         public async Task<bool> ResetPasswordAsync(ResetPasswordDTO model)
@@ -180,6 +456,18 @@ namespace travel_recommendation_and_booking_system.Services
             user.ThoiGianHetHanOtp = null;
 
             await _context.SaveChangesAsync();
+            await _logService.LoggingAsync(new LogDTO
+            {
+                LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
+                Email = _currentUserService.GetEmail(),
+                MaTaiKhoan = user.MaNguoiDung,
+
+                TenHanhDong = ActionLogDTO.DoiMatKhau,
+
+                TenBangTacDong = "NguoiDung",
+
+                MaDoiTuong = user.MaNguoiDung
+            });
             return true;
         }
         public async Task<bool> VerifyOtpAsync(VerifyOtpDTO model)
@@ -212,29 +500,36 @@ namespace travel_recommendation_and_booking_system.Services
 
             return true;
         }
-        //Token
-        private string GenerateJwtToken(NguoiDung user)
+        private string GenerateStaffToken(NhanVien staff)
         {
             var jwtSettings = _configuration.GetSection("Jwt");
-            var key = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
-            var creds = new Microsoft.IdentityModel.Tokens.SigningCredentials(key, Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
+
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
+
+            var creds = new SigningCredentials(
+                key,
+                SecurityAlgorithms.HmacSha256);
 
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, user.MaNguoiDung.ToString()),
-                new Claim(ClaimTypes.Role, user.MaVaiTro.ToString())
+                new Claim(ClaimTypes.NameIdentifier, staff.MaNhanVien.ToString()),
+                new Claim(ClaimTypes.Role, staff.MaVaiTro.ToString()),
+                new Claim(ClaimTypes.Email, staff.Email),
+                new Claim("account_type", "NhanVien")
             };
 
-            var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
+            var token = new JwtSecurityToken(
                 issuer: jwtSettings["Issuer"],
                 audience: jwtSettings["Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(Convert.ToDouble(jwtSettings["DurationInMinutes"])),
+                expires: DateTime.Now.AddDays(1),
                 signingCredentials: creds
             );
 
-            return new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
         //Refresh Token
         private string GenerateRefreshToken()
         {
@@ -244,5 +539,35 @@ namespace travel_recommendation_and_booking_system.Services
             return Convert.ToBase64String(randomNumber);
         }
 
+
+        private string GenerateUserToken(NguoiDung user)
+        {
+            var jwtSettings = _configuration.GetSection("Jwt");
+
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
+
+            var creds = new SigningCredentials(
+                key,
+                SecurityAlgorithms.HmacSha256);
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.MaNguoiDung.ToString()),
+                new Claim(ClaimTypes.Role, user.MaVaiTro.ToString()),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim("account_type", "NguoiDung")
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: jwtSettings["Issuer"],
+                audience: jwtSettings["Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddDays(1),
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
     }
 }

@@ -12,7 +12,7 @@ export {default as UserManager} from './UserManager/UserManager'
 export {default as Webinfo} from './Webinfo/Webinfo'
 export {default as NewlettersManager} from './NewlettersManager/NewlettersManager'
 export {default as BannerManager} from './BannerManager/BannerManager'
-export {default as ActivityLogManager} from './Log/ActivityLogManager'
+export {default as ActivityLogManager} from './LogManager/ActivityLogManager'
 export {default as PromotionManager} from './PromotionManager/PromotionManager'
 export {default as HotelFormPage}  from"./HotelManager/HotelFormPage"
 export {default as HotelDetailPage} from "./HotelManager/HotelDetailPage"

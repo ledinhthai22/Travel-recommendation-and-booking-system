@@ -43,6 +43,13 @@ export const getHotelByIdApi = async (id) => {
 
     return response.data;
 };
+export const getHotelBySlugApi = async (slug) => {
+    const response = await axiosClient.get(
+        `/PublicHotel/${slug}`
+    );
+
+    return response.data;
+};
 
 export const createHotelApi = async (formData) => {
     const response = await axiosClient.post("/admin/Hotel", formData, {

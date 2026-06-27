@@ -105,6 +105,10 @@ namespace travelrecommendationandbookingsystem.Migrations
                     b.Property<DateTime?>("NgayXoa")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("TenLoaiTour")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -210,6 +214,9 @@ namespace travelrecommendationandbookingsystem.Migrations
                     b.Property<DateTime?>("NgayXoa")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("NguoiDungMaNguoiDung")
+                        .HasColumnType("int");
+
                     b.Property<int>("SoChoDaDat")
                         .HasColumnType("int");
 
@@ -226,6 +233,8 @@ namespace travelrecommendationandbookingsystem.Migrations
                     b.HasIndex("MaPhuongTien");
 
                     b.HasIndex("MaTour");
+
+                    b.HasIndex("NguoiDungMaNguoiDung");
 
                     b.ToTable("ChuyenKhoiHanh");
                 });
@@ -330,6 +339,10 @@ namespace travelrecommendationandbookingsystem.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TenDiaDiem")
                         .IsRequired()
@@ -645,6 +658,10 @@ namespace travelrecommendationandbookingsystem.Migrations
                     b.Property<DateTime?>("NgayXoa")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("SoDienThoai")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -857,21 +874,6 @@ namespace travelrecommendationandbookingsystem.Migrations
                     b.HasIndex("MaVaiTro");
 
                     b.ToTable("NguoiDung");
-
-                    b.HasData(
-                        new
-                        {
-                            MaNguoiDung = 1,
-                            Email = "admin@gmail.com",
-                            GioiTinh = false,
-                            HoTen = "Quản Trị Viên",
-                            MaVaiTro = 1,
-                            MatKhau = "$2a$11$RNF0kMwk0/Fdo2jkHNSVEOSDLouygpeQR8qhjGRBO7Jo0/.05JuvK",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9102),
-                            NgayTao = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9075),
-                            SoDienThoai = "0988888888",
-                            TrangThai = 1
-                        });
                 });
 
             modelBuilder.Entity("travel_recommendation_and_booking_system.Models.NhanVien", b =>
@@ -940,6 +942,72 @@ namespace travelrecommendationandbookingsystem.Migrations
                     b.HasIndex("MaVaiTro");
 
                     b.ToTable("NhanViens");
+
+                    b.HasData(
+                        new
+                        {
+                            MaNhanVien = 1,
+                            Cccd = "098765432112",
+                            Email = "admin@gmail.com",
+                            GioiTinh = false,
+                            HoTen = "Quản Trị Viên",
+                            MaVaiTro = 1,
+                            MatKhau = "$2a$11$OsOxZH0wDUhQCOJhjXSLCuLT//HRkdjOUGJJOShxAyThZ8nBeFUdi",
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(3664),
+                            NgayTao = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(3648),
+                            SoDienThoai = "0988888888",
+                            TrangThai = 1
+                        });
+                });
+
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.NhatKyHeThong", b =>
+                {
+                    b.Property<int>("MaNhatKy")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaNhatKy"));
+
+                    b.Property<string>("DiaChiIP")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("GiaTriSau")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("GiaTriTruoc")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LoaiTaiKhoan")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("MaDoiTuong")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaTaiKhoan")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TenBangTacDong")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TenHanhDong")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ThoiGianTao")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TrinhDuyet")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("MaNhatKy");
+
+                    b.ToTable("NhatKyHeThong");
                 });
 
             modelBuilder.Entity("travel_recommendation_and_booking_system.Models.PhienDangNhap", b =>
@@ -951,9 +1019,13 @@ namespace travelrecommendationandbookingsystem.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaPhien"));
 
                     b.Property<string>("DiaChiIp")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
-                    b.Property<int>("MaNguoiDung")
+                    b.Property<int?>("MaNguoiDung")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaNhanVien")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("NgayHetHan")
@@ -961,11 +1033,14 @@ namespace travelrecommendationandbookingsystem.Migrations
 
                     b.Property<string>("RefreshToken")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.HasKey("MaPhien");
 
                     b.HasIndex("MaNguoiDung");
+
+                    b.HasIndex("MaNhanVien");
 
                     b.ToTable("PhienDangNhaps");
                 });
@@ -1184,119 +1259,126 @@ namespace travelrecommendationandbookingsystem.Migrations
                         {
                             MaTTTrang = 1,
                             Key = "logo_url",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9604),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4361),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 2,
                             Key = "ten_trang",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9611),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4370),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 3,
                             Key = "facebook_url",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9612),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4371),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 4,
                             Key = "dia_chi",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9613),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4371),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 5,
                             Key = "so_dien_thoai",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9614),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4372),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 7,
                             Key = "email_hotro",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9614),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4373),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 8,
                             Key = "zalo",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9615),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4374),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 9,
                             Key = "faq_1_question",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9616),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4375),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 10,
                             Key = "faq_1_answer",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9617),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4376),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 11,
                             Key = "faq_2_question",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9618),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4377),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 12,
                             Key = "faq_2_answer",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9619),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4377),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 13,
                             Key = "faq_3_question",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9704),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4378),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 14,
                             Key = "faq_3_answer",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9705),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4379),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 15,
                             Key = "faq_4_question",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9706),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4380),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 16,
                             Key = "faq_4_answer",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9707),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4390),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 17,
                             Key = "faq_5_question",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9708),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4391),
                             Trangthai = true
                         },
                         new
                         {
                             MaTTTrang = 18,
                             Key = "faq_5_answer",
-                            NgayCapNhat = new DateTime(2026, 6, 27, 2, 35, 12, 304, DateTimeKind.Local).AddTicks(9708),
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4391),
+                            Trangthai = true
+                        },
+                        new
+                        {
+                            MaTTTrang = 19,
+                            Key = "Map_Trang_Lien_He",
+                            NgayCapNhat = new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4395),
                             Trangthai = true
                         });
                 });
@@ -1325,7 +1407,7 @@ namespace travelrecommendationandbookingsystem.Migrations
 
                     b.HasKey("MaTienIch");
 
-                    b.ToTable("TienNghi");
+                    b.ToTable("TienIch");
                 });
 
             modelBuilder.Entity("travel_recommendation_and_booking_system.Models.Tour", b =>
@@ -1338,6 +1420,9 @@ namespace travelrecommendationandbookingsystem.Migrations
 
                     b.Property<int>("Dem")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("GiaTu")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("LuotDat")
                         .HasColumnType("int");
@@ -1364,6 +1449,10 @@ namespace travelrecommendationandbookingsystem.Migrations
 
                     b.Property<DateTime?>("NgayXoa")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TenTour")
                         .IsRequired()
@@ -1513,8 +1602,8 @@ namespace travelrecommendationandbookingsystem.Migrations
 
             modelBuilder.Entity("travel_recommendation_and_booking_system.Models.ChuyenKhoiHanh", b =>
                 {
-                    b.HasOne("travel_recommendation_and_booking_system.Models.NguoiDung", "HuongDanVien")
-                        .WithMany("ChuyenKhoiHanhs")
+                    b.HasOne("travel_recommendation_and_booking_system.Models.NhanVien", "NhanVien")
+                        .WithMany()
                         .HasForeignKey("MaHDV");
 
                     b.HasOne("travel_recommendation_and_booking_system.Models.PhuongTien", "PhuongTien")
@@ -1529,7 +1618,11 @@ namespace travelrecommendationandbookingsystem.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("HuongDanVien");
+                    b.HasOne("travel_recommendation_and_booking_system.Models.NguoiDung", null)
+                        .WithMany("ChuyenKhoiHanhs")
+                        .HasForeignKey("NguoiDungMaNguoiDung");
+
+                    b.Navigation("NhanVien");
 
                     b.Navigation("PhuongTien");
 
@@ -1729,10 +1822,16 @@ namespace travelrecommendationandbookingsystem.Migrations
                     b.HasOne("travel_recommendation_and_booking_system.Models.NguoiDung", "NguoiDung")
                         .WithMany("PhienDangNhaps")
                         .HasForeignKey("MaNguoiDung")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("travel_recommendation_and_booking_system.Models.NhanVien", "NhanVien")
+                        .WithMany("PhienDangNhaps")
+                        .HasForeignKey("MaNhanVien")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("NguoiDung");
+
+                    b.Navigation("NhanVien");
                 });
 
             modelBuilder.Entity("travel_recommendation_and_booking_system.Models.SoThichDiaDiemNguoiDung", b =>
@@ -1874,6 +1973,11 @@ namespace travelrecommendationandbookingsystem.Migrations
                     b.Navigation("PhienDangNhaps");
 
                     b.Navigation("SoThichNguoiDungs");
+                });
+
+            modelBuilder.Entity("travel_recommendation_and_booking_system.Models.NhanVien", b =>
+                {
+                    b.Navigation("PhienDangNhaps");
                 });
 
             modelBuilder.Entity("travel_recommendation_and_booking_system.Models.PhuongTien", b =>

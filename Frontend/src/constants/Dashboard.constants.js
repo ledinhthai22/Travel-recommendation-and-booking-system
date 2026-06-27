@@ -1,198 +1,122 @@
-import { Ticket,UserPlus,BadgeCheck,MessageSquare } from "lucide-react";
-export const revenueData = {
-    labels: [
-        "T1",
-        "T2",
-        "T3",
-        "T4",
-        "T5",
-        "T6",
-        "T7",
-        "T8",
-        "T9",
-        "T10",
-        "T11",
-        "T12",
-    ],
-    datasets: [
-        {
-            label: "Doanh thu",
-            data: [
-                120,
-                180,
-                250,
-                320,
-                410,
-                520,
-                470,
-                620,
-                700,
-                850,
-                930,
-                1050,
-            ],
-            backgroundColor: "#0EA5E9",
-            maxBarThickness: 36,
-        },
-    ],
+// ─── Bar Chart: Doanh thu theo tháng ──────────────────────────────────────
+export const revenueData = [
+    { month: "T1",  revenue: 320 },
+    { month: "T2",  revenue: 410 },
+    { month: "T3",  revenue: 380 },
+    { month: "T4",  revenue: 520 },
+    { month: "T5",  revenue: 610 },
+    { month: "T6",  revenue: 490 },
+    { month: "T7",  revenue: 720 },
+    { month: "T8",  revenue: 680 },
+    { month: "T9",  revenue: 590 },
+    { month: "T10", revenue: 740 },
+    { month: "T11", revenue: 830 },
+    { month: "T12", revenue: 950 },
+];
+
+// ─── Pie Chart: Trạng thái đơn hàng ───────────────────────────────────────
+export const orderStatusData = [
+    { name: "Đã thanh toán",  value: 58, color: "#10B981" },
+    { name: "Chờ thanh toán", value: 27, color: "#F59E0B" },
+    { name: "Đã hủy",         value: 15, color: "#EF4444" },
+];
+
+// ─── Line Chart: Khách hàng mới ────────────────────────────────────────────
+export const newCustomersData = [
+    { month: "T1",  customers: 40  },
+    { month: "T2",  customers: 55  },
+    { month: "T3",  customers: 48  },
+    { month: "T4",  customers: 72  },
+    { month: "T5",  customers: 85  },
+    { month: "T6",  customers: 63  },
+    { month: "T7",  customers: 91  },
+    { month: "T8",  customers: 78  },
+    { month: "T9",  customers: 66  },
+    { month: "T10", customers: 95  },
+    { month: "T11", customers: 110 },
+    { month: "T12", customers: 130 },
+];
+
+// ─── Horizontal Bar Chart: Top tour bán chạy ──────────────────────────────
+export const topToursData = [
+    { name: "Nha Trang biển xanh", booked: 118, color: "#EF4444" },
+    { name: "Sapa Trekking 3N2Đ",  booked: 139, color: "#F59E0B" },
+    { name: "Hạ Long 3N2Đ",        booked: 162, color: "#8B5CF6" },
+    { name: "Đà Nẵng – Hội An",    booked: 187, color: "#10B981" },
+    { name: "Phú Quốc 4N3Đ",       booked: 214, color: "#0EA5E9" },
+];
+
+// ─── Pie Chart: Hành vi khách hàng (xem vs đặt vs yêu thích) ─────────────
+export const tourEngagementData = [
+    { name: "Đã đặt tour",        value: 32, color: "#0EA5E9" },
+    { name: "Xem nhưng chưa đặt", value: 48, color: "#CBD5E1" },
+    { name: "Thêm yêu thích",     value: 20, color: "#F59E0B" },
+];
+
+export const tourEngagementStats = {
+    totalViews:     18420,
+    totalBooked:    1248,
+    conversionRate: "6,8%",
 };
 
-export const revenueOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
+// ─── Pie Chart: Độ tuổi khách hàng tham gia tour ──────────────────────────
+export const ageGroupData = [
+    { name: "Dưới 18",  value: 5,  color: "#818CF8" },
+    { name: "18 – 24",  value: 18, color: "#0EA5E9" },
+    { name: "25 – 34",  value: 31, color: "#10B981" },
+    { name: "35 – 44",  value: 24, color: "#F59E0B" },
+    { name: "45 – 54",  value: 14, color: "#F97316" },
+    { name: "Trên 55",  value: 8,  color: "#EF4444" },
+];
 
-    plugins: {
-        legend: {
-            display: false,
-        },
-    },
-
-    scales: {
-        x: {
-            grid: {
-                display: false,
-            },
-        },
-
-        y: {
-            beginAtZero: true,
-
-            ticks: {
-                callback: (value) => `${value}tr`,
-            },
-
-            grid: {
-                color: "#f1f5f9",
-            },
-        },
-    },
-};
+// ─── Table: Giao dịch gần đây ──────────────────────────────────────────────
 export const recentTransactions = [
     {
-        id: "T20260001",
-        customer: "Nguyễn Văn A",
-        tour: "Đà Lạt 3N2Đ",
-        amount: "4.500.000 ₫",
-        status: "Đã thanh toán",
-        time: "10 phút trước",
-    },
-    {
-        id: "T20260002",
-        customer: "Trần Thị B",
+        id: "#TK-00198",
+        time: "22/05/2026 · 09:14",
+        customer: "Nguyễn Minh Tuấn",
         tour: "Phú Quốc 4N3Đ",
-        amount: "8.900.000 ₫",
-        status: "Chờ thanh toán",
-        time: "25 phút trước",
-    },
-    {
-        id: "T20260003",
-        customer: "Lê Văn C",
-        tour: "Đà Nẵng 3N2Đ",
-        amount: "6.200.000 ₫",
+        amount: "12.800.000 đ",
         status: "Đã thanh toán",
-        time: "1 giờ trước",
     },
     {
-        id: "T20260004",
-        customer: "Phạm Thị D",
-        tour: "Nha Trang 3N2Đ",
-        amount: "5.800.000 ₫",
+        id: "#TK-00197",
+        time: "22/05/2026 · 08:47",
+        customer: "Trần Thị Lan",
+        tour: "Hạ Long 3N2Đ",
+        amount: "8.500.000 đ",
+        status: "Chờ thanh toán",
+    },
+    {
+        id: "#TK-00196",
+        time: "21/05/2026 · 17:30",
+        customer: "Lê Văn Hùng",
+        tour: "Đà Nẵng – Hội An 5N4Đ",
+        amount: "15.200.000 đ",
+        status: "Đã thanh toán",
+    },
+    {
+        id: "#TK-00195",
+        time: "21/05/2026 · 14:05",
+        customer: "Phạm Thanh Hà",
+        tour: "Sapa Trekking 3N2Đ",
+        amount: "6.700.000 đ",
         status: "Đã hủy",
-        time: "2 giờ trước",
     },
     {
-        id: "T20260004",
-        customer: "Phạm Thị D",
-        tour: "Nha Trang 3N2Đ",
-        amount: "5.800.000 ₫",
-        status: "Đã hủy",
-        time: "2 giờ trước",
-    }
-];
-export const activities = [
-    {
-        id: 1,
-        icon: Ticket,
-        color: "bg-sky-100 text-sky-600",
-        title: "Đơn đặt tour mới",
-        description: "Nguyễn Văn A đặt tour Đà Lạt 3N2Đ",
-        time: "2 phút trước",
+        id: "#TK-00194",
+        time: "20/05/2026 · 11:22",
+        customer: "Đỗ Quốc Bảo",
+        tour: "Nha Trang biển xanh",
+        amount: "9.100.000 đ",
+        status: "Đã thanh toán",
     },
     {
-        id: 2,
-        icon: UserPlus,
-        color: "bg-emerald-100 text-emerald-600",
-        title: "Khách hàng mới",
-        description: "Tài khoản Trần Thị B vừa đăng ký",
-        time: "15 phút trước",
+        id: "#TK-00193",
+        time: "20/05/2026 · 09:58",
+        customer: "Vũ Thị Ngọc",
+        tour: "Phú Quốc 4N3Đ",
+        amount: "12.800.000 đ",
+        status: "Chờ thanh toán",
     },
-    {
-        id: 3,
-        icon: BadgeCheck,
-        color: "bg-violet-100 text-violet-600",
-        title: "Thanh toán thành công",
-        description: "Đơn #T20260025 đã thanh toán",
-        time: "30 phút trước",
-    },
-    {
-        id: 4,
-        icon: MessageSquare,
-        color: "bg-amber-100 text-amber-600",
-        title: "Liên hệ mới",
-        description: "Có yêu cầu tư vấn từ website",
-        time: "1 giờ trước",
-    },
-    {
-        id: 5,
-        icon: MessageSquare,
-        color: "bg-amber-100 text-amber-600",
-        title: "Liên hệ mới",
-        description: "Có yêu cầu tư vấn từ website",
-        time: "1 giờ trước",
-    }
-];
-export const topTours = [
-    {
-        id: 1,
-        name: "Tour Đà Lạt 3N2Đ",
-        booked: 221,
-        revenue: "234 triệu",
-        image: "https://picsum.photos/200?1",
-    },
-    {
-        id: 2,
-        name: "Tour Phú Quốc",
-        booked: 198,
-        revenue: "215 triệu",
-        image: "https://picsum.photos/200?2",
-    },
-    {
-        id: 3,
-        name: "Tour Nha Trang",
-        booked: 175,
-        revenue: "180 triệu",
-        image: "https://picsum.photos/200?3",
-    },
-    {
-        id: 4,
-        name: "Tour Sapa",
-        booked: 152,
-        revenue: "160 triệu",
-        image: "https://picsum.photos/200?4",
-    },
-    {
-        id: 5,
-        name: "Tour Sapa",
-        booked: 152,
-        revenue: "160 triệu",
-        image: "https://picsum.photos/200?4",
-    },
-    {
-        id: 6,
-        name: "Tour Sapa",
-        booked: 152,
-        revenue: "160 triệu",
-        image: "https://picsum.photos/200?4",
-    }
-
 ];

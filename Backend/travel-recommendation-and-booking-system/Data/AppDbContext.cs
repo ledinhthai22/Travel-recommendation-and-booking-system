@@ -37,6 +37,7 @@ namespace travel_recommendation_and_booking_system.Data
         public DbSet<LienHe> LienHes { get; set; }
         public DbSet<Newsletter> Newsletters { get; set; }
         public DbSet<PhienDangNhap> PhienDangNhaps { get; set; }
+        public DbSet<NhatKyHeThong> NhatKyHeThongs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -76,7 +77,22 @@ namespace travel_recommendation_and_booking_system.Data
                 entity.HasIndex(tk => tk.MaKhachSan)
                       .HasDatabaseName("IX_Tour_KhachSan_MaKhachSan");
             });
+            modelBuilder.Entity<PhienDangNhap>(entity =>
+            {
+                entity.HasKey(x => x.MaPhien);
 
+
+                entity.HasOne(x => x.NguoiDung)
+                    .WithMany(x => x.PhienDangNhaps)
+                    .HasForeignKey(x => x.MaNguoiDung)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+
+                entity.HasOne(x => x.NhanVien)
+                    .WithMany(x => x.PhienDangNhaps)
+                    .HasForeignKey(x => x.MaNhanVien)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
             modelBuilder.Entity<SoThichNguoiDung>().HasKey(sn => new { sn.MaNguoiDung, sn.MaLoaiTour });
 
             modelBuilder.Entity<DanhSachYeuThich>(entity =>
@@ -114,14 +130,15 @@ namespace travel_recommendation_and_booking_system.Data
                     new VaiTro { MaVaiTro = 4, TenVaiTro = "Khách Hàng" }
                 );
 
-            modelBuilder.Entity<NguoiDung>().HasData(
-                    new NguoiDung
+            modelBuilder.Entity<NhanVien>().HasData(
+                    new NhanVien
                     {
-                        MaNguoiDung = 1,
+                        MaNhanVien = 1,
                         MaVaiTro = 1,
                         HoTen = "Quản Trị Viên",
                         Email = "admin@gmail.com",
                         MatKhau = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+                        Cccd = "098765432112",
                         SoDienThoai = "0988888888",
                         TrangThai = 1,
                         NgayTao = DateTime.Now,
@@ -268,6 +285,12 @@ namespace travel_recommendation_and_booking_system.Data
                 {
                     MaTTTrang = 18,
                     Key = "faq_5_answer",
+                    Trangthai = true
+                },
+                new ThongTinTrang
+                {
+                    MaTTTrang = 19,
+                    Key = "Map_Trang_Lien_He",
                     Trangthai = true
                 }
 

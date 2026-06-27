@@ -8,7 +8,8 @@ export default function TourItinerariesTable({
     onEdit,
     onDelete,
     isViewMode = false,
-    loading = false
+    loading = false,
+    isLocked = false
 }) {
     const safeData = Array.isArray(data) ? data : [];
     const getImageUrl = (path) => {
@@ -131,9 +132,15 @@ export default function TourItinerariesTable({
                 <RowActionsButton
                     row={row}
                     onView={isViewMode ? () => onEdit(row) : null}
-                    onEdit={!isViewMode ? () => onEdit(row) : null}
+                    onEdit={
+                        !isViewMode && !isLocked
+                            ? () => onEdit(row)
+                            : null
+                    }
                     onDelete={
-                        !isViewMode && safeData.length > 1
+                        !isViewMode &&
+                            !isLocked &&
+                            safeData.length > 1
                             ? () => onDelete(row)
                             : null
                     }

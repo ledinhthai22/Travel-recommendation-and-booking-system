@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Location;
+using travel_recommendation_and_booking_system.Helper;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
 
@@ -22,6 +23,34 @@ namespace travel_recommendation_and_booking_system.Services
                     TenDiaDiem = x.TenDiaDiem
                 })
                 .ToListAsync();
+        }
+        public async Task<List<LocationCardResponseDTO>> GetLocationCardsAsync(int? limit = null)
+        {
+            var query = _context.DiaDiems
+                .AsNoTracking()
+                .Where(d => d.TrangThai == true && d.NgayXoa == null)
+                .Select(d => new LocationCardResponseDTO
+                {
+                    MaDiaDiem = d.MaDiaDiem,
+                    TenDiaDiem = d.TenDiaDiem,
+                    Slug = d.Slug,
+                    DuongDanAnh = d.DuongDanAnh,
+                    TinhThanh = d.TinhThanh,
+                    MoTa = d.MoTa,
+                    SoLuongTour = _context.CTLichTrinhs
+                        .Where(ct => ct.MaDiaDiem == d.MaDiaDiem && ct.LichTrinh.NgayXoa == null && ct.LichTrinh.Tour.NgayXoa == null && ct.LichTrinh.Tour.TrangThai == 1)
+                        .Select(ct => ct.LichTrinh.MaTour)
+                        .Distinct()
+                        .Count()
+                })
+                .OrderByDescending(x => x.SoLuongTour);
+
+            if (limit.HasValue && limit.Value > 0)
+            {
+                return await query.Take(limit.Value).ToListAsync();
+            }
+
+            return await query.ToListAsync();
         }
         public LocationService(AppDbContext context, IWebHostEnvironment webHostEnvironment)
         {
@@ -117,6 +146,7 @@ namespace travel_recommendation_and_booking_system.Services
                 var newlocation = new DiaDiem
                 {
                     TenDiaDiem = location.TenDiaDiem,
+                    Slug = SlugHelper.GenerateSlug(location.TenDiaDiem),
                     MoTa = location.MoTa,
                     LoaiDiaDiem = location.LoaiDiaDiem,
                     DuongDanAnh = dbRelativePath,
@@ -183,6 +213,7 @@ namespace travel_recommendation_and_booking_system.Services
                 }
 
                 location.TenDiaDiem = request.TenDiaDiem;
+                location.Slug = SlugHelper.GenerateSlug(request.TenDiaDiem);
                 location.MoTa = request.MoTa;
                 location.LoaiDiaDiem = request.LoaiDiaDiem;
                 location.TinhThanh = request.TinhThanh;

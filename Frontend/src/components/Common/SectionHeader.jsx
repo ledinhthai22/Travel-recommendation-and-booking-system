@@ -1,33 +1,48 @@
 export default function SectionHeader({
-  title,
-  subtitle,
-  action,       
-  align = "center" 
+    title,
+    subtitle,
+    action,
+    align = "center"
 }) {
-  const isBetween = align === "between" && action;
+    const isBetween = align === "between" && action;
 
-  return (
-    <div
-      className={`mb-12 flex ${
-        isBetween ? "justify-between items-center" : "flex-col items-center text-center"
-      }`}
-    >
-      <div>
-        {subtitle && (
-          <span className="uppercase text-blue-600 font-light tracking-widest text-sm">
-            {subtitle}
-          </span>
-        )}
+    return (
+        <div
+            className={`mb-10 flex ${
+                isBetween
+                    ? "items-end justify-between"
+                    : "flex-col items-center text-center"
+            }`}
+        >
+            <div>
+                {subtitle && (
+                    <div
+                        className={`mb-3 flex items-center gap-3 ${
+                            isBetween
+                                ? ""
+                                : "justify-center"
+                        }`}
+                    >
+                        <span className="h-px w-10 bg-sky-500" />
 
-        <h2 className="text-[36px] font-bold mt-3 uppercase">
-          {title}
-        </h2>
-      </div>
-      {isBetween && (
-        <div className="flex items-center gap-2 text-blue-600 hover:underline font-medium">
-          {action}
+                        <span className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-500">
+                            {subtitle}
+                        </span>
+
+                        <span className="h-px w-10 bg-sky-500" />
+                    </div>
+                )}
+
+                <h2 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+                    {title}
+                </h2>
+            </div>
+
+            {isBetween && (
+                <div className="shrink-0">
+                    {action}
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 }

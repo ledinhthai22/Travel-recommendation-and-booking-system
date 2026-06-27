@@ -1,6 +1,8 @@
 ﻿using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
+using travel_recommendation_and_booking_system.DTOs.Log;
+using travel_recommendation_and_booking_system.DTOs.LogSystem;
 using travel_recommendation_and_booking_system.DTOs.Promotion;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
@@ -10,9 +12,13 @@ namespace travel_recommendation_and_booking_system.Services
     public class PromotionService : IPromotionService
     {
         private readonly AppDbContext _context;
-        public PromotionService(AppDbContext context)
+        private readonly ILogService _logService;
+        private readonly ICurrentUserService _currentUserService;
+        public PromotionService(AppDbContext context, ILogService logService, ICurrentUserService currentUserService)
         {
             _context = context;
+            _logService = logService;
+            _currentUserService = currentUserService;
         }
         public async Task<PageDTO<PromotionResponseDTO>> GetPagedPromotionsAsync(int pageNumber, int pageSize, PromotionDTO promotion)
         {
@@ -132,21 +138,42 @@ namespace travel_recommendation_and_booking_system.Services
 
             if (now < promotion.NgayBatDau)
             {
-                newPromotion.TrangThai = 1;
+                newPromotion.TrangThai = 1; // Chờ kích hoạt
             }
-            if (now == promotion.NgayBatDau)
+            else if (now >= promotion.NgayHetHan)
             {
-                newPromotion.TrangThai = 2;
+                newPromotion.TrangThai = 4; // Hết hạn
             }
-            if (now > promotion.NgayHetHan)
+            else
             {
-                newPromotion.TrangThai = 4;
+                newPromotion.TrangThai = 2; // Đang hoạt động
             }
-
 
             _context.UuDais.Add(newPromotion);
             await _context.SaveChangesAsync();
+            await _logService.LoggingAsync(new LogDTO
+            {
+                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                Email = _currentUserService.GetEmail(),
+                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
 
+                TenHanhDong = ActionLogDTO.Tao,
+
+                TenBangTacDong = TableNameDTO.UuDai,
+
+                MaDoiTuong = newPromotion.MaUuDai,
+
+                GiaTriSau = new
+                {
+                    newPromotion.MaCode,
+                    newPromotion.TenUuDai,
+                    newPromotion.PhanTramGiam,
+                    newPromotion.NgayBatDau,
+                    newPromotion.NgayHetHan,
+                    newPromotion.SoLuongToiDa,
+                    newPromotion.TrangThai
+                }
+            });
             return new PromotionResponseDTO
             {
                 MaUuDai = newPromotion.MaUuDai,
@@ -175,9 +202,35 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 throw new Exception("Chỉ được phép xóa các ưu đãi chờ kích hoạt hoặc hết hạn");
             }
-
+            var oldData = new
+            {
+                promotion.MaUuDai,
+                promotion.MaCode,
+                promotion.TenUuDai,
+                promotion.SoLuongToiDa,
+                promotion.TrangThai
+            };
             promotion.NgayXoa = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+            await _logService.LoggingAsync(new LogDTO
+            {
+                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                Email = _currentUserService.GetEmail(),
+                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+
+                TenHanhDong = ActionLogDTO.Xoa,
+
+                TenBangTacDong = TableNameDTO.UuDai,
+
+                MaDoiTuong = promotion.MaUuDai,
+
+                GiaTriTruoc = oldData,
+
+                GiaTriSau = new
+                {
+                    promotion.NgayXoa
+                }
+            });
 
             return true;
         }
@@ -185,7 +238,7 @@ namespace travel_recommendation_and_booking_system.Services
         {
             var existedPromotion = await _context.UuDais
                 .FirstOrDefaultAsync(x => x.MaUuDai == id && x.NgayXoa == null);
-            Console.WriteLine("JOB START");
+
             if (existedPromotion == null)
             {
                 throw new Exception("Không tìm thấy chương trình ưu đãi.");
@@ -210,7 +263,17 @@ namespace travel_recommendation_and_booking_system.Services
                     "Ngày hết hạn phải lớn hơn thời điểm hiện tại."
                 );
             }
-
+            var oldData = new
+            {
+                existedPromotion.MaCode,
+                existedPromotion.TenUuDai,
+                existedPromotion.PhanTramGiam,
+                existedPromotion.DieuKienApDung,
+                existedPromotion.NgayBatDau,
+                existedPromotion.NgayHetHan,
+                existedPromotion.SoLuongToiDa,
+                existedPromotion.TrangThai
+            };
             var duplicateCode = await _context.UuDais
                 .AnyAsync(x =>
                     x.MaCode == promotion.MaCode
@@ -248,7 +311,32 @@ namespace travel_recommendation_and_booking_system.Services
             }
 
             await _context.SaveChangesAsync();
+            await _logService.LoggingAsync(new LogDTO
+            {
+                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                Email = _currentUserService.GetEmail(),
+                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
 
+                TenHanhDong = ActionLogDTO.CapNhat,
+
+                TenBangTacDong = TableNameDTO.UuDai,
+
+                MaDoiTuong = existedPromotion.MaUuDai,
+
+                GiaTriTruoc = oldData,
+
+                GiaTriSau = new
+                {
+                    existedPromotion.MaCode,
+                    existedPromotion.TenUuDai,
+                    existedPromotion.PhanTramGiam,
+                    existedPromotion.DieuKienApDung,
+                    existedPromotion.NgayBatDau,
+                    existedPromotion.NgayHetHan,
+                    existedPromotion.SoLuongToiDa,
+                    existedPromotion.TrangThai
+                }
+            });
             return new PromotionResponseDTO
             {
                 MaUuDai = existedPromotion.MaUuDai,
@@ -308,10 +396,34 @@ namespace travel_recommendation_and_booking_system.Services
 
                 promotion.TrangThai = 2;
             }
+            var oldData = new
+            {
+                promotion.TrangThai
+            };
 
             promotion.NgayCapNhat = DateTime.Now;
 
             await _context.SaveChangesAsync();
+
+            await _logService.LoggingAsync(new LogDTO
+            {
+                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+
+                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                Email = _currentUserService.GetEmail(),
+                TenHanhDong = ActionLogDTO.CapNhat,
+
+                TenBangTacDong = TableNameDTO.UuDai,
+
+                MaDoiTuong = promotion.MaUuDai,
+
+                GiaTriTruoc = oldData,
+
+                GiaTriSau = new
+                {
+                    promotion.TrangThai
+                }
+            });
 
             return true;
         }

@@ -2,6 +2,8 @@
 using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
+using travel_recommendation_and_booking_system.DTOs.Log;
+using travel_recommendation_and_booking_system.DTOs.LogSystem;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
 
@@ -10,9 +12,13 @@ namespace travel_recommendation_and_booking_system.Services
     public class NewsletterService : INewsletterService
     {
         private readonly AppDbContext _context;
-        public NewsletterService(AppDbContext context)
+        private readonly ILogService _logService;
+        private readonly ICurrentUserService _currentUserService;
+        public NewsletterService(AppDbContext context, ILogService logService, ICurrentUserService currentUserService)
         {
             _context = context;
+            _logService = logService;
+            _currentUserService = currentUserService;
         }
 
         public async Task<bool> SubscribeAsync(NewsletterDTO newsletter)
@@ -76,13 +82,26 @@ namespace travel_recommendation_and_booking_system.Services
         {
             var newsletter = await _context.Newsletters.FindAsync(id);
 
-            if(newsletter == null || newsletter.NgayXoa != null)
+            if (newsletter == null || newsletter.NgayXoa != null)
             {
                 return false;
             }
             newsletter.NgayXoa = DateTime.Now;
             _context.Newsletters.Update(newsletter);
             await _context.SaveChangesAsync();
+            await _logService.LoggingAsync(new LogDTO
+            {
+                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                Email = _currentUserService.GetEmail(),
+                TenHanhDong = ActionLogDTO.Xoa,
+                TenBangTacDong = "Newsletter",
+                MaDoiTuong = newsletter.MaNewsletter,
+                GiaTriTruoc = new
+                {
+                    newsletter.Email
+                }
+            });
             return true;
         }
     }

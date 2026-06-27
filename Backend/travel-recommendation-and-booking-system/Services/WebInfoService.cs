@@ -49,7 +49,7 @@ namespace travel_recommendation_and_booking_system.Services
 
 
             var items = await query
-                //.OrderByDescending(x => x.NgayCapNhat)
+                .OrderByDescending(x => x.NgayCapNhat)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .AsNoTracking()

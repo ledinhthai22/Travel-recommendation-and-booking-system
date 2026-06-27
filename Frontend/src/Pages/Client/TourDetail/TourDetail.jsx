@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Heart, ChevronRight, MapPin, Clock } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Heart, MapPin, Clock } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
 
 import TourCard from "~/components/Tours/TourCard";
 import SectionTitle from "~/components/Common/SectionTitle";
@@ -13,140 +13,155 @@ import { BookingCard } from "~/components/TourDetail/BookingCard";
 import { HotelInfo } from "~/components/TourDetail/HotelInfo";
 import { Notes } from "~/components/TourDetail/Notes";
 import { Reviews } from "~/components/TourDetail/Reviews";
-
-import { MOCK_TOUR } from "~/constants/TourDetail.constants";
-import { mockTours } from "~/constants/Tours.constants";
-
+import { getTourBySlugApi } from "~/Services/TourService";
+import Breadcrumb from "~/components/UI/Breadcrumbs/Breadcrumbs";
+import useAuth from "~/Hooks/useAuth";
 export default function TourDetail() {
-    const tour = MOCK_TOUR;
+    const { slug } = useParams();
 
-    const [selectedDeparture, setSelectedDeparture] = useState(
-        tour.chuyenKhoiHanh?.[0]
-    );
+    const [tour, setTour] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [selectedDeparture, setSelectedDeparture] = useState(null);
+    const { user } = useAuth();
+    const isLoggedIn = !!user;
+    useEffect(() => {
+        const fetchTour = async () => {
+            try {
+                setLoading(true);
+                const res = await getTourBySlugApi(slug);
+                setTour(res);
 
-    const related = mockTours.slice(0, 4);
+                // Đồng bộ API: Chọn chuyến khởi hành đầu tiên mặc định
+                if (res?.chuyenKhoiHanhs && res.chuyenKhoiHanhs.length > 0) {
+                    setSelectedDeparture(res.chuyenKhoiHanhs[0]);
+                } else {
+                    setSelectedDeparture(null);
+                }
 
-    const galleryImages = tour.hinhAnh.map(
-        (image) => image.duongDanAnh
-    );
+            } catch (err) {
+                console.error(err);
+                setTour(null);
+            } finally {
+                setLoading(false);
+            }
+        };
 
+        if (slug) fetchTour();
+    }, [slug]);
+
+    if (loading) return <div className="p-10 text-center text-slate-500 font-medium animate-pulse">Đang tải thông tin tour...</div>;
+    if (!tour) return <div className="p-10 text-center text-slate-500 font-medium">Không tìm thấy dữ liệu tour yêu cầu.</div>;
+
+    const { tourInfo, images, lichTrinh, chuyenKhoiHanhs } = tour;
+    const galleryImages = images || [];
+    const related = [];
+    const reviews = [];
+
+
+    const breadcrumbItems = [
+        { label: "Trang chủ", href: "/" },
+        { label: " Các Chuyến đi", href: "/Cac-chuyen-di" },
+        { label: tourInfo?.tenTour || "Chi tiết Tour" }
+    ];
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-slate-50/30">
             <div className="mx-auto mt-20 max-w-[1440px] px-4 py-8 md:px-8">
 
-                <nav className="mb-5 flex items-center gap-1.5 text-[13px] text-slate-400">
-                    <Link to="/" className="hover:text-[#0EA5E5]">
-                        Trang chủ
-                    </Link>
+                <div className="mb-2 px-4 py-3 w-fit">
+                    <Breadcrumb items={breadcrumbItems} />
+                </div>
 
-                    <ChevronRight size={12} />
-
-                    <Link
-                        to="/tours"
-                        className="hover:text-[#0EA5E5]"
-                    >
-                        Chuyến đi
-                    </Link>
-
-                    <ChevronRight size={12} />
-
-                    <span className="text-slate-600">
-                        {tour.tenTour}
-                    </span>
-                </nav>
-
-                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold uppercase leading-tight text-slate-900 md:text-3xl">
-                            {tour.tenTour}
+                <div className="mb-8 flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+                    <div className="flex-1">
+                        <h1 className="text-3xl font-extrabold leading-tight text-slate-800 md:text-4xl">
+                            {tourInfo?.tenTour}
                         </h1>
 
-                        <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-slate-500">
-                            <span className="flex items-center gap-1.5">
-                                <MapPin
-                                    size={14}
-                                    color="#0EA5E5"
-                                />
-                                {selectedDeparture?.diemDen}
+                        <div className="mt-4 flex flex-wrap items-center">
+                            <span className="flex items-center gap-2 rounded-full  px-4 py-2 text-sm font-bold">
+                                <MapPin size={10} />
+                                {selectedDeparture?.chuyenKhoiHanh?.diemDen || "Chưa xác định"}
                             </span>
 
-                            <span className="flex items-center gap-1.5">
-                                <Clock
-                                    size={14}
-                                    color="#0EA5E5"
-                                />
-                                {tour.thoiGianTour}
+                            <span className="flex items-center gap-2 rounded-full  px-4 py-2 text-sm font-bold" >
+                                <Clock size={10} />
+                                {tourInfo?.ngay} ngày {tourInfo?.dem} đêm
+                            </span>
+
+                            <span className="rounded-full px-4 py-2 text-sm font-bold">
+                                Khởi hành từ {selectedDeparture?.chuyenKhoiHanh?.diemKhoiHanh}
                             </span>
                         </div>
                     </div>
 
-                    <button className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-500">
-                        <Heart size={15} />
-                        Lưu
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <button
+                            className="
+                            flex items-center gap-2
+                            rounded-xl border border-slate-200
+                            bg-white px-4 py-3
+                            text-sm font-semibold text-slate-600
+                            shadow-sm transition-all
+                            hover:border-rose-200
+                            hover:bg-rose-50
+                            hover:text-rose-500
+                        "
+                        >
+                            <Heart size={18} />
+                            Yêu thích
+                        </button>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_340px]">
 
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
                     <div className="flex flex-col gap-8">
-
-                        <ImageGallery
-                            images={galleryImages}
-                        />
+                        <ImageGallery images={galleryImages} />
 
                         <SchedulePicker
-                            schedules={tour.chuyenKhoiHanh}
+                            schedules={chuyenKhoiHanhs}
                             selectedDeparture={selectedDeparture}
                             onSelectDeparture={setSelectedDeparture}
                         />
 
-                        <Itinerary
-                            itinerary={tour.lichTrinh}
-                        />
-
+                        <Itinerary itinerary={lichTrinh} />
                         <HotelInfo
-                            hotelInfo={tour.khachSan}
+                            hotels={tour.khachSans}
+                            tourSlug={slug}
+                            tourName={tourInfo?.tenTour}
                         />
-
                         <Notes />
-
-                        <Reviews
-                            reviews={tour.danhGia}
-                            reviewCount={
-                                tour.danhGia.length
-                            }
-                        />
+                        <Reviews reviews={reviews} reviewCount={0} />
                     </div>
 
-                    <aside className="sticky top-24 self-start">
-
+                    <aside className="sticky top-28 self-start z-20">
                         <BookingCard
-                            tour={tour}
+                            tour={tourInfo}
                             departure={selectedDeparture}
                         />
                     </aside>
-
                 </div>
 
                 {related.length > 0 && (
-                    <section className="py-16 md:py-20">
-                        <div className="mx-auto max-w-[1440px] px-4 md:px-8">
-                            <SectionTitle
-                                title="Các tour liên quan phù hợp với bạn"
-                                description="Các tour có mức giá tốt, lịch trình dễ chọn và phù hợp với nhiều nhóm khách."
-                            />
-
-                            <FeaturedCarousel
-                                items={related}
-                                renderItem={(tour) => (
-                                    <TourCard {...tour} />
-                                )}
-                                itemsPerPage={4}
-                                gap={30}
-                                autoPlayMs={5000}
-                            />
-                        </div>
+                    <section className="py-16">
+                        <SectionTitle
+                            title={
+                                isLoggedIn
+                                    ? "Có thể bạn cũng thích"
+                                    : "Tour liên quan"
+                            }
+                            description={
+                                isLoggedIn
+                                    ? "Những hành trình được gợi ý dựa trên tour bạn đang quan tâm."
+                                    : "Khám phá thêm những hành trình tương tự."
+                            }
+                        />
+                        <FeaturedCarousel
+                            items={related}
+                            renderItem={(t) => <TourCard {...t} />}
+                            itemsPerPage={4}
+                        />
                     </section>
                 )}
             </div>

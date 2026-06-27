@@ -74,8 +74,8 @@ function App() {
                     <Route path="/" element={<MainLayout />}>
                         <Route index element={<HomePage />} />
                         <Route path="Cac-Chuyen-Di" element={<ToursPage />} />
-                        <Route path="Cac-Chuyen-Di/:name" element={<TourDetail />} />
-                        <Route path="Khach-san/:name" element={<HotelDetail />} />
+                        <Route path="/Cac-Chuyen-Di/:slug" element={<TourDetail />} />
+                        <Route path="Khach-san/:slug" element={<HotelDetail />} />
                         <Route path="Lien-He" element={<ContactPage />} />
                         <Route path="Thanh-Toan" element={<CheckoutPage />} />
                         <Route element={<ProtectedRoute />}>
@@ -90,7 +90,7 @@ function App() {
                             <Route path="Khach-du-lich" element={<TouristManager />} />
                             <Route path="Dia-diem" element={<LocationManager />} />
                             <Route path="Loai-Dia-Diem" element={<TypeLocationManager />} />
-                            <Route path="Loai-Tour" element = {<TypeTourManager/>} />
+                            <Route path="Loai-Tour" element={<TypeTourManager />} />
                             <Route path="Cac-chuyen-di">
                                 <Route index element={<TourManager />} />
 

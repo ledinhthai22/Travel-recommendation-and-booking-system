@@ -14,7 +14,8 @@ namespace travel_recommendation_and_booking_system.DTOs.Tour
 
         [Required(ErrorMessage = "Mô tả tour không được để trống.")]
         public string MoTa { get; set; }
-
+        public string? Slug { get; set; }
+        public decimal GiaTu { get; set; }
         public int Ngay { get; set; }
         public int Dem { get; set; }
         public bool TrongNuoc { get; set; }

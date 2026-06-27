@@ -5,66 +5,115 @@ import HeroSection from '~/components/Hero/HeroSection';
 import FeaturedCarousel from '~/components/Common/FeaturedCarousel';
 import TourCard from '~/components/Tours/TourCard';
 import SectionTitle from '~/components/Common/SectionTitle';
-import { destinations, bestTours, hotDeals } from '~/constants/Home.constants';
+import { bestTours, hotDeals } from '~/constants/Home.constants';
 import useBanner from '~/Hooks/useBanner';
+import useHomeLocationsCard from '~/Hooks/useHomeLocationsCard';
+import useAuth from '~/Hooks/useAuth';
 import { useDestinations } from '~/Hooks/useDestination';
 import { useReviews } from '~/Hooks/useReview';
 import { useBestTours } from "~/Hooks/useBestTours";
 import { useState } from 'react';
 export default function HomePage() {
-    const { banners, loading } = useBanner();
-    const {reviews,reviewsloading} = useReviews();
+    const { reviews, reviewsLoading } = useReviews();
     const { tours: bestTours, loading: bestToursLoading } = useBestTours();
-    const { destinations, destinationsloading, error } = useDestinations();
-    const activeBanner = banners
+    const { user } = useAuth();
+    const { banners } = useBanner();
+    const { destinations, loading: locationLoading } = useHomeLocationsCard(12);
+    const activeBanner = banners;
+    const isLoggedIn = !!user
+
     return (
         <div className="min-h-screen bg-white">
             <HeroSection
                 title={
                     activeBanner?.tieuDe ||
-                    "Khám phá hành trình phù hợp với bạn"
+                    (isLoggedIn
+                        ? `Xin chào ${user.hoTen}, bạn muốn đi đâu hôm nay?`
+                        : "Bạn muốn đi đâu hôm nay?")
                 }
-                subtitle="Xem tour, điểm đến hoặc khách sạn bạn thích. Hệ thống sẽ ghi nhận hành vi để gợi ý phù hợp hơn."
+                subtitle={
+                    isLoggedIn
+                        ? "Khám phá những tour được đề xuất riêng cho bạn và bắt đầu hành trình mới."
+                        : "Khám phá hàng trăm tour du lịch hấp dẫn, đặt tour nhanh chóng và thanh toán an toàn."
+                }
                 background={
                     activeBanner?.duongDanAnh
                         ? `https://localhost:7016${activeBanner.duongDanAnh}`
                         : "https://images.unsplash.com/photo-1501785888041-af3ef285b470"
                 }
                 link={activeBanner?.linkLienKet}
-                badge="Có thể dùng ngay, không cần đăng nhập"
+                badge={
+                    isLoggedIn
+                        ? "Gợi ý dành riêng cho bạn"
+                        : "Đặt tour trực tuyến"
+                }
                 showSearchBar={true}
             />
 
             <section className="py-16 md:py-20">
                 <div className="mx-auto max-w-[1440px] px-4 md:px-8">
                     <SectionTitle
-                        title="Bạn muốn đi đâu ?"
-                        description="Khám phá các điểm đến được nhiều du khách yêu thích nhất."
+                        title={
+                            isLoggedIn
+                                ? "Điểm đến dành cho bạn"
+                                : "Điểm đến nổi bật"
+                        }
+                        description={
+                            isLoggedIn
+                                ? "Dựa trên sở thích và hoạt động của bạn, đây là những điểm đến có thể bạn sẽ yêu thích."
+                                : "Khám phá những địa điểm du lịch được yêu thích với nhiều trải nghiệm hấp dẫn trên khắp Việt Nam."
+                        }
                     />
-                    <FeaturedCarousel
-                        items={destinations.slice(0, 4)}
-                        itemsPerPage={4}
-                        gap={30}
-                        autoPlayMs={4500}
-                        renderItem={(dest) => (
-                            <DestinationsCard
-                                id={dest.maDiemDen}
-                                image={`https://localhost:7016${dest.duongDanAnh}`}
-                                name={dest.tenDiemDen}
-                                country={dest.quocGia}
-                                description={dest.mota}
-                                toursCount={dest.soLuongTour|| 0}
-                            />
-                        )}
-                    />
+
+                    {locationLoading ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-[30px]">
+                            {[...Array(4)].map((_, i) => (
+                                <div key={i} className="h-72 w-full animate-pulse rounded-3xl bg-slate-200" />
+                            ))}
+                        </div>
+                    ) : destinations && destinations.length > 0 ? (
+
+                        <FeaturedCarousel
+                            items={destinations}
+                            itemsPerPage={12}
+                            gap={30}
+                            autoPlayMs={4500}
+                            renderItem={(dest) => (
+                                <DestinationsCard
+                                    key={dest.tinhThanh}
+                                    slug={dest.tinhThanh} // slug
+                                    image={
+                                        dest.duongDanAnh
+                                            ? `https://localhost:7016${dest.duongDanAnh}`
+                                            : "https://images.unsplash.com/photo-1501785888041-af3ef285b470"
+                                    }
+                                    name={dest.tenDiemDen}
+                                    description={dest.moTa}
+                                    toursCount={dest.soLuongTour}
+                                    province={dest.tinhThanh}
+                                    rating={'5.0'}
+                                />
+                            )}
+                        />
+                    ) : (
+                        <p className="text-center text-slate-400 py-6">Không tìm thấy địa điểm nào.</p>
+                    )}
                 </div>
             </section>
 
             <section className="py-16 md:py-20">
                 <div className="mx-auto max-w-[1440px] px-4 md:px-8">
                     <SectionTitle
-                        title="Ưu đãi nổi bật cho người mới"
-                        description="Các tour có mức giá tốt, lịch trình dễ chọn và phù hợp với nhiều nhóm khách."
+                        title={
+                            isLoggedIn
+                                ? "Tour dành riêng cho bạn"
+                                : "Tour du lịch nổi bật"
+                        }
+                        description={
+                            isLoggedIn
+                                ? "Những hành trình được đề xuất dựa trên sở thích và điểm đến bạn quan tâm."
+                                : "Những hành trình được nhiều du khách lựa chọn với lịch trình hấp dẫn và dịch vụ chất lượng."
+                        }
                         action={
                             <Link
                                 to="/Cac-Chuyen-Di"
@@ -97,8 +146,16 @@ export default function HomePage() {
             <section className="py-16 md:py-20">
                 <div className="mx-auto max-w-[1440px] px-4 md:px-8">
                     <SectionTitle
-                        title="Hot deals"
-                        description="Các tour có mức giá tốt, lịch trình dễ chọn và phù hợp với nhiều nhóm khách."
+                        title={
+                            isLoggedIn
+                                ? "Có thể bạn quan tâm"
+                                : "Tour mới cập nhật"
+                        }
+                        description={
+                            isLoggedIn
+                                ? "Khám phá những hành trình mới và các điểm đến đang được nhiều du khách lựa chọn."
+                                : "Khám phá các tour mới nhất với lịch khởi hành đa dạng và nhiều ưu đãi hấp dẫn."
+                        }
                         action={
                             <Link
                                 to="/Cac-Chuyen-Di"
@@ -126,12 +183,13 @@ export default function HomePage() {
                     <h2 className="text-4xl font-bold text-slate-900">Khách hàng nói gì về chúng tôi</h2>
                     <p className="mt-3 text-slate-500">Những đánh giá chân thực từ khách hàng đã trải nghiệm dịch vụ</p>
                 </div>
-                {loading ? (
+                {reviewsLoading ? (
                     <div className="text-center">Đang tải đánh giá...</div>
                 ) : (
                     <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
                         {reviews.map((review, index) => (
                             <div key={index} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+
                                 <div className="mb-4 flex items-center gap-4">
                                     <img
                                         src={`https://localhost:7016${review.duongDanAnh}`} 

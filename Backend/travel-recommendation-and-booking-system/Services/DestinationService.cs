@@ -14,21 +14,37 @@ namespace travel_recommendation_and_booking_system.Services
             _context = context;
         }
 
-        //Địa Điểm nổi bật (số lượng tour)
+        //Địa Điểm nổi bật (số lượng tour)  
         public async Task<List<DestinationDTO>> GetTopDestinationsAsync()
         {
-            return await _context.DiaDiems
-                .Select(d => new DestinationDTO
+            var listDiaDiem = await _context.DiaDiems
+                .Select(d => new
                 {
-                    TenDiemDen = d.TinhThanh,
-                    SoLuongTour = d.CTLichTrinhs.Count(ct => ct.LichTrinh.Tour.TrangThai == 1),
-                    Mota = d.MoTa,
-                    QuocGia = d.QuocGia,
-                    DuongDanAnh = d.DuongDanAnh ?? "/img/default-location.jpg"
+                    d.TinhThanh,
+                    d.DuongDanAnh,
+                    Count = d.CTLichTrinhs.Count(ct => ct.LichTrinh.Tour.TrangThai == 1)
                 })
-                .OrderByDescending(d => d.SoLuongTour)
-                .Take(8)
                 .ToListAsync();
+            var data = listDiaDiem
+                .GroupBy(d => d.TinhThanh)
+                .Select(g => new
+                {
+                    TinhThanh = g.Key,
+                    SoLuongTour = g.Sum(x => x.Count),
+                    DuongDanAnh = g.FirstOrDefault().DuongDanAnh
+                })
+                .OrderByDescending(x => x.SoLuongTour)
+                .Take(12)
+                .ToList();
+
+            return data.Select(d => new DestinationDTO
+            {
+                TenDiemDen = d.TinhThanh,
+                SoLuongTour = d.SoLuongTour,
+                MoTa = $"Khám phá vẻ đẹp thiên nhiên và văn hóa tại {d.TinhThanh}.",
+                DuongDanAnh = d.DuongDanAnh ?? "/img/default-location.jpg",
+                TinhThanh = d.TinhThanh
+            }).ToList();
         }
 
         // Địa điểm dành cho bạn

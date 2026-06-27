@@ -39,7 +39,6 @@ const SUPPORT_TOPICS = [
     },
 ];
 
-
 function FaqItem({ index, title, answer }) {
     const [open, setOpen] = useState(false);
 
@@ -103,27 +102,47 @@ export default function Contact() {
         }));
     };
     const [loading, setLoading] = useState(false);
+    // Thêm state lỗi
+const [errors, setErrors] = useState({});
+
+const validate = () => {
+    const newErrors = {};
+    
+    // Regex cho SĐT (khớp với Regex C# của bạn)
+    const phoneRegex = /^(0[3|5|7|8|9])[0-9]{8}$/;
+
+    if (!form.hoTen.trim()) newErrors.hoTen = "Họ tên không được để trống";
+    
+    if (!form.email.trim()) {
+        newErrors.email = "Email không được để trống";
+    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+        newErrors.email = "Email không hợp lệ";
+    }
+
+    if (!form.soDienthoai.trim()) {
+        newErrors.soDienthoai = "Số điện thoại không được để trống";
+    } else if (!phoneRegex.test(form.soDienthoai.trim())) {
+        newErrors.soDienthoai = "Số điện thoại không đúng định dạng";
+    }
+
+    if (!form.noiDung.trim()) newErrors.noiDung = "Nội dung không được để trống";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+};
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!form.hoTen.trim() ||
-            !form.email.trim() ||
-            !form.soDienThoai.trim() ||
-            !form.noiDung.trim()
-        ) {
-            toastError(
-                "Thiếu thông tin",
-                "Vui lòng nhập đầy đủ thông tin liên hệ"
-            );
-            return;
-        }
+        console.log("Đã click nút gửi!");
+        if (!validate()) return;
         try {
             setLoading(true);
 
             await sentContactApi({
                 hoTen: form.hoTen.trim(),
                 email: form.email.trim(),
-                soDienThoai: form.soDienThoai.trim(),
+                soDienThoai: form.soDienthoai.trim(),
                 noiDung: form.noiDung.trim(),
             });
 
@@ -148,6 +167,7 @@ export default function Contact() {
             setLoading(false);
         }
     };
+    const mapUrl = webInfo?.Map_Trang_Lien_He?.replaceAll('"', '');
     return (
         <div className="bg-white/50 py-10 mt-20">
             <div className="mx-auto max-w-[1388px] ">
@@ -168,9 +188,13 @@ export default function Contact() {
                         <div className="overflow-hidden rounded-4xl border border-slate-200 ">
                             <iframe
                                 title="Google Map"
-                                src="https://maps.google.com/maps?q=10.850523,106.771914&z=16&output=embed"
-                                className="h-full  w-full"
+                                src={mapUrl}
+                                width="100%"
+                                height="650"
+                                style={{ border: 0 }}
+                                allowFullScreen
                                 loading="lazy"
+                                referrerPolicy="strict-origin-when-cross-origin"
                             />
                         </div>
                         <form
@@ -188,6 +212,7 @@ export default function Contact() {
                                     value={form.hoTen}
                                     onChange={handleChange}
                                     placeholder="Nguyễn Văn A"
+                                    error={errors.hoTen}
                                 />
 
                                 <InputField
@@ -196,14 +221,16 @@ export default function Contact() {
                                     value={form.email}
                                     onChange={handleChange}
                                     placeholder="example@gmail.com"
+                                    error={errors.email}
                                 />
 
                                 <InputField
                                     label="Số điện thoại"
-                                    name="soDienThoai"
-                                    value={form.soDienThoai}
+                                    name="soDienthoai"
+                                    value={form.soDienthoai}
                                     onChange={handleChange}
                                     placeholder="0901234567"
+                                    error={errors.soDienthoai}
                                 />
 
                             </div>
@@ -219,6 +246,7 @@ export default function Contact() {
                                     multiline
                                     rows={8}
                                     placeholder="Nhập nội dung cần hỗ trợ..."
+                                    error={errors.noiDung}
                                 />
                             </div>
 

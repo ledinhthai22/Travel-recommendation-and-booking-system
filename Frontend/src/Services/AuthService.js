@@ -9,6 +9,15 @@ export const loginApi = async (data) => {
     return response.data;
 };
 
+export const loginStaffApi = async (data) => {
+    const response = await axiosClient.post(
+        "/auth/login-staff", 
+        data
+    );
+
+    return response.data;
+};
+
 export const registerApi = async (data) => {
     const response = await axiosClient.post(
         "/auth/register",
@@ -17,6 +26,7 @@ export const registerApi = async (data) => {
 
     return response.data;
 };
+
 export const logoutApi = async (refreshToken) => {
     const res = await axiosClient.post("/auth/logout", {
         refreshToken,
@@ -24,6 +34,7 @@ export const logoutApi = async (refreshToken) => {
 
     return res.data;
 };
+
 export const resetPasswordApi = async (data) => {
     const res = await axiosClient.post("/auth/reset-password", {
         email: data.email,
@@ -33,6 +44,7 @@ export const resetPasswordApi = async (data) => {
 
     return res.data;
 };
+
 export const forgotPasswordApi = async (email) => {
     const res = await axiosClient.post(
         "/auth/forgot-password",
@@ -43,6 +55,7 @@ export const forgotPasswordApi = async (email) => {
 
     return res.data;
 };      
+
 export const verifyOtpApi = async (data) => {
     const res = await axiosClient.post(
         "/auth/verify-otp",
@@ -54,7 +67,15 @@ export const verifyOtpApi = async (data) => {
 
     return res.data;
 };
+
+
 export const getMeApi = async () => {
     const res = await axiosClient.get("/auth/me");
+    return res.data;
+};
+
+
+export const getStaffMeApi = async () => {
+    const res = await axiosClient.get("/auth/staff-me");
     return res.data;
 };

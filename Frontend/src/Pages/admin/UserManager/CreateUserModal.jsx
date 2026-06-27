@@ -30,7 +30,6 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
                 gioiTinh: true,
                 maVaiTro: 4
             });
-
             setErrors({});
         }
     }, [isOpen]);
@@ -62,7 +61,6 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
             newErrors.email = "Vui lòng nhập email";
         } else {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
             if (!emailRegex.test(form.email)) {
                 newErrors.email = "Email không hợp lệ";
             }
@@ -72,7 +70,6 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
             newErrors.soDienThoai = "Vui lòng nhập số điện thoại";
         } else {
             const phoneRegex = /^0\d{9}$/;
-
             if (!phoneRegex.test(form.soDienThoai)) {
                 newErrors.soDienThoai = "Số điện thoại không hợp lệ";
             }
@@ -94,7 +91,11 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
 
         return Object.keys(newErrors).length === 0;
     };
-    const handleSubmit = async () => {
+
+    // Thêm tham số (e) để bắt sự kiện submit form
+    const handleSubmit = async (e) => {
+        if (e) e.preventDefault(); // Chặn hành vi tự reload trang của trình duyệt
+
         if (!validate()) return;
 
         try {
@@ -117,6 +118,7 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
             onSuccess?.();
             onClose();
         } catch (error) {
+            // Lúc này form sẽ không bị reload, Toast lỗi sẽ hiển thị bình thường
             toastError(getErrorMessage(error));
         } finally {
             setLoading(false);
@@ -125,10 +127,15 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
 
     return (
         <div className="fixed inset-0 bg-black/50 z-[999] flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl w-full max-w-2xl p-6 shadow-2xl">
+            {/* Đổi thẻ div bọc nội dung thành thẻ form và gọi onSubmit */}
+            <form onSubmit={handleSubmit} className="bg-white rounded-3xl w-full max-w-2xl p-6 shadow-2xl">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold text-slate-800">Thêm khách hàng mới</h2>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full transition-colors">
+                    <button 
+                        type="button" // Tránh nhầm lẫn với submit button
+                        onClick={onClose} 
+                        className="p-1 hover:bg-slate-100 rounded-full transition-colors"
+                    >
                         <X size={22} className="text-slate-500" />
                     </button>
                 </div>
@@ -185,13 +192,14 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                     <button
+                        type="button" // Rất quan trọng: Báo cho form biết đây KHÔNG PHẢI là nút gửi
                         onClick={onClose}
                         className="px-6 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200 transition-colors"
                     >
                         Hủy
                     </button>
                     <button
-                        onClick={handleSubmit}
+                        type="submit" // Báo cho form biết đây là nút kích hoạt onSubmit
                         disabled={loading}
                         className="px-6 py-2.5 rounded-xl bg-sky-500 text-white font-semibold hover:bg-sky-600 transition-colors disabled:opacity-50 flex items-center gap-2"
                     >
@@ -199,7 +207,7 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
                         {loading ? "Đang xử lý..." : "Thêm khách hàng"}
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
     );
 }

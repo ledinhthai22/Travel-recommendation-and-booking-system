@@ -1,15 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Bell } from "lucide-react";
 import AvatarDropdown from "./AvatarDropdown";
 import useAuth from "~/Hooks/useAuth";
+
 export default function UserActions({
-  // user,
   onLoginClick,
   onLogout,
 }) {
   const [isNotifyOpen, setIsNotifyOpen] = useState(false);
-
   const { user } = useAuth();
+  const notifyRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isNotifyOpen && notifyRef.current && !notifyRef.current.contains(event.target)) {
+        setIsNotifyOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [isNotifyOpen]);
+
   if (!user) {
     return (
       <button
@@ -23,24 +40,21 @@ export default function UserActions({
 
   return (
     <div className="flex items-center gap-4">
-      {/* Notification */}
-      <div className="relative">
+      <div className="relative" ref={notifyRef}>
         <button
           onClick={() => setIsNotifyOpen(!isNotifyOpen)}
-          className={`relative flex h-11 w-11 items-center justify-center rounded-xl transition
-            ${
-              isNotifyOpen
-                ? "bg-blue-50 text-[#0EA5E5]"
-                : "text-slate-600 hover:bg-slate-50"
-            }`}
+          className={`relative flex h-11 w-11 items-center justify-center rounded-xl transition ${
+            isNotifyOpen
+              ? "bg-blue-50 text-[#0EA5E5]"
+              : "text-slate-600 hover:bg-slate-50"
+          }`}
         >
           <Bell size={16} />
-
           <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-500" />
         </button>
 
         {isNotifyOpen && (
-          <div className="absolute right-0 mt-3 w-96 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+          <div className="absolute right-0 mt-3 w-96 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl z-50">
             <div className="flex items-center justify-between border-b border-slate-100 p-5">
               <h3 className="font-semibold text-slate-900">
                 Thông báo

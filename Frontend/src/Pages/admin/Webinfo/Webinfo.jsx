@@ -114,6 +114,7 @@ export default function Webinfo() {
             width: '80px',
             center: 'true',
             selector: row => row.maTTTrang,
+            sortable: true,
         },
         {
             name: 'Key',

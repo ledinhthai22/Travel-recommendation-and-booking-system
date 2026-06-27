@@ -86,6 +86,9 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<IRecommendationService,RecommendationService>();
             builder.Services.AddScoped<IDestinationService, DestinationService>();
             builder.Services.AddTransient<IReviewService, ReviewService>();
+            builder.Services.AddScoped<ILogService, LogService>();
+            builder.Services.AddScoped<IRequestInfoService, RequestInfoService>();
+            builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
             builder.Services.AddScoped<PromotionStatusJob>();
             builder.Services.AddTransient<GeminiService>();
             builder.Services.AddHttpContextAccessor();
@@ -138,6 +141,7 @@ namespace travel_recommendation_and_booking_system
                     });
             });
             builder.Services.AddAuthorization();
+            builder.Services.AddHttpContextAccessor();
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
