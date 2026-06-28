@@ -103,14 +103,6 @@ export default function PromotionDetailModal({
                         )}
                         readOnly
                     />
-
-                    {/* <InputField
-                        label="Ngày cập nhật"
-                        value={formatDate(
-                            promotion.ngayCapNhat
-                        )}
-                        readOnly
-                    /> */}
                     <div>
                         <label className="text-sm text-slate-500 block mb-1"> Trạng thái </label>
                         <span className={`inline-flex px-4 py-2 rounded-full text-sm font-semibold ${statusColors[promotion.trangThai]}`} >
@@ -121,17 +113,6 @@ export default function PromotionDetailModal({
 
                 </div>
 
-                <div className="mt-8 flex justify-end">
-                    <button
-                        onClick={onClose}
-                        className=" px-6 py-2
-                                rounded-xl
-                                bg-slate-100
-                                hover:bg-slate-200 cursor-pointer"
-                    >
-                        Đóng
-                    </button>
-                </div>
 
             </div>
         </div >

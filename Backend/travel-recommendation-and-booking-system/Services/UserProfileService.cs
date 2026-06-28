@@ -5,6 +5,7 @@ using travel_recommendation_and_booking_system.DTOs.Log;
 using travel_recommendation_and_booking_system.DTOs.LogSystem;
 using travel_recommendation_and_booking_system.DTOs.UserProfile;
 using travel_recommendation_and_booking_system.Interfaces;
+using travel_recommendation_and_booking_system.Models;
 
 namespace travel_recommendation_and_booking_system.Services
 {
@@ -155,7 +156,8 @@ namespace travel_recommendation_and_booking_system.Services
         {
             var tongTour = await _context.DonDatTours.CountAsync(d => d.MaNguoiDung == userId);
             var tongDanhGia = await _context.DanhGias.CountAsync(d => d.MaNguoiDung == userId);
-            var tongTien = await _context.DonDatTours.Where(d => d.MaNguoiDung == userId && d.TrangThaiThanhToan == true).SumAsync(d =>(decimal?) d.TongTien)??0m;
+            var tongTien = await _context.ThanhToans.Include(d => d.DonDatTour)
+                .Where(d => d.PhuongThucThanhToan == 1).SumAsync(d => (decimal?)d.TongTienThanhToan) ?? 0m;
 
             var recentTours = await _context.DonDatTours
                 .Include(d => d.ChuyenKhoiHanh)

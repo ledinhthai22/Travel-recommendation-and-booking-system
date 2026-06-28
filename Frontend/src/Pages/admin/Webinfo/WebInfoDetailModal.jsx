@@ -66,16 +66,6 @@ export default function WebInfoDetailModal({
                         </div>
                     </div>
                 </div>
-
-                {/* Footer */}
-                <div className="mt-8">
-                    <button
-                        onClick={onClose}
-                        className="w-full py-3 rounded-xl bg-gray-100 text-sm font-medium hover:bg-gray-200 transition-colors"
-                    >
-                        Đóng
-                    </button>
-                </div>
             </div>
         </div>
     );

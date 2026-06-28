@@ -1,5 +1,5 @@
+// Services/TourService.js
 import axiosClient from "./axiosClient";
-
 
 export const getPagedToursApi = async (
     page = 1,
@@ -19,12 +19,23 @@ export const getPagedToursApi = async (
     return response.data;
 };
 
+export const getToursForBookingSelectApi = async (
+    keyword = '',
+    status = 1
+) => {
+    const response = await axiosClient.get("/admin/Tour/booking-select", {
+        params: {
+            keyword: keyword || undefined,
+            status: status ?? undefined
+        }
+    });
+    return response.data;
+};
 
 export const getTourDetailApi = async (id) => {
     const response = await axiosClient.get(`/admin/Tour/${id}`);
     return response.data;
 };
-
 
 export const createFullTourApi = async (formData) => {
     const response = await axiosClient.post(
@@ -54,7 +65,6 @@ export const updateFullTourApi = async (id, formData) => {
     return response.data;
 };
 
-
 export const deleteTourApi = async (id) => {
     const response = await axiosClient.delete(
         `/admin/Tour/${id}`
@@ -62,7 +72,6 @@ export const deleteTourApi = async (id) => {
 
     return response.data;
 };
-
 
 export const changeTourStatusApi = async (id, trangThai) => {
     const response = await axiosClient.patch(
@@ -83,7 +92,6 @@ export const setMainTourImageApi = async (imageId) => {
     return response.data;
 };
 
-
 export const deleteTourImageApi = async (imageId) => {
     const response = await axiosClient.delete(
         `/admin/Tour/images/${imageId}`
@@ -93,6 +101,16 @@ export const deleteTourImageApi = async (imageId) => {
 };
 
 //tour yêu thích
+
+export const getMyWishlistIdsApi = async () => {
+    try {
+        const response = await axiosClient.get(`/customer/Tour/wishlist-ids`);
+        return response.data;
+    } catch (error) {
+        console.error("Lỗi lấy danh sách ID yêu thích:", error);
+        return [];
+    }
+};
 
 export const getWishlistApi = async (pageNumber = 1, pageSize = 10) => {
     return await axiosClient.get(`/customer/Tour/wishlist`, {
@@ -113,6 +131,7 @@ export const addToWishlistApi = async (tourId) => {
     return await axiosClient.post(`/customer/Tour/wishlist/${tourId}`);
 }
     
+
 export const getTourBySlugApi = async (slug) => {
     const response = await axiosClient.get(
         `/PublicTour/slug/${slug}`

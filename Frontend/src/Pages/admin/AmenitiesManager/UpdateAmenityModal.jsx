@@ -11,7 +11,6 @@ export default function UpdateAmenityModal({ isOpen, initialData = null, onClose
     const [loading, setLoading] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
 
-    // Lấy ID an toàn bất kể Backend cấu hình camelCase hay giữ nguyên PascalCase
     const amenityId = initialData?.maTienIch ?? initialData?.MaTienIch;
 
     useEffect(() => {
@@ -36,7 +35,6 @@ export default function UpdateAmenityModal({ isOpen, initialData = null, onClose
 
         setLoading(true);
         try {
-            // Gửi dữ liệu đồng bộ dạng Object DTO lên endpoint /admin/Amenities/{id}
             await updateAmenityApi(amenityId, {
                 TenTienIch: tenTienIch.trim()
             });
@@ -75,14 +73,7 @@ export default function UpdateAmenityModal({ isOpen, initialData = null, onClose
                     />
 
                     <div className="flex gap-3 pt-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 py-3 px-6 rounded-xl border border-slate-300 font-medium text-slate-700 hover:bg-slate-50"
-                            disabled={loading}
-                        >
-                            Hủy
-                        </button>
+
                         <button
                             type="submit"
                             disabled={loading || !tenTienIch.trim()}

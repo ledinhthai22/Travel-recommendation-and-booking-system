@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import InputField from "~/components/UI/Form/InputField";
 import Dropdown from "~/components/Common/Dropdown";
+import DatePicker from "~/components/UI/Form/DatePicker"; // Import DatePicker mới của bạn
 import { createUserApi } from "~/Services/UserService";
 import { toastSuccess, toastError } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
@@ -13,6 +14,7 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
         hoTen: "",
         email: "",
         soDienThoai: "",
+        ngaySinh: "", // Thêm trường ngaySinh vào state form
         matKhau: "",
         xacNhanMatKhau: "",
         gioiTinh: true,
@@ -25,6 +27,7 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
                 hoTen: "",
                 email: "",
                 soDienThoai: "",
+                ngaySinh: "", // Reset về rỗng khi mở lại modal
                 matKhau: "",
                 xacNhanMatKhau: "",
                 gioiTinh: true,
@@ -75,6 +78,11 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
             }
         }
 
+        // Validate ngày sinh
+        if (!form.ngaySinh) {
+            newErrors.ngaySinh = "Vui lòng chọn ngày sinh";
+        }
+
         if (!form.matKhau.trim()) {
             newErrors.matKhau = "Vui lòng nhập mật khẩu";
         } else if (form.matKhau.length < 8) {
@@ -92,9 +100,8 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
         return Object.keys(newErrors).length === 0;
     };
 
-    // Thêm tham số (e) để bắt sự kiện submit form
     const handleSubmit = async (e) => {
-        if (e) e.preventDefault(); // Chặn hành vi tự reload trang của trình duyệt
+        if (e) e.preventDefault();
 
         if (!validate()) return;
 
@@ -105,6 +112,7 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
                 hoTen: form.hoTen,
                 email: form.email,
                 soDienThoai: form.soDienThoai,
+                ngaySinh: form.ngaySinh, // Đưa dữ liệu ngày sinh vào payload gửi lên API
                 matKhau: form.matKhau,
                 xacNhanMatKhau: form.xacNhanMatKhau,
                 gioiTinh: Boolean(form.gioiTinh),
@@ -118,7 +126,6 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
             onSuccess?.();
             onClose();
         } catch (error) {
-            // Lúc này form sẽ không bị reload, Toast lỗi sẽ hiển thị bình thường
             toastError(getErrorMessage(error));
         } finally {
             setLoading(false);
@@ -127,13 +134,12 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
 
     return (
         <div className="fixed inset-0 bg-black/50 z-[999] flex items-center justify-center p-4">
-            {/* Đổi thẻ div bọc nội dung thành thẻ form và gọi onSubmit */}
-            <form onSubmit={handleSubmit} className="bg-white rounded-3xl w-full max-w-2xl p-6 shadow-2xl">
+            <form onSubmit={handleSubmit} className="bg-white rounded-3xl w-full max-w-xl p-6 shadow-2xl overflow-y-auto max-h-[99vh]">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold text-slate-800">Thêm khách hàng mới</h2>
-                    <button 
-                        type="button" // Tránh nhầm lẫn với submit button
-                        onClick={onClose} 
+                    <button
+                        type="button"
+                        onClick={onClose}
                         className="p-1 hover:bg-slate-100 rounded-full transition-colors"
                     >
                         <X size={22} className="text-slate-500" />
@@ -155,12 +161,22 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
                         onChange={(e) => handleChange("email", e.target.value)}
                         error={errors.email}
                     />
+                    {/* TÍCH HỢP DATEPICKER CHỌN NĂM NHANH VÀO ĐÂY */}
+                    <DatePicker
+                        label="Ngày sinh *"
+                        placeholderText="Chọn ngày sinh..."
+                        value={form.ngaySinh}
+                        onChange={(dateString) => handleChange("ngaySinh", dateString)}
+                        error={errors.ngaySinh}
+                        disabled={loading}
+                    />
                     <InputField
                         label="Số điện thoại *"
                         value={form.soDienThoai}
                         onChange={(e) => handleChange("soDienThoai", e.target.value)}
                         error={errors.soDienThoai}
                     />
+
 
                     <Dropdown
                         label="Giới tính"
@@ -172,6 +188,9 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
                             { value: false, label: "Nữ" }
                         ]}
                     />
+
+
+
 
                     <InputField
                         label="Mật khẩu *"
@@ -191,15 +210,9 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+
                     <button
-                        type="button" // Rất quan trọng: Báo cho form biết đây KHÔNG PHẢI là nút gửi
-                        onClick={onClose}
-                        className="px-6 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200 transition-colors"
-                    >
-                        Hủy
-                    </button>
-                    <button
-                        type="submit" // Báo cho form biết đây là nút kích hoạt onSubmit
+                        type="submit"
                         disabled={loading}
                         className="px-6 py-2.5 rounded-xl bg-sky-500 text-white font-semibold hover:bg-sky-600 transition-colors disabled:opacity-50 flex items-center gap-2"
                     >
@@ -207,7 +220,7 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
                         {loading ? "Đang xử lý..." : "Thêm khách hàng"}
                     </button>
                 </div>
-            </form>
-        </div>
+            </form >
+        </div >
     );
 }

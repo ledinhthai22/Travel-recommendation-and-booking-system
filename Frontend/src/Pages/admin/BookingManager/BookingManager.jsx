@@ -1,423 +1,370 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import {
+    Calendar, RefreshCw,
+    Banknote, SlidersHorizontal,
+    CreditCard, ArrowRightLeft,
+} from 'lucide-react';
 import CustomDataTable from '~/components/UI/Table/CustomDataTable';
-import RowActionsButton from '~/components/UI/Table/Button/RowActionsButton';
 import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
+import SelectField from '~/components/UI/Form/SelectField';
+import DatePicker from '~/components/UI/Form/DatePicker';
+import { getPagedTourBookingAdminApi, getTourBookingDetailAdminApi } from '~/Services/TourBookingService';
+import BookingDetailModal from './BookingDetailModal';
+import CreateBookingAdminModal from './CreateBookingAdminModal';
+import RowActionsButton from '~/components/UI/Table/Button/RowActionsButton';
+import { getDate } from 'date-fns';
 
-const BOOKING_DATA = [
-    {
-        maDonDatTour: 1001,
-        maNguoiDung: 201,
-        maChuyen: 301,
-        maKhachSan: 101,
-        maUuDai: 1,
+export const ORDER_STATUS = {
+    1: { text: 'Chờ duyệt', color: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-amber-400' },
+    2: { text: 'Đã duyệt',  color: 'bg-blue-100 text-blue-700 border-blue-200',    dot: 'bg-blue-400' },
+    3: { text: 'Hoàn tất',  color: 'bg-emerald-100 text-emerald-700 border-emerald-200', dot: 'bg-emerald-400' },
+    4: { text: 'Đã hủy',   color: 'bg-red-100 text-red-700 border-red-200',        dot: 'bg-red-400' },
+};
 
-        soNguoiLon: 2,
-        soTreEm: 1,
-        soEmBe: 0,
+export const PAYMENT_STATUS = {
+    0: { text: 'Chờ thanh toán', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+    1: { text: 'Thành công',     color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    2: { text: 'Thất bại',       color: 'bg-red-50 text-red-700 border-red-200' },
+    3: { text: 'Hoàn tiền',      color: 'bg-purple-50 text-purple-700 border-purple-200' },
+};
 
-        ngayDat: "2026-04-10T09:30:00",
-        tongTien: 14550000,
+export const PAYMENT_METHOD = {
+    VNPay:        { text: 'VNPay',      color: 'bg-blue-50 text-blue-700 border-blue-200',     icon: <CreditCard size={11} /> },
+    "Tiền mặt":   { text: 'Tiền mặt',  color: 'bg-slate-100 text-slate-700 border-slate-200', icon: <Banknote size={11} /> },
+    "Chuyển khoản":{ text: 'Chuyển khoản', color: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: <ArrowRightLeft size={11} /> },
+};
 
-        trangThaiThanhToan: true,
-        trangThaiDon: 2,
+const STATUS_OPTIONS = [
+    { id: '',  name: 'Trạng thái đơn' },
+    { id: '1', name: 'Chờ duyệt' },
+    { id: '2', name: 'Đã duyệt' },
+    { id: '3', name: 'Hoàn tất' },
+    { id: '4', name: 'Đã hủy' },
+];
 
-        ngayCapNhat: "2026-04-10T10:00:00",
-
-        // Thông tin hiển thị
-        tenKhachHang: "Nguyễn Thị Lan",
-        email: "lan.nguyen@gmail.com",
-        soDienThoai: "0912345678",
-        avatar: "https://i.pravatar.cc/150?u=lan",
-
-        // Tour
-        tour: {
-            maTour: 1,
-            tenTour: "Vịnh Hạ Long 3N2Đ",
-            thoiGianTour: "3 Ngày 2 Đêm",
-            diemKhoiHanh: "Hà Nội",
-            trangThai: true
-        },
-
-        // Chuyến khởi hành
-        chuyen: {
-            maChuyen: 301,
-            maChuyenCode: "HL-20260415",
-            tenChuyen: "Hạ Long tháng 4",
-            diemDen: "Quảng Ninh",
-            ngayKhoiHanh: "2026-04-15",
-            ngayKetThuc: "2026-04-17",
-            soLuongCho: 40
-        }
-    },
-
-    {
-        maDonDatTour: 1002,
-        maNguoiDung: 202,
-        maChuyen: 302,
-        maKhachSan: null,
-        maUuDai: null,
-
-        soNguoiLon: 2,
-        soTreEm: 0,
-        soEmBe: 0,
-
-        ngayDat: "2026-04-11T13:00:00",
-        tongTien: 12900000,
-
-        trangThaiThanhToan: false,
-        trangThaiDon: 1,
-
-        ngayCapNhat: "2026-04-11T13:00:00",
-
-        tenKhachHang: "Trần Minh Quân",
-        email: "quan.tran@yahoo.com",
-        soDienThoai: "0987654321",
-        avatar: "https://i.pravatar.cc/150?u=quan",
-
-        tour: {
-            maTour: 2,
-            tenTour: "Phú Quốc Beach Resort 4N3Đ",
-            thoiGianTour: "4 Ngày 3 Đêm",
-            diemKhoiHanh: "TP.HCM",
-            trangThai: true
-        },
-
-        chuyen: {
-            maChuyen: 302,
-            maChuyenCode: "PQ-20260520",
-            tenChuyen: "Phú Quốc mùa hè",
-            diemDen: "Kiên Giang",
-            ngayKhoiHanh: "2026-05-20",
-            ngayKetThuc: "2026-05-23",
-            soLuongCho: 30
-        }
-    },
-
-    {
-        maDonDatTour: 1003,
-        maNguoiDung: 203,
-        maChuyen: 303,
-        maKhachSan: null,
-        maUuDai: 2,
-
-        soNguoiLon: 1,
-        soTreEm: 0,
-        soEmBe: 0,
-
-        ngayDat: "2026-04-09T08:15:00",
-        tongTien: 2790000,
-
-        trangThaiThanhToan: true,
-        trangThaiDon: 4,
-
-        ngayCapNhat: "2026-04-12T09:00:00",
-
-        tenKhachHang: "Lê Hoàng Nam",
-        email: "nam.le@hotmail.com",
-        soDienThoai: "0934567890",
-        avatar: "https://i.pravatar.cc/150?u=nam",
-
-        tour: {
-            maTour: 3,
-            tenTour: "Fansipan Sapa 2N1Đ",
-            thoiGianTour: "2 Ngày 1 Đêm",
-            diemKhoiHanh: "Hà Nội",
-            trangThai: true
-        },
-
-        chuyen: {
-            maChuyen: 303,
-            maChuyenCode: "SP-20260418",
-            tenChuyen: "Fansipan cuối tuần",
-            diemDen: "Lào Cai",
-            ngayKhoiHanh: "2026-04-18",
-            ngayKetThuc: "2026-04-19",
-            soLuongCho: 25
-        }
-    },
-
-    {
-        maDonDatTour: 1004,
-        maNguoiDung: 204,
-        maChuyen: 304,
-        maKhachSan: 102,
-        maUuDai: null,
-
-        soNguoiLon: 2,
-        soTreEm: 2,
-        soEmBe: 0,
-
-        ngayDat: "2026-04-12T15:00:00",
-        tongTien: 11200000,
-
-        trangThaiThanhToan: true,
-        trangThaiDon: 3,
-
-        ngayCapNhat: "2026-04-25T18:00:00",
-
-        tenKhachHang: "Phạm Thu Hà",
-        email: "hapham@gmail.com",
-        soDienThoai: "0978123456",
-        avatar: "https://i.pravatar.cc/150?u=ha",
-
-        tour: {
-            maTour: 4,
-            tenTour: "Đà Lạt mùa hoa 3N2Đ",
-            thoiGianTour: "3 Ngày 2 Đêm",
-            diemKhoiHanh: "TP.HCM",
-            trangThai: true
-        },
-
-        chuyen: {
-            maChuyen: 304,
-            maChuyenCode: "DL-20260422",
-            tenChuyen: "Đà Lạt tháng 4",
-            diemDen: "Lâm Đồng",
-            ngayKhoiHanh: "2026-04-22",
-            ngayKetThuc: "2026-04-24",
-            soLuongCho: 35
-        }
-    }
+const PAYMENT_OPTIONS = [
+    { value: '',  label: 'Trạng thái thanh toán' },
+    { value: '0', label: 'Chờ thanh toán' },
+    { value: '1', label: 'Thành công' },
+    { value: '2', label: 'Thất bại' },
+    { value: '3', label: 'Hoàn tiền' },
 ];
 
 export default function BookingManager() {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
+    const [bookings, setBookings]     = useState([]);
+    const [totalRows, setTotalRows]   = useState(0);
+    const [loading, setLoading]       = useState(false);
 
-    // Lọc dữ liệu
-    const filteredData = useMemo(() => {
-        let data = BOOKING_DATA;
+    const [searchTerm, setSearchTerm]     = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+    const [paymentFilter, setPaymentFilter] = useState('');
+    const [dateFilter, setDateFilter]     = useState('');
 
-        if (searchTerm) {
-            const term = searchTerm.toLowerCase();
+    const [page, setPage]       = useState(1);
+    const [perPage, setPerPage] = useState(10);
 
-            data = data.filter(item =>
-                item.tenKhachHang.toLowerCase().includes(term) ||
-                item.maDonDatTour.toString().includes(term) ||
-                item.tour.tenTour.toLowerCase().includes(term)
-            );
+    const [selectedBooking, setSelectedBooking] = useState(null);
+    const [isDetailOpen, setIsDetailOpen]       = useState(false);
+    const [detailLoading, setDetailLoading]     = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    const fetchBookings = useCallback(async () => {
+        try {
+            setLoading(true);
+            const res = await getPagedTourBookingAdminApi({
+                keyword:       searchTerm  || undefined,
+                bookingStatus: statusFilter  !== '' ? Number(statusFilter)  : undefined,
+                paymentStatus: paymentFilter !== '' ? Number(paymentFilter) : undefined,
+                bookingDate:   dateFilter   || undefined,
+                page,
+                size: perPage,
+            });
+            setBookings(res.data.items      ?? []);
+            setTotalRows(res.data.totalItems ?? 0);
+        } catch (err) {
+            console.error('Fetch bookings error:', err);
+        } finally {
+            setLoading(false);
         }
+    }, [searchTerm, statusFilter, paymentFilter, dateFilter, page, perPage]);
 
-        if (statusFilter !== 'all') {
-            data = data.filter(
-                item => item.trangThaiDon === Number(statusFilter)
-            );
-        }
+    useEffect(() => { fetchBookings(); }, [fetchBookings]);
+    useEffect(() => { setPage(1); }, [searchTerm, statusFilter, paymentFilter, dateFilter]);
 
-        return data;
-    }, [searchTerm, statusFilter]);
-    const getOrderStatus = (status) => {
-        switch (status) {
-            case 1:
-                return {
-                    text: 'Chờ xác nhận',
-                    color: 'bg-amber-100 text-amber-700 border-amber-200'
-                };
-            case 2:
-                return {
-                    text: 'Đã duyệt',
-                    color: 'bg-blue-100 text-blue-700 border-blue-200'
-                };
-            case 3:
-                return {
-                    text: 'Hoàn tất',
-                    color: 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                };
-            case 4:
-                return {
-                    text: 'Đã hủy',
-                    color: 'bg-red-100 text-red-700 border-red-200'
-                };
-            default:
-                return {
-                    text: 'Không xác định',
-                    color: 'bg-slate-100 text-slate-700 border-slate-200'
-                };
+    const handleViewDetail = async (row) => {
+        setDetailLoading(true);
+        setIsDetailOpen(true);
+        try {
+            const res = await getTourBookingDetailAdminApi(row.maDonDatTour);
+            setSelectedBooking(res.data);
+        } catch (err) {
+            console.error('Detail error:', err);
+            setIsDetailOpen(false);
+        } finally {
+            setDetailLoading(false);
         }
     };
-    const handleEdit = (row) => {
-        console.log('Edit booking:', row);
-    };
 
-    const handleView = (row) => {
-        console.log('View booking:', row);
-    };
-
-    const handleDelete = (row) => {
-        console.log('Delete booking:', row);
-    };
+    const hasActiveFilter = statusFilter || paymentFilter || dateFilter;
 
     const columns = useMemo(() => [
         {
-            name: 'Mã đơn',
-            sortable: true,
-            selector: row => row.maDonDatTour,
-            cell: row => (
-                <span className="font-mono font-semibold text-slate-700">
-                    {row.maDonDatTour}
+            name: 'STT',
+            width: '56px',
+            center: true,
+            cell: (r, index) => (
+                <span className="text-xs font-semibold text-slate-400">
+                    {(page - 1) * perPage + index + 1}
                 </span>
-            )
+            ),
         },
-
+        {
+            name: 'Mã đặt chỗ',
+            minWidth: '180px',
+            maxWidth: '200px',
+            selector: r => r.maDatCho,
+            cell: r => (
+                <span className="font-mono text-[11px] font-semibold text-slate-600 break-all leading-tight">
+                    {r.maDatCho}
+                </span>
+            ),
+        },
         {
             name: 'Khách hàng',
-            sortable: true,
-            selector: row => row.tenKhachHang,
-            cell: row => (
-                <div className="flex items-center gap-3">
-                    <img
-                        src={row.avatar}
-                        alt={row.tenKhachHang}
-                        className="w-10 h-10 rounded-full border"
-                    />
-
-                    <div>
-                        <p className="font-semibold text-sm">
-                            {row.tenKhachHang}
-                        </p>
-
-                        <p className="text-xs text-slate-500">
-                            {row.email}
-                        </p>
-                    </div>
+            minWidth: '150px',
+            maxWidth: '200px',
+            selector: r => r.tenKhachHang,
+            cell: r => (
+                <div className="py-1">
+                    <p className="font-semibold text-sm text-slate-700 leading-snug">{r.tenKhachHang}</p>
+                    {r.soDienThoai && (
+                        <p className="text-[11px] text-slate-400 mt-0.5">{r.soDienThoai}</p>
+                    )}
                 </div>
-            )
+            ),
         },
-
         {
-            name: 'Tour',
+            name: 'Mã Chuyến',
+            minWidth: '150px',
+            maxWidth: '200px',
+            selector: r => r.maCodeChuyen,
+            cell: r => (
+                <span className="font-mono text-[11px] font-semibold text-slate-600 break-all leading-tight">
+                    {r.maCodeChuyen}
+                </span>
+            ),
+        },
+        {
+            name: 'Ngày khởi hành',
             sortable: true,
-            selector: row => row.tour.tenTour,
-            cell: row => (
-                <div>
-                    <p className="font-medium">
-                        {row.tour.tenTour}
-                    </p>
-
-                    <p className="text-xs text-slate-400">
-                        {row.chuyen.maChuyenCode}
-                    </p>
-                </div>
-            )
-        },
-
-        {
-            name: 'Khởi hành',
-            sortable: true,
-            selector: row => row.chuyen.ngayKhoiHanh,
-            cell: row => (
-                <div>
-                    <p className="font-medium">
-                        {row.chuyen.ngayKhoiHanh}
-                    </p>
-
-                    <p className="text-xs text-slate-400">
-                        {row.tour.diemKhoiHanh}
-                    </p>
-                </div>
-            )
-        },
-
-        {
-            name: 'Số khách',
+            minWidth: '150px',
+            maxWidth: '130px',
             center: true,
-            cell: row => (
-                row.soNguoiLon +
-                row.soTreEm +
-                row.soEmBe
-            )
+            selector: r => r.ngayKhoiHanh,
+            cell: r => (
+                <span className="text-[13px] text-slate-600 tabular-nums whitespace-nowrap">
+                    {new Date(r.ngayKhoiHanh).toLocaleDateString('vi-VN')}
+                </span>
+            ),
         },
-
         {
             name: 'Tổng tiền',
             sortable: true,
-            selector: row => row.tongTien,
-            cell: row => (
-                <span className="font-semibold ">
-                    {row.tongTien.toLocaleString('vi-VN')}đ
+            minWidth: '120px',
+            maxWidth: '140px',
+            right: true,
+            selector: r => r.tongTien,
+            cell: r => (
+                <span className="text-sm font-bold text-slate-800 tabular-nums pr-1 whitespace-nowrap">
+                    {r.tongTien.toLocaleString('vi-VN')}
                 </span>
-            )
+            ),
         },
-
         {
-            name: 'Thanh toán',
+            name: 'Phương thức',
+            minWidth: '130px',
+            maxWidth: '150px',
             center: true,
-            cell: row => (
-                <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold
-                ${row.trangThaiThanhToan
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-orange-100 text-orange-700'
-                        }`}
-                >
-                    {row.trangThaiThanhToan
-                        ? 'Đã thanh toán'
-                        : 'Chưa thanh toán'}
-                </span>
-            )
-        },
-
-        {
-            name: 'Trạng thái',
-            center: true,
-            cell: row => {
-                const status = getOrderStatus(row.trangThaiDon);
-
+            selector: r => r.phuongThucThanhToan,
+            cell: r => {
+                const method = PAYMENT_METHOD[r.phuongThucThanhToan];
+                if (!method) return <span className="text-[11px] text-slate-400 italic">Chưa có</span>;
                 return (
-                    <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold border ${status.color}`}
-                    >
-                        {status.text}
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${method.color}`}>
+                        {method.icon}{method.text}
                     </span>
                 );
-            }
+            },
         },
-
+        {
+            name: 'TT Thanh toán',
+            minWidth: '160px',
+            maxWidth: '160px',
+            center: true,
+            selector: r => r.trangThaiThanhToan,
+            cell: r => {
+                const p = PAYMENT_STATUS[r.trangThaiThanhToan ?? 0];
+                return (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border whitespace-nowrap ${p.color}`}>
+                        {p.text}
+                    </span>
+                );
+            },
+        },
+        {
+            name: 'Trạng thái đơn',
+            minWidth: '140px',
+            maxWidth: '150px',
+            center: true,
+            selector: r => r.trangThaiDon,
+            cell: r => {
+                const os = ORDER_STATUS[r.trangThaiDon] ?? {
+                    text: '?',
+                    color: 'bg-slate-100 text-slate-500 border-slate-200',
+                    dot: 'bg-slate-300',
+                };
+                return (
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border whitespace-nowrap ${os.color}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${os.dot}`} />
+                        {os.text}
+                    </span>
+                );
+            },
+        },
         {
             name: 'Thao tác',
-            width: '150px',
-            cell: row => (
+            width: '160px',
+            center: true,
+            cell: r => (
                 <RowActionsButton
-                    row={row}
-                    onView={handleView}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
+                    row={r}
+                    onView={(row) => handleViewDetail(row)}
+                    showEdit={false}
+                    showDelete={false}
+                    showLock={false}
+                    showUnlock={false}
+                    showResetPass={false}
                 />
-            )
-        }
-    ], []);
+            ),
+        },
+    ], [page, perPage]);
 
     return (
-        <div className="space-y-6 p-4">
-            {/* Toolbar chung */}
-            <ManagerToolbar
-                searchPlaceholder="Tìm mã đặt tour hoặc khách hàng..."
-                onSearchChange={setSearchTerm}
-                addButtonText="Tạo đặt tour mới"
-                showCategoryFilter={false}
-                showImportExcel = {false}
-            />
-            <CustomDataTable
-                columns={columns}
-                data={filteredData}
-                paginationPerPage={10}
-                paginationComponentOptions={{
-                    rowsPerPageText: 'Số dòng:',
-                    rangeSeparatorText: 'trên',
-                    noRowsPerPage: false,
-                    selectAllRowsItem: true,
-                    selectAllRowsItemText: 'Tất cả',
-                }}
-                highlightOnHover
-                pointerOnHover
-                noDataComponent={
-                    <div className="py-8 text-center">
-                        <p className="text-slate-400 text-sm">
-                            Không có dữ liệu
-                        </p>
+        <div className="space-y-3 p-4">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+
+                <div className="px-5 pt-5 pb-4">
+                    <ManagerToolbar
+                        searchPlaceholder="Tìm tên khách hàng hoặc mã đặt chỗ..."
+                        onSearchChange={setSearchTerm}
+                        showCategoryFilter={false}
+                        showExcel={false}
+                        addButtonText="Thêm đơn đặt tour"
+                        onAddClick={() => setIsCreateModalOpen(true)}
+                    />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 px-5 pb-4 border-t border-slate-50 pt-3">
+                    <SlidersHorizontal size={13} className="text-slate-400 shrink-0" />
+
+                    <div className="w-50">
+                        <SelectField
+                            value={statusFilter}
+                            onChange={setStatusFilter}
+                            options={STATUS_OPTIONS}
+                            valueKey="id"
+                            labelKey="name"
+                            searchable={false}
+                            placeholder="Trạng thái đơn"
+                        />
                     </div>
-                }
-            />
+
+                    <div className="w-50">
+                        <SelectField
+                            value={paymentFilter}
+                            onChange={setPaymentFilter}
+                            options={PAYMENT_OPTIONS}
+                            valueKey="value"
+                            labelKey="label"
+                            searchable={false}
+                            placeholder="Trạng thái TT"
+                        />
+                    </div>
+
+                    <div className="w-100">
+                        <DatePicker
+                            value={dateFilter}
+                            onChange={setDateFilter}
+                            placeholderText="Ngày đặt..."
+                            maxDate={new Date()}
+                        />
+                    </div>
+
+                    {hasActiveFilter && (
+                        <button
+                            onClick={() => { setStatusFilter(''); setPaymentFilter(''); setDateFilter(''); }}
+                            className="flex items-center gap-1 px-3 py-3 rounded-lg border border-slate-200 text-slate-400 text-xs font-bold hover:text-slate-600 hover:bg-slate-50 transition"
+                        >
+                            <RefreshCw size={11} />
+                            Xóa lọc
+                        </button>
+                    )}
+                </div>
+            </div>
+
+
+            <div>
+                <CustomDataTable
+                    columns={columns}
+                    data={bookings}
+                    progressPending={loading}
+                    pagination
+                    paginationServer
+                    paginationTotalRows={totalRows}
+                    highlightOnHover
+                    pointerOnHover
+                    selectableRows  
+                    onChangePage={(p) => setPage(p)}
+                    onChangeRowsPerPage={(newPP, p) => { setPerPage(newPP); setPage(p); }}
+                    noDataComponent={
+                        <div className="flex flex-col items-center py-16 text-slate-400">
+                            <p className="text-sm font-medium">Không có dữ liệu</p>
+                        </div>
+                    }
+                    paginationComponentOptions={{
+                        rowsPerPageText: 'Số dòng:',
+                        rangeSeparatorText: 'trên',
+                        noRowsPerPage: false,
+                        selectAllRowsItem: false,
+                    }}
+                />
+            </div>
+
+
+            {isDetailOpen && (
+                detailLoading ? (
+                    <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[999] flex items-center justify-center">
+                        <div className="bg-white rounded-2xl px-8 py-6 flex items-center gap-3 shadow-xl">
+                            <div className="w-5 h-5 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+                            <span className="text-sm text-slate-600 font-medium">Đang tải chi tiết...</span>
+                        </div>
+                    </div>
+                ) : selectedBooking && (
+                    <BookingDetailModal
+                        booking={selectedBooking}
+                        onClose={() => { setIsDetailOpen(false); setSelectedBooking(null); }}
+                        onRefresh={fetchBookings}
+                    />
+                )
+            )}
+
+
+            {isCreateModalOpen && (
+                <CreateBookingAdminModal
+                    onClose={() => setIsCreateModalOpen(false)}
+                    onSuccess={fetchBookings}
+                />
+            )}
         </div>
     );
 }

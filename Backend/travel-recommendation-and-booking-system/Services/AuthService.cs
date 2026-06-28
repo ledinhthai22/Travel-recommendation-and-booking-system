@@ -21,12 +21,14 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly ICurrentUserService _currentUserService;
 
 
-        public AuthService(AppDbContext context, IConfiguration configuration, IEmailService emailService, ILogService logService)
+        public AuthService(AppDbContext context, IConfiguration configuration, IEmailService emailService, ILogService logService,ICurrentUserService currentUserService)
         {
             _context = context;
             _configuration = configuration;
             _emailService = emailService;
             _logService = logService;
+            _currentUserService = currentUserService;
+
         }
 
         public async Task<Dictionary<string, List<string>>?> RegisterAsync(RegisterDTO register)
@@ -73,26 +75,6 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 _context.NguoiDungs.Add(newNguoiDung);
                 await _context.SaveChangesAsync();
-                await _logService.LoggingAsync(new LogDTO
-                {
-                    LoaiTaiKhoan = "NguoiDung",
-
-                    MaTaiKhoan = newNguoiDung.MaNguoiDung,
-
-                    TenHanhDong = ActionLogDTO.DangKy,
-
-                    TenBangTacDong = "NguoiDung",
-
-                    MaDoiTuong = newNguoiDung.MaNguoiDung,
-
-                    GiaTriSau = new
-                    {
-                        newNguoiDung.HoTen,
-                        newNguoiDung.Email,
-                        newNguoiDung.SoDienThoai,
-                        newNguoiDung.GioiTinh,
-                    }
-                });
                 return null;
 
             }
@@ -271,18 +253,11 @@ namespace travel_recommendation_and_booking_system.Services
                     LoaiTaiKhoan = AccountTypeDTO.NhanVien,
                     Email = staff.Email,
                     MaTaiKhoan = staff.MaNhanVien,
+
                     TenHanhDong = ActionLogDTO.DangNhap,
-                    TenBangTacDong = TableNameDTO.NhanVien,
-                    MaDoiTuong = staff.MaNhanVien,
-                    GiaTriSau = new
-                    {
-                        staff.Email,
-                        staff.HoTen,
-                        staff.MaVaiTro
-                    }
+                    TenBangTacDong = "NhanVien",
+                    MaDoiTuong = staff.MaNhanVien
                 });
-
-
 
                 return new LoginResultDTO
                 {
@@ -379,26 +354,45 @@ namespace travel_recommendation_and_booking_system.Services
         }
         public async Task<bool> LogoutAsync(string refreshToken)
         {
-            var phien = await _context.PhienDangNhaps.FirstOrDefaultAsync(p => p.RefreshToken == refreshToken);
-            if (phien != null)
+            var phien = await _context.PhienDangNhaps
+                .Include(x => x.NguoiDung)
+                .Include(x => x.NhanVien)
+                .FirstOrDefaultAsync(p => p.RefreshToken == refreshToken);
+
+            if (phien == null)
+                return false;
+
+            string email = "";
+            int accountId = 0;
+            string accountType = "";
+
+            if (phien.NguoiDung != null)
             {
-                _context.PhienDangNhaps.Remove(phien);
-                await _context.SaveChangesAsync();
-                await _logService.LoggingAsync(new LogDTO
-                {
-                    LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
-                    Email = _currentUserService.GetEmail(),
-                    MaTaiKhoan = phien.MaNguoiDung ?? 0,
-
-                    TenHanhDong = ActionLogDTO.DangXuat,
-
-                    TenBangTacDong = "PhienDangNhap",
-
-                    MaDoiTuong = phien.MaPhien
-                });
-                return true;
+                email = phien.NguoiDung.Email;
+                accountId = phien.NguoiDung.MaNguoiDung;
+                accountType = AccountTypeDTO.NguoiDung;
             }
-            return false;
+            else if (phien.NhanVien != null)
+            {
+                email = phien.NhanVien.Email;
+                accountId = phien.NhanVien.MaNhanVien;
+                accountType = AccountTypeDTO.NhanVien;
+            }
+
+            await _logService.LoggingAsync(new LogDTO
+            {
+                LoaiTaiKhoan = accountType,
+                Email = email,
+                MaTaiKhoan = accountId,
+                TenHanhDong = ActionLogDTO.DangXuat,
+                TenBangTacDong = "PhienDangNhap",
+                MaDoiTuong = phien.MaPhien
+            });
+
+            _context.PhienDangNhaps.Remove(phien);
+            await _context.SaveChangesAsync();
+
+            return true;
         }
         public async Task<bool> ForgotPasswordAsync(ForgotPasswordDTO model)
         {
@@ -427,7 +421,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
                 MaTaiKhoan = user.MaNguoiDung,
-                Email = _currentUserService.GetEmail(),
+                Email = user.Email,
                 TenHanhDong = ActionLogDTO.YeuCauOTP,
 
                 TenBangTacDong = "NguoiDung",
@@ -459,7 +453,7 @@ namespace travel_recommendation_and_booking_system.Services
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
-                Email = _currentUserService.GetEmail(),
+                 Email = user.Email,
                 MaTaiKhoan = user.MaNguoiDung,
 
                 TenHanhDong = ActionLogDTO.DoiMatKhau,

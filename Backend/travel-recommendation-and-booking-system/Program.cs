@@ -11,6 +11,7 @@ using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.Extensions;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Jobs;
+using travel_recommendation_and_booking_system.Models;
 using travel_recommendation_and_booking_system.Services;
 using travel_recommendation_and_booking_system.SignalR;
 
@@ -89,13 +90,14 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<ILogService, LogService>();
             builder.Services.AddScoped<IRequestInfoService, RequestInfoService>();
             builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+            builder.Services.AddScoped<ITourBookingService, TourBookingService>();
             builder.Services.AddScoped<PromotionStatusJob>();
             builder.Services.AddTransient<GeminiService>();
             builder.Services.AddHttpContextAccessor();
-
+            builder.Services.Configure<VnPayConfig>(builder.Configuration.GetSection("VNPay"));
+            builder.Services.AddScoped<IPaymentService, PaymentService>();
             var jwtSettings = builder.Configuration.GetSection("Jwt");
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
-
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -149,6 +151,7 @@ namespace travel_recommendation_and_booking_system
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+
             app.UseCors("ReactPolicy");
             app.UseStaticFiles();
             app.UseHttpsRedirection();
@@ -159,6 +162,8 @@ namespace travel_recommendation_and_booking_system
             app.MapControllers();
             app.UseCustomHangfireJobs();
             app.UseCustomHangfireReview();
+            app.UseCleanExpriedReservationsJob();
+            app.UseDepartureChangeStatusJoc();
             app.MapHub<TravelRecommendationHub>("/TravelRecommendationHub");
             app.UseHangfireDashboard("/hangfire");
             app.Run();

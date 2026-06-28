@@ -2,6 +2,7 @@
 using DTOs.Page;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.UserProfile;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Services;
@@ -14,9 +15,11 @@ namespace Controllers.Customer
     public class UserProfileController : ControllerBase
     {
         private readonly IUserProfileService _user;
-        public UserProfileController(IUserProfileService user)
+        private readonly AppDbContext _context;
+        public UserProfileController(IUserProfileService user,AppDbContext context)
         {
             _user = user;
+            _context = context;
         }
 
         [HttpGet("me")]
@@ -57,7 +60,13 @@ namespace Controllers.Customer
                 var result = await _user.UpdateMyProfileAsync(maNguoiDung, dto);
                 if (result)
                 {
-                    return Ok(new { message = "Cập nhật thông tin thành công!" });
+                    var updatedUser = await _context.NguoiDungs.FindAsync(maNguoiDung);
+
+                    return Ok(new
+                    {
+                        message = "Cập nhật thông tin thành công!",
+                        newImagePath = updatedUser.DuongDanAnh
+                    });
                 }
                 return BadRequest("Cập nhật thất bại.");
             }

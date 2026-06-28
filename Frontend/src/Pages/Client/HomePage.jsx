@@ -9,19 +9,28 @@ import { bestTours, hotDeals } from '~/constants/Home.constants';
 import useBanner from '~/Hooks/useBanner';
 import useHomeLocationsCard from '~/Hooks/useHomeLocationsCard';
 import useAuth from '~/Hooks/useAuth';
-import { useDestinations } from '~/Hooks/useDestination';
+// import { useDestinations } from '~/Hooks/useDestination';
 import { useReviews } from '~/Hooks/useReview';
 import { useBestTours } from "~/Hooks/useBestTours";
-import { useState } from 'react';
+import { useLatestTours } from '~/Hooks/useLatestTour';
+import { useState,useEffect } from 'react';
+import { getMyWishlistIdsApi } from '~/Services/TourService';
 export default function HomePage() {
     const { reviews, reviewsLoading } = useReviews();
-    const { tours: bestTours, loading: bestToursLoading } = useBestTours();
-    const { user } = useAuth();
+    const { tours: bestTours, loading: bestToursLoading } = useBestTours(12);
+    const { user, isAuthenticated } = useAuth();
     const { banners } = useBanner();
     const { destinations, loading: locationLoading } = useHomeLocationsCard(12);
+    const { tours:latestTours, loading: latestToursLoading } = useLatestTours(12);
     const activeBanner = banners;
     const isLoggedIn = !!user
+    const [wishlistIds, setWishlistIds] = useState([]);
 
+    useEffect(() => {
+        if (isAuthenticated) {
+            getMyWishlistIdsApi().then(ids => setWishlistIds(ids));
+        }
+    }, [isAuthenticated]);
     return (
         <div className="min-h-screen bg-white">
             <HeroSection
@@ -80,15 +89,16 @@ export default function HomePage() {
                             autoPlayMs={4500}
                             renderItem={(dest) => (
                                 <DestinationsCard
-                                    key={dest.tinhThanh}
-                                    slug={dest.tinhThanh} // slug
+                                    key={dest.maDiaDiem}
+                                    slug={dest.slug}
                                     image={
                                         dest.duongDanAnh
                                             ? `https://localhost:7016${dest.duongDanAnh}`
                                             : "https://images.unsplash.com/photo-1501785888041-af3ef285b470"
                                     }
-                                    name={dest.tenDiemDen}
-                                    description={dest.moTa}
+                                    name={dest.tenDiaDiem}
+                                    country="Việt Nam"
+                                    description={dest.moTa || 'Khám phá điểm đến nổi bật với nhiều tour hấp dẫn.'}
                                     toursCount={dest.soLuongTour}
                                     province={dest.tinhThanh}
                                     rating={'5.0'}
@@ -124,23 +134,35 @@ export default function HomePage() {
                             </Link>
                         }
                     />
+                    {bestToursLoading ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-[30px]">
+                            {[...Array(4)].map((_, i) => (
+                                <div key={i} className="h-72 w-full animate-pulse rounded-3xl bg-slate-200" />
+                            ))}
+                        </div>
+                    ) : bestTours && bestTours.length > 0 ? (
                     <FeaturedCarousel
                         items={bestTours.slice(0, 6)}
-                        renderItem={(tour) => <TourCard id={tour.maTour}
+                        renderItem={(tour) => <TourCard 
+                        id={tour.maTour}
+                        slug={tour.slug || tour.maTour}
                         name={tour.tenTour}
                         image={`https://localhost:7016${tour.duongDanAnh}`}
                         duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
                         destination={tour.diemDen || "Đang cập nhật"}
-                        price={tour.giaThapNhat}
+                        price={tour.giaChuyen}
                         rating={tour.diemDanhGia}
                         reviewCount={tour.soLuongDanhGia} 
-                        initialWishlist={tour.isFavorite}
+                        initialWishlist={wishlistIds.includes(tour.maTour)}
                         />
                     }
                         itemsPerPage={4}
                         gap={30}
                         autoPlayMs={5000}
                     />
+                    ) : (
+                        <p className="text-center text-slate-400 py-6">Không tìm thấy tour nào.</p>
+                    )}
                 </div>
             </section>
             <section className="py-16 md:py-20">
@@ -166,13 +188,36 @@ export default function HomePage() {
                             </Link>
                         }
                     />
-                    <FeaturedCarousel
-                        items={hotDeals.slice(0, 6)}
-                        renderItem={(tour) => <TourCard {...tour} />}
+                    
+                    {latestToursLoading ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-[30px]">
+                            {[...Array(4)].map((_, i) => (
+                                <div key={i} className="h-72 w-full animate-pulse rounded-3xl bg-slate-200" />
+                            ))}
+                        </div>
+                    ) : latestTours && latestTours.length > 0 ? (
+                        <FeaturedCarousel
+                        items={latestTours.slice(0, 6)}
+                        renderItem={(tour) => <TourCard 
+                        id={tour.maTour}
+                        slug={tour.slug || tour.maTour}
+                        name={tour.tenTour}
+                        image={`https://localhost:7016${tour.duongDanAnh}`}
+                        duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
+                        destination={tour.diemDen || "Đang cập nhật"}
+                        price={tour.giaChuyen}
+                        rating={tour.diemDanhGia}
+                        reviewCount={tour.soLuongDanhGia} 
+                        initialWishlist={wishlistIds.includes(tour.maTour)}
+                        />
+                    }
                         itemsPerPage={4}
                         gap={30}
                         autoPlayMs={5000}
                     />
+                    ) : (
+                        <p className="text-center text-slate-400 py-6">Không tìm thấy tour nào.</p>
+                    )}
                 </div>
             </section>
 

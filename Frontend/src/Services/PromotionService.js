@@ -70,3 +70,9 @@ export const deletePromotionApi = async (id) => {
 
     return response.data;
 };
+export const getPromotionsForBookingApi = async (status = 1) => {
+    const response = await axiosClient.get('/admin/Promotion/booking-select', {
+        params: { status }
+    });
+    return response.data;
+};

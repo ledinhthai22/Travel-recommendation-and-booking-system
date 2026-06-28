@@ -38,6 +38,8 @@ namespace travel_recommendation_and_booking_system.Data
         public DbSet<Newsletter> Newsletters { get; set; }
         public DbSet<PhienDangNhap> PhienDangNhaps { get; set; }
         public DbSet<NhatKyHeThong> NhatKyHeThongs { get; set; }
+        public DbSet<PaymentPayload> PaymentPayloads { get; set; }
+        public DbSet<GiuCho> GiuChos { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -123,6 +125,18 @@ namespace travel_recommendation_and_booking_system.Data
                 .HasForeignKey(d => d.MaChuyen)
                 .OnDelete(DeleteBehavior.Restrict);
 
+
+            modelBuilder.Entity<DonDatTour>()
+                .HasOne(x => x.UuDai)
+                .WithMany(x => x.DonDatTours)
+                .HasForeignKey(x => x.MaUuDai)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DonDatTour>()
+                .HasOne(x => x.NhanVien)
+                .WithMany()
+                .HasForeignKey(x => x.MaNhanVienDuyet)
+                .OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<VaiTro>().HasData(
                     new VaiTro { MaVaiTro = 1, TenVaiTro = "Quản Trị Viên" },
                     new VaiTro { MaVaiTro = 2, TenVaiTro = "Nhân Viên" },

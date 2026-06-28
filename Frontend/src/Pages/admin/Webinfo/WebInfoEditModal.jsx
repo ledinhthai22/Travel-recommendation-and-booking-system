@@ -250,13 +250,6 @@ export default function WebInfoEditModal({
 
                     <div className="flex gap-3 mt-8">
                         <button
-                            onClick={onClose}
-                            className="flex-1 py-3 bg-gray-100 rounded-xl"
-                        >
-                            Hủy
-                        </button>
-
-                        <button
                             onClick={handleSaveClick}
                             disabled={loading}
                             className="flex-1 py-3 bg-sky-500 text-white rounded-xl flex items-center justify-center gap-2"

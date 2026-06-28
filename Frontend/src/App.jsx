@@ -6,6 +6,9 @@ import MainLayout from '~/components/layout/UserLayout';
 import AdminLayout from '~/components/layout/AdminLayout';
 import RouteReset from '~/components/Common/RouteReset';
 import ProtectedRoute from './Routes/ProtectedRoute';
+import { useContext } from 'react'; // them moi 
+import { AuthContext } from '~/Context/AuthContext'; // them moi 
+import AuthModal from './components/Auth/AuthModal'; // them moi 
 
 import {
     ContactPage,
@@ -17,18 +20,18 @@ import {
     CheckoutPage,
     Profile,
     Wishlist,
+    PaymentReturnPage
 } from './Pages/Client';
+
 
 import {
     DashBoard,
     UserManager,
     TourManager,
-    TouristManager,
     HotelManager,
     BookingManager,
     Webinfo,
     ContactManager,
-    RevenueByTour,
     ActivityLogManager,
     NewlettersManager,
     BannerManager,
@@ -40,13 +43,11 @@ import {
     TypeLocationManager,
     AmenitiesManager,
     LocationManager,
-    ReviewManager,
-    TourFormPage
+ReviewManager, // them moi
+    TourFormPage,
+    TypeTourManager
 } from './Pages/admin';
-import TypeTourManager from './Pages/admin/TypeTour/TypeTourManager';
-import { useContext } from 'react';
-import { AuthContext } from '~/Context/AuthContext';
-import AuthModal from './components/Auth/AuthModal';
+
 
 function App() {
     const { showLoginModal, setShowLoginModal } = useContext(AuthContext);
@@ -78,6 +79,7 @@ function App() {
                         <Route path="Khach-san/:slug" element={<HotelDetail />} />
                         <Route path="Lien-He" element={<ContactPage />} />
                         <Route path="Thanh-Toan" element={<CheckoutPage />} />
+                        <Route path="/payment-return" element={<PaymentReturnPage />} />
                         <Route element={<ProtectedRoute />}>
                             <Route path="Thong-Tin-Ca-Nhan" element={<Profile />} />
                             <Route path="Danh-Sach-Yeu-Thich" element={<Wishlist />} />
@@ -87,7 +89,6 @@ function App() {
                     <Route element={<ProtectedRoute allowedRoles={["1", "2"]} />}>
                         <Route path="/Quan-ly" element={<AdminLayout />}>
                             <Route index element={<DashBoard />} />
-                            <Route path="Khach-du-lich" element={<TouristManager />} />
                             <Route path="Dia-diem" element={<LocationManager />} />
                             <Route path="Loai-Dia-Diem" element={<TypeLocationManager />} />
                             <Route path="Loai-Tour" element={<TypeTourManager />} />
@@ -117,10 +118,9 @@ function App() {
                             <Route path="Tai-khoan" element={<UserManager />} />
                             <Route path="Newletter" element={<NewlettersManager />} />
                             <Route path="Banner" element={<BannerManager />} />
-                             <Route path="Binh-Luan" element={<ReviewManager />} />
+                             <Route path="Binh-Luan" element={<ReviewManager />} /> // them moi
                             <Route path="Uu-Dai" element={<PromotionManager />} />
                             <Route path="Thong-tin-trang" element={<Webinfo />} />
-                            <Route path="Thong-doanh-thu-theo-cac-chuyen-di" element={<RevenueByTour />} />
                             <Route path="Hoat-dong-he-thong" element={<ActivityLogManager />} />
                         </Route>
                     </Route>

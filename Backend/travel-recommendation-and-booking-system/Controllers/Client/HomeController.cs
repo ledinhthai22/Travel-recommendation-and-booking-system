@@ -26,30 +26,14 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
             _tour = tour;
             _destination = destination;
         }
-
-        //Địa Điểm nổi bật (số lượng tour)
-        [HttpGet("get-top-destinations")]
-        public async Task<IActionResult> GetTopDestinations()
-        {
-            try
-            {
-                var destinations = await _destination.GetTopDestinationsAsync();
-
-                return Ok(destinations);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Lỗi hệ thống: {ex.Message}");
-            }
-        }
         
         //ds Tour nổi bật
         [HttpGet("get-best-tours")]
-        public async Task<IActionResult> GetBestTours()
+        public async Task<IActionResult> GetBestTours([FromQuery] int? limit)
         {
             try
             {
-                var tours = await _tour.GetBestToursCardAsync();
+                var tours = await _tour.GetBestToursCardAsync(limit);
                 return Ok(tours);
             }
             catch (Exception ex)
@@ -60,11 +44,11 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
         
         //ds tour mới nhất
         [HttpGet("tours-latest")]
-        public async Task<IActionResult> GetLatestTours()
+        public async Task<IActionResult> GetLatestTours([FromQuery] int? limit)
         {
             try
             {
-                var tours = await _tour.GetLatestToursAsync();
+                var tours = await _tour.GetLatestToursAsync(limit);
                 return Ok(tours);
             }
             catch (Exception ex)

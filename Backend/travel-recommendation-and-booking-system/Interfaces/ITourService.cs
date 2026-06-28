@@ -19,8 +19,10 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<bool> ChangeStatusAsync(int maTour, int trangThai);
         Task<bool> SetMainImageAsync(int imageId);
         Task<bool> DeleteImageAsync(int imageId);
+        Task<List<TourSelectDTO>> GetToursForSelectAsync(string? keyword = null, int? status = null);
 
         // tour yêu thích
+        Task<List<int>> GetFavoriteTourIdsAsync(int userId);
         Task<PageDTO<FavoriteTourRepnoseDTO>> GetFavoriteToursAsync(int userId, int pageNumber = 1, int pageSize = 10);
         Task<bool> DeleteFavoriteToursAsync(int userId, List<int> tourIds);
         Task<bool> AddFavoriteTourAsync(int userId, int tourId);
@@ -28,8 +30,8 @@ namespace travel_recommendation_and_booking_system.Interfaces
         //Home
         //chưa đăng nhập
         Task<List<Tour>> GetTopTrendingToursAsync(); // ds tour host 
-        Task<List<TourCardDTO>> GetBestToursCardAsync(); // tour nổi bật
-        Task<List<TourCardDTO>> GetLatestToursAsync(); // tour mới
+        Task<List<TourCardDTO>> GetBestToursCardAsync(int? limit = null); // tour nổi bật
+        Task<List<TourCardDTO>> GetLatestToursAsync(int? limit = null); // tour mới
         //đăng nhập
         Task<List<TourCardDTO>> GetTourDesignJustForYouAsync(int userId); // tour dành riêng cho bạn
 

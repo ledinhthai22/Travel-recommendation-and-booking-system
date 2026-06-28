@@ -11,6 +11,11 @@ namespace travel_recommendation_and_booking_system.Services
     public class LocationService : ILocationService
     {
         private readonly AppDbContext _context;
+        public LocationService(AppDbContext context, IWebHostEnvironment webHostEnvironment)
+        {
+            _context = context;
+            _webHostEnvironment = webHostEnvironment;
+        }
         private readonly IWebHostEnvironment _webHostEnvironment;
         public async Task<List<LocationDTO>> GetAllAsync()
         {
@@ -51,11 +56,6 @@ namespace travel_recommendation_and_booking_system.Services
             }
 
             return await query.ToListAsync();
-        }
-        public LocationService(AppDbContext context, IWebHostEnvironment webHostEnvironment)
-        {
-            _context = context;
-            _webHostEnvironment = webHostEnvironment;
         }
         public async Task<PageDTO<LocationReponseDTO>> GetLocationAsync(int pageNumber, int pageSize, string? key, bool? status)
         {

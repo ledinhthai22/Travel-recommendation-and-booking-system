@@ -1,86 +1,93 @@
 import React from 'react';
+import { User, Smile, Baby, Users } from 'lucide-react';
 
 export default function PassengerForm({ passengers = { adults: 1, children: 0, toddlers: 0 }, onChange }) {
     const handleChange = (type, value) => {
-        if (type === 'adults') {
-            onChange(type, Math.max(1, value)); // luôn >= 1
-        } else {
-            onChange(type, Math.max(0, value));
-        }
+        if (type === 'adults') onChange(type, Math.max(1, value));
+        else onChange(type, Math.max(0, value));
     };
 
-    // Định nghĩa mảng dữ liệu để tối ưu hóa việc render UI đồng bộ
-    const passengerConfigs = [
-        { key: 'adults', label: 'Người lớn', desc: 'Từ 12 tuổi trở lên' },
-        { key: 'children', label: 'Trẻ em', desc: 'Từ 5 - 11 tuổi' },
-        { key: 'toddlers', label: 'Trẻ nhỏ', desc: 'Từ 2 - 4 tuổi' },
+    const configs = [
+        { 
+            key: 'adults',  
+            label: 'Người lớn', 
+            desc: 'Từ 12 tuổi trở lên', 
+            iconBg: 'bg-blue-50',   
+            iconColor: 'text-blue-500',   
+            icon: User 
+        },
+        { 
+            key: 'children', 
+            label: 'Trẻ em',    
+            desc: 'Từ 5 – 11 tuổi',     
+            iconBg: 'bg-green-50',  
+            iconColor: 'text-green-500',  
+            icon: Smile 
+        },
+        { 
+            key: 'toddlers', 
+            label: 'Trẻ nhỏ',   
+            desc: 'Từ 2 – 4 tuổi',      
+            iconBg: 'bg-amber-50',  
+            iconColor: 'text-amber-500', 
+            icon: Baby 
+        },
     ];
+
+    const total = passengers.adults + passengers.children + passengers.toddlers;
 
     return (
         <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-6 text-slate-900">Hành khách</h2>
+            <h2 className="text-xl font-bold mb-5 text-slate-900">Hành khách</h2>
 
-            <div className="space-y-3">
-                {passengerConfigs.map((item) => (
+            <div className="space-y-2">
+                {configs.map(({ key, label, desc, iconBg, iconColor, icon: IconComponent }) => (
                     <div
-                        key={item.key}
-                        className="flex justify-between items-center border border-slate-200 rounded-[20px] px-6 py-4 bg-white transition-colors hover:border-slate-300"
+                        key={key}
+                        className="flex items-center justify-between px-4 py-3.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors"
                     >
-                        {/* Bên trái: Nhãn và mô tả tuổi kèm icon info */}
-                        <div className="flex flex-col">
-                            <span className="font-bold text-slate-900 text-base">
-                                {item.label}
-                            </span>
-                            <span className="text-sm text-slate-500 mt-0.5 flex items-center gap-1.5">
-                                {item.desc}
-                                {/* Icon ⓘ nhỏ gọn chuẩn thiết kế */}
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-slate-400">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-                                </svg>
-                            </span>
+
+                        <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${iconBg}`}>
+                                <IconComponent className={`w-5 h-5 ${iconColor}`} strokeWidth={2.2} />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold text-slate-800">{label}</p>
+                                <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                            </div>
                         </div>
 
-                        {/* Bên phải: Bộ nút tăng giảm số lượng */}
-                        <div className="flex items-center gap-4">
-                            {/* Nút Giảm (-) hình tròn */}
+   
+                        <div className="flex items-center bg-white border border-slate-200 rounded-xl overflow-hidden">
                             <button
                                 type="button"
-                                onClick={() => handleChange(item.key, passengers[item.key] - 1)}
-                                className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors select-none
-                                    ${(item.key === 'adults' && passengers.adults === 1) ||
-                                        (item.key !== 'adults' && passengers[item.key] === 0)
-                                        ? 'border-slate-200 text-slate-300 cursor-not-allowed'
-                                        : 'border-slate-400 text-slate-700'
-                                    }`}
-                                disabled={
-                                    item.key === 'adults'
-                                        ? passengers.adults === 1
-                                        : passengers[item.key] === 0
-                                }
+                                onClick={() => handleChange(key, passengers[key] - 1)}
+                                disabled={key === 'adults' ? passengers.adults <= 1 : passengers[key] <= 0}
+                                className="w-9 h-9 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:text-slate-200 disabled:cursor-not-allowed transition-colors text-lg"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
-                                </svg>
+                                −
                             </button>
-
-                            {/* Số hiển thị ở giữa */}
-                            <span className="w-6 text-center font-semibold text-slate-900 text-base select-none">
-                                {passengers[item.key]}
+                            <span className="w-8 text-center text-sm font-semibold text-slate-800 border-x border-slate-200">
+                                {passengers[key]}
                             </span>
-
-                            {/* Nút Tăng (+) hình tròn */}
                             <button
                                 type="button"
-                                onClick={() => handleChange(item.key, passengers[item.key] + 1)}
-                                className="w-8 h-8 rounded-full border border-slate-600 flex items-center justify-center text-slate-700 focus:ring-2 focus:ring-[#0EA5E5] transition-colors select-none"
+                                onClick={() => handleChange(key, passengers[key] + 1)}
+                                className="w-9 h-9 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors text-lg"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                                </svg>
+                                +
                             </button>
                         </div>
                     </div>
                 ))}
+            </div>
+
+            <div className="mt-4 flex items-center gap-2 px-4 py-3 bg-sky-50 border border-sky-100 rounded-2xl">
+                <Users className="w-4 h-4 text-sky-500" strokeWidth={2.2} />
+                <span className="text-sm font-medium text-sky-700">Tổng cộng</span>
+                <span className="ml-auto text-sm font-semibold text-sky-700 bg-sky-100 px-3 py-0.5 rounded-full">
+                    {total} hành khách
+                </span>
             </div>
         </div>
     );

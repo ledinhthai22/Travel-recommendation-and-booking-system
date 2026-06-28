@@ -147,6 +147,29 @@ namespace travelrecommendationandbookingsystem.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "PaymentPayload",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    MaGiuCho = table.Column<int>(type: "int", nullable: false),
+                    MaNguoiDung = table.Column<int>(type: "int", nullable: false),
+                    MaChuyen = table.Column<int>(type: "int", nullable: false),
+                    SoNguoiLon = table.Column<int>(type: "int", nullable: false),
+                    SoTreEm = table.Column<int>(type: "int", nullable: false),
+                    SoEmBe = table.Column<int>(type: "int", nullable: false),
+                    MaUuDai = table.Column<int>(type: "int", nullable: true),
+                    TongTienGoc = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    GhiChu = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    NgayTao = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    DanhSachHanhKhachJson = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PaymentPayload", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "PhuongTien",
                 columns: table => new
                 {
@@ -628,6 +651,7 @@ namespace travelrecommendationandbookingsystem.Migrations
                     NgayCapNhat = table.Column<DateTime>(type: "datetime2", nullable: false),
                     NgayXoa = table.Column<DateTime>(type: "datetime2", nullable: true),
                     TrangThai = table.Column<int>(type: "int", nullable: false),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     NguoiDungMaNguoiDung = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
@@ -723,27 +747,26 @@ namespace travelrecommendationandbookingsystem.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     MaNguoiDung = table.Column<int>(type: "int", nullable: false),
                     MaChuyen = table.Column<int>(type: "int", nullable: false),
-                    MaDatCho = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    MaKhachSan = table.Column<int>(type: "int", nullable: true),
+                    MaDatCho = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     MaUuDai = table.Column<int>(type: "int", nullable: true),
+                    MaNhanVienDuyet = table.Column<int>(type: "int", nullable: true),
                     SoNguoiLon = table.Column<int>(type: "int", nullable: false),
                     SoTreEm = table.Column<int>(type: "int", nullable: false),
                     SoEmBe = table.Column<int>(type: "int", nullable: false),
-                    NgayDat = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    SoPhongDon = table.Column<int>(type: "int", nullable: false),
+                    GhiChu = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
                     GiaNguoiLonTaiDat = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     GiaTreEmTaiDat = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     GiaEmBeTaiDat = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     PhuThuPhongDonTaiDat = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     GiaTriGiamTaiDat = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     TongTien = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    TrangThaiThanhToan = table.Column<bool>(type: "bit", nullable: false),
                     TrangThaiDon = table.Column<int>(type: "int", nullable: false),
-                    MaNhanVienDuyet = table.Column<int>(type: "int", nullable: true),
+                    NgayDat = table.Column<DateTime>(type: "datetime2", nullable: false),
                     NgayDuyet = table.Column<DateTime>(type: "datetime2", nullable: true),
                     NgayCapNhat = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    NhanVienMaNhanVien = table.Column<int>(type: "int", nullable: false),
-                    KhachSanMaKhachSan = table.Column<int>(type: "int", nullable: false),
-                    UuDaiMaUuDai = table.Column<int>(type: "int", nullable: false)
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
+                    KhachSanMaKhachSan = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -758,8 +781,7 @@ namespace travelrecommendationandbookingsystem.Migrations
                         name: "FK_DonDatTour_KhachSan_KhachSanMaKhachSan",
                         column: x => x.KhachSanMaKhachSan,
                         principalTable: "KhachSan",
-                        principalColumn: "MaKhachSan",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "MaKhachSan");
                     table.ForeignKey(
                         name: "FK_DonDatTour_NguoiDung_MaNguoiDung",
                         column: x => x.MaNguoiDung,
@@ -767,17 +789,17 @@ namespace travelrecommendationandbookingsystem.Migrations
                         principalColumn: "MaNguoiDung",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_DonDatTour_NhanViens_NhanVienMaNhanVien",
-                        column: x => x.NhanVienMaNhanVien,
+                        name: "FK_DonDatTour_NhanViens_MaNhanVienDuyet",
+                        column: x => x.MaNhanVienDuyet,
                         principalTable: "NhanViens",
                         principalColumn: "MaNhanVien",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_DonDatTour_UuDai_UuDaiMaUuDai",
-                        column: x => x.UuDaiMaUuDai,
+                        name: "FK_DonDatTour_UuDai_MaUuDai",
+                        column: x => x.MaUuDai,
                         principalTable: "UuDai",
                         principalColumn: "MaUuDai",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -808,6 +830,35 @@ namespace travelrecommendationandbookingsystem.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "GiuCho",
+                columns: table => new
+                {
+                    MaGiuCho = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    MaChuyen = table.Column<int>(type: "int", nullable: false),
+                    MaNguoiDung = table.Column<int>(type: "int", nullable: false),
+                    SoChoGiu = table.Column<int>(type: "int", nullable: false),
+                    ThoiGianHetHan = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    NgayTao = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_GiuCho", x => x.MaGiuCho);
+                    table.ForeignKey(
+                        name: "FK_GiuCho_ChuyenKhoiHanh_MaChuyen",
+                        column: x => x.MaChuyen,
+                        principalTable: "ChuyenKhoiHanh",
+                        principalColumn: "MaChuyen",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_GiuCho_NguoiDung_MaNguoiDung",
+                        column: x => x.MaNguoiDung,
+                        principalTable: "NguoiDung",
+                        principalColumn: "MaNguoiDung",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "KhachHang",
                 columns: table => new
                 {
@@ -819,6 +870,7 @@ namespace travelrecommendationandbookingsystem.Migrations
                     NgaySinh = table.Column<DateTime>(type: "datetime2", nullable: false),
                     GioiTinh = table.Column<bool>(type: "bit", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PhongDon = table.Column<bool>(type: "bit", nullable: false),
                     LoaiKhach = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
@@ -838,10 +890,11 @@ namespace travelrecommendationandbookingsystem.Migrations
                 {
                     MaThanhToan = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    PhuongThucThanhToan = table.Column<int>(type: "int", nullable: false),
                     MaDonDatTour = table.Column<int>(type: "int", nullable: false),
-                    MaGiaoDich = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    NoiDung = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PhuongThucThanhToan = table.Column<int>(type: "int", nullable: false),
+                    MaGiaoDich = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    NoiDung = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    TongTienThanhToan = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     NgayThanhToan = table.Column<DateTime>(type: "datetime2", nullable: false),
                     TrangThaiThanhToan = table.Column<int>(type: "int", nullable: false)
                 },
@@ -872,24 +925,24 @@ namespace travelrecommendationandbookingsystem.Migrations
                 columns: new[] { "MaTTTrang", "Key", "NgayCapNhat", "NgayXoa", "Noidung", "Trangthai" },
                 values: new object[,]
                 {
-                    { 1, "logo_url", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4361), null, null, true },
-                    { 2, "ten_trang", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4370), null, null, true },
-                    { 3, "facebook_url", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4371), null, null, true },
-                    { 4, "dia_chi", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4371), null, null, true },
-                    { 5, "so_dien_thoai", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4372), null, null, true },
-                    { 7, "email_hotro", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4373), null, null, true },
-                    { 8, "zalo", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4374), null, null, true },
-                    { 9, "faq_1_question", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4375), null, null, true },
-                    { 10, "faq_1_answer", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4376), null, null, true },
-                    { 11, "faq_2_question", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4377), null, null, true },
-                    { 12, "faq_2_answer", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4377), null, null, true },
-                    { 13, "faq_3_question", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4378), null, null, true },
-                    { 14, "faq_3_answer", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4379), null, null, true },
-                    { 15, "faq_4_question", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4380), null, null, true },
-                    { 16, "faq_4_answer", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4390), null, null, true },
-                    { 17, "faq_5_question", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4391), null, null, true },
-                    { 18, "faq_5_answer", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4391), null, null, true },
-                    { 19, "Map_Trang_Lien_He", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(4395), null, null, true }
+                    { 1, "logo_url", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3940), null, null, true },
+                    { 2, "ten_trang", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3951), null, null, true },
+                    { 3, "facebook_url", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3952), null, null, true },
+                    { 4, "dia_chi", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3953), null, null, true },
+                    { 5, "so_dien_thoai", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3954), null, null, true },
+                    { 7, "email_hotro", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3955), null, null, true },
+                    { 8, "zalo", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3956), null, null, true },
+                    { 9, "faq_1_question", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3956), null, null, true },
+                    { 10, "faq_1_answer", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3957), null, null, true },
+                    { 11, "faq_2_question", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3959), null, null, true },
+                    { 12, "faq_2_answer", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3960), null, null, true },
+                    { 13, "faq_3_question", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3961), null, null, true },
+                    { 14, "faq_3_answer", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3961), null, null, true },
+                    { 15, "faq_4_question", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3962), null, null, true },
+                    { 16, "faq_4_answer", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(4269), null, null, true },
+                    { 17, "faq_5_question", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(4274), null, null, true },
+                    { 18, "faq_5_answer", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(4274), null, null, true },
+                    { 19, "Map_Trang_Lien_He", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(4288), null, null, true }
                 });
 
             migrationBuilder.InsertData(
@@ -906,7 +959,7 @@ namespace travelrecommendationandbookingsystem.Migrations
             migrationBuilder.InsertData(
                 table: "NhanViens",
                 columns: new[] { "MaNhanVien", "Cccd", "DiaChi", "DuongDanAnh", "Email", "GioiTinh", "HoTen", "MaVaiTro", "MatKhau", "NgayCapNhat", "NgaySinh", "NgayTao", "NgayXoa", "SoDienThoai", "TrangThai" },
-                values: new object[] { 1, "098765432112", null, null, "admin@gmail.com", false, "Quản Trị Viên", 1, "$2a$11$OsOxZH0wDUhQCOJhjXSLCuLT//HRkdjOUGJJOShxAyThZ8nBeFUdi", new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(3664), null, new DateTime(2026, 6, 27, 17, 16, 3, 386, DateTimeKind.Local).AddTicks(3648), null, "0988888888", 1 });
+                values: new object[] { 1, "098765432112", null, null, "admin@gmail.com", false, "Quản Trị Viên", 1, "$2a$11$3waT93XEx8y93WYHEVRXQuYAoSMdB0Dq7Sac29c8CU6HfvKDtBI0a", new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3074), null, new DateTime(2026, 6, 28, 0, 17, 9, 480, DateTimeKind.Local).AddTicks(3049), null, "0988888888", 1 });
 
             migrationBuilder.CreateIndex(
                 name: "IX_ChuyenKhoiHanh_MaHDV",
@@ -974,19 +1027,29 @@ namespace travelrecommendationandbookingsystem.Migrations
                 column: "MaNguoiDung");
 
             migrationBuilder.CreateIndex(
-                name: "IX_DonDatTour_NhanVienMaNhanVien",
+                name: "IX_DonDatTour_MaNhanVienDuyet",
                 table: "DonDatTour",
-                column: "NhanVienMaNhanVien");
+                column: "MaNhanVienDuyet");
 
             migrationBuilder.CreateIndex(
-                name: "IX_DonDatTour_UuDaiMaUuDai",
+                name: "IX_DonDatTour_MaUuDai",
                 table: "DonDatTour",
-                column: "UuDaiMaUuDai");
+                column: "MaUuDai");
 
             migrationBuilder.CreateIndex(
                 name: "IX_GiaChuyen_Machuyen",
                 table: "GiaChuyen",
                 column: "Machuyen");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_GiuCho_MaChuyen",
+                table: "GiuCho",
+                column: "MaChuyen");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_GiuCho_MaNguoiDung",
+                table: "GiuCho",
+                column: "MaNguoiDung");
 
             migrationBuilder.CreateIndex(
                 name: "IX_HinhAnhSK_MaKhachSan",
@@ -1088,6 +1151,9 @@ namespace travelrecommendationandbookingsystem.Migrations
                 name: "GiaChuyen");
 
             migrationBuilder.DropTable(
+                name: "GiuCho");
+
+            migrationBuilder.DropTable(
                 name: "HinhAnhSK");
 
             migrationBuilder.DropTable(
@@ -1107,6 +1173,9 @@ namespace travelrecommendationandbookingsystem.Migrations
 
             migrationBuilder.DropTable(
                 name: "NhatKyHeThong");
+
+            migrationBuilder.DropTable(
+                name: "PaymentPayload");
 
             migrationBuilder.DropTable(
                 name: "PhienDangNhaps");

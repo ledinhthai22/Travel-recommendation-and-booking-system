@@ -50,7 +50,7 @@ export default function Header() {
           }`}
       >
         <nav>
-          <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-4 md:px-8">
+          <div className="mx-auto flex max-w-[1450px] items-center justify-between px-4 py-4 md:px-8">
             <Logo />
 
             <NavMenu navLinks={navLinks} isActive={isActive} />

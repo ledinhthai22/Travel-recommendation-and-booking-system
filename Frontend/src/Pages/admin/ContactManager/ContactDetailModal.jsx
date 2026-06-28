@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import InputField from "~/components/UI/Form/InputField";
 
 export default function ContactDetailModal({
     isOpen,
@@ -67,14 +68,6 @@ export default function ContactDetailModal({
                     </div>
                 </div>
 
-                <div className="mt-8">
-                    <button
-                        onClick={onClose}
-                        className="w-full py-3 rounded-xl bg-slate-100 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
-                    >
-                        Đóng
-                    </button>
-                </div>
             </div>
         </div>
     );

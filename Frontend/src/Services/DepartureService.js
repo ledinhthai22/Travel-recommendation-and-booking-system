@@ -44,3 +44,12 @@ export const deleteDepartureApi = async (
 
     return response.data;
 };
+export const getDeparturesForBookingApi = async (tourId = null, keyword = '') => {
+    const response = await axiosClient.get('/admin/Departure/booking-select', {
+        params: {
+            tourId: tourId || undefined,
+            keyword: keyword || undefined
+        }
+    });
+    return response.data;
+};

@@ -19,6 +19,7 @@ namespace travel_recommendation_and_booking_system.Models
         public DateTime NgaySinh { get; set; }
         public bool GioiTinh { get; set; }
         public string Email { get; set; }
+        public bool PhongDon { get; set; }
         public int LoaiKhach { get; set; }
 
         public virtual DonDatTour DonDatTour { get; set; }

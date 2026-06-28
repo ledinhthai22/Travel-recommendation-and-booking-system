@@ -28,7 +28,7 @@ const decodeToken = (token) => {
 };
 
 export default function AuthProvider({ children }) {
-    const [user, setUser] = useState(null);
+    const [user, setUserState] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [isStaff, setIsStaff] = useState(false);
@@ -138,6 +138,15 @@ export default function AuthProvider({ children }) {
     const refreshUser = async () => {
         const updatedData = await getProfileApi();
         setUser(updatedData);
+    };
+
+    const setUser = (newUser) => {
+        if (newUser) {
+            localStorage.setItem("user", JSON.stringify(newUser));
+        } else {
+            localStorage.removeItem("user");
+        }
+        setUserState(newUser); // Kích hoạt render lại
     };
 
     return (

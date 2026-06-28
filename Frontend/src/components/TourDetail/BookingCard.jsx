@@ -2,10 +2,10 @@ import { useNavigate } from "react-router-dom";
 import { formatCurrency } from "~/Helper/FormatCurrency";
 import { formatDate } from "~/Helper/FormatDate";
 import { Clock, Calendar, MapPin, Users, Phone, Ticket } from "lucide-react";
-
-export function BookingCard({ tour, departure }) {
+import useAuth from "~/Hooks/useAuth";
+export function BookingCard({ tour, departure, hotel ,onOpenAuthModal}) {
     const navigate = useNavigate();
-
+    const {user} = useAuth();
     if (!tour || !departure) return null;
 
     const ckh = departure.chuyenKhoiHanh;
@@ -16,12 +16,18 @@ export function BookingCard({ tour, departure }) {
     const soLuongCho = soChoToiDa - soChoDaDat;
 
     const handleBooking = () => {
+        if (!user) {
+            if (typeof onOpenAuthModal === "function") {
+                onOpenAuthModal(); 
+            }
+            return; 
+        }
         const bookingData = {
             maTour: tour.maTour,
             tenTour: tour.tenTour,
             hinhAnh: tour.hinhAnh,
             thoiGianTour: tour.thoiGianTour,
-
+            slug:tour.slug,
             maChuyen: ckh?.maChuyen,
             maChuyenCode: ckh?.maChuyenCode,
             ngayKhoiHanh: ckh?.ngayKhoiHanh,
@@ -59,7 +65,6 @@ export function BookingCard({ tour, departure }) {
 
             <hr className="border-slate-100 my-3" />
 
-            {/* 2. Giá tiền */}
             <div className="mb-4 space-y-1.5">
                 <div className="flex justify-between items-baseline">
                     <span className="text-sm text-slate-500">Giá người lớn:</span>
@@ -94,8 +99,6 @@ export function BookingCard({ tour, departure }) {
             </div>
 
             <hr className="border-slate-100 my-3" />
-
-            {/* 3. Chi tiết lịch trình */}
             <div className="space-y-3 my-4 text-sm text-slate-600">
                 <div className="flex items-center gap-2.5">
                     <Clock size={16} className="text-slate-400 shrink-0" />
@@ -139,7 +142,6 @@ export function BookingCard({ tour, departure }) {
                 </div>
             </div>
 
-            {/* 4. Nút hành động */}
             <div className="mt-5 flex gap-2">
                 <a
                     href="tel:1900xxxx"

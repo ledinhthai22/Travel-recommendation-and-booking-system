@@ -3,12 +3,12 @@ import { X, Upload } from "lucide-react";
 
 import InputField from "~/components/UI/Form/InputField";
 import Dropdown from "~/components/Common/Dropdown";
+import DatePicker from "~/components/UI/Form/DatePicker"; 
 
 import { getStaffByIdApi, updateStaffApi } from "~/Services/StaffService";
 import { toastSuccess, toastError } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
 import ConfirmModal from '~/components/UI/Modal/ConfirmModal';
-
 
 export default function UpdateStaffModal({
     isOpen,
@@ -27,7 +27,7 @@ export default function UpdateStaffModal({
         duongDanAnh: null,
         diaChi: "",
         cccd: "",
-        ngaySinh: "",
+        ngaySinh: "", // Nhận chuỗi dạng "YYYY-MM-DD" từ API
         trangThai: 2,
         maVaiTro: 2
     });
@@ -48,9 +48,7 @@ export default function UpdateStaffModal({
             try {
                 setLoading(true);
 
-
                 const res = await getStaffByIdApi(staffId);
-
 
                 setForm({
                     hoTen: res.hoTen || "",
@@ -59,6 +57,7 @@ export default function UpdateStaffModal({
                     gioiTinh: res.gioiTinh ?? true,
                     diaChi: res.diaChi || "",
                     cccd: res.cccd || "",
+                
                     ngaySinh: res.ngaySinh ? res.ngaySinh.split("T")[0] : "",
                     trangThai: res.trangThai ?? 2,
                     maVaiTro: res.maVaiTro ?? 2,
@@ -102,6 +101,7 @@ export default function UpdateStaffModal({
             }));
         }
     };
+
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -179,7 +179,6 @@ export default function UpdateStaffModal({
             }
 
             await updateStaffApi(staffId, formData);
-            console.log(formData)
             toastSuccess("Cập nhật thông tin nhân viên thành công");
             onSuccess?.();
             onClose();
@@ -272,11 +271,12 @@ export default function UpdateStaffModal({
                         error={errors.diaChi}
                         disabled={loading}
                     />
-                    <InputField
+
+                    <DatePicker
                         label="Ngày sinh"
-                        type="date"
+                        placeholderText="Chọn ngày sinh..."
                         value={form.ngaySinh}
-                        onChange={(e) => handleChange("ngaySinh", e.target.value)}
+                        onChange={(dateString) => handleChange("ngaySinh", dateString)} 
                         error={errors.ngaySinh}
                         disabled={loading}
                     />
@@ -290,6 +290,21 @@ export default function UpdateStaffModal({
                         disabled={loading}
                     />
 
+
+
+                    <Dropdown
+                        label="Chức danh"
+                        placeholder="Vai trò"
+                        value={form.maVaiTro.toString()}
+                        onChange={(value) => handleChange("maVaiTro", parseInt(value))}
+                        options={[
+                            { value: "2", label: "Nhân viên" },
+                            { value: "3", label: "Hướng dẫn viên" }
+                        ]}
+                        disabled={loading}
+                    />
+                </div>
+                <div className="mt-2">
                     <Dropdown
                         label="Trạng thái"
                         placeholder="Trạng thái"
@@ -302,23 +317,10 @@ export default function UpdateStaffModal({
                         ]}
                         disabled={loading}
                     />
-
-                    <Dropdown
-                        label="Chức danh"
-                        placeholder="Vai trò"
-                        value={form.maVaiTro.toString()}
-                        onChange={(value) => handleChange("maVaiTro", parseInt(value))}
-                        options={[
-                            { value: "2", label: "Nhân viên" },
-                            { value: "3", label: "Hướng dẫn viên" }
-                        ]}
-                    />
                 </div>
 
                 <div className="flex justify-end gap-3 mt-8">
-                    <button onClick={onClose} disabled={loading} className="px-6 py-2 rounded-xl bg-slate-100 disabled:opacity-50">
-                        Hủy
-                    </button>
+
 
                     <button
                         onClick={handleConfirmUpdate}
@@ -328,6 +330,7 @@ export default function UpdateStaffModal({
                         {loading ? "Đang lưu..." : "Cập nhật"}
                     </button>
                 </div>
+
             </div>
 
             <ConfirmModal

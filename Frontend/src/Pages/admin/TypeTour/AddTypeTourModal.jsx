@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import InputField from '~/components/UI/Form/InputField';
-// CHÚ Ý SỬA DÒNG NÀY: Trỏ chuẩn về TypeTourService
 import { createTypeTourApi } from '~/Services/TypeTourService'; 
 import { toastError, toastSuccess } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
@@ -23,7 +22,6 @@ export default function AddTypeTourModal({ isOpen, onClose, onSuccess }) {
         setError('');
 
         try {
-            // Vì API dùng "multipart/form-data", bọc vào FormData
             const formData = new FormData();
             formData.append('TenLoaiTour', tenLoaiTour.trim());
 
@@ -64,14 +62,6 @@ export default function AddTypeTourModal({ isOpen, onClose, onSuccess }) {
                     />
 
                     <div className="flex gap-3 pt-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 py-3 px-6 rounded-xl border border-slate-300 font-medium text-slate-700 hover:bg-slate-50"
-                            disabled={loading}
-                        >
-                            Hủy
-                        </button>
                         <button
                             type="submit"
                             disabled={loading}

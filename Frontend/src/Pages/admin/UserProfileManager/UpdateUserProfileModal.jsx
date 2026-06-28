@@ -172,6 +172,7 @@ export default function UpdateUserProfileModal({
             const res = await updateUserProfileApi(
                 data
             );
+            console.log("Dữ liệu API trả về:", res);
 
             toastSuccess(
                 res?.message ||
@@ -184,13 +185,16 @@ export default function UpdateUserProfileModal({
                 ...currentUser,
                 hoTen: formData.hoTen,
                 email: formData.email,
-                duongDanAnh: previewUrl.startsWith("blob:") ? previewUrl : (res.newImagePath || currentUser.duongDanAnh)
+                duongDanAnh: res.newImagePath || currentUser.duongDanAnh
             };
 
             localStorage.setItem("user", JSON.stringify(updatedUser));
-            setUser(updatedUser);
-            onUpdateSuccess?.();
 
+            setUser(updatedUser);
+
+            window.dispatchEvent(new Event("profileUpdated"));
+
+            onUpdateSuccess?.();
             onClose();
         } catch (error) {
             if (error.response?.data?.errors) {

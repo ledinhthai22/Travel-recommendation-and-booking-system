@@ -1,181 +1,174 @@
 import React, { useState } from "react";
 import InputField from "../UI/Form/InputField";
-import Dropdown from "../Common/Dropdown";
+
 import SelectField from "../UI/Form/SelectField";
 import { formatCurrency } from "~/Helper/FormatCurrency";
+import { createPortal } from "react-dom";
+import DatePicker from "../UI/Form/DatePicker";
 export default function PassengerDetailsForm({
     passengers,
     singleRooms,
     onToggleSingleRoom,
     bookingData,
     details,
-    setDetails
+    setDetails,
+    errors = {}
 }) {
-    const [editingPassenger, setEditingPassenger] = useState(null);
-
     const [showModal, setShowModal] = useState(false);
+    const [modalErrors, setModalErrors] = useState({});
+    const totalPassengers =
+        passengers.adults +
+        passengers.children +
+        passengers.toddlers;
 
-
-    const openEditForm = (type, index) => {
-        const key = `${type}-${index}`;
-
-        setEditingPassenger({ type, index });
-
-        setTempForm(
-            details[key] || {
-                fullName: "",
-                dob: "",
-                phone: "",
-            }
-        );
-    };
-
+    const shouldScroll = totalPassengers > 1;
     const passengerList = [
         ...Array.from(
-            { length: passengers.adults },
+            { length: passengers.adults || 0 },
             (_, i) => ({
                 key: `adults-${i}`,
                 label: `Người lớn ${i + 1}`,
+                isAdult: true,
             })
         ),
-
         ...Array.from(
-            { length: passengers.children },
+            { length: passengers.children || 0 },
             (_, i) => ({
                 key: `children-${i}`,
                 label: `Trẻ em ${i + 1}`,
+                isAdult: false,
             })
         ),
-
         ...Array.from(
-            { length: passengers.toddlers },
+            { length: passengers.toddlers || 0 },
             (_, i) => ({
                 key: `toddlers-${i}`,
                 label: `Trẻ nhỏ ${i + 1}`,
+                isAdult: false,
             })
         ),
     ];
-    const handleChangePassenger = (
-        key,
-        field,
-        value
-    ) => {
+    const handleChangePassenger = (key, field, value) => {
         setDetails((prev) => ({
             ...prev,
             [key]: {
                 ...prev[key],
                 [field]: value,
-            },
-        }));
-    };
-    // const formatCurrency = (value) =>
-    //     new Intl.NumberFormat("vi-VN", {
-    //         style: "currency",
-    //         currency: "VND",
-    //         maximumFractionDigits: 0,
-    //     }).format(value || 0);
-    const handleSave = (e) => {
-        e.preventDefault();
-
-        if (!editingPassenger) return;
-
-        const key = `${editingPassenger.type}-${editingPassenger.index}`;
-
-        setDetails((prev) => ({
-            ...prev,
-            [key]: {
-                ...tempForm,
                 isSaved: true,
             },
         }));
 
-        setEditingPassenger(null);
+   
+        setModalErrors((prev) => ({
+            ...prev,
+            [key]: {
+                ...prev[key],
+                [field]: undefined,
+            },
+        }));
     };
+
+
+
     const handleSaveAll = () => {
+        const errors = {};
+        let valid = true;
+
+        passengerList.forEach(({ key }) => {
+            const p = details[key] || {};
+            errors[key] = {};
+
+            if (!p.fullName?.trim()) {
+                errors[key].fullName = "Nhập họ tên";
+                valid = false;
+            }
+
+            if (!p.dob) {
+                errors[key].dob = "Chọn ngày sinh";
+                valid = false;
+            }
+
+            if (p.phone && !/^0\d{9}$/.test(p.phone)) {
+                errors[key].phone = "SĐT không hợp lệ";
+                valid = false;
+            }
+        });
+
+        setModalErrors(errors);
+        if (!valid) return;
+
+        setDetails((prev) => {
+            const updated = { ...prev };
+            passengerList.forEach(({ key }) => {
+                updated[key] = {
+                    ...updated[key],
+                    gender: updated[key]?.gender || "Nam",
+                };
+            });
+            return updated;
+        });
+
         setShowModal(false);
     };
 
-    const renderPassengerRows = (
-        type,
-        count,
-        label,
-        allowSingleRoom = false
-    ) => {
-        return Array.from({ length: count }).map((_, index) => {
-            const key = `${type}-${index}`;
-            const passenger = details[key];
 
-            return (
-                <div
-                    key={key}
-                    className="mb-3 flex items-center gap-3"
-                >
-                    <span className="w-8 text-sm text-slate-500">
-                        #{index + 1}
-                    </span>
+    const renderPassengerRows = (type, count, label, allowSingleRoom = false) => {
+    return Array.from({ length: count }).map((_, index) => {
+        const key = `${type}-${index}`;
+        const passenger = details[key];
 
-                    <div className="flex flex-1 items-center gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setShowModal(true)}
-                            className="flex flex-1 items-center justify-between rounded-2xl border border-slate-300 px-5 py-3 hover:bg-slate-50"
-                        >
-                            <span className="font-medium text-slate-700">
-                                {passenger?.fullName ||
-                                    `${label} (*)`}
-                            </span>
+        const hasError = errors[key] && Object.values(errors[key]).some(Boolean);
+        const isDone = passenger?.fullName && passenger?.dob;
 
-                            <span
-                                className={`text-sm font-medium ${passenger?.isSaved
-                                    ? "text-emerald-500"
-                                    : "text-orange-500"
-                                    }`}
-                            >
-                                {passenger?.fullName
-                                    ? "Đã nhập"
-                                    : "Nhập thông tin"}
-                            </span>
-                        </button>
+        return (
+            <div key={key} className="mb-3 flex items-center gap-3" data-error={hasError ? "true" : "false"}>
+                <span className="w-8 text-sm text-slate-500">#{index + 1}</span>
 
-                        {allowSingleRoom && (
-                            <div className="flex items-center gap-2">
-                                <span className="text-[12px] text-slate-600">
-                                    Phòng đơn
-                                </span>
+                <div className="flex flex-1 items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setShowModal(true)}
+                        className={`flex flex-1 items-center justify-between rounded-2xl border px-5 py-3 hover:bg-slate-50 transition-colors ${
+                            hasError ? "border-red-400 bg-red-50" : "border-slate-300"
+                        }`}
+                    >
+                        <span className="font-medium text-slate-700">
+                            {passenger?.fullName || `${label} (*)`}
+                        </span>
 
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        onToggleSingleRoom(key)
-                                    }
-                                    className={`relative h-6 w-11 rounded-full transition ${singleRooms[key]
-                                        ? "bg-sky-500"
-                                        : "bg-slate-300"
-                                        }`}
-                                >
-                                    <span
-                                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${singleRooms[key]
-                                            ? "left-[19px]"
-                                            : "left-[2px]"
-                                            }`}
-                                    />
-                                </button>
+                        <span className={`text-sm font-medium ${
+                            hasError    ? "text-red-500" :
+                            isDone      ? "text-emerald-500" :
+                                          "text-orange-500"
+                        }`}>
+                            {hasError ? "Chưa đủ thông tin" : isDone ? "Đã nhập" : "Nhập thông tin"}
+                        </span>
+                    </button>
+
+                    {allowSingleRoom && (
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <span className="text-[12px] text-slate-600">Phòng đơn</span>
+                            <input
+                                type="checkbox"
+                                checked={!!singleRooms[key]}
+                                onChange={() => onToggleSingleRoom(key)}
+                                className="sr-only"
+                            />
+                            <div className={`relative h-6 w-11 rounded-full transition-colors duration-300 ${singleRooms[key] ? "bg-sky-500" : "bg-slate-300"}`}>
+                                <div className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-300 ${singleRooms[key] ? "translate-x-5" : ""}`} />
                             </div>
-                        )}
-                    </div>
+                        </label>
+                    )}
                 </div>
-            );
-        });
-    };
-
+            </div>
+        );
+    });
+};
     return (
         <>
             <div className="rounded-3xl border border-sky-100 bg-white p-6 shadow-sm">
-                <h2 className="mb-6 text-xl font-bold">
-                    Thông tin hành khách
-                </h2>
+                <h2 className="mb-6 text-xl font-bold">Thông tin hành khách</h2>
 
-                {/* Người lớn */}
                 {passengers.adults > 0 && (
                     <div className="mb-6">
                         <h3 className="font-semibold text-sky-600">
@@ -184,21 +177,11 @@ export default function PassengerDetailsForm({
                                 (Từ 12 tuổi trở lên)
                             </span>
                         </h3>
-
-                        <p className="mb-3 mt-1 text-xs text-sky-500">
-                            Có thể đăng ký phòng đơn
-                        </p>
-
-                        {renderPassengerRows(
-                            "adults",
-                            passengers.adults,
-                            "Người lớn",
-                            true
-                        )}
+                        <p className="mb-3 mt-1 text-xs text-sky-500">Có thể đăng ký phòng đơn đối với người lớn hoặc gia đình cần không gian riêng</p>
+                        {renderPassengerRows("adults", passengers.adults, "Người lớn", true)}
                     </div>
                 )}
 
-                {/* Trẻ em */}
                 {passengers.children > 0 && (
                     <div className="mb-6">
                         <h3 className="mb-3 font-semibold text-sky-600">
@@ -207,16 +190,11 @@ export default function PassengerDetailsForm({
                                 (5 - 11 tuổi)
                             </span>
                         </h3>
-
-                        {renderPassengerRows(
-                            "children",
-                            passengers.children,
-                            "Trẻ em"
-                        )}
+                        {renderPassengerRows("children", passengers.children, "Trẻ em")}
                     </div>
                 )}
 
-                {/* Trẻ nhỏ */}
+
                 {passengers.toddlers > 0 && (
                     <div>
                         <h3 className="mb-3 font-semibold text-sky-600">
@@ -225,307 +203,161 @@ export default function PassengerDetailsForm({
                                 (2 - 4 tuổi)
                             </span>
                         </h3>
-
-                        {renderPassengerRows(
-                            "toddlers",
-                            passengers.toddlers,
-                            "Trẻ nhỏ"
-                        )}
+                        {renderPassengerRows("toddlers", passengers.toddlers, "Trẻ nhỏ")}
                     </div>
                 )}
             </div>
 
-            {showModal && (
-                <div className="fixed
-                                top-0
-                                left-0
-                                right-0
-                                bottom-0
-                                z-[9999]
-                                flex
-                                items-center
-                                justify-center
-                                mb-0
-                                bg-black/40"
-                >
+            {showModal && createPortal(
+                <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40 p-4">
+                    <div
+                        className={`flex w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-xl ${shouldScroll ? "h-[90vh]" : "h-auto"
+                            }`}
+                    >
 
-                    <div className="flex h-screen items-start justify-center mt-38">
+                        <div className="flex items-center justify-between border-b border-slate-100 bg-white px-8 py-5">
+                            <h2 className="text-xl font-bold text-slate-800">
+                                Nhập thông tin chi tiết hành khách
+                            </h2>
+                            <button
+                                onClick={() => setShowModal(false)}
+                                className="text-3xl text-slate-400 hover:text-slate-600"
+                            >
+                                &times;
+                            </button>
+                        </div>
 
-                        <div className="flex h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white">
+                        <div
+                            className={`bg-slate-50 p-6 ${shouldScroll ? "flex-1 overflow-y-auto" : ""
+                                }`}
+                        >
 
-                            {/* HEADER */}
-                            <div className="flex items-center justify-between  bg-white px-8 py-6">
-                                <h2 className="text-2xl font-bold text-slate-800">
-                                    Thông tin hành khách
-                                </h2>
-
-                                <button
-                                    onClick={() => setShowModal(false)}
-                                    className="text-4xl text-slate-500 hover:text-slate-700"
-                                >
-                                    ×
-                                </button>
+                            <div className="mb-6 rounded-2xl bg-blue-50 p-4 text-sm text-slate-700 border border-blue-100">
+                                Phòng đơn dành cho khách hàng từ 12 tuổi trở lên, giá phụ thu phòng đơn là:
+                                <span className="ml-2 font-semibold text-sky-600">
+                                    {formatCurrency(bookingData?.gia?.phuThuPhongDon)}
+                                </span>
                             </div>
 
-                            {/* CONTENT */}
-                            <div className="flex-1 overflow-y-auto p-6">
+                            <div className="space-y-6">
+                                {passengerList.map((passenger) => (
+                                    <div
+                                        key={passenger.key}
+                                        className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm"
+                                    >
+                                        <h3 className="mb-4 text-base font-bold text-sky-600 border-b border-slate-100 pb-2">
+                                            {passenger.label}
+                                        </h3>
 
-                                {/* THÔNG BÁO */}
-                                <div className="mb-6 rounded-4xl bg-blue-100 p-5 text-lg text-slate-700">
-                                    Phòng đơn dành cho khách hàng từ 12 tuổi trở lên,
-                                    giá phòng đơn là:
-                                    <span className="ml-2 font-semibold text-sky-600">
+                                        <div className="flex flex-col gap-4">
 
-                                        {formatCurrency(bookingData?.gia?.phuThuPhongDon)}
-                                    </span>
-                                </div>
+                                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                                <InputField
+                                                    label="Họ tên"
+                                                    required
+                                                    type="text"
+                                                    placeholder="Ví dụ: Nguyễn Văn A"
+                                                    value={details[passenger.key]?.fullName || ""}
+                                                    onChange={(e) =>
+                                                        handleChangePassenger(passenger.key, "fullName", e.target.value)
+                                                    }
+                                                    error={modalErrors[passenger.key]?.fullName}  
+                                                />
 
-                                {/* DANH SÁCH HÀNH KHÁCH */}
-                                <div className="space-y-6">
-
-                                    {passengerList.map((passenger, index) => (
-                                        <div
-                                            key={passenger.key}
-                                            className="rounded-[20px] bg-white p-6 shadow-sm"
-                                        >
-                                            <h3 className="mb-5 text-[15px] font-bold text-sky-500">
-                                                {passenger.label}
-                                            </h3>
-
-                                            {/* STT + HỌ TÊN */}
-                                            <div className="mb-5 flex gap-5">
-
-
-                                                <div className="flex-1">
-
-                                                    <label className="mb-2 block text-[13px] font-medium">
-                                                        Họ tên
-                                                        <span className="text-red-500">
-                                                            {" "}(*)
-                                                        </span>
-                                                    </label>
-
-                                                    <InputField
-                                                        type="text"
-                                                        placeholder="Ví dụ: Nguyễn Văn A"
-                                                        value={
-                                                            details[passenger.key]?.fullName || ""
-                                                        }
-                                                        onChange={(e) =>
-                                                            handleChangePassenger(
-                                                                passenger.key,
-                                                                "fullName",
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                        className="
-                                                h-16
-                                                w-full
-                                                rounded-full
-                                                bg-slate-100
-                                                px-6
-                                                text-lg
-                                                outline-none
-                                            "
-                                                    />
-                                                </div>
+                                                <DatePicker
+                                                    label="Ngày sinh"
+                                                    value={details[passenger.key]?.dob || ""}
+                                                    onChange={(value) =>
+                                                        handleChangePassenger(passenger.key, "dob", value)
+                                                    }
+                                                    minDate={new Date(1900, 0, 1)}
+                                                    maxDate={new Date()}
+                                                    error={modalErrors[passenger.key]?.dob}  
+                                                />
                                             </div>
 
-                                            {/* DOB + GENDER */}
-                                            <div className="mb-5 grid grid-cols-2 gap-6">
+
+                                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 items-end">
 
                                                 <div>
-                                                    <label className="mb-2 block text-[13px] font-medium">
-                                                        Ngày sinh
-                                                        <span className="text-red-500">
-                                                            {" "}(*)
-                                                        </span>
+                                                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">
+                                                        Giới tính
                                                     </label>
-
-                                                    <InputField
-                                                        type="date"
-                                                        value={
-                                                            details[passenger.key]?.dob || ""
-                                                        }
-                                                        onChange={(e) =>
-                                                            handleChangePassenger(
-                                                                passenger.key,
-                                                                "dob",
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                        className="
-                                                    h-16
-                                                    w-full
-                                                    rounded-full
-                                                    bg-slate-100
-                                                    px-6
-                                                    text-lg
-                                                    outline-none
-                                                "
-                                                    />
-                                                </div>
-
-                                                <div>
-                                                    <label className="mb-2 block text-[13px] font-medium">Giới tính</label>
                                                     <SelectField
-
                                                         value={details[passenger.key]?.gender || "Nam"}
                                                         onChange={(value) =>
-                                                            handleChangePassenger(
-                                                                passenger.key,
-                                                                "gender",
-                                                                value
-                                                            )
+                                                            handleChangePassenger(passenger.key, "gender", value)
                                                         }
                                                         options={[
-                                                            {
-                                                                value: "Nam",
-                                                                label: "Nam",
-                                                            },
-                                                            {
-                                                                value: "Nữ",
-                                                                label: "Nữ",
-                                                            },
+                                                            { value: "Nam", label: "Nam" },
+                                                            { value: "Nữ", label: "Nữ" },
                                                         ]}
-                                                        className="
-                                                                    h-16
-                                                                    rounded-full
-                                                                    bg-slate-100
-                                                                    border-0
-                                                                    shadow-none
-                                                                "
+                                                        className="w-full h-[46px] rounded-xl bg-white border border-slate-200"
+                                                        error={modalErrors[passenger.key]?.gender}  // ← thêm
                                                     />
                                                 </div>
 
-                                            </div>
-
-                                            {/* PHONE + SINGLE ROOM */}
-                                            <div className="flex items-end gap-6">
-
-                                                <div className="flex-1">
-                                                    <label className="mb-2 block text-[13px] font-medium">
-                                                        Số điện thoại
-                                                    </label>
-
-                                                    <InputField
-                                                        type="text"
-                                                        placeholder="Ví dụ: 0901234567"
-                                                        value={
-                                                            details[passenger.key]?.phone || ""
-                                                        }
-                                                        onChange={(e) =>
-                                                            handleChangePassenger(
-                                                                passenger.key,
-                                                                "phone",
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                        className="
-                                                                    h-16
-                                                                    rounded-full
-                                                                    bg-slate-100
-                                                                    px-6
-                                                                    text-lg
-                                                                    border-0
-                                                                    shadow-none
-                                                                "
-                                                    />
-                                                </div>
-
-                                                {passenger.key.includes("adults") && (
-                                                    <div className="mb-2 flex flex-col items-center">
-
-                                                        <span className="mb-2 text-lg">
-                                                            Phòng đơn
-                                                        </span>
-
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                onToggleSingleRoom(
-                                                                    passenger.key
-                                                                )
+                                                <div className="flex gap-4 items-end">
+                                                    <div className="flex-1">
+                                                        <InputField
+                                                            label="Số điện thoại"
+                                                            type="text"
+                                                            placeholder="Ví dụ: 0901234567"
+                                                            value={details[passenger.key]?.phone || ""}
+                                                            onChange={(e) =>
+                                                                handleChangePassenger(passenger.key, "phone", e.target.value)
                                                             }
-                                                            className={`
-                                                    relative
-                                                    h-8
-                                                    w-14
-                                                    rounded-full
-                                                    transition
-                                                    ${singleRooms[passenger.key]
-                                                                    ? "bg-sky-500"
-                                                                    : "bg-slate-300"}
-                                                `}
-                                                        >
-                                                            <span
-                                                                className={`
-                                                        absolute
-                                                        top-1
-                                                        h-6
-                                                        w-6
-                                                        rounded-full
-                                                        bg-white
-                                                        transition
-                                                        ${singleRooms[passenger.key]
-                                                                        ? "left-7"
-                                                                        : "left-1"}
-                                                    `}
-                                                            />
-                                                        </button>
-
+                                                            error={modalErrors[passenger.key]?.phone}  
+                                                        />
                                                     </div>
-                                                )}
 
+                                                    {passenger.isAdult && (
+                                                        <div className="flex flex-col items-center justify-center bg-slate-50 border border-slate-200 rounded-xl px-4 h-[46px] min-w-[110px]">
+                                                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                                                                Phòng đơn
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => onToggleSingleRoom(passenger.key)}
+                                                                className={`relative h-5 w-11 rounded-full transition-colors ${singleRooms[passenger.key] ? "bg-sky-500" : "bg-slate-300"
+                                                                    }`}
+                                                            >
+                                                                <span
+                                                                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${singleRooms[passenger.key] ? "left-[22px]" : "left-[2px]"
+                                                                        }`}
+                                                                />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-
                                         </div>
-                                    ))}
-
-                                </div>
+                                    </div>
+                                ))}
                             </div>
+                        </div>
 
-                            {/* FOOTER */}
-                            <div className="flex justify-end gap-5 bg-white p-6">
 
-                                <button
-                                    type="button"
-                                    className="
-                                        h-14
-                                        w-35
-                                        rounded-full
-                                        border
-
-                                        text-[13px]
-                                        font-medium
-                                    "
-                                >
-                                    Đặt lại
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={handleSaveAll}
-                                    className="
-                                        h-14
-                                        w-35
-                                        rounded-full
-                                        bg-sky-500
-                                        text-[13px]
-                                        font-medium
-                                        text-white
-                                    "
-                                >
-                                    Xác nhận
-                                </button>
-
-                            </div>
-
+                        <div className="flex justify-end gap-3 border-t border-slate-100 bg-white p-5">
+                            <button
+                                type="button"
+                                onClick={() => setDetails({})}
+                                className="h-11 rounded-xl border border-slate-200 px-6 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                            >
+                                Đặt lại
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSaveAll}
+                                className="h-11 rounded-xl bg-sky-500 px-6 text-sm font-medium text-white hover:bg-sky-600 shadow-sm"
+                            >
+                                Xác nhận
+                            </button>
                         </div>
 
                     </div>
-
-                </div>
+                </div>,
+                document.body
             )}
         </>
     );

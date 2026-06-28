@@ -12,5 +12,6 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<PromotionResponseDTO?> UpdateAsync(int id, PromotionDTO promotion); // Cập nhật ưu đãi
         Task<bool> ChangeStatusAsync(int id, bool isActive); // thay đổi trạng thái ưu đãi
         Task<bool> DeleteAsync(int id); // xóa ưu đãi
+        Task<List<PromotionResponseDTO>> GetPromotionsForSelectAsync(int? status = null);
     }
 }

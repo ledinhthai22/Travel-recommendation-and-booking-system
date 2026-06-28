@@ -7,6 +7,7 @@
         public string DuongDanAnh { get; set; }
         public int Ngay { get; set; }
         public int Dem { get; set; }
+        public string slug { get; set; }
         public string DiemDen { get; set; }
         public decimal GiaChuyen { get; set; }
         public double DiemDanhGia { get; set; }

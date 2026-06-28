@@ -151,9 +151,10 @@ namespace travel_recommendation_and_booking_system.Services
 
             _context.UuDais.Add(newPromotion);
             await _context.SaveChangesAsync();
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
 
@@ -212,9 +213,10 @@ namespace travel_recommendation_and_booking_system.Services
             };
             promotion.NgayXoa = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
 
@@ -311,9 +313,10 @@ namespace travel_recommendation_and_booking_system.Services
             }
 
             await _context.SaveChangesAsync();
+            var currentAccount = _currentUserService.GetUserId() == 1? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
 
@@ -404,10 +407,10 @@ namespace travel_recommendation_and_booking_system.Services
             promotion.NgayCapNhat = DateTime.Now;
 
             await _context.SaveChangesAsync();
-
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
 
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                 Email = _currentUserService.GetEmail(),
@@ -426,6 +429,36 @@ namespace travel_recommendation_and_booking_system.Services
             });
 
             return true;
+        }
+        public async Task<List<PromotionResponseDTO>> GetPromotionsForSelectAsync(int? status = null)
+        {
+            var query = _context.UuDais
+                .Where(p => p.NgayXoa == null)
+                .AsQueryable();
+
+            if (status.HasValue)
+            {
+                query = query.Where(p => p.TrangThai == status.Value);
+            }
+            else
+            {
+
+                query = query.Where(p => p.TrangThai == 1);
+            }
+
+            var today = DateTime.Now.Date;
+            query = query.Where(p => p.NgayBatDau <= today && p.NgayHetHan >= today);
+
+            var promotions = await query
+                .OrderByDescending(p => p.NgayTao)
+                .Select(p => new PromotionResponseDTO
+                {
+                    MaUuDai = p.MaUuDai,     
+                    MaCode = p.MaCode,
+                })
+                .ToListAsync();
+
+            return promotions;
         }
     }
 

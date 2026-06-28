@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getTopDestinationsApi } from '~/Services/HomeService';
+import { getHomeLocationCardsApi } from '~/Services/LocationService'; 
 
 export default function useHomeLocationsCard(limit = 12) {
     const [destinations, setDestinations] = useState([]);
@@ -10,7 +10,7 @@ export default function useHomeLocationsCard(limit = 12) {
         const fetchLocations = async () => {
             try {
                 setLoading(true);
-                const data = await getTopDestinationsApi(limit);
+                const data = await getHomeLocationCardsApi(limit);
                 setDestinations(data);
             } catch (err) {
                 setError(err.message || 'Có lỗi xảy ra khi tải địa điểm.');

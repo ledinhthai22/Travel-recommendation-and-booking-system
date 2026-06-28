@@ -21,6 +21,17 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
             _recommen = recommendationService;
         }
 
+        [HttpGet("wishlist-ids")]
+        public async Task<IActionResult> GetWishlistIds()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int maNguoiDung))
+                return Unauthorized();
+
+            var ids = await _tour.GetFavoriteTourIdsAsync(maNguoiDung);
+            return Ok(ids);
+        }
+
         [HttpGet("wishlist")]
         public async Task<IActionResult> GetWishlist([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
@@ -56,11 +67,11 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
 
                 if (isSuccess)
                 {
-                    var tour = await _tour.GetTourByIdAsync(tourId);
-                    if (tour != null)
-                    {
-                        await _recommen.UpdatePreference(maNguoiDung, tour.MaLoaiTour, RecommendationWeights.WishlistTour);
-                    }
+                    //var tour = await _tour.GetTourByIdAsync(tourId);
+                    //if (tour != null)
+                    //{
+                    //    await _recommen.UpdatePreference(maNguoiDung, tour.MaLoaiTour, RecommendationWeights.WishlistTour);
+                    //}
                     return Ok(new { message = "Đã thêm vào danh sách yêu thích thành công!" });
                 }
 

@@ -70,20 +70,71 @@ namespace Services
         private static int CalcTrangThai(DateTime ngayKhoiHanh, DateTime ngayKetThuc, int soLuongCho)
         {
             var now = DateTime.Now;
-
-            if (soLuongCho <= 0)
-                return 0;
-
-            if (now < ngayKhoiHanh)
-                return 3;
-
-            if (now >= ngayKhoiHanh && now <= ngayKetThuc)
-                return 2;
-
-            return 1;
+            if (soLuongCho <= 0) return 0;
+            if (now < ngayKhoiHanh) return 1;
+            if (now >= ngayKhoiHanh && now <= ngayKetThuc) return 2;
+            return 3;
         }
 
+        public async Task<List<DepartureSelectDTO>> GetDeparturesForSelectAsync(int? tourId = null, string? keyword = null)
+        {
+            var query = _context.ChuyenKhoiHanhs
+                .Include(c => c.Tour)
+                .Include(c => c.NhanVien)
+                .Include(c => c.PhuongTien)
+                .Include(c => c.GiaChuyens)
+                .Where(c => c.NgayXoa == null)
+                .AsQueryable();
 
+            // Chỉ lấy chuyến chưa khởi hành và còn chỗ
+            var now = DateTime.Now;
+            query = query.Where(c => c.NgayKhoiHanh > now && c.SoChoToiDa > c.SoChoDaDat);
+
+            // Lọc theo tour
+            if (tourId.HasValue && tourId.Value > 0)
+            {
+                query = query.Where(c => c.MaTour == tourId.Value);
+            }
+
+            // Tìm kiếm theo từ khóa
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                var lowerKey = keyword.ToLower();
+                query = query.Where(c =>
+                    c.MaChuyenCode.ToLower().Contains(lowerKey) ||
+                    c.DiemKhoiHanh.ToLower().Contains(lowerKey) ||
+                    c.DiemDen.ToLower().Contains(lowerKey) ||
+                    c.Tour.TenTour.ToLower().Contains(lowerKey)
+                );
+            }
+
+            var departures = await query
+                .OrderBy(c => c.NgayKhoiHanh)
+                .Select(c => new DepartureSelectDTO
+                {
+                    MaChuyen = c.MaChuyen,
+                    MaChuyenCode = c.MaChuyenCode,
+                    MaTour = c.MaTour,
+                    TenTour = c.Tour.TenTour,
+                    DiemKhoiHanh = c.DiemKhoiHanh,
+                    DiemDen = c.DiemDen,
+                    NgayKhoiHanh = c.NgayKhoiHanh,
+                    NgayKetThuc = c.NgayKetThuc,
+                    SoChoToiDa = c.SoChoToiDa,
+                    SoChoDaDat = c.SoChoDaDat,
+                    SoChoConLai = c.SoChoToiDa - c.SoChoDaDat,
+                    TrangThai = c.TrangThai,
+                    TenHuongDanVien = c.NhanVien.HoTen,
+                    TenPhuongTien = c.PhuongTien.TenPhuongTien,
+                    GiaNguoiLon = c.GiaChuyens.OrderByDescending(g => g.NgayTao).Select(g => g.GiaNguoiLon).FirstOrDefault(),
+                    GiaTreEm = c.GiaChuyens.OrderByDescending(g => g.NgayTao).Select(g => g.GiaTreEm).FirstOrDefault(),
+                    GiaEmBe = c.GiaChuyens.OrderByDescending(g => g.NgayTao).Select(g => g.GiaEmBe).FirstOrDefault(),
+                    PhuThuPhongDon = c.GiaChuyens.OrderByDescending(g => g.NgayTao).Select(g => g.PhuThuPhongDon).FirstOrDefault()
+                })
+                .ToListAsync();
+
+            return departures;
+        }
         private async Task<string> GetTenPhuongTienAsync(int maPhuongTien)
         {
             var pt = await _context.PhuongTiens
@@ -163,9 +214,10 @@ namespace Services
                 await UpdateTourGiaTuAsync(dep.MaTour);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+                var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
                 await _logService.LoggingAsync(new LogDTO
                 {
-                    LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                    LoaiTaiKhoan = currentAccount,
 
                     MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                     Email = _currentUserService.GetEmail(),
@@ -217,11 +269,12 @@ namespace Services
                         "Chuyến đã khởi hành, không được phép chỉnh sửa."
                     );
                 }
+                // Thêm check này sau khi lấy được chuyen, trước khi update
+                if (chuyen.SoChoDaDat > 0)
+                    throw new Exception("Chuyến đã có khách đặt, không được phép chỉnh sửa.");
 
-                if (chuyen.TrangThai == 1)
-                {
+                if (chuyen.TrangThai == 3)
                     throw new Exception("Chuyến đã kết thúc, không được phép chỉnh sửa.");
-                }
                 var oldData = new
                 {
                     chuyen.MaHDV,
@@ -285,9 +338,10 @@ namespace Services
                 await _context.SaveChangesAsync();
                 await UpdateTourGiaTuAsync(chuyen.MaTour);
                 await _context.SaveChangesAsync();
+                var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
                 await _logService.LoggingAsync(new LogDTO
                 {
-                    LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                    LoaiTaiKhoan = currentAccount,
 
                     MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                     Email = _currentUserService.GetEmail(),
@@ -365,15 +419,8 @@ namespace Services
 
             if (chuyen == null || chuyen.NgayXoa != null)
                 return false;
-            if (chuyen.TrangThai == 2)
-            {
-                throw new Exception("Chuyến đã khởi hành, không thể xóa.");
-            }
-
-            if (chuyen.TrangThai == 1)
-            {
-                throw new Exception("Chuyến đã kết thúc, không thể xóa.");
-            }
+            if (chuyen.TrangThai == 2) throw new Exception("Chuyến đã khởi hành, không thể xóa.");
+            if (chuyen.TrangThai == 3) throw new Exception("Chuyến đã kết thúc, không thể xóa.");
             var oldData = new
             {
                 chuyen.MaChuyen,
@@ -386,10 +433,10 @@ namespace Services
 
             await UpdateTourGiaTuAsync(chuyen.MaTour);
             await _context.SaveChangesAsync();
-
+            var currentAccount = _currentUserService.GetUserId() == 1? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
 
@@ -411,23 +458,22 @@ namespace Services
         }
         private async Task<bool> HasStartedDepartureAsync(int maTour)
         {
-            var now = DateTime.Now;
-
             return await _context.ChuyenKhoiHanhs
                 .AnyAsync(x =>
                     x.MaTour == maTour &&
                     x.NgayXoa == null &&
-                    x.NgayKhoiHanh <= now
-                );
+                    (x.TrangThai == 2 || x.TrangThai == 3));
         }
         private async Task UpdateTourGiaTuAsync(int maTour)
         {
+            var now = DateTime.Now;
             var giaMin = await _context.GiaChuyens
-                .Where(g =>
-                    g.ChuyenKhoiHanh.MaTour == maTour &&
-                    g.ChuyenKhoiHanh.NgayXoa == null)
-                .Select(g => (decimal?)g.GiaNguoiLon)
-                .MinAsync() ?? 0;
+             .Where(g =>
+                 g.ChuyenKhoiHanh.MaTour == maTour &&
+                 g.ChuyenKhoiHanh.NgayXoa == null &&
+                 g.ChuyenKhoiHanh.NgayKhoiHanh >= now) // <-- THÊM ĐIỀU KIỆN NÀY
+             .Select(g => (decimal?)g.GiaNguoiLon)
+             .MinAsync() ?? 0;
 
             var tour = await _context.Tours.FindAsync(maTour);
             if (tour != null)

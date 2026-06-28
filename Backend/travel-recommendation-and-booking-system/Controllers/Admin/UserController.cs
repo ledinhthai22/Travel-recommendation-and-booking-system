@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs.User;
 using travel_recommendation_and_booking_system.Interfaces;
+using travel_recommendation_and_booking_system.Services;
 
 namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
@@ -120,6 +121,28 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             catch (Exception ex)
             {
                 return StatusCode(500, new { success = false, message = "Lỗi hệ thống khi tải danh sách người dùng." });
+            }
+        }
+        [HttpGet("booking-select")]
+        public async Task<IActionResult> GetUsersForBookingSelect([FromQuery] string? keyword = null, [FromQuery] int? status = null)
+        {
+            try
+            {
+                var users = await _user.GetUsersForSelectAsync(keyword, status);
+                return Ok(new
+                {
+                    success = true,
+                    data = users
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Lỗi khi lấy danh sách người dùng",
+                    error = ex.Message
+                });
             }
         }
         [HttpGet("{id}")]

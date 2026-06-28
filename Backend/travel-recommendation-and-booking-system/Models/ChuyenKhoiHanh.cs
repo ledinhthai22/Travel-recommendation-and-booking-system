@@ -41,6 +41,8 @@ namespace travel_recommendation_and_booking_system.Models
         public virtual NhanVien NhanVien { get; set; }
         public virtual Tour Tour { get; set; }
         public virtual PhuongTien PhuongTien { get; set; }
+        [Timestamp]
+        public byte[] RowVersion { get; set; }
         public virtual ICollection<GiaChuyen> GiaChuyens { get; set; } = new List<GiaChuyen>();
         public virtual ICollection<DonDatTour> DonDatTours { get; set; } = new List<DonDatTour>();
     }

@@ -90,9 +90,10 @@ namespace Services
             };
             _context.LoaiHinhTours.Add(newtypetour);
             await _context.SaveChangesAsync();
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
 
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                 Email = _currentUserService.GetEmail(),
@@ -135,9 +136,10 @@ namespace Services
 
             _context.LoaiHinhTours.Update(istypetour);
             await _context.SaveChangesAsync();
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
 
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
                 Email = _currentUserService.GetEmail(),
@@ -174,9 +176,10 @@ namespace Services
             istypetour.NgayXoa = DateTime.Now;
 
             await _context.SaveChangesAsync();
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
-                LoaiTaiKhoan = AccountTypeDTO.NhanVien,
+                LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
 

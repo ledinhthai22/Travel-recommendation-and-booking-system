@@ -34,8 +34,7 @@ export default function TourSummaryCard({
         bookingData?.gia?.phuThuPhongDon
     );
     
-    console.log(bookingData.gia);
-    console.log(bookingData);
+
     return (
         <div className="sticky top-24 mb-10">
 

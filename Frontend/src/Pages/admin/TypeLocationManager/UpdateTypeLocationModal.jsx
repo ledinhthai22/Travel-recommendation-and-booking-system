@@ -86,12 +86,13 @@ export default function UpdateTypeLocationModal({
                         autoFocus
                     />
                     <div className="flex items-center justify-end gap-3 mt-8">
-                        <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer">
-                            Hủy bỏ
-                        </button>
-                        <button type="submit" disabled={loading} className="px-6 py-2.5 rounded-xl text-sm font-medium text-white bg-[#0EA5E5] hover:bg-[#0284c7] transition-all shadow-sm flex items-center gap-2 disabled:opacity-70 cursor-pointer">
-                            {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
-                            Cập Nhật
+
+                         <button
+                            type="submit"
+                            className="flex-1 py-3 px-6 rounded-xl bg-[#0EA5E5] hover:bg-[#0284c7] text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                            Cập nhật
                         </button>
                     </div>
                 </form>

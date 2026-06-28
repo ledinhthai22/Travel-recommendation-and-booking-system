@@ -9,9 +9,8 @@ import {
     Columns3Cog,
     MapPin,
     Luggage,
-    UserPen,
-    Ticket,
     ContactRound,
+    Ticket,
     BadgePercent,
     Images,
     HousePlus,
@@ -44,192 +43,108 @@ export default function Sidebar() {
         {
             heading: null,
             items: [
-                {
-                    title: "Dashboard",
-                    path: "/Quan-ly",
-                    icon: LayoutDashboard,
-                    end: true
-                }
+                { title: "Dashboard", path: "/Quan-ly", icon: LayoutDashboard, end: true }
             ]
         },
-
         {
-            heading: "Chuyến đi & Địa điểm",
+            heading: "Vận hành Tour",
             items: [
-                {
-                    title: "Quản lý tour",
-                    path: "/Quan-ly/Cac-chuyen-di",
-                    icon: Luggage
-                },
-                {
-                    title: "Quản lý loại tour",
-                    path: "/Quan-ly/Loai-Tour",
-                    icon: Layers
-                },
-                {
-                    title: "Quản lý địa điểm",
-                    path: "/Quan-ly/Dia-diem",
-                    icon: MapPin
-                },
-                {
-                    title: "Quản lý loại địa điểm",
-                    path: "/Quan-ly/Loai-Dia-Diem",
-                    icon: Tags
-                },
-                {
-                    title: "Quản lý đơn đặt",
-                    path: "/Quan-ly/Don-dat-cac-chuyen-di",
-                    icon: Ticket
-                },
-                {
-                    title: "Quản lý khách du lịch",
-                    path: "/Quan-ly/Khach-du-lich",
-                    icon: UserPen
-                }
+                { title: "Quản lý tour", path: "/Quan-ly/Cac-chuyen-di", icon: Luggage },
+                { title: "Loại tour", path: "/Quan-ly/Loai-Tour", icon: Layers },
+                { title: "Đơn đặt tour", path: "/Quan-ly/Don-dat-cac-chuyen-di", icon: Ticket }
             ]
         },
-
         {
-            heading: "Khách sạn & Tiện ích",
+            heading: "Địa điểm & Khách sạn",
             items: [
-                {
-                    title: "Quản lý khách sạn",
-                    path: "/Quan-ly/Khach-san",
-                    icon: Building2
-                },
-                {
-                    title: "Quản lý tiện ích",
-                    path: "/Quan-ly/Tien-Ich",
-                    icon: HousePlus
-                }
+                { title: "Quản lý địa điểm", path: "/Quan-ly/Dia-diem", icon: MapPin },
+                { title: "Loại địa điểm", path: "/Quan-ly/Loai-Dia-Diem", icon: Tags },
+                { title: "Quản lý khách sạn", path: "/Quan-ly/Khach-san", icon: Building2 },
+                { title: "Tiện ích khách sạn", path: "/Quan-ly/Tien-Ich", icon: HousePlus }
             ]
         },
-
         {
-            role: [1],
-            heading: "Người dùng",
-            items: [
-                {
-                    title: "Quản lý nhân sự",
-                    path: "/Quan-ly/Nhan-vien",
-                    icon: ContactRound
-                },
-                {
-                    title: "Quản lý tài khoản",
-                    path: "/Quan-ly/Tai-khoan",
-                    icon: User
-                }
-            ]
-        },
-
-        {
-            heading: "Hệ thống & Giao tiếp",
-            items: [
-                {
-                    title: "Quản lý liên hệ",
-                    path: "/Quan-ly/Lien-he",
-                    icon: Mailbox
-                }
-            ]
-        },
-
-        {
-            heading: null,
+            heading: "Khách hàng & Ưu đãi",
             role: [1],
             items: [
-                {
-                    title: "Quản lý newletters",
-                    path: "/Quan-ly/Newletter",
-                    icon: UserPlus2
-                },
-                {
-                    title: "Quản lý banner",
-                    path: "/Quan-ly/Banner",
-                    icon: Images
-                },
-                {
-                    title: "Quản lý bình luận",
-                    path: "/Quan-ly/Binh-Luan",
-                    icon: MessageSquare
-                },
-                {
-                    title: "Quản lý ưu đãi",
-                    path: "/Quan-ly/Uu-Dai",
-                    icon: BadgePercent
-                },
-                {
-                    title: "Quản lý thông tin trang",
-                    path: "/Quan-ly/Thong-tin-trang",
-                    icon: Columns3Cog
-                },
-                {
-                    title: "Hoạt động hệ thống",
-                    path: "/Quan-ly/Hoat-dong-he-thong",
-                    icon: FileLock
-                }
+                { title: "Tài khoản khách hàng", path: "/Quan-ly/Tai-khoan", icon: User },
+                { title: "Ưu đãi & Mã giảm giá", path: "/Quan-ly/Uu-Dai", icon: BadgePercent },
+                { title: "Liên hệ & Hỗ trợ", path: "/Quan-ly/Lien-he", icon: Mailbox }
+            ]
+        },
+        {
+            heading: "Nhân sự",
+            role: [1],
+            items: [
+                { title: "Quản lý nhân sự", path: "/Quan-ly/Nhan-vien", icon: ContactRound }
+            ]
+        },
+        {
+            heading: "Marketing & Nội dung",
+            role: [1],
+            items: [
+                { title: "Banner", path: "/Quan-ly/Banner", icon: Images },
+                { title: "Newsletters", path: "/Quan-ly/Newletter", icon: UserPlus2 },
+                { title: "Thông tin trang", path: "/Quan-ly/Thong-tin-trang", icon: Columns3Cog }
+            ]
+        },
+        {
+            heading: "Hệ thống",
+            role: [1],
+            items: [
+                { title: "Nhật ký hoạt động", path: "/Quan-ly/Hoat-dong-he-thong", icon: FileLock }
             ]
         }
     ];
 
     return (
-        <aside className="h-full w-85 flex flex-col fixed left-0 top-0 bg-slate-50 border-r border-slate-200 z-[100] overflow-y-auto antialiased">
-            <div className="flex flex-col min-h-full p-6 ">
+        <aside className="h-full w-85 flex flex-col fixed left-0 top-0 bg-slate-50 border-r border-slate-200 z-[100] antialiased">
 
-                <div className="mb-5 px-1 flex items-center gap-3 shrink-0">
-                    <div className="w-10 h-10 rounded-xl shrink-0 bg-white border border-sky-100 overflow-hidden flex items-center justify-center shadow-sm">
-                        <img
-                            src={`${url}${webInfo.logo_url}`}
-                            alt={webInfo.ten_trang}
-                            className="w-full h-full object-fill"
-                        />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                        <h1 className="text-[13px] font-black tracking-[-0.015em] text-slate-800 leading-none mb-1 uppercase">
-                            {webInfo.ten_trang}
-                        </h1>
-                    </div>
+            {/* Logo - cố định, không cuộn */}
+            <div className="px-6 pt-6 pb-4 flex items-center gap-3 shrink-0 border-b border-slate-100">
+                <div className="w-10 h-10 rounded-xl shrink-0 bg-white border border-sky-100 overflow-hidden flex items-center justify-center shadow-sm">
+                    <img
+                        src={`${url}${webInfo.logo_url}`}
+                        alt={webInfo.ten_trang}
+                        className="w-full h-full object-fill"
+                    />
                 </div>
-
-                <nav className="flex-1 space-y-1">
-                    {menuGroups.map((group, index) => {
-
-                        if (group.role && !group.role.includes(role)) {
-                            return null;
-                        }
-
-                        return (
-                            <div key={index}>
-                                {group.heading && (
-                                    <MenuHeading title={group.heading} />
-                                )}
-
-                                {group.items.map((item) => {
-                                    const Icon = item.icon;
-
-                                    return (
-                                        <NavLink
-                                            key={item.path}
-                                            to={item.path}
-                                            end={item.end}
-                                            className={({ isActive }) =>
-                                                isActive
-                                                    ? activeLinkClass
-                                                    : baseLinkClass
-                                            }
-                                        >
-                                            <Icon size={16} />
-                                            <span className="font-manrope tracking-tight">
-                                                {item.title}
-                                            </span>
-                                        </NavLink>
-                                    );
-                                })}
-                            </div>
-                        );
-                    })}
-                </nav>
+                <div className="flex-1 min-w-0">
+                    <h1 className="text-[13px] font-black tracking-[-0.015em] text-slate-800 leading-none uppercase">
+                        {webInfo.ten_trang}
+                    </h1>
+                </div>
             </div>
+
+            {/* Nav - scroll riêng */}
+            <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
+                {menuGroups.map((group, index) => {
+                    if (group.role && !group.role.includes(role)) return null;
+
+                    return (
+                        <div key={index}>
+                            {group.heading && <MenuHeading title={group.heading} />}
+                            {group.items.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                    <NavLink
+                                        key={item.path}
+                                        to={item.path}
+                                        end={item.end}
+                                        className={({ isActive }) =>
+                                            isActive ? activeLinkClass : baseLinkClass
+                                        }
+                                    >
+                                        <Icon size={16} />
+                                        <span className="font-manrope tracking-tight">{item.title}</span>
+                                    </NavLink>
+                                );
+                            })}
+                        </div>
+                    );
+                })}
+            </nav>
+
         </aside>
     );
 }
