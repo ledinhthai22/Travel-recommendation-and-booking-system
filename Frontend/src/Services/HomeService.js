@@ -13,3 +13,31 @@ export const getLatestToursApi = async (limit = 4) => {
     });
     return response.data;
 };
+
+export const getRecommendedLocationsApi = async (limit = 4) => {
+    const response = await axiosClient.get("/customer/Home/get-recommended", {
+        params: { limit }
+    });
+    return response.data;
+};
+
+export const getTourDesignJustForYouApi = async (limit = 4) => {
+    const response = await axiosClient.get("/customer/Home/get-tour-design", {
+        params: { limit }
+    });
+    return response.data;
+};
+
+export const getRecommendedToursApi = async (limit = 4) => {
+    const response = await axiosClient.get("/customer/Home/get-recommended-tours", {
+        params: { limit }
+    });
+    return response.data;
+};
+
+export const getNextTripSuggestionsApi = async (limit = 4) => {
+    const response = await axiosClient.get("/customer/Home/get-next-trip-suggestions", {
+        params: { limit }
+    });
+    return response.data;
+};

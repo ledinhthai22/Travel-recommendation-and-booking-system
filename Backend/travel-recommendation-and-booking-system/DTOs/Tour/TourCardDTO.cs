@@ -14,5 +14,6 @@
         public int SoLuongDanhGia { get; set; }
         public bool IsFavorite { get; set; }
         public int LuotDat {  get; set; }
+        public int MaLoaiTour { get; set; }
     }
 }

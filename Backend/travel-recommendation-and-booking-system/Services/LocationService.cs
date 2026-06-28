@@ -57,6 +57,54 @@ namespace travel_recommendation_and_booking_system.Services
 
             return await query.ToListAsync();
         }
+
+        public async Task<List<LocationCardResponseDTO>> GetRecommendedLocationsAsync(int userId, int? limit = null)
+        {
+            var favoriteLocations = await _context.SoThichDiaDiemNguoiDungs
+                .AsNoTracking()
+                .Where(s => s.MaNguoiDung == userId)
+                .OrderByDescending(s => s.DiemYeuThich)
+                .ThenByDescending(s => s.NgayCapNhat)
+                .Take(4)
+                .ToListAsync();
+
+            var favoriteLocationIds = favoriteLocations.Select(s => s.MaDiaDiem).ToList();
+
+            var query = _context.DiaDiems
+                .AsNoTracking()
+                .Where(d => d.TrangThai == true && d.NgayXoa == null)
+                .Select(d => new LocationCardResponseDTO
+                {
+                    MaDiaDiem = d.MaDiaDiem,
+                    TenDiaDiem = d.TenDiaDiem,
+                    Slug = d.Slug,
+                    DuongDanAnh = d.DuongDanAnh,
+                    TinhThanh = d.TinhThanh,
+                    MoTa = d.MoTa,
+                    SoLuongTour = d.CTLichTrinhs
+                        .Where(ct => ct.LichTrinh.NgayXoa == null && ct.LichTrinh.Tour.NgayXoa == null && ct.LichTrinh.Tour.TrangThai == 1)
+                        .Select(ct => ct.LichTrinh.MaTour)
+                        .Distinct()
+                        .Count()
+                })
+                .OrderByDescending(d => favoriteLocationIds.Contains(d.MaDiaDiem))
+                .ThenByDescending(d => d.SoLuongTour);
+
+            var allLocations = await query.ToListAsync();
+
+            var result = allLocations
+                .OrderByDescending(d => favoriteLocationIds.Contains(d.MaDiaDiem))
+                .ThenByDescending(d => d.SoLuongTour)
+                .ThenByDescending(d => {
+                    var fav = favoriteLocations.FirstOrDefault(f => f.MaDiaDiem == d.MaDiaDiem);
+                    return fav != null ? fav.NgayCapNhat : DateTime.MinValue;
+                })
+                .ToList();
+
+            return limit.HasValue && limit.Value > 0
+                ? result.Take(limit.Value).ToList()
+                : result;
+        }
         public async Task<PageDTO<LocationReponseDTO>> GetLocationAsync(int pageNumber, int pageSize, string? key, bool? status)
         {
             if (pageNumber < 1)
@@ -164,8 +212,6 @@ namespace travel_recommendation_and_booking_system.Services
             catch (Exception ex)
             {
                 var fullError = ex.Message + (ex.InnerException != null ? " | Inner: " + ex.InnerException.Message : "");
-                Console.WriteLine($"LỖI THẬT SỰ TẠI SERVICE: {fullError}");
-
                 throw new Exception(fullError);
             }
         }

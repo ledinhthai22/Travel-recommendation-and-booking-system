@@ -29,15 +29,14 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<Tour> GetTourByIdAsync(int id);
         //Home
         //chưa đăng nhập
-        Task<List<Tour>> GetTopTrendingToursAsync(); // ds tour host 
         Task<List<TourCardDTO>> GetBestToursCardAsync(int? limit = null); // tour nổi bật
         Task<List<TourCardDTO>> GetLatestToursAsync(int? limit = null); // tour mới
         //đăng nhập
-        Task<List<TourCardDTO>> GetTourDesignJustForYouAsync(int userId); // tour dành riêng cho bạn
+        Task<List<TourCardDTO>> GetTourDesignJustForYouAsync(int userId, int? limit = null); // tour dành riêng cho bạn
 
-        Task<List<TourCardDTO>> GetRecommendedToursAsync(int userId); // Có thể bạn quan tâm
+        Task<List<TourCardDTO>> GetRecommendedToursAsync(int userId, int? limit = null); // Có thể bạn quan tâm
 
-        Task<List<TourCardDTO>> GetNextTripSuggestionsAsync(int userId); // gợi ý cho chuyến tiếp theo
+        Task<List<TourCardDTO>> GetNextTripSuggestionsAsync(int userId, int? limit =null); // gợi ý cho chuyến tiếp theo
 
         Task<PageDTO<TourCardDTO>> GetFilteredToursAsync(TourFilterParamsDTO p); // tìm kiếm tour
     }

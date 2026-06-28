@@ -5,14 +5,12 @@ import HeroSection from '~/components/Hero/HeroSection';
 import FeaturedCarousel from '~/components/Common/FeaturedCarousel';
 import TourCard from '~/components/Tours/TourCard';
 import SectionTitle from '~/components/Common/SectionTitle';
-import { bestTours, hotDeals } from '~/constants/Home.constants';
 import useBanner from '~/Hooks/useBanner';
-import useHomeLocationsCard from '~/Hooks/useHomeLocationsCard';
 import useAuth from '~/Hooks/useAuth';
-// import { useDestinations } from '~/Hooks/useDestination';
+import useHomeLocations from '~/Hooks/useHomeLocations';
 import { useReviews } from '~/Hooks/useReview';
 import { useBestTours } from "~/Hooks/useBestTours";
-import { useLatestTours } from '~/Hooks/useLatestTour';
+import { useLasterTours } from '~/Hooks/useLatestTour';
 import { useState,useEffect } from 'react';
 import { getMyWishlistIdsApi } from '~/Services/TourService';
 export default function HomePage() {
@@ -20,8 +18,8 @@ export default function HomePage() {
     const { tours: bestTours, loading: bestToursLoading } = useBestTours(12);
     const { user, isAuthenticated } = useAuth();
     const { banners } = useBanner();
-    const { destinations, loading: locationLoading } = useHomeLocationsCard(12);
-    const { tours:latestTours, loading: latestToursLoading } = useLatestTours(12);
+    const { location, loading : locationLoading } = useHomeLocations(12);
+    const { tours:latestTours, loading: latestToursLoading } = useLasterTours(12);
     const activeBanner = banners;
     const isLoggedIn = !!user
     const [wishlistIds, setWishlistIds] = useState([]);
@@ -80,10 +78,10 @@ export default function HomePage() {
                                 <div key={i} className="h-72 w-full animate-pulse rounded-3xl bg-slate-200" />
                             ))}
                         </div>
-                    ) : destinations && destinations.length > 0 ? (
+                    ) : location && location.length > 0 ? (
 
                         <FeaturedCarousel
-                            items={destinations}
+                            items={location}
                             itemsPerPage={12}
                             gap={30}
                             autoPlayMs={4500}

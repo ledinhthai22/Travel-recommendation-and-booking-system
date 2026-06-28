@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using travel_recommendation_and_booking_system.DTOs.Tour;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Services;
 
@@ -13,57 +14,84 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
     public class HomeController : ControllerBase
     {
         private ITourService _tour;
-        private IDestinationService _destination;
-        public HomeController (ITourService tour, IDestinationService destination)
+        private ILocationService _location;
+        public HomeController (ITourService tour, ILocationService location)
         {
             _tour = tour;
-            _destination = destination;
-        }
-
-        //tour dành riêng cho  bạn
-        [HttpGet("get-tour-design")]
-        public async Task<IActionResult> GetTourDesignJustForYou()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (string.IsNullOrEmpty(userIdClaim))
-                return Unauthorized("Bạn cần đăng nhập để xem gợi ý.");
-
-            int userId = int.Parse(userIdClaim);
-
-            var result = await _tour.GetTourDesignJustForYouAsync(userId);
-
-            return Ok(result);
+            _location = location;
         }
 
         // địa điểm dành riêng cho bạn
         [HttpGet("get-recommended")]
-        public async Task<IActionResult> GetRecommendedLocations()
+        public async Task<IActionResult> GetRecommendedLocations([FromQuery] int? limit = null)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim))
-                return Unauthorized();
+                return Unauthorized(new { message = "Bạn cần đăng nhập để xem gợi ý." });
 
-            int userId = int.Parse(userIdClaim);
-            var result = await _destination.GetRecommendedLocationsAsync(userId);
+            if (!int.TryParse(userIdClaim, out int userId))
+                return BadRequest(new { message = "Token không hợp lệ." });
+
+            var result = await _location.GetRecommendedLocationsAsync(userId, limit);
 
             return Ok(result);
         }
 
-        // Có thể bạn quan tâm
-        [HttpGet("get-recommended-tours")]
-        public async Task<IActionResult> GetRecommendedTours()
+        //tour dành riêng cho  bạn
+        [HttpGet("get-tour-design")]
+        public async Task<IActionResult> GetTourDesignJustForYou([FromQuery] int? limit = null)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            // Nếu chưa đăng nhập, bạn có thể trả về Unauthorized hoặc danh sách tour Best Selling (không gợi ý)
             if (string.IsNullOrEmpty(userIdClaim))
-                return Unauthorized("Vui lòng đăng nhập để xem gợi ý cá nhân.");
+                return Unauthorized(new { message = "Bạn cần đăng nhập để xem gợi ý." });
 
-            int userId = int.Parse(userIdClaim);
-            var result = await _tour.GetRecommendedToursAsync(userId);
+            if (!int.TryParse(userIdClaim, out int userId))
+                return BadRequest(new { message = "Token không hợp lệ." });
+
+            var result = await _tour.GetTourDesignJustForYouAsync(userId, limit);
 
             return Ok(result);
+        }
+
+
+        // Có thể bạn quan tâm
+        [HttpGet("get-recommended-tours")]
+        public async Task<IActionResult> GetRecommendedTours([FromQuery] int? limit = null)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized(new { message = "Vui lòng đăng nhập để xem gợi ý cá nhân." });
+            if (!int.TryParse(userIdClaim, out int userId))
+                return BadRequest(new { message = "Token không hợp lệ." });
+            var result = await _tour.GetRecommendedToursAsync(userId, limit);
+
+            return Ok(result);
+        }
+
+        // gợi ý chuyến đi tiếp theo    
+        [HttpGet("get-next-trip-suggestions")]
+        public async Task<IActionResult> GetNextTripSuggestions([FromQuery] int? limit = null)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized(new { message = "Bạn cần đăng nhập để xem gợi ý chuyến đi tiếp theo." });
+
+            if (!int.TryParse(userIdClaim, out int userId))
+                return BadRequest(new { message = "Token không hợp lệ." });
+
+            try
+            {
+                var suggestions = await _tour.GetNextTripSuggestionsAsync(userId, limit);
+
+                return Ok(suggestions ?? new List<TourCardDTO>());
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Đã xảy ra lỗi hệ thống khi tải gợi ý.", error = ex.Message });
+            }
         }
     }
 }

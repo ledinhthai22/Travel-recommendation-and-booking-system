@@ -18,13 +18,14 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
     {
         private readonly IRecommendationService _recommen;
         private readonly ITourService _tour;
-        private readonly IDestinationService _destination;
+        private readonly ILocationService _location;
 
-        public HomeController(IRecommendationService recommen,ITourService tour, IDestinationService destination)
+        public HomeController(IRecommendationService recommen,ITourService tour, ILocationService location)
         {
             _recommen = recommen;
             _tour = tour;
-            _destination = destination;
+            _location = location;
+           
         }
         
         //ds Tour nổi bật
@@ -56,37 +57,6 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
                 return StatusCode(500, $"Lỗi hệ thống: {ex.Message}");
             }
 
-        }
-
-        // gợi ý chuyến đi tiếp theo
-
-        [HttpGet("get-next-trip-suggestions")]
-        public async Task<IActionResult> GetNextTripSuggestions()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (string.IsNullOrEmpty(userIdClaim))
-            {
-                return Unauthorized(new { message = "Bạn cần đăng nhập để xem gợi ý cá nhân." });
-            }
-
-            int userId = int.Parse(userIdClaim);
-
-            try
-            {
-                var suggestions = await _tour.GetNextTripSuggestionsAsync(userId);
-
-                if (suggestions == null || !suggestions.Any())
-                {
-                    return Ok(new { message = "Chưa có gợi ý phù hợp cho bạn.", data = new List<object>() });
-                }
-
-                return Ok(suggestions);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy gợi ý.", error = ex.Message });
-            }
         }
 
         // tìm kiếm chuyến đi
