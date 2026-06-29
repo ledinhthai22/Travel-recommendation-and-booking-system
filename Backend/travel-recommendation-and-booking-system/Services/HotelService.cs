@@ -32,8 +32,8 @@ namespace travel_recommendation_and_booking_system.Services
         }
         public async Task<PageDTO<HotelResponseDTO>> GetPagedHotelAsync(int pageNumber, int pageSize, HotelDTO hotel)
         {
-            pageNumber = pageNumber < 1 ? 1 : pageNumber;
-            pageSize = pageSize < 1 ? 10 : pageSize;
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 10; // Giới hạn pageSize
 
             var query = _context.KhachSans
                 .Include(x => x.HinhAnhSKs)
@@ -204,7 +204,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 foreach (var maTN in hotel.MaTienIch)
                 {
-                    _context.KS_TNs.Add(new KS_TI
+                    _context.KS_TIs.Add(new KS_TI
                     {
                         MaKhachSan = enities.MaKhachSan,
                         MaTienIch = maTN
@@ -273,13 +273,13 @@ namespace travel_recommendation_and_booking_system.Services
             entity.TrangThai = hotel.TrangThai;
             entity.NgayCapNhat = DateTime.Now;
 
-            _context.KS_TNs.RemoveRange(entity.KS_TNs);
+            _context.KS_TIs.RemoveRange(entity.KS_TNs);
 
             if (hotel.MaTienIch != null)
             {
                 foreach (var item in hotel.MaTienIch)
                 {
-                    _context.KS_TNs.Add(new KS_TI
+                    _context.KS_TIs.Add(new KS_TI
                     {
                         MaKhachSan = id,
                         MaTienIch = item

@@ -14,9 +14,6 @@ namespace travel_recommendation_and_booking_system.DTOs.Departure
 
     public class GiaChuyenDTO
     {
-        [Required(ErrorMessage = "Hạng khách sạn không được để trống.")]
-        [Range(1, 5, ErrorMessage = "Hạng khách sạn chỉ được nhập từ 1 đến 5.")]
-        public int HangKhachSan { get; set; }
 
         [Required(ErrorMessage = "Giá người lớn không được để trống.")]
         [Range(1, double.MaxValue, ErrorMessage = "Giá người lớn phải lớn hơn 0.")]

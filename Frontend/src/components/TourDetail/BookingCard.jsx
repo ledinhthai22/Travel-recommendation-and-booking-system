@@ -23,6 +23,7 @@ export function BookingCard({ tour, departure, hotel ,onOpenAuthModal}) {
             return; 
         }
         const bookingData = {
+            maNguoiDung: user.maNguoiDung,
             maTour: tour.maTour,
             tenTour: tour.tenTour,
             hinhAnh: tour.hinhAnh,

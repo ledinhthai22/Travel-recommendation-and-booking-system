@@ -38,16 +38,14 @@ namespace Services
 
 
         private async Task<string> GenerateUniqueCodeAsync(
-            bool trongNuoc,
             string diemKhoiHanh,
             string tenPhuongTien,
             DateTime ngayKhoiHanh)
         {
-            var regionCode = trongNuoc ? "TN" : "NN";
             var locationCode = LocationCodeMap.GetValueOrDefault(diemKhoiHanh?.Trim() ?? "", "XX");
             var vehicleCode = VehicleCodeMap.GetValueOrDefault(tenPhuongTien?.Trim() ?? "", "XX");
             var dateCode = ngayKhoiHanh.ToString("ddMMyy");
-            var prefix = $"{regionCode}-{locationCode}-{vehicleCode}-{dateCode}-";
+            var prefix = $"{locationCode}-{vehicleCode}-{dateCode}-";
 
 
             var existingCount = await _context.ChuyenKhoiHanhs
@@ -143,13 +141,7 @@ namespace Services
             return pt?.TenPhuongTien ?? "";
         }
 
-        private async Task<bool> GetTrongNuocAsync(int maTour)
-        {
-            var tour = await _context.Tours
-                .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.MaTour == maTour);
-            return tour?.TrongNuoc ?? true;
-        }
+
 
         public async Task<bool> AddDepartureFullAsync(DepartureFullDTO dto)
         {
@@ -166,10 +158,8 @@ namespace Services
             try
             {
 
-                var trongNuoc = await GetTrongNuocAsync(dep.MaTour);
                 var tenPhuongTien = await GetTenPhuongTienAsync(dep.MaPhuongTien);
-                var maChuyenCode = await GenerateUniqueCodeAsync(
-                    trongNuoc, dep.DiemKhoiHanh, tenPhuongTien, dep.NgayKhoiHanh);
+                var maChuyenCode = await GenerateUniqueCodeAsync(dep.DiemKhoiHanh, tenPhuongTien, dep.NgayKhoiHanh);
 
                 var chuyen = new ChuyenKhoiHanh
                 {
@@ -200,7 +190,6 @@ namespace Services
                         _context.GiaChuyens.Add(new GiaChuyen
                         {
                             Machuyen = chuyen.MaChuyen,
-                            HangKhachSan = item.HangKhachSan,
                             GiaNguoiLon = item.GiaNguoiLon,
                             GiaTreEm = item.GiaTreEm,
                             GiaEmBe = item.GiaEmBe,
@@ -324,7 +313,6 @@ namespace Services
                         _context.GiaChuyens.Add(new GiaChuyen
                         {
                             Machuyen = chuyen.MaChuyen,
-                            HangKhachSan = item.HangKhachSan,
                             GiaNguoiLon = item.GiaNguoiLon,
                             GiaTreEm = item.GiaTreEm,
                             GiaEmBe = item.GiaEmBe,
@@ -403,7 +391,6 @@ namespace Services
                     },
                     DanhSachGia = c.GiaChuyens.Select(g => new GiaChuyenDTO
                     {
-                        HangKhachSan = g.HangKhachSan,
                         GiaNguoiLon = g.GiaNguoiLon,
                         GiaTreEm = g.GiaTreEm,
                         GiaEmBe = g.GiaEmBe,

@@ -12,6 +12,11 @@ namespace travel_recommendation_and_booking_system.Services
     {
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment;
+        public LocationService(AppDbContext context, IWebHostEnvironment webHostEnvironment)
+        {
+            _context = context;
+            _webHostEnvironment = webHostEnvironment;
+        }
         public async Task<List<LocationDTO>> GetAllAsync()
         {
             return await _context.DiaDiems
@@ -52,33 +57,29 @@ namespace travel_recommendation_and_booking_system.Services
 
             return await query.ToListAsync();
         }
-        public LocationService(AppDbContext context, IWebHostEnvironment webHostEnvironment)
-        {
-            _context = context;
-            _webHostEnvironment = webHostEnvironment;
-        }
+
         public async Task<PageDTO<LocationReponseDTO>> GetLocationAsync(int pageNumber, int pageSize, string? key, bool? status)
         {
-            if (pageNumber < 1)
-            {
-                pageNumber = 1;
-            }
-            if (pageSize < 1)
-            {
-                pageSize = 10;
-            }
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 10; // Giới hạn pageSize
 
-            var query = _context.DiaDiems.AsNoTracking().Where(b => b.NgayXoa == null);
+            var query = _context.DiaDiems
+                .AsNoTracking()
+                .Where(b => b.NgayXoa == null);
+
             if (!string.IsNullOrWhiteSpace(key))
             {
+                key = key.Trim();
                 query = query.Where(n => n.TenDiaDiem.Contains(key));
             }
+
             if (status.HasValue)
             {
                 query = query.Where(n => n.TrangThai == status.Value);
             }
 
             int totalItems = await query.CountAsync();
+
             var items = await query
                 .OrderByDescending(n => n.NgayTao)
                 .Skip((pageNumber - 1) * pageSize)
@@ -91,14 +92,12 @@ namespace travel_recommendation_and_booking_system.Services
                     LoaiDiaDiem = n.LoaiDiaDiem,
                     MoTa = n.MoTa,
                     TinhThanh = n.TinhThanh,
-                    QuocGia = n.QuocGia,
-                    KhuVuc = n.KhuVuc,
                     TrangThai = n.TrangThai,
                     NgayTao = n.NgayTao,
                     NgayCapNhat = n.NgayCapNhat,
-                    NgayXoa = n.NgayXoa
                 })
                 .ToListAsync();
+
             return new PageDTO<LocationReponseDTO>
             {
                 Items = items,
@@ -151,8 +150,8 @@ namespace travel_recommendation_and_booking_system.Services
                     LoaiDiaDiem = location.LoaiDiaDiem,
                     DuongDanAnh = dbRelativePath,
                     TinhThanh = location.TinhThanh,
-                    QuocGia = location.QuocGia,
-                    KhuVuc = location.KhuVuc,
+                    //QuocGia = location.QuocGia,
+                    //KhuVuc = location.KhuVuc,
                     TrangThai = true,
                     NgayTao = DateTime.Now,
                     NgayCapNhat = DateTime.Now
@@ -217,8 +216,8 @@ namespace travel_recommendation_and_booking_system.Services
                 location.MoTa = request.MoTa;
                 location.LoaiDiaDiem = request.LoaiDiaDiem;
                 location.TinhThanh = request.TinhThanh;
-                location.QuocGia = request.QuocGia;
-                location.KhuVuc = request.KhuVuc;
+                //location.QuocGia = request.QuocGia;
+                //location.KhuVuc = request.KhuVuc;
                 location.NgayCapNhat = DateTime.Now;
                 location.TrangThai = request.TrangThai;
 

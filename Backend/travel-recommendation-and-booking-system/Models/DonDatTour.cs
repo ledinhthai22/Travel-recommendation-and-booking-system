@@ -79,5 +79,6 @@ namespace travel_recommendation_and_booking_system.Models
         [NotMapped]
         public ThanhToan? ThanhToanMoiNhat =>
             ThanhToans.OrderByDescending(t => t.NgayThanhToan).FirstOrDefault();
+
     }
 }

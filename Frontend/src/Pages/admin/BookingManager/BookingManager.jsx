@@ -13,29 +13,30 @@ import BookingDetailModal from './BookingDetailModal';
 import CreateBookingAdminModal from './CreateBookingAdminModal';
 import RowActionsButton from '~/components/UI/Table/Button/RowActionsButton';
 import { getDate } from 'date-fns';
-
+import { connection } from '~/Services/signalRService';
+import { toastSuccess } from '~/utils/Toast';
 export const ORDER_STATUS = {
     1: { text: 'Chờ duyệt', color: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-amber-400' },
-    2: { text: 'Đã duyệt',  color: 'bg-blue-100 text-blue-700 border-blue-200',    dot: 'bg-blue-400' },
-    3: { text: 'Hoàn tất',  color: 'bg-emerald-100 text-emerald-700 border-emerald-200', dot: 'bg-emerald-400' },
-    4: { text: 'Đã hủy',   color: 'bg-red-100 text-red-700 border-red-200',        dot: 'bg-red-400' },
+    2: { text: 'Đã duyệt', color: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-400' },
+    3: { text: 'Hoàn tất', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', dot: 'bg-emerald-400' },
+    4: { text: 'Đã hủy', color: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-red-400' },
 };
 
 export const PAYMENT_STATUS = {
     0: { text: 'Chờ thanh toán', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-    1: { text: 'Thành công',     color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    2: { text: 'Thất bại',       color: 'bg-red-50 text-red-700 border-red-200' },
-    3: { text: 'Hoàn tiền',      color: 'bg-purple-50 text-purple-700 border-purple-200' },
+    1: { text: 'Thành công', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    2: { text: 'Thất bại', color: 'bg-red-50 text-red-700 border-red-200' },
+    3: { text: 'Hoàn tiền', color: 'bg-purple-50 text-purple-700 border-purple-200' },
 };
 
 export const PAYMENT_METHOD = {
-    VNPay:        { text: 'VNPay',      color: 'bg-blue-50 text-blue-700 border-blue-200',     icon: <CreditCard size={11} /> },
-    "Tiền mặt":   { text: 'Tiền mặt',  color: 'bg-slate-100 text-slate-700 border-slate-200', icon: <Banknote size={11} /> },
-    "Chuyển khoản":{ text: 'Chuyển khoản', color: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: <ArrowRightLeft size={11} /> },
+    VNPay: { text: 'VNPay', color: 'bg-blue-50 text-blue-700 border-blue-200', icon: <CreditCard size={11} /> },
+    "Tiền mặt": { text: 'Tiền mặt', color: 'bg-slate-100 text-slate-700 border-slate-200', icon: <Banknote size={11} /> },
+    "Chuyển khoản": { text: 'Chuyển khoản', color: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: <ArrowRightLeft size={11} /> },
 };
 
 const STATUS_OPTIONS = [
-    { id: '',  name: 'Trạng thái đơn' },
+    { id: '', name: 'Trạng thái đơn' },
     { id: '1', name: 'Chờ duyệt' },
     { id: '2', name: 'Đã duyệt' },
     { id: '3', name: 'Hoàn tất' },
@@ -43,7 +44,7 @@ const STATUS_OPTIONS = [
 ];
 
 const PAYMENT_OPTIONS = [
-    { value: '',  label: 'Trạng thái thanh toán' },
+    { value: '', label: 'Trạng thái thanh toán' },
     { value: '0', label: 'Chờ thanh toán' },
     { value: '1', label: 'Thành công' },
     { value: '2', label: 'Thất bại' },
@@ -51,35 +52,35 @@ const PAYMENT_OPTIONS = [
 ];
 
 export default function BookingManager() {
-    const [bookings, setBookings]     = useState([]);
-    const [totalRows, setTotalRows]   = useState(0);
-    const [loading, setLoading]       = useState(false);
+    const [bookings, setBookings] = useState([]);
+    const [totalRows, setTotalRows] = useState(0);
+    const [loading, setLoading] = useState(false);
 
-    const [searchTerm, setSearchTerm]     = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [paymentFilter, setPaymentFilter] = useState('');
-    const [dateFilter, setDateFilter]     = useState('');
+    const [dateFilter, setDateFilter] = useState('');
 
-    const [page, setPage]       = useState(1);
+    const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(10);
 
     const [selectedBooking, setSelectedBooking] = useState(null);
-    const [isDetailOpen, setIsDetailOpen]       = useState(false);
-    const [detailLoading, setDetailLoading]     = useState(false);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [detailLoading, setDetailLoading] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     const fetchBookings = useCallback(async () => {
         try {
             setLoading(true);
             const res = await getPagedTourBookingAdminApi({
-                keyword:       searchTerm  || undefined,
-                bookingStatus: statusFilter  !== '' ? Number(statusFilter)  : undefined,
+                keyword: searchTerm || undefined,
+                bookingStatus: statusFilter !== '' ? Number(statusFilter) : undefined,
                 paymentStatus: paymentFilter !== '' ? Number(paymentFilter) : undefined,
-                bookingDate:   dateFilter   || undefined,
+                bookingDate: dateFilter || undefined,
                 page,
                 size: perPage,
             });
-            setBookings(res.data.items      ?? []);
+            setBookings(res.data.items ?? []);
             setTotalRows(res.data.totalItems ?? 0);
         } catch (err) {
             console.error('Fetch bookings error:', err);
@@ -90,7 +91,36 @@ export default function BookingManager() {
 
     useEffect(() => { fetchBookings(); }, [fetchBookings]);
     useEffect(() => { setPage(1); }, [searchTerm, statusFilter, paymentFilter, dateFilter]);
+    useEffect(() => {
+        const startSignalR = async () => {
+            try {
+                if (connection.state === "Disconnected") {
+                    await connection.start();
+                    console.log("SignalR Connected");
+                }
 
+                connection.off("BookingCreated");
+
+                connection.on("BookingCreated", (booking) => {
+                    console.log("Có booking mới:", booking);
+                    toastSuccess(
+                        `Có đơn đặt tour mới #${booking.maDonDatTour}`
+                    );
+
+                    fetchBookings();
+                });
+
+            } catch (error) {
+                console.error("SignalR Error:", error);
+            }
+        };
+
+        startSignalR();
+
+        return () => {
+            connection.off("BookingCreated");
+        };
+    }, [fetchBookings]);
     const handleViewDetail = async (row) => {
         setDetailLoading(true);
         setIsDetailOpen(true);
@@ -323,7 +353,7 @@ export default function BookingManager() {
                     paginationTotalRows={totalRows}
                     highlightOnHover
                     pointerOnHover
-                    selectableRows  
+                    selectableRows
                     onChangePage={(p) => setPage(p)}
                     onChangeRowsPerPage={(newPP, p) => { setPerPage(newPP); setPage(p); }}
                     noDataComponent={

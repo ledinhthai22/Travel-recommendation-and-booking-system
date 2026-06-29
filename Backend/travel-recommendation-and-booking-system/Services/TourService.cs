@@ -54,7 +54,6 @@ namespace travel_recommendation_and_booking_system.Services
                     MoTa = dto.TourInfo.MoTa,
                     Ngay = dto.TourInfo.Ngay,
                     Dem = dto.TourInfo.Dem,
-                    TrongNuoc = dto.TourInfo.TrongNuoc,
                     TrangThai = 1,
                     NgayTao = DateTime.Now,
                     NgayCapNhat = DateTime.Now
@@ -180,7 +179,6 @@ namespace travel_recommendation_and_booking_system.Services
                             _context.GiaChuyens.Add(new GiaChuyen
                             {
                                 ChuyenKhoiHanh = depEntity,
-                                HangKhachSan = gia.HangKhachSan,
                                 GiaNguoiLon = gia.GiaNguoiLon,
                                 GiaTreEm = gia.GiaTreEm,
                                 GiaEmBe = gia.GiaEmBe,
@@ -220,7 +218,6 @@ namespace travel_recommendation_and_booking_system.Services
                         tourEntity.MaLoaiTour,
                         tourEntity.Ngay,
                         tourEntity.Dem,
-                        tourEntity.TrongNuoc,
                         tourEntity.TrangThai,
                     }
                 });
@@ -253,7 +250,6 @@ namespace travel_recommendation_and_booking_system.Services
                     existingTour.MoTa,
                     existingTour.Ngay,
                     existingTour.Dem,
-                    existingTour.TrongNuoc,
                     existingTour.TrangThai
                 };
 
@@ -265,7 +261,6 @@ namespace travel_recommendation_and_booking_system.Services
                     existingTour.MoTa = dto.TourInfo.MoTa;
                     existingTour.Ngay = dto.TourInfo.Ngay;
                     existingTour.Dem = dto.TourInfo.Dem;
-                    existingTour.TrongNuoc = dto.TourInfo.TrongNuoc;
                     existingTour.TrangThai = dto.TourInfo.TrangThai;
                     existingTour.NgayCapNhat = DateTime.Now;
                 }
@@ -312,7 +307,6 @@ namespace travel_recommendation_and_booking_system.Services
                         existingTour.MoTa,
                         existingTour.Ngay,
                         existingTour.Dem,
-                        existingTour.TrongNuoc,
                         existingTour.TrangThai
                     }
                 });
@@ -349,7 +343,6 @@ namespace travel_recommendation_and_booking_system.Services
                     MoTa = tour.MoTa,
                     Ngay = tour.Ngay,
                     Dem = tour.Dem,
-                    TrongNuoc = tour.TrongNuoc,
                     TrangThai = tour.TrangThai
                 },
 
@@ -425,7 +418,6 @@ namespace travel_recommendation_and_booking_system.Services
                         DanhSachGia = c.GiaChuyens?
                             .Select(g => new GiaChuyenDTO
                             {
-                                HangKhachSan = g.HangKhachSan,
                                 GiaNguoiLon = g.GiaNguoiLon,
                                 GiaTreEm = g.GiaTreEm,
                                 GiaEmBe = g.GiaEmBe,
@@ -438,6 +430,7 @@ namespace travel_recommendation_and_booking_system.Services
         public async Task<TourReponseDTO?> GetTourDetailBySlugAsync(string slug)
         {
             var now = DateTime.Now;
+
             var tour = await _context.Tours
                 .Include(t => t.Tour_KhachSans).ThenInclude(tk => tk.KhachSan)
                 .Include(t => t.LichTrinhs).ThenInclude(l => l.CTLichTrinhs).ThenInclude(d => d.DiaDiem)
@@ -460,20 +453,19 @@ namespace travel_recommendation_and_booking_system.Services
                     MoTa = tour.MoTa,
                     Ngay = tour.Ngay,
                     Dem = tour.Dem,
-                    TrongNuoc = tour.TrongNuoc,
                     TrangThai = tour.TrangThai
                 },
 
                 KhachSans = tour.Tour_KhachSans?
-                .Where(tk => tk.KhachSan != null)
-                .Select(tk => new HotelInfoDTO
-                {
-                    MaKhachSan = tk.MaKhachSan,
-                    TenKhachSan = tk.KhachSan.TenKhachSan,
-                    Slug = tk.KhachSan.Slug,
-                    SoSao = tk.KhachSan.SoSao
-                })
-                .ToList() ?? new List<HotelInfoDTO>(),
+                    .Where(tk => tk.KhachSan != null)
+                    .Select(tk => new HotelInfoDTO
+                    {
+                        MaKhachSan = tk.MaKhachSan,
+                        TenKhachSan = tk.KhachSan.TenKhachSan,
+                        Slug = tk.KhachSan.Slug,
+                        SoSao = tk.KhachSan.SoSao
+                    })
+                    .ToList() ?? new List<HotelInfoDTO>(),
 
                 Images = tour.HinhAnhTours?
                     .Where(a => a.NgayXoa == null)
@@ -515,7 +507,12 @@ namespace travel_recommendation_and_booking_system.Services
                     }).ToList() ?? new List<ScheduleReponseDTO>(),
 
                 ChuyenKhoiHanhs = tour.ChuyenKhoiHanhs?
-                    .Where(c => c.NgayXoa == null && c.NgayKhoiHanh >= now && c.TrangThai != 3 && c.TrangThai != 4)
+                    .Where(c => c.NgayXoa == null
+                             && c.NgayKhoiHanh >= now
+                             && c.TrangThai != 3
+                             && c.TrangThai != 4
+                             && c.SoChoToiDa > 0
+                             && (c.SoChoToiDa - c.SoChoDaDat) > 0)   // Chỉ lấy chuyến còn chỗ
                     .OrderBy(c => c.NgayKhoiHanh)
                     .Select(c => new DepartureFullDTO
                     {
@@ -541,7 +538,6 @@ namespace travel_recommendation_and_booking_system.Services
                         DanhSachGia = c.GiaChuyens?
                             .Select(g => new GiaChuyenDTO
                             {
-                                HangKhachSan = g.HangKhachSan,
                                 GiaNguoiLon = g.GiaNguoiLon,
                                 GiaTreEm = g.GiaTreEm,
                                 GiaEmBe = g.GiaEmBe,
@@ -590,9 +586,8 @@ namespace travel_recommendation_and_booking_system.Services
                   MoTa = x.MoTa,
                   Ngay = x.Ngay,
                   Dem = x.Dem,
-                  TrongNuoc = x.TrongNuoc,
 
-                  GiaTu = x.GiaTu, // thêm dòng này
+                  GiaTu = x.GiaTu, 
 
                   HinhAnhChinh = x.HinhAnhTours
                       .Where(i => i.NgayXoa == null)
@@ -690,7 +685,6 @@ namespace travel_recommendation_and_booking_system.Services
                         TenTour = t.TenTour,
                         MaLoaiTour = t.MaLoaiTour,
                         MoTa = t.MoTa,
-                        TrongNuoc = t.TrongNuoc,
                         Ngay = t.Ngay,
                         Dem = t.Dem,
                         TrangThai = t.TrangThai
@@ -745,8 +739,7 @@ namespace travel_recommendation_and_booking_system.Services
                 .Select(t => new TourSelectDTO
                 {
                     MaTour = t.MaTour,
-                    TenTour = t.TenTour,
-                    TrongNuoc = t.TrongNuoc,
+                    TenTour = t.TenTour
                 })
                 .ToListAsync();
 

@@ -16,7 +16,7 @@ namespace travel_recommendation_and_booking_system.Extensions
             recurringJobManager.AddOrUpdate<PromotionStatusJob>(
                 "promotion-status-job",
                 job => job.UpdatePromotionStatus(),
-                Cron.Minutely
+                Cron.Daily
             );
         }
         public static void UseCleanExpriedReservationsJob(this WebApplication app)

@@ -19,8 +19,8 @@ namespace travel_recommendation_and_booking_system.Models
         [StringLength(100)]
         public string TinhThanh { get; set; }
         [StringLength(100)]
-        public string QuocGia { get; set; }
-        public bool KhuVuc { get; set; }
+        //public string QuocGia { get; set; }
+        //public bool KhuVuc { get; set; }
         public DateTime NgayTao { get; set; } = DateTime.Now;
         public DateTime NgayCapNhat { get; set; } = DateTime.Now;
         public DateTime? NgayXoa { get; set; }

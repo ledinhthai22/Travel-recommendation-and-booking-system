@@ -2,11 +2,20 @@ import React, { useState, useCallback, useMemo } from "react";
 import { Utensils, Camera, X, Trash2, Plus, Loader2, Pencil } from "lucide-react";
 import TourItinerariesTable from "../TourItinerariesTable";
 import InputField from "~/components/UI/Form/InputField";
+import Dropdown from "~/components/Common/Dropdown";
 import { toastSuccess, toastWarning } from "~/utils/Toast";
 import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
 import SelectField from "~/components/UI/Form/SelectField";
 import TimePicker from "~/components/UI/Form/TimePicker";
 
+// ─── Options bữa ăn ──────────────────────────────────────────────────────────
+const BUA_AN_OPTIONS = [
+    { value: "", label: "Không có" },
+    { value: "Trưa, Tối", label: "2 bữa — Trưa, Tối" },
+    { value: "Sáng, Trưa, Chiều, Tối", label: "3 bữa — Sáng, Trưa, Chiều, Tối" },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const getVal = (e) => e?.target?.value ?? e;
 
 const makeTempId = () => `CTLT-TEMP-${Date.now()}-${Math.random()}`;
@@ -19,14 +28,12 @@ const timeToMinutes = (time) => {
     return hour * 60 + minute;
 };
 
-
 const hasTimeOverlap = (rows, newStart, newEnd) =>
     rows.some(row => {
         const start = timeToMinutes(row.gioBatDau);
         const end = timeToMinutes(row.gioKetThuc || row.gioBatDau);
         return newStart < end && newEnd > start;
     });
-
 
 const makeSubRow = () => ({
     tempId: makeTempId(),
@@ -59,7 +66,7 @@ const validateItinerary = (item) => {
     return errs;
 };
 
-
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function TourItinerariesSection({
     value = [],
     onChange,
@@ -101,7 +108,7 @@ export default function TourItinerariesSection({
         [diaDiems, selectedLocationIds]
     );
 
-
+    // ── Modal open/close ──────────────────────────────────────────────────
     const openAddModal = () => {
         setCurrentItinerary(makeDayRow(safeData.length + 1));
         setNewSubRow(makeSubRow());
@@ -133,7 +140,8 @@ export default function TourItinerariesSection({
         setEditingSubRow(null);
         setModalMode("EDIT");
         setShowItineraryModal(true);
-    }, [])
+    }, []);
+
     const handleCloseModal = () => {
         if (isSaving) return;
         setShowItineraryModal(false);
@@ -141,7 +149,7 @@ export default function TourItinerariesSection({
         setEditingSubRow(null);
     };
 
-
+    // ── Field handlers ────────────────────────────────────────────────────
     const handleModalImageChange = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -159,9 +167,8 @@ export default function TourItinerariesSection({
         if (errs[field]) setModalErrors(prev => ({ ...prev, [field]: errs[field] }));
     }, [currentItinerary]);
 
-
+    // ── Sub-row handlers ──────────────────────────────────────────────────
     const handleAddSubRow = () => {
-
         if (!newSubRow.gioBatDau) {
             setTimelineError("Vui lòng nhập giờ bắt đầu");
             toastWarning("Thiếu dữ liệu", "Mốc thời gian bắt đầu hành trình không được để trống.");
@@ -175,13 +182,11 @@ export default function TourItinerariesSection({
             setTimelineError("Giờ kết thúc phải lớn hơn giờ bắt đầu");
             return;
         }
-
         if (!newSubRow.maDiaDiem) {
             setTimelineError("Vui lòng chọn địa điểm");
             toastWarning("Thiếu dữ liệu", "Địa điểm tham quan không được để trống.");
             return;
         }
-
         if (!newSubRow.hoatDong?.trim()) {
             setTimelineError("Vui lòng nhập nội dung hoạt động cụ thể");
             return;
@@ -206,51 +211,28 @@ export default function TourItinerariesSection({
         setTimelineError("");
     };
 
-
-
-    const handleEditSubRow = (sub) => {
-        setEditingSubKey(getSubKey(sub));
-        setEditingSubRow({ ...sub });
-    };
-
-    const handleCancelEditSubRow = () => {
-        setEditingSubKey(null);
-        setEditingSubRow(null);
-    };
+    const handleEditSubRow = (sub) => { setEditingSubKey(getSubKey(sub)); setEditingSubRow({ ...sub }); };
+    const handleCancelEditSubRow = () => { setEditingSubKey(null); setEditingSubRow(null); };
 
     const handleSaveSubRow = () => {
-        if (!editingSubRow.gioBatDau) {
-            toastWarning("Thiếu dữ liệu", "Vui lòng nhập giờ bắt đầu.");
-            return;
-        }
+        if (!editingSubRow.gioBatDau) { toastWarning("Thiếu dữ liệu", "Vui lòng nhập giờ bắt đầu."); return; }
         if (editingSubRow.gioKetThuc && timeToMinutes(editingSubRow.gioKetThuc) <= timeToMinutes(editingSubRow.gioBatDau)) {
-            toastWarning("Sai thời gian", "Giờ kết thúc phải lớn hơn giờ bắt đầu.");
-            return;
+            toastWarning("Sai thời gian", "Giờ kết thúc phải lớn hơn giờ bắt đầu."); return;
         }
-        if (!editingSubRow.maDiaDiem) {
-            toastWarning("Thiếu dữ liệu", "Vui lòng chọn địa điểm.");
-            return;
-        }
-        if (!editingSubRow.hoatDong?.trim()) {
-            toastWarning("Thiếu dữ liệu", "Nội dung hoạt động không được để trống.");
-            return;
-        }
+        if (!editingSubRow.maDiaDiem) { toastWarning("Thiếu dữ liệu", "Vui lòng chọn địa điểm."); return; }
+        if (!editingSubRow.hoatDong?.trim()) { toastWarning("Thiếu dữ liệu", "Nội dung hoạt động không được để trống."); return; }
 
-        const otherRows = currentItinerary.chiTietLichTrinhs.filter(
-            item => getSubKey(item) !== editingSubKey
-        );
+        const otherRows = currentItinerary.chiTietLichTrinhs.filter(item => getSubKey(item) !== editingSubKey);
 
         if (otherRows.some(item => String(item.maDiaDiem) === String(editingSubRow.maDiaDiem))) {
-            toastWarning("Trùng địa điểm", "Địa điểm này đã được sử dụng trong ngày.");
-            return;
+            toastWarning("Trùng địa điểm", "Địa điểm này đã được sử dụng trong ngày."); return;
         }
 
         const editStart = timeToMinutes(editingSubRow.gioBatDau);
         const editEnd = timeToMinutes(editingSubRow.gioKetThuc || editingSubRow.gioBatDau);
 
         if (hasTimeOverlap(otherRows, editStart, editEnd)) {
-            toastWarning("Trùng thời gian", "Khoảng thời gian bị giao với mốc khác.");
-            return;
+            toastWarning("Trùng thời gian", "Khoảng thời gian bị giao với mốc khác."); return;
         }
 
         setCurrentItinerary(prev => ({
@@ -270,7 +252,7 @@ export default function TourItinerariesSection({
         }));
     };
 
-
+    // ── Save itinerary ────────────────────────────────────────────────────
     const handleSaveItineraryModal = async () => {
         const errors = validateItinerary(currentItinerary);
         if (Object.keys(errors).length > 0) {
@@ -286,7 +268,6 @@ export default function TourItinerariesSection({
 
         const sortedTimeline = [...currentItinerary.chiTietLichTrinhs]
             .sort((a, b) => timeToMinutes(a.gioBatDau) - timeToMinutes(b.gioBatDau));
-
         const itineraryToSave = { ...currentItinerary, chiTietLichTrinhs: sortedTimeline };
         const exists = safeData.some(lt => lt.id === currentItinerary.id);
         const updatedList = exists
@@ -305,15 +286,12 @@ export default function TourItinerariesSection({
         }
     };
 
-    const handleDeleteClick = (row) => {
-        setSelectedDeleteItem(row);
-        setShowDeleteModal(true);
-    };
+    // ── Delete ────────────────────────────────────────────────────────────
+    const handleDeleteClick = (row) => { setSelectedDeleteItem(row); setShowDeleteModal(true); };
 
     const confirmDeleteItinerary = async () => {
         if (!selectedDeleteItem) return;
         const updatedList = safeData.filter(lt => lt.id !== selectedDeleteItem.id);
-
         try {
             setIsSaving(true);
             await onChange?.(updatedList);
@@ -327,9 +305,9 @@ export default function TourItinerariesSection({
         }
     };
 
-
     const disabled = isViewMode || isSaving || isLocked;
 
+    // ─────────────────────────────────────────────────────────────────────
     return (
         <section className="border-t border-slate-200 pt-8 space-y-4">
 
@@ -343,7 +321,7 @@ export default function TourItinerariesSection({
                 {!isViewMode && !isLocked && (
                     <button
                         type="button"
-                        disabled={isSaving || loading || !canAddDay | isLocked}
+                        disabled={isSaving || loading || !canAddDay || isLocked}
                         onClick={openAddModal}
                         className={`flex items-center gap-1.5 px-4 py-2 text-white font-medium text-xs rounded-xl shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed
                             ${!canAddDay ? "bg-slate-300 cursor-not-allowed" : "bg-sky-400/80 hover:bg-sky-400/60"}`}
@@ -352,7 +330,6 @@ export default function TourItinerariesSection({
                     </button>
                 )}
             </div>
-
 
             <div>
                 <TourItinerariesTable
@@ -365,15 +342,18 @@ export default function TourItinerariesSection({
                 />
             </div>
 
-
+            {/* ── Itinerary Modal ── */}
             {showItineraryModal && currentItinerary && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                     <div className="bg-white w-full max-w-6xl rounded-2xl shadow-2xl flex flex-col overflow-hidden max-h-[95vh]">
 
+                        {/* Header */}
                         <div className="flex justify-between items-center p-6 border-b border-slate-200 bg-slate-50">
                             <h2 className="text-lg font-bold text-slate-800">
-                                {isViewMode || isLocked ? "Chi tiết Lịch trình" : modalMode === "ADD" ? "Thêm mới Lịch trình" : "Cấu hình Lịch trình"}
-                                : Ngày {currentItinerary.soThuTuNgay}
+                                {isViewMode || isLocked
+                                    ? "Chi tiết Lịch trình"
+                                    : modalMode === "ADD" ? "Thêm mới Lịch trình" : "Cấu hình Lịch trình"}
+                                {" "}: Ngày {currentItinerary.soThuTuNgay}
                             </h2>
                             <button
                                 disabled={isSaving}
@@ -384,10 +364,12 @@ export default function TourItinerariesSection({
                             </button>
                         </div>
 
-
+                        {/* Body */}
                         <div className="p-6 space-y-6 overflow-y-auto flex-1">
 
+                            {/* Info row */}
                             <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-6 items-start bg-slate-50 p-4 rounded-xl">
+                                {/* Image */}
                                 <div className="w-full aspect-[4/3] md:w-36 md:h-28 rounded-xl border border-slate-200 bg-white relative overflow-hidden flex flex-col items-center justify-center text-slate-400 group mx-auto">
                                     {currentItinerary.preview ? (
                                         <>
@@ -410,6 +392,7 @@ export default function TourItinerariesSection({
                                     )}
                                 </div>
 
+                                {/* Fields */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
                                     <InputField
                                         label="Tiêu đề ngày"
@@ -420,13 +403,22 @@ export default function TourItinerariesSection({
                                         disabled={disabled}
                                         required
                                     />
-                                    <InputField
-                                        label="Chế độ bữa ăn"
-                                        icon={<Utensils size={16} />}
-                                        value={currentItinerary.buaAn || ""}
-                                        onChange={(e) => handleFieldChange("buaAn", getVal(e))}
-                                        disabled={disabled}
-                                    />
+
+                                    {/* ── Bữa ăn: SelectField thay vì InputField ── */}
+                                    <div>
+                                        <label className="text-[11px] font-semibold text-slate-500 mb-1 flex items-center gap-1.5">
+                                            <Utensils size={13} /> Chế độ bữa ăn
+                                        </label>
+                                        <Dropdown
+                                            value={currentItinerary.buaAn || ""}
+                                            options={BUA_AN_OPTIONS}
+                                            onChange={(val) => handleFieldChange("buaAn", val)}
+                                            disabled={disabled}
+                                            fullWidth
+                                            placeholder="Chọn chế độ bữa ăn"
+                                        />
+                                    </div>
+
                                     <div className="sm:col-span-2">
                                         <InputField
                                             label="Tóm tắt hoạt động"
@@ -438,9 +430,10 @@ export default function TourItinerariesSection({
                                 </div>
                             </div>
 
-
+                            {/* Timeline table */}
                             <div className={`border rounded-xl overflow-visible bg-white ${modalErrors.chiTietLichTrinhs ? "border-red-400" : "border-slate-200"}`}>
 
+                                {/* Add sub-row form */}
                                 {!isViewMode && !isLocked && (
                                     <div className="p-4 bg-slate-50 border-b border-slate-100 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                                         <div className="sm:col-span-3">
@@ -488,7 +481,9 @@ export default function TourItinerariesSection({
                                             </button>
                                         </div>
                                         <div className="sm:col-span-12 mt-2">
-                                            <label className="text-[11px] font-semibold text-slate-500 mb-1 block">Nội dung hoạt động chi tiết <span className="text-red-500">*</span></label>
+                                            <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
+                                                Nội dung hoạt động chi tiết <span className="text-red-500">*</span>
+                                            </label>
                                             <InputField
                                                 multiline
                                                 disabled={isSaving}
@@ -505,14 +500,16 @@ export default function TourItinerariesSection({
                                     </div>
                                 )}
 
-
+                                {/* Sub-rows table */}
                                 <table className="w-full text-left text-xs">
                                     <thead>
                                         <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
-                                            <th className="p-3 w-32 ">Khoảng thời gian</th>
+                                            <th className="p-3 w-32">Khoảng thời gian</th>
                                             <th className="p-3">Địa điểm</th>
                                             <th className="p-3">Hoạt động</th>
-                                            {!isViewMode && !isLocked && (<th className="p-3 text-center w-24">Thao tác</th>)}
+                                            {!isViewMode && !isLocked && (
+                                                <th className="p-3 text-center w-24">Thao tác</th>
+                                            )}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -530,25 +527,19 @@ export default function TourItinerariesSection({
 
                                                 return (
                                                     <tr key={subKey} className="hover:bg-slate-50/50 transition">
-
+                                                        {/* Time */}
                                                         <td className="p-3">
                                                             {isEditing ? (
                                                                 <div className="flex flex-col gap-1 w-[120px]">
-                                                                    <TimePicker
-                                                                        value={editingSubRow.gioBatDau}
-                                                                        onChange={(timeStr) => setEditingSubRow(p => ({ ...p, gioBatDau: timeStr }))}
-                                                                    />
-                                                                    <TimePicker
-                                                                        value={editingSubRow.gioKetThuc}
-                                                                        onChange={(timeStr) => setEditingSubRow(p => ({ ...p, gioKetThuc: timeStr }))}
-                                                                    />
+                                                                    <TimePicker value={editingSubRow.gioBatDau} onChange={(t) => setEditingSubRow(p => ({ ...p, gioBatDau: t }))} />
+                                                                    <TimePicker value={editingSubRow.gioKetThuc} onChange={(t) => setEditingSubRow(p => ({ ...p, gioKetThuc: t }))} />
                                                                 </div>
                                                             ) : (
                                                                 <span>{sub.gioBatDau}{sub.gioKetThuc ? ` - ${sub.gioKetThuc}` : ""}</span>
                                                             )}
                                                         </td>
 
-                                                        {/* Location cell */}
+                                                        {/* Location */}
                                                         <td className="p-3 w-[250px]">
                                                             {isEditing ? (
                                                                 <SelectField
@@ -566,21 +557,18 @@ export default function TourItinerariesSection({
                                                             )}
                                                         </td>
 
-                                                        {/* Activity cell */}
+                                                        {/* Activity */}
                                                         <td className="p-3 w-[350px]">
                                                             {isEditing ? (
                                                                 <InputField
-                                                                    multiline
-                                                                    rows={1}
+                                                                    multiline rows={1}
                                                                     value={editingSubRow.hoatDong}
                                                                     onChange={(e) => setEditingSubRow(p => ({ ...p, hoatDong: e.target.value }))}
                                                                 />
-                                                            ) : (
-                                                                sub.hoatDong
-                                                            )}
+                                                            ) : sub.hoatDong}
                                                         </td>
 
-                                                        {/* Actions cell */}
+                                                        {/* Actions */}
                                                         {!isViewMode && !isLocked && (
                                                             <td className="p-3 text-center">
                                                                 <div className="flex justify-center gap-2">
@@ -612,24 +600,16 @@ export default function TourItinerariesSection({
 
                             <InputField
                                 label="Lưu ý quan trọng"
-                                multiline
-                                rows={7}
+                                multiline rows={4}
                                 value={currentItinerary.luuY || ""}
                                 onChange={(e) => handleFieldChange("luuY", getVal(e))}
                                 disabled={disabled}
                             />
                         </div>
 
-                        {/* Modal footer */}
-                        <div className="p-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
-                            <button
-                                disabled={isSaving}
-                                onClick={handleCloseModal}
-                                className="px-5 py-2 text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition disabled:opacity-50"
-                            >
-                                {isViewMode || isLocked ? "Đóng" : "Hủy bỏ"}
-                            </button>
-                            {!isViewMode && !isLocked && (
+                       
+                        {!isViewMode && !isLocked && (
+                            <div className="p-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
                                 <button
                                     disabled={isSaving}
                                     onClick={handleSaveItineraryModal}
@@ -640,13 +620,13 @@ export default function TourItinerariesSection({
                                         : modalMode === "ADD" ? "Thêm vào lịch trình" : "Cập nhật lịch trình"
                                     }
                                 </button>
-                            )}
-                        </div>
+                            </div>
+                        )}
+
                     </div>
                 </div>
             )}
 
-            {/* Delete confirm modal */}
             <ConfirmModal
                 isOpen={showDeleteModal}
                 title="Xóa lịch trình"

@@ -75,26 +75,26 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 _context.NguoiDungs.Add(newNguoiDung);
                 await _context.SaveChangesAsync();
-                await _logService.LoggingAsync(new LogDTO
-                {
-                    LoaiTaiKhoan = "NguoiDung",
+                //await _logService.LoggingAsync(new LogDTO
+                //{
+                //    LoaiTaiKhoan = "NguoiDung",
 
-                    MaTaiKhoan = newNguoiDung.MaNguoiDung,
+                //    MaTaiKhoan = newNguoiDung.MaNguoiDung,
                    
-                    TenHanhDong = ActionLogDTO.DangKy,
+                //    TenHanhDong = ActionLogDTO.DangKy,
 
-                    TenBangTacDong = "NguoiDung",
+                //    TenBangTacDong = "NguoiDung",
 
-                    MaDoiTuong = newNguoiDung.MaNguoiDung,
+                //    MaDoiTuong = newNguoiDung.MaNguoiDung,
 
-                    GiaTriSau = new
-                    {
-                        newNguoiDung.HoTen,
-                        newNguoiDung.Email,
-                        newNguoiDung.SoDienThoai,
-                        newNguoiDung.GioiTinh,
-                    }
-                });
+                //    GiaTriSau = new
+                //    {
+                //        newNguoiDung.HoTen,
+                //        newNguoiDung.Email,
+                //        newNguoiDung.SoDienThoai,
+                //        newNguoiDung.GioiTinh,
+                //    }
+                //});
                 return null;
 
             }

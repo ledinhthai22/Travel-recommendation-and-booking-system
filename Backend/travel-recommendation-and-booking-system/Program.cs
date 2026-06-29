@@ -8,6 +8,7 @@ using Services;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.Extensions;
 using travel_recommendation_and_booking_system.Interfaces;
+using travel_recommendation_and_booking_system.Job;
 using travel_recommendation_and_booking_system.Jobs;
 using travel_recommendation_and_booking_system.Models;
 using travel_recommendation_and_booking_system.Services;
@@ -88,6 +89,7 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<ITourBookingService, TourBookingService>();
             
             builder.Services.AddScoped<PromotionStatusJob>();
+            builder.Services.AddScoped<BookingEmailJob>();
             builder.Services.Configure<VnPayConfig>(builder.Configuration.GetSection("VNPay"));
             builder.Services.AddScoped<IPaymentService, PaymentService>();
             var jwtSettings = builder.Configuration.GetSection("Jwt");

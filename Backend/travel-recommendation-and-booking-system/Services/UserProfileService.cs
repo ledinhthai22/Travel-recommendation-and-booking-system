@@ -37,7 +37,7 @@ namespace travel_recommendation_and_booking_system.Services
 
             return userProfile;
         }
-
+        
         public async Task<bool> UpdateMyProfileAsync(int maNguoiDung, UserProfileDTO dto)
         {
             var user = await _context.NguoiDungs

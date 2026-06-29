@@ -831,7 +831,6 @@ export default function TourFormPage({ mode }) {
                                         disabled={infoSaving.state === "saving"}
                                         className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium text-white bg-sky-400/80 hover:bg-sky-400/60 rounded-xl transition disabled:opacity-60"
                                     >
-                                        <Save size={10} />
                                         <span>Lưu thông tin</span>
                                     </button>
                                 )}
@@ -862,7 +861,7 @@ export default function TourFormPage({ mode }) {
                                 disabled={isViewMode || isScheduleLocked}
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div >
                             <InputField
                                 type="number"
                                 label="Số ngày"
@@ -874,6 +873,9 @@ export default function TourFormPage({ mode }) {
                                 min={1}
                             />
 
+
+                        </div>
+                        <div>
                             <InputField
                                 type="number"
                                 label="Số đêm"
@@ -883,23 +885,6 @@ export default function TourFormPage({ mode }) {
                                 }
                                 disabled={isViewMode || isScheduleLocked}
                                 min={1}
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Phân vùng tour *</label>
-                            <SelectField
-                                value={formData.trongNuoc}
-                                options={PHAN_LOAI_TOURS}
-                                valueKey="value"
-                                labelKey="label"
-                                onChange={(e) => {
-                                    const val = getVal(e);
-                                    setFormData(p => ({
-                                        ...p,
-                                        trongNuoc: val === true || val === "true" || val === 1
-                                    }));
-                                }}
-                                disabled={isViewMode || isScheduleLocked}
                             />
                         </div>
                     </div>
@@ -980,7 +965,7 @@ export default function TourFormPage({ mode }) {
                     ) : (
                         <TourSchedulesTable
                             data={chuyenKhoiHanhs}
-                           onView={(item) => tourScheduleRef.current?.openEditModal(item)}
+                            onView={(item) => tourScheduleRef.current?.openEditModal(item)}
                             onEdit={
                                 !isViewMode
                                     ? (item) => tourScheduleRef.current?.openEditModal(item)

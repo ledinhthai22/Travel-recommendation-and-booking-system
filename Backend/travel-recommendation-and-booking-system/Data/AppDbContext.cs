@@ -14,7 +14,7 @@ namespace travel_recommendation_and_booking_system.Data
         public DbSet<HinhAnhSK> HinhAnhSKs { get; set; }
         public DbSet<TienIch> TienIches { get; set; }
         public DbSet<LoaiDiaDiem> LoaiDiaDiem { get; set; }
-        public DbSet<KS_TI> KS_TNs { get; set; }
+        public DbSet<KS_TI> KS_TIs { get; set; }
         public DbSet<CLoaiHinhTour> LoaiHinhTours { get; set; }
         public DbSet<Tour> Tours { get; set; }
         public DbSet<HinhAnhTour> HinhAnhTours { get; set; }

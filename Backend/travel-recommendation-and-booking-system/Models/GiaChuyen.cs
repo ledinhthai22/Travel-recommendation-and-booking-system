@@ -11,7 +11,6 @@ namespace travel_recommendation_and_booking_system.Models
 
         [ForeignKey("ChuyenKhoiHanh")]
         public int Machuyen { get; set; }
-        public int HangKhachSan { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal GiaNguoiLon { get; set; }

@@ -1,4 +1,5 @@
 ﻿using DTOs.Page;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Log;
@@ -6,6 +7,7 @@ using travel_recommendation_and_booking_system.DTOs.LogSystem;
 using travel_recommendation_and_booking_system.DTOs.TourBooking;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
+using travel_recommendation_and_booking_system.SignalR;
 
 namespace travel_recommendation_and_booking_system.Services
 {
@@ -14,12 +16,15 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly AppDbContext _context;
         private readonly ILogService _logService;
         private readonly ICurrentUserService _currentUserService;
-
-        public TourBookingService(AppDbContext context, ILogService logService, ICurrentUserService currentUserService)
+        private readonly IHubContext<TravelRecommendationHub> _hubContext;
+        private readonly IEmailService _emailService;
+        public TourBookingService(AppDbContext context, ILogService logService, ICurrentUserService currentUserService, IHubContext<TravelRecommendationHub> hubContext, IEmailService emailService)
         {
             _context = context;
             _logService = logService;
             _currentUserService = currentUserService;
+            _hubContext = hubContext;
+            _emailService = emailService;
         }
 
 
@@ -64,7 +69,7 @@ namespace travel_recommendation_and_booking_system.Services
                 _ => false
             };
 
-        public async Task<PageDTO<TourBookingResponseDTO>> GetPagedDonDatToursAsync( string? keyword, int? trangThaiDon, int? trangThaiThanhToan,DateTime? ngayDat, int page, int size)
+        public async Task<PageDTO<TourBookingResponseDTO>> GetPagedDonDatToursAsync(string? keyword, int? trangThaiDon, int? trangThaiThanhToan, DateTime? ngayDat, int page, int size)
         {
             page = Math.Max(1, page);
             size = Math.Max(1, size);
@@ -108,7 +113,7 @@ namespace travel_recommendation_and_booking_system.Services
                     MaDonDatTour = x.MaDonDatTour,
                     MaDatCho = x.MaDatCho,
                     TenKhachHang = x.NguoiDung.HoTen,
-                    MaCodeChuyen =x.ChuyenKhoiHanh.MaChuyenCode,
+                    MaCodeChuyen = x.ChuyenKhoiHanh.MaChuyenCode,
                     DiemKhoiHanh = x.ChuyenKhoiHanh.DiemKhoiHanh,
                     DiemDen = x.ChuyenKhoiHanh.DiemDen,
                     NgayKhoiHanh = x.ChuyenKhoiHanh.NgayKhoiHanh,
@@ -162,7 +167,7 @@ namespace travel_recommendation_and_booking_system.Services
                 .Include(x => x.ChuyenKhoiHanh).ThenInclude(x => x.Tour).ThenInclude(x => x.HinhAnhTours)
                 .Include(x => x.ChuyenKhoiHanh).ThenInclude(x => x.NhanVien)
                 .Include(x => x.NhanVien)
-             
+
                 .Include(x => x.UuDai)
                 .Include(x => x.KhachHangs)
                 .Include(x => x.ThanhToans)
@@ -212,7 +217,7 @@ namespace travel_recommendation_and_booking_system.Services
                     TenHuongDanVien = order.ChuyenKhoiHanh.NhanVien?.HoTen
                 },
 
-              
+
                 TenUuDai = order.UuDai?.TenUuDai,
                 MaCode = order.UuDai?.MaCode,
 
@@ -295,7 +300,7 @@ namespace travel_recommendation_and_booking_system.Services
             return true;
         }
 
- 
+
         public async Task<bool> CancelOrderAsync(int maDonDatTour)
         {
             var order = await _context.DonDatTours
@@ -614,7 +619,16 @@ namespace travel_recommendation_and_booking_system.Services
 
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
-
+                    await _hubContext.Clients.All.SendAsync(
+                        "BookingCreated",
+                        new
+                        {
+                            MaDonDatTour = order.MaDonDatTour,
+                            MaDatCho = order.MaDatCho,
+                            TongTien = order.TongTien,
+                            NgayDat = order.NgayDat
+                        }
+                    );
                     maDonDatTour = order.MaDonDatTour;
                     break; // thoát vòng retry khi thành công
                 }
@@ -682,7 +696,7 @@ namespace travel_recommendation_and_booking_system.Services
                     order.SoNguoiLon,
                     order.SoTreEm,
                     order.SoEmBe,
-                    
+
                     order.MaUuDai,
                     order.TrangThaiDon
                 };
@@ -806,7 +820,6 @@ namespace travel_recommendation_and_booking_system.Services
         public async Task<int> CreateBookingByClientAsync(int maNguoiDung, CreateBookingClientDTO dto, int? maGiuCho)
         {
             const int maxRetry = 3;
-
             for (int attempt = 1; attempt <= maxRetry; attempt++)
             {
                 using var transaction = await _context.Database.BeginTransactionAsync();
@@ -822,13 +835,12 @@ namespace travel_recommendation_and_booking_system.Services
                         throw new InvalidOperationException("Chuyến không còn mở bán");
 
                     var tongKhach = dto.SoNguoiLon + dto.SoTreEm + dto.SoEmBe;
-
                     GiuCho? giuCho = null;
+
                     if (maGiuCho.HasValue)
                     {
                         giuCho = await _context.GiuChos
-                            .FirstOrDefaultAsync(x => x.MaGiuCho == maGiuCho.Value
-                                                   && x.MaNguoiDung == maNguoiDung);
+                            .FirstOrDefaultAsync(x => x.MaGiuCho == maGiuCho.Value && x.MaNguoiDung == maNguoiDung);
 
                         if (giuCho == null || giuCho.ThoiGianHetHan <= DateTime.Now)
                             throw new InvalidOperationException("Phiên giữ chỗ đã hết hạn. Vui lòng chọn lại chuyến.");
@@ -839,9 +851,7 @@ namespace travel_recommendation_and_booking_system.Services
                     else
                     {
                         var choGiuNguoiKhac = await _context.GiuChos
-                            .Where(x => x.MaChuyen == dto.MaChuyen
-                                     && x.MaNguoiDung != maNguoiDung
-                                     && x.ThoiGianHetHan > DateTime.Now)
+                            .Where(x => x.MaChuyen == dto.MaChuyen && x.MaNguoiDung != maNguoiDung && x.ThoiGianHetHan > DateTime.Now)
                             .SumAsync(x => (int?)x.SoChoGiu) ?? 0;
 
                         var conLai = chuyen.SoChoToiDa - chuyen.SoChoDaDat - choGiuNguoiKhac;
@@ -866,12 +876,7 @@ namespace travel_recommendation_and_booking_system.Services
                     }
 
                     int soPhongDon = dto.DanhSachHanhKhach.Count(k => k.PhongDon && k.LoaiKhach == 1);
-
-                    decimal tongTienGoc =
-                        dto.SoNguoiLon * gia.GiaNguoiLon +
-                        dto.SoTreEm * gia.GiaTreEm +
-                        dto.SoEmBe * gia.GiaEmBe;
-
+                    decimal tongTienGoc = dto.SoNguoiLon * gia.GiaNguoiLon + dto.SoTreEm * gia.GiaTreEm + dto.SoEmBe * gia.GiaEmBe;
                     decimal phuThuPhongDon = soPhongDon * gia.PhuThuPhongDon;
 
                     if (uuDai != null && tongTienGoc >= uuDai.DieuKienApDung)
@@ -881,8 +886,6 @@ namespace travel_recommendation_and_booking_system.Services
 
                     var maDatCho = $"BK{DateTime.Now:yyyyMMddHHmmssfff}{Random.Shared.Next(100, 999)}";
 
-                    // Client tạo đơn: TrangThaiDon = 1 (Chờ duyệt)
-                    // Chưa có ThanhToan → frontend hiển thị TrangThaiThanhToan = 0 (Chờ)
                     var order = new DonDatTour
                     {
                         MaNguoiDung = maNguoiDung,
@@ -904,6 +907,12 @@ namespace travel_recommendation_and_booking_system.Services
                         NgayCapNhat = DateTime.Now,
                         TrangThaiDon = 1,
                     };
+
+                    // Lưu thông tin liên lạc
+                    if (!string.IsNullOrEmpty(dto.HoTenLienHe) || !string.IsNullOrEmpty(dto.EmailLienHe))
+                    {
+                        order.GhiChu += $"\n[Liên hệ] {dto.HoTenLienHe} - {dto.SoDienThoaiLienHe} - {dto.EmailLienHe} - {dto.DiaChiLienHe ?? ""}";
+                    }
 
                     _context.DonDatTours.Add(order);
 
@@ -929,10 +938,31 @@ namespace travel_recommendation_and_booking_system.Services
                     chuyen.NgayCapNhat = DateTime.Now;
 
                     if (uuDai != null) uuDai.SoLuongDaDung++;
+
                     if (giuCho != null) _context.GiuChos.Remove(giuCho);
 
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
+
+                    // Gửi mail
+                    try
+                    {
+                        await _emailService.SendBookingConfirmationAsync(order);
+                        Console.WriteLine($"[Email] Gửi mail xác nhận thành công cho đơn {order.MaDatCho}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[Email] Lỗi gửi mail: {ex.Message}");
+                    }
+
+                    // SignalR
+                    await _hubContext.Clients.All.SendAsync("BookingCreated", new
+                    {
+                        MaDonDatTour = order.MaDonDatTour,
+                        MaDatCho = order.MaDatCho,
+                        TongTien = order.TongTien,
+                        NgayDat = order.NgayDat
+                    });
 
                     return order.MaDonDatTour;
                 }
@@ -1033,7 +1063,7 @@ namespace travel_recommendation_and_booking_system.Services
             return true;
         }
 
-   
+
         public async Task<bool> UpdatePassengerAsync(int maKhachHang, UpdatePassengerDTO dto)
         {
             var khach = await _context.KhachHangs

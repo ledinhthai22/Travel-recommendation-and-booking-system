@@ -160,7 +160,7 @@ namespace travel_recommendation_and_booking_system.Services
                 .FirstOrDefaultAsync(x =>
                     x.MaTienIch == id &&
                     x.NgayXoa == null);
-            bool isUsed = await _context.KS_TNs.AnyAsync(x => x.MaTienIch == id);
+            bool isUsed = await _context.KS_TIs.AnyAsync(x => x.MaTienIch == id);
             if (entity == null)
             {
                 throw new Exception("Không tìm thấy tiện nghi");

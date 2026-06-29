@@ -6,6 +6,7 @@ import { getAllVehicleApi } from "~/Services/VehicleService";
 import { getAllTourGuideApi } from "~/Services/TourGuideService";
 import { toastSuccess, toastError, toastWarning } from "~/utils/Toast";
 import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
+import { getProvincesApi } from "~/Services/ProvinceService";
 import { vi } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
 import { registerLocale } from "react-datepicker";
@@ -17,13 +18,7 @@ const DIEM_DI_OPTIONS = [
     { value: "Đà Nẵng", label: "Đà Nẵng" },
     { value: "Hà Nội", label: "Hà Nội" }
 ];
-const HOTEL_STARS_OPTIONS = [
-    { value: "1", label: "1 Sao" },
-    { value: "2", label: "2 Sao" },
-    { value: "3", label: "3 Sao" },
-    { value: "4", label: "4 Sao" },
-    { value: "5", label: "5 Sao" }
-];
+
 const EMPTY_GIA = {
     hangKhachSan: "",
     giaNguoiLon: "",
@@ -143,7 +138,8 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
     const [showConfirmUpdate, setShowConfirmUpdate] = useState(false);
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
     const safeData = Array.isArray(value) ? value : [];
-
+    const [provinces, setProvinces] = useState([]);
+    const [provincesLoading, setProvincesLoading] = useState(false);
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -164,6 +160,21 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
         };
         fetchData();
     }, []);
+    useEffect(() => {
+        const fetchProvinces = async () => {
+            try {
+                setProvincesLoading(true);
+                const data = await getProvincesApi();
+                setProvinces(Array.isArray(data) ? data : []);
+            } catch {
+                toastError("Tải dữ liệu thất bại", "Không thể tải danh sách tỉnh/thành phố.");
+            } finally {
+                setProvincesLoading(false);
+            }
+        };
+        fetchProvinces();
+    }, []);
+
 
     // ── Imperative handle ──────────────────────────────────────────────────────
 
@@ -203,11 +214,15 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
         }
     }), [safeData]);
 
-    // ── Handlers ───────────────────────────────────────────────────────────────
-
     const handleFieldChange = useCallback((field, val) => {
         setCurrentSchedule(prev => ({ ...prev, [field]: val }));
-        setModalErrors(prev => prev[field] ? { ...prev, [field]: null } : prev);
+        // Xóa lỗi của field đó ngay khi user chọn/nhập
+        setModalErrors(prev => {
+            if (!prev[field]) return prev;
+            const next = { ...prev };
+            delete next[field];
+            return next;
+        });
     }, []);
 
     const handleGiaChange = useCallback((field, val) => {
@@ -386,7 +401,6 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
 
     const isView = isViewMode;
     const disabled = isView || isSaving;
-    // Chuyến đã lưu vào DB thì có maChuyen (id thực)
     const isSavedInDB = !!currentSchedule.maChuyen;
 
     return (
@@ -482,16 +496,30 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
                             required
                         />
                     </div>
+                    <div>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                            ĐIỂM ĐẾN <span className="text-red-500">*</span>
+                        </label>
 
-                    <InputField
-                        label="ĐIỂM ĐẾN"
-                        value={currentSchedule.diemDen || ""}
-                        error={modalErrors.diemDen}
-                        onChange={(e) => handleFieldChange("diemDen", getVal(e))}
-                        onBlur={() => handleFieldBlur("diemDen")}
-                        disabled={disabled}
-                        required
-                    />
+                        <SelectField
+                            searchable
+                            searchText="Tìm tỉnh / thành phố..."
+                            value={currentSchedule.diemDen || ""}
+                            options={provinces}
+                            valueKey="name"
+                            labelKey="name"
+                            placeholder="Chọn tỉnh / thành phố"
+                            error={modalErrors.diemDen}
+                            searching={provincesLoading}
+                            onChange={(val) => {
+                                handleFieldChange("diemDen", val);
+                                setModalErrors(prev => ({ ...prev, diemDen: null }));
+                            }}
+                            disabled={disabled}
+                        />
+                    </div>
+
+
 
                     {/* Timeline */}
                     <div className="bg-slate-50 p-4 rounded-xl space-y-4 border border-slate-100">
@@ -501,9 +529,9 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {[
                                 { field: "ngayKhoiHanh", label: "NGÀY GIỜ KHỞI HÀNH", minDate: getDate(), disableToday: false },
-                                { field: "gioDenNoiDi", label: "NGÀY GIỜ ĐẾN NƠI", minDate: getDate(), disableToday: false  },
-                                { field: "ngayKetThuc", label: "NGÀY GIỜ KẾT THÚC", minDate:  getDate(), disableToday: false },
-                                { field: "gioDenNoiVe", label: "NGÀY GIỜ ĐẾN NƠI VỀ", minDate: getDate(), disableToday: false  },
+                                { field: "gioDenNoiDi", label: "NGÀY GIỜ ĐẾN NƠI", minDate: getDate(), disableToday: false },
+                                { field: "ngayKetThuc", label: "NGÀY GIỜ KẾT THÚC", minDate: getDate(), disableToday: false },
+                                { field: "gioDenNoiVe", label: "NGÀY GIỜ ĐẾN NƠI VỀ", minDate: getDate(), disableToday: false },
                             ].map(({ field, label, minDate, disableToday }) => (
                                 <div key={field} className="flex flex-col gap-1.5">
                                     <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
@@ -533,21 +561,8 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
                         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block border-b border-slate-200 pb-1">
                             ĐƠN GIÁ PHÂN LOẠI KHÁCH HÀNG (VND)
                         </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-                            <div>
-                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                                    HẠNG KHÁCH SẠN <span className="text-red-500">*</span>
-                                </label>
-                                <SelectField
-                                    value={currentSchedule.gia?.hangKhachSan || ""}
-                                    options={HOTEL_STARS_OPTIONS}
-                                    valueKey="value"
-                                    labelKey="label"
-                                    error={modalErrors.hangKhachSan}
-                                    onChange={(e) => handleGiaChange("hangKhachSan", getVal(e))}
-                                    disabled={disabled}
-                                />
-                            </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+
                             {[
                                 { field: "giaNguoiLon", label: "GIÁ NGƯỜI LỚN" },
                                 { field: "giaTreEm", label: "GIÁ TRẺ EM" },

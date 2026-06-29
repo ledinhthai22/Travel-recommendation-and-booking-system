@@ -105,6 +105,17 @@ export default function TypeLocationManager() {
                 paginationTotalRows={totalRows}
                 onChangePage={setCurrentPage}
                 onChangeRowsPerPage={(per) => { setPerPage(per); setCurrentPage(1); }}
+                paginationComponentOptions={{
+                    rowsPerPageText: 'Số dòng:',
+                    rangeSeparatorText: 'trên',
+                    noRowsPerPage: false,
+                    selectAllRowsItem: false,
+                }}
+                noDataComponent={
+                    <div className="py-8 text-center">
+                        <p className="text-slate-400 text-sm">Không có dữ liệu tiện nghi</p>
+                    </div>
+                }
             />
 
             <AddTypeLocationModal

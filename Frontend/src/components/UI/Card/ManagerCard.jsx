@@ -51,10 +51,6 @@ export default function ManagerCard({
         imageUrl = item.duongDanAnh;
 
         subInfo1 = item.tenLoai || item.loaiDiaDiem;
-        subInfo2 = item.khuVuc
-            ? 'Trong nước'
-            : 'Ngoài nước';
-
         statusText = isOnline
             ? 'Đang khai thác'
             : 'Ngưng khai thác';
@@ -176,6 +172,8 @@ export default function ManagerCard({
                     }
                     alt={displayName}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 "
+                    loading="lazy"
+                    decoding="async"
                 />
                 <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-all duration-300"></div>
 
@@ -215,10 +213,6 @@ export default function ManagerCard({
                                 {subInfo1}
                             </p>
 
-                            <p className="flex items-center gap-1 text-[10px] font-bold text-slate-600 min-h-[15px]">
-                                <Earth size={10} />
-                                {subInfo2}
-                            </p>
                         </>
                     )}
 

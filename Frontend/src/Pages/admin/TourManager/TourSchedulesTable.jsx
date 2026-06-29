@@ -11,73 +11,55 @@ export default function TourSchedulesTable({
     showCodeChuyen = true
 }) {
     const safeData = Array.isArray(data) ? data : [];
+
     const statusColumn = {
         name: "Trạng thái",
         cell: (row) => {
             const map = {
-                1: {
-                    text: "Sắp khởi hành",
-                    className: "bg-yellow-100 text-yellow-700"
-                },
-                2: {
-                    text: "Đang khởi hành",
-                    className: "bg-blue-100 text-blue-700"
-                },
-                3: {
-                    text: "Đã kết thúc",
-                    className: "bg-gray-100 text-gray-700"
-                },
-                "": {
-                    text: "Không xác định",
-                    className: "bg-gray-100 text-gray-700"
-                }
+                1: { text: "Sắp khởi hành", className: "bg-yellow-100 text-yellow-700" },
+                2: { text: "Đang khởi hành", className: "bg-blue-100 text-blue-700" },
+                3: { text: "Đã kết thúc", className: "bg-gray-100 text-gray-700" },
+                "": { text: "Không xác định", className: "bg-gray-100 text-gray-700" },
             };
-            const status = map[row.trangThai] || {
-                text: "Không xác định",
-                className: "bg-gray-100 text-gray-600"
-            };
-
+            const status = map[row.trangThai] || { text: "Không xác định", className: "bg-gray-100 text-gray-600" };
             return (
-                <span
-                    className={`px-5 py-1 rounded-full text-xs font-bold ${status.className}`}
-                >
+                <span className={`px-5 py-1 rounded-full text-xs font-bold ${status.className}`}>
                     {status.text}
                 </span>
             );
         },
         width: "150px",
     };
+
     const codeWidth = showStatus ? "240px" : "260px";
     const dateWidth = showStatus ? "150px" : "180px";
     const locationWidth = showStatus ? "120px" : "180px";
-    const seatWidth = showStatus ? "120px" : "140px";
+    const seatWidth = showStatus ? "140px" : "160px";
     const actionWidth = showStatus ? "130px" : "160px";
-    const noteWidth = showStatus ? "120" : "155px"
 
     const columns = [
         {
             name: "STT",
-            selector: (row, index) => index + 1,
+            selector: (_, index) => index + 1,
+            cell: (_, index) => index + 1,
             width: "70px",
-            center: 'true',
+            center: true,
         },
         ...(showCodeChuyen ? [{
             name: "Mã code chuyến",
             selector: (row) => row.maChuyenCode,
-            width: codeWidth,
             cell: (row) => (
-                <div>
-                    <div className="text-[12px] font-bold text-slate-800">{row.maChuyenCode}</div>
-                </div>
+                <div className="text-[12px] font-bold text-slate-800">{row.maChuyenCode}</div>
             ),
             sortable: true,
+            width: codeWidth,
         }] : []),
-
-
         {
             name: "Ngày khởi hành",
             selector: (row) => row.ngayKhoiHanh,
-            cell: (row) => row.ngayKhoiHanh ? new Date(row.ngayKhoiHanh).toLocaleDateString('vi-VN') : "---",
+            cell: (row) => row.ngayKhoiHanh
+                ? new Date(row.ngayKhoiHanh).toLocaleDateString("vi-VN")
+                : "---",
             sortable: true,
             width: dateWidth,
         },
@@ -93,35 +75,53 @@ export default function TourSchedulesTable({
             selector: (row) => row.diemDen,
             cell: (row) => row.diemDen,
             sortable: true,
-            idth: locationWidth,
+            width: locationWidth,
         },
-
         ...(showStatus ? [statusColumn] : []),
         {
             name: "Số chỗ",
-            selector: (row) => row.soChoToiDa,
             width: seatWidth,
-            center: 'true',
+            center: true,
+            cell: (row) => {
+                const toiDa = row.soChoToiDa ?? 0;
+                const daDat = row.soChoDaDat ?? 0;
+                const conLai = toiDa - daDat;
+
+                // Chỉ hiện chi tiết khi có onView (chế độ xem)
+                if (onView) {
+                    return (
+                        <div className="flex flex-col items-center leading-tight">
+                            <span className={`text-[11px] font-semibold ${conLai > 0 ? "text-slate-600" : "text-red-500"}`}>
+                                Còn {conLai}
+                            </span>
+                        </div>
+                    );
+                } else {
+                    return (
+                        <span className="text-[12px] font-bold text-slate-800">{toiDa}</span>
+                    );
+                }
+
+            },
         },
         {
             name: "Hành động",
-            cell: (row) => (
-                <RowActionsButton
-                    row={row}
-                    onEdit={
-                        row.trangThai === 2 || row.trangThai === 3 || row.trangThai === 4 || row.soChoDaDat > 0
-                            ? null
-                            : onEdit
-                    }
-                    onView={
-                        row.trangThai === 2 || row.trangThai === 3 || row.trangThai === 4 || row.soChoDaDat > 0
-                            ? onView
-                            : null
-                    }
-                />
-            ),
+            cell: (row) => {
+                const isLocked =
+                    row.trangThai === 2 ||
+                    row.trangThai === 3 ||
+                    row.trangThai === 4 ||
+                    row.soChoDaDat > 0;
+                return (
+                    <RowActionsButton
+                        row={row}
+                        onView={onView}
+                        onEdit={isLocked ? null : onEdit}
+                    />
+                );
+            },
             width: actionWidth,
-            center: 'true',
+            center: true,
         },
     ];
 
@@ -131,11 +131,11 @@ export default function TourSchedulesTable({
             data={safeData}
             progressPending={loading}
             paginationComponentOptions={{
-                rowsPerPageText: 'Số dòng:',
-                rangeSeparatorText: 'trên',
+                rowsPerPageText: "Số dòng:",
+                rangeSeparatorText: "trên",
                 noRowsPerPage: false,
                 selectAllRowsItem: true,
-                selectAllRowsItemText: 'Tất cả',
+                selectAllRowsItemText: "Tất cả",
             }}
             highlightOnHover
             pointerOnHover

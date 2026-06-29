@@ -32,7 +32,7 @@ namespace travel_recommendation_and_booking_system.Models
         public DateTime NgayCapNhat { get; set; } = DateTime.Now;
         public DateTime? NgayXoa { get; set; }
         [Required]
-        public bool TrongNuoc { get; set; }
+        //public bool TrongNuoc { get; set; }
         public virtual CLoaiHinhTour LoaiHinhTour { get; set; }
         public virtual ICollection<HinhAnhTour> HinhAnhTours { get; set; } = new List<HinhAnhTour>();
         public virtual ICollection<LichTrinh> LichTrinhs { get; set; } = new List<LichTrinh>();

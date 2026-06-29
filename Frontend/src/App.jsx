@@ -17,7 +17,8 @@ import {
     CheckoutPage,
     Profile,
     Wishlist,
-    PaymentReturnPage
+    PaymentReturnPage,
+    BookingSuccessPage,
 } from './Pages/Client';
 
 import {
@@ -33,16 +34,12 @@ import {
     BannerManager,
     StaffManager,
     PromotionManager,
-    HotelCreatePage,
-    HotelEditPage,
-    HotelDetailPage,
     TypeLocationManager,
     AmenitiesManager,
     LocationManager,
     TourFormPage,
-    TypeTourManager
+    TypeTourManager,
 } from './Pages/admin';
-
 
 function App() {
     return (
@@ -62,7 +59,7 @@ function App() {
                 <Toaster position="top-right" reverseOrder={false} gutter={12} />
 
                 <Routes>
-
+                    {/* ── Client routes ── */}
                     <Route path="/" element={<MainLayout />}>
                         <Route index element={<HomePage />} />
                         <Route path="Cac-Chuyen-Di" element={<ToursPage />} />
@@ -71,39 +68,42 @@ function App() {
                         <Route path="Lien-He" element={<ContactPage />} />
                         <Route path="Thanh-Toan" element={<CheckoutPage />} />
                         <Route path="/payment-return" element={<PaymentReturnPage />} />
+                        <Route path="dat-tour-thanh-cong" element={<BookingSuccessPage />} />
                         <Route element={<ProtectedRoute />}>
                             <Route path="Thong-Tin-Ca-Nhan" element={<Profile />} />
                             <Route path="Danh-Sach-Yeu-Thich" element={<Wishlist />} />
                         </Route>
                     </Route>
 
-                    <Route element={<ProtectedRoute allowedRoles={["1", "2"]} />}>
+                    {/* ── Admin routes (role 1 & 2) ── */}
+                    <Route element={<ProtectedRoute allowedRoles={['1', '2']} />}>
                         <Route path="/Quan-ly" element={<AdminLayout />}>
                             <Route index element={<DashBoard />} />
                             <Route path="Dia-diem" element={<LocationManager />} />
                             <Route path="Loai-Dia-Diem" element={<TypeLocationManager />} />
                             <Route path="Loai-Tour" element={<TypeTourManager />} />
+
                             <Route path="Cac-chuyen-di">
                                 <Route index element={<TourManager />} />
-
                                 <Route path="Them-Tour" element={<TourFormPage mode="add" />} />
-
                                 <Route path="Xem-chi-tiet/:id" element={<TourFormPage mode="view" />} />
-
                                 <Route path="Cap-nhat/:id" element={<TourFormPage mode="edit" />} />
                             </Route>
-                            <Route path="Khach-san">
-                                <Route index element={<HotelManager />} />
-                                <Route path="Them-Khach-San" element={<HotelCreatePage />} />
-                                <Route path="Xem-chi-tiet/:id" element={<HotelDetailPage />} />
-                                <Route path="Cap-nhat/:id" element={<HotelEditPage />} />
-                            </Route>
+
+                            {/*
+                             * Khách sạn: chỉ còn 1 route duy nhất.
+                             * Thêm / Xem / Sửa đều xử lý trong HotelManager thông qua HotelFormModal.
+                             */}
+                            <Route path="Khach-san" element={<HotelManager />} />
+
                             <Route path="Tien-ich" element={<AmenitiesManager />} />
                             <Route path="Don-dat-cac-chuyen-di" element={<BookingManager />} />
                             <Route path="Lien-he" element={<ContactManager />} />
                         </Route>
                     </Route>
-                    <Route element={<ProtectedRoute allowedRoles={["1"]} />}>
+
+                    {/* ── Admin routes (role 1 only) ── */}
+                    <Route element={<ProtectedRoute allowedRoles={['1']} />}>
                         <Route path="/Quan-ly" element={<AdminLayout />}>
                             <Route path="Nhan-vien" element={<StaffManager />} />
                             <Route path="Tai-khoan" element={<UserManager />} />
