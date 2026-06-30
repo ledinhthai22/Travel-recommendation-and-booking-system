@@ -73,7 +73,7 @@ namespace travel_recommendation_and_booking_system.Services
                 <p>Đơn đặt tour <strong>{order.MaDatCho}</strong> đã bị hủy tự động vì Quý khách chưa thanh toán trước 3 ngày khởi hành.</p>
                 <p>Trân trọng,<br/>Lối Riêng Travel</p>";
 
-            await SendEmailAsync(order.NguoiDung?.Email, subject, body);
+            await SendEmailAsync(order.NguoiDung!.Email, subject, body);
         }
         public async Task SendBookingConfirmationAsync(DonDatTour order)
         {

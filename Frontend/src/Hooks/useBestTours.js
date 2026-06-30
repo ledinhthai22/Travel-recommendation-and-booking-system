@@ -1,39 +1,38 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getBestToursApi, getTourDesignJustForYouApi, getNextTripSuggestionsApi } from "~/Services/HomeService";
 import useAuth from "~/Hooks/useAuth";
 
-export const useBestTours = (limit = 12, type = "best") => { 
+export const useBestTours = (limit = 12, type = "best") => {
     const [tours, setTours] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const { isAuthenticated } = useAuth();
 
-    useEffect(() => {
-        const fetchTours = async () => {
-            try {
-                setLoading(true);
-                let data;
+    const fetchTours = useCallback(async () => {
+        try {
+            setLoading(true);
+            let data;
 
-                if (isAuthenticated) {
-                    // Nếu type là "next-trip" và đã đăng nhập -> Gọi API chuyến đi tiếp theo
-                    if (type === "next-trip") {
-                        data = await getNextTripSuggestionsApi(limit);
-                    } else {
-                        // Mặc định là gợi ý cá nhân
-                        data = await getTourDesignJustForYouApi(limit);
-                    }
+            if (isAuthenticated) {
+                if (type === "next-trip") {
+                    data = await getNextTripSuggestionsApi(limit);
                 } else {
-                    data = await getBestToursApi(limit);
+                    data = await getTourDesignJustForYouApi(limit);
                 }
-                setTours(data);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
+            } else {
+                data = await getBestToursApi(limit);
             }
-        };
-        fetchTours();
+            setTours(data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
     }, [limit, isAuthenticated, type]);
 
-    return { tours, loading, error };
+    useEffect(() => {
+        fetchTours();
+    }, [fetchTours]);
+
+    return { tours, loading, error, refetch: fetchTours };
 };

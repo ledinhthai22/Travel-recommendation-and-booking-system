@@ -124,18 +124,6 @@ export default function Header() {
                                         </div>
                                     </div>
                                 </div>
-
-                                <button
-                                    onClick={() => {
-                                        navigate("/admin/profile");
-                                        setIsProfileOpen(false);
-                                    }}
-                                    className="w-full px-5 py-2 text-left text-[12px] flex items-center gap-3 hover:bg-slate-50 transition-colors"
-                                >
-                                    <User size={16} />
-                                    Thông tin cá nhân
-                                </button>
-
                                 <div className="border-t border-slate-100 my-1 mx-2" />
 
                                 <button

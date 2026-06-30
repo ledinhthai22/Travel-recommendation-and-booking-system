@@ -126,15 +126,13 @@ export default function Dashboard() {
 
     return (
         <div className="min-h-screen p-4 space-y-6">
-            
-            {/* HEADER */}
-            <div className="flex flex-col sm:flex-items sm:flex-row items-start sm:items-center justify-between gap-4">
+                oke
+       
+            {/* <div className="flex flex-col sm:flex-items sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-800">Tổng quan</h1>
                     <p className="text-slate-500 mt-1">Chào mừng bạn trở lại, Admin!</p>
                 </div>
-
-                {/* Khối chức năng bên phải */}
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                     <button 
                         onClick={handleExport}
@@ -155,7 +153,7 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* KPI CARDS */}
+
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
                 <KpiCard icon={Ticket} color="bg-sky-500" label="Tổng đặt tour" value="1.248" delta="+12%" deltaType="up" />
                 <KpiCard icon={DollarSign} color="bg-emerald-500" label="Doanh thu" value="4,6 tỷ đ" delta="+8,3%" deltaType="up" />
@@ -163,9 +161,9 @@ export default function Dashboard() {
                 <KpiCard icon={Luggage} color="bg-amber-500" label="Tour đang diễn ra" value="37" delta="+5" deltaType="up" />
             </div>
 
-            {/* ROW 2: Bar Chart + Pie Trạng thái */}
+            
             <div className="grid grid-cols-12 gap-5">
-                {/* Bar Chart */}
+             
                 <div className="col-span-12 lg:col-span-8 bg-white rounded-3xl border border-slate-200 p-6">
                     <div className="flex items-center justify-between mb-5">
                         <div>
@@ -192,7 +190,7 @@ export default function Dashboard() {
                     </ResponsiveContainer>
                 </div>
 
-                {/* Pie Chart: Trạng thái đơn hàng */}
+               
                 <div className="col-span-12 lg:col-span-4 bg-white rounded-3xl border border-slate-200 p-6">
                     <div className="mb-4">
                         <h3 className="font-semibold text-slate-800 text-base">Trạng thái đơn hàng</h3>
@@ -212,7 +210,7 @@ export default function Dashboard() {
                                     <Cell key={index} fill={entry.color} />
                                 ))}
                             </Pie>
-                            {/* FIX: Sử dụng PieTooltip riêng để không lỗi màu */}
+                          
                             <Tooltip content={<PieTooltip />} />
                         </PieChart>
                     </ResponsiveContainer>
@@ -220,9 +218,8 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* ROW 3: Line + Pie Hành vi + Horizontal Bar */}
             <div className="grid grid-cols-12 gap-5">
-                {/* Line Chart */}
+               
                 <div className="col-span-12 lg:col-span-5 bg-white rounded-3xl border border-slate-200 p-6">
                     <div className="flex items-center justify-between mb-5">
                         <div>
@@ -291,7 +288,6 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Horizontal Bar: Top tour bán chạy */}
                 <div className="col-span-12 lg:col-span-4 bg-white rounded-3xl border border-slate-200 p-6">
                     <div className="mb-5">
                         <h3 className="font-semibold text-slate-800 text-base">Top tour bán chạy</h3>
@@ -315,9 +311,9 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* ROW 4: Pie Độ tuổi + Bảng giao dịch */}
+          
             <div className="grid grid-cols-12 gap-5">
-                {/* Pie Chart: Độ tuổi */}
+               
                 <div className="col-span-12 lg:col-span-4 bg-white rounded-3xl border border-slate-200 p-6">
                     <div className="mb-4">
                         <h3 className="font-semibold text-slate-800 text-base">Độ tuổi khách hàng</h3>
@@ -351,7 +347,7 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Bảng giao dịch gần đây */}
+          
                 <div className="col-span-12 lg:col-span-8 bg-white rounded-3xl border border-slate-200 p-6">
                     <div className="flex items-center justify-between mb-5">
                         <div>
@@ -392,7 +388,7 @@ export default function Dashboard() {
                         </table>
                     </div>
                 </div>
-            </div>
+            </div> */}
 
         </div>
     );

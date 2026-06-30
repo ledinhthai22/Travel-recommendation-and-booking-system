@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs.TourBooking;
 using travel_recommendation_and_booking_system.Interfaces;
+using travel_recommendation_and_booking_system.Services;
 
 namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
@@ -82,6 +83,45 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         {
             var result = await _service.UpdateBookingByAdminAsync(dto);
             return Ok(new { success = result });
+        }
+
+        [HttpPost("print-contract")]
+        public async Task<IActionResult> PrintContractsByIds([FromBody] PrintContractByIdsDTO dto)
+        {
+            if (dto.MaDonDatTours == null || !dto.MaDonDatTours.Any())
+                return BadRequest("Chưa chọn đơn nào.");
+
+            try
+            {
+                var (pdf, fileName) = await _service.GenerateContractsPdfWithNameAsync(dto.MaDonDatTours);
+
+                Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{fileName}\"");
+                Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
+
+                return File(pdf, "application/pdf");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("print-contract/by-chuyen/{maChuyen}")]
+        public async Task<IActionResult> PrintContractsByChuyen(int maChuyen)
+        {
+            try
+            {
+                var (pdf, fileName) = await _service.GenerateContractsPdfByChuyenWithNameAsync(maChuyen);
+
+                Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{fileName}\"");
+                Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
+
+                return File(pdf, "application/pdf");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

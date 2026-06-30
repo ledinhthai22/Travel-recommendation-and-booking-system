@@ -108,16 +108,16 @@ export default function TourDetail() {
                                 {tourInfo?.ngay} ngày {tourInfo?.dem} đêm
                             </span>
 
-                            <span className="rounded-full bg-white px-4 py-2 text-sm font-medium shadow-sm">
+                            {/* <span className="rounded-full bg-white px-4 py-2 text-sm font-medium shadow-sm">
                                 Khởi hành từ {selectedDeparture?.chuyenKhoiHanh?.diemKhoiHanh}
-                            </span>
+                            </span> */}
                         </div>
                     </div>
 
-                    <button className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500 transition-all">
+                    {/* <button className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500 transition-all">
                         <Heart size={18} />
                         Yêu thích
-                    </button>
+                    </button> */}
                 </div>
 
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">

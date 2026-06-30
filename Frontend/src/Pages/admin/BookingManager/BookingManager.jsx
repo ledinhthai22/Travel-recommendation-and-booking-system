@@ -3,6 +3,7 @@ import {
     Calendar, RefreshCw,
     Banknote, SlidersHorizontal,
     CreditCard, ArrowRightLeft,
+    Printer
 } from 'lucide-react';
 import CustomDataTable from '~/components/UI/Table/CustomDataTable';
 import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
@@ -12,10 +13,11 @@ import { getPagedTourBookingAdminApi, getTourBookingDetailAdminApi } from '~/Ser
 import BookingDetailModal from './BookingDetailModal';
 import CreateBookingAdminModal from './CreateBookingAdminModal';
 import RowActionsButton from '~/components/UI/Table/Button/RowActionsButton';
-import { getDate } from 'date-fns';
 import { connection } from '~/Services/signalRService';
-import { toastSuccess } from '~/utils/Toast';
-import { formatCurrency } from '~/Helper/FormatCurrency';
+import { toastSuccess, toastError } from '~/utils/Toast';
+import { printContractsByIdsApi } from '~/Services/TourBookingService';
+import Checkbox from '~/components/UI/Table/Checkbox';
+
 export const ORDER_STATUS = {
     1: { text: 'Chờ duyệt', color: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-amber-400' },
     2: { text: 'Đã duyệt', color: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-400' },
@@ -52,6 +54,9 @@ const PAYMENT_OPTIONS = [
     { value: '3', label: 'Hoàn tiền' },
 ];
 
+
+const canPrintContract = (row) => row.trangThaiDon === 2 && row.trangThaiThanhToan === 1;
+
 export default function BookingManager() {
     const [bookings, setBookings] = useState([]);
     const [totalRows, setTotalRows] = useState(0);
@@ -69,6 +74,11 @@ export default function BookingManager() {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [detailLoading, setDetailLoading] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    const [selectedMap, setSelectedMap] = useState({});
+    const [printing, setPrinting] = useState(false);
+
+    const selectedRows = useMemo(() => Object.values(selectedMap), [selectedMap]);
 
     const fetchBookings = useCallback(async () => {
         try {
@@ -122,6 +132,108 @@ export default function BookingManager() {
             connection.off("BookingCreated");
         };
     }, [fetchBookings]);
+
+    // Bật/tắt chọn 1 dòng — cộng dồn đúng qua mọi trang vì state này độc lập với trang hiện tại.
+    const toggleRow = useCallback((row) => {
+        if (!canPrintContract(row)) return;
+        setSelectedMap(prev => {
+            const next = { ...prev };
+            if (next[row.maDonDatTour]) {
+                delete next[row.maDonDatTour];
+            } else {
+                next[row.maDonDatTour] = row;
+            }
+            return next;
+        });
+    }, []);
+
+    // Chọn/bỏ chọn tất cả các dòng HỢP LỆ trong trang hiện tại.
+    const selectablePageRows = useMemo(() => bookings.filter(canPrintContract), [bookings]);
+    const isAllOnPageSelected =
+        selectablePageRows.length > 0 &&
+        selectablePageRows.every(row => !!selectedMap[row.maDonDatTour]);
+
+    const toggleSelectAllOnPage = useCallback(() => {
+        setSelectedMap(prev => {
+            const next = { ...prev };
+            const allSelected = selectablePageRows.every(row => !!next[row.maDonDatTour]);
+            selectablePageRows.forEach(row => {
+                if (allSelected) {
+                    delete next[row.maDonDatTour];
+                } else {
+                    next[row.maDonDatTour] = row;
+                }
+            });
+            return next;
+        });
+    }, [selectablePageRows]);
+
+    const clearAllSelections = () => {
+        setSelectedMap({});
+    };
+
+    // Tải file PDF về máy với đúng tên file (MaChuyenCode_NgayKhoiHanh_SoLuongKhach.pdf),
+    // đồng thời mở thêm 1 tab xem trước.
+    const downloadPdfBlob = (blob, fileName) => {
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        // Mở thêm tab xem trước. Bỏ dòng này nếu chỉ cần tải về, không cần xem ngay.
+        window.open(url, '_blank');
+
+        // Dọn dẹp object URL sau khi dùng xong
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+    };
+
+    // Đọc tên file thật từ header Content-Disposition mà backend trả về.
+    // Backend phải có Access-Control-Expose-Headers: Content-Disposition
+    // (xem AdminTourBookingsController.PrintContractsByIds) thì JS mới đọc được.
+    const extractFileName = (response, fallback) => {
+        const disposition = response.headers?.['content-disposition'];
+        if (disposition) {
+            const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+            if (match?.[1]) {
+                try {
+                    return decodeURIComponent(match[1]);
+                } catch {
+                    return match[1];
+                }
+            }
+        }
+        return fallback;
+    };
+
+    const handlePrintContract = async () => {
+        if (selectedRows.length === 0) {
+            toastError('Vui lòng chọn ít nhất 1 đơn để in hợp đồng');
+            return;
+        }
+        try {
+            setPrinting(true);
+            const ids = selectedRows.map(r => r.maDonDatTour);
+            const res = await printContractsByIdsApi(ids);
+            const fileName = extractFileName(res, `HopDong-${Date.now()}.pdf`);
+            downloadPdfBlob(new Blob([res.data], { type: 'application/pdf' }), fileName);
+            clearAllSelections();
+        } catch (err) {
+            console.error(err);
+            if (err.response?.data instanceof Blob) {
+                const text = await err.response.data.text();
+                toastError(text || 'In hợp đồng thất bại');
+            } else {
+                toastError('In hợp đồng thất bại');
+            }
+        } finally {
+            setPrinting(false);
+        }
+    };
+
     const handleViewDetail = async (row) => {
         setDetailLoading(true);
         setIsDetailOpen(true);
@@ -139,6 +251,29 @@ export default function BookingManager() {
     const hasActiveFilter = statusFilter || paymentFilter || dateFilter;
 
     const columns = useMemo(() => [
+        {
+            name: (
+                <Checkbox
+                    checked={isAllOnPageSelected}
+                    onChange={toggleSelectAllOnPage}
+                    disabled={selectablePageRows.length === 0}
+                    title="Chọn tất cả đơn hợp lệ trong trang này"
+                />
+            ),
+            width: '48px',
+            center: true,
+            cell: (r) => {
+                const allowed = canPrintContract(r);
+                return (
+                    <Checkbox
+                        checked={!!selectedMap[r.maDonDatTour]}
+                        disabled={!allowed}
+                        onChange={() => toggleRow(r)}
+                        title={allowed ? '' : 'Chỉ chọn được đơn đã duyệt và đã thanh toán thành công'}
+                    />
+                );
+            },
+        },
         {
             name: 'STT',
             width: '56px',
@@ -195,20 +330,6 @@ export default function BookingManager() {
                 </span>
             ),
         },
-        // {
-        //     name: 'Tổng tiền',
-        //     minWidth: '150px',
-        //     maxWidth: '200px',
-        //     selector: r => r.tongTien,
-        //     cell: r => (
-        //         <span className="font-mono text-[11px] font-semibold text-slate-600 break-all leading-tight">
-        //           {formatCurrency(r.tongTien)}
-        //         </span>
-        //     ),
-        // },
-
-        
-        
         {
             name: 'Tổng tiền',
             sortable: true,
@@ -289,7 +410,7 @@ export default function BookingManager() {
                 />
             ),
         },
-    ], [page, perPage]);
+    ], [page, perPage, selectedMap, isAllOnPageSelected, selectablePageRows, toggleRow, toggleSelectAllOnPage]);
 
     return (
         <div className="space-y-3 p-4">
@@ -306,54 +427,88 @@ export default function BookingManager() {
                     />
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 px-5 pb-4 border-t border-slate-50 pt-3">
-                    <SlidersHorizontal size={13} className="text-slate-400 shrink-0" />
+                <div className="flex flex-wrap items-center justify-between gap-2 px-5 pb-4 border-t border-slate-50 pt-3 w-full">
 
-                    <div className="w-50">
-                        <SelectField
-                            value={statusFilter}
-                            onChange={setStatusFilter}
-                            options={STATUS_OPTIONS}
-                            valueKey="id"
-                            labelKey="name"
-                            searchable={false}
-                            placeholder="Trạng thái đơn"
-                        />
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="w-50">
+                            <SelectField
+                                value={statusFilter}
+                                onChange={setStatusFilter}
+                                options={STATUS_OPTIONS}
+                                valueKey="id"
+                                labelKey="name"
+                                searchable={false}
+                                placeholder="Trạng thái đơn"
+                            />
+                        </div>
+
+                        <div className="w-50">
+                            <SelectField
+                                value={paymentFilter}
+                                onChange={setPaymentFilter}
+                                options={PAYMENT_OPTIONS}
+                                valueKey="value"
+                                labelKey="label"
+                                searchable={false}
+                                placeholder="Trạng thái TT"
+                            />
+                        </div>
+
+                        <div className="w-100">
+                            <DatePicker
+                                value={dateFilter}
+                                onChange={setDateFilter}
+                                placeholderText="Ngày đặt..."
+                                maxDate={new Date()}
+                            />
+                        </div>
+
+                        {hasActiveFilter && (
+                            <button
+                                onClick={() => { setStatusFilter(''); setPaymentFilter(''); setDateFilter(''); }}
+                                className="flex items-center gap-1 px-3 py-3 rounded-lg border border-slate-200 text-slate-400 text-xs font-bold hover:text-slate-600 hover:bg-slate-50 transition"
+                            >
+                                <RefreshCw size={11} />
+                                Xóa lọc
+                            </button>
+                        )}
                     </div>
 
-                    <div className="w-50">
-                        <SelectField
-                            value={paymentFilter}
-                            onChange={setPaymentFilter}
-                            options={PAYMENT_OPTIONS}
-                            valueKey="value"
-                            labelKey="label"
-                            searchable={false}
-                            placeholder="Trạng thái TT"
-                        />
-                    </div>
-
-                    <div className="w-100">
-                        <DatePicker
-                            value={dateFilter}
-                            onChange={setDateFilter}
-                            placeholderText="Ngày đặt..."
-                            maxDate={new Date()}
-                        />
-                    </div>
-
-                    {hasActiveFilter && (
-                        <button
-                            onClick={() => { setStatusFilter(''); setPaymentFilter(''); setDateFilter(''); }}
-                            className="flex items-center gap-1 px-3 py-3 rounded-lg border border-slate-200 text-slate-400 text-xs font-bold hover:text-slate-600 hover:bg-slate-50 transition"
-                        >
-                            <RefreshCw size={11} />
-                            Xóa lọc
-                        </button>
+                    {selectedRows.length > 0 && (
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={clearAllSelections}
+                                className="text-xs font-semibold text-slate-400 hover:text-slate-600 border border-slate-400 py-[12px] rounded-2xl px-4"
+                            >
+                                Bỏ chọn tất cả
+                            </button>
+                            <button
+                                onClick={handlePrintContract}
+                                disabled={printing}
+                                className="
+                                    flex items-center gap-2
+                                    px-4 py-2.5
+                                    border border-emerald-500
+                                    text-emerald-500
+                                    bg-white
+                                    rounded-xl
+                                    font-semibold
+                                    hover:bg-emerald-50
+                                    transition
+                                    disabled:opacity-50
+                                "
+                            >
+                                {printing ? (
+                                    <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <Printer size={18} />
+                                )}
+                                In hợp đồng ({selectedRows.length})
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>
-
 
             <div>
                 <CustomDataTable
@@ -365,7 +520,6 @@ export default function BookingManager() {
                     paginationTotalRows={totalRows}
                     highlightOnHover
                     pointerOnHover
-                    selectableRows
                     onChangePage={(p) => setPage(p)}
                     onChangeRowsPerPage={(newPP, p) => { setPerPage(newPP); setPage(p); }}
                     noDataComponent={

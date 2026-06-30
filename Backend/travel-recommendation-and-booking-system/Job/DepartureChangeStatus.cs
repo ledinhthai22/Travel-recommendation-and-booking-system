@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
+using travel_recommendation_and_booking_system.Models;
 using travel_recommendation_and_booking_system.SignalR;
 
 namespace travel_recommendation_and_booking_system.Job
@@ -23,7 +24,7 @@ namespace travel_recommendation_and_booking_system.Job
 
 
             var departures = await _context.ChuyenKhoiHanhs
-                .Where(c => c.NgayXoa == null && c.TrangThai != 0 && c.TrangThai != 4)
+                .Where(c => c.NgayXoa == null)
                 .ToListAsync();
 
             var updatedDeparturesLog = new List<object>();
@@ -31,7 +32,7 @@ namespace travel_recommendation_and_booking_system.Job
 
             foreach (var chuyen in departures)
             {
-                int correctStatus = GetCorrectStatus(chuyen.NgayKhoiHanh, chuyen.NgayKetThuc, now);
+                int correctStatus = GetCorrectStatus(chuyen, now);
 
                 if (chuyen.TrangThai != correctStatus)
                 {
@@ -58,14 +59,21 @@ namespace travel_recommendation_and_booking_system.Job
             }
         }
 
-        
-        private int GetCorrectStatus(DateTime ngayKhoiHanh, DateTime ngayKetThuc, DateTime now)
+
+        private int GetCorrectStatus(ChuyenKhoiHanh c, DateTime now)
         {
-            if (now < ngayKhoiHanh)
-                return 1; 
-            if (now >= ngayKhoiHanh && now <= ngayKetThuc)
+            var soChoConLai = c.SoChoToiDa - c.SoChoDaDat;
+
+            if (soChoConLai <= 0)
+                return 0;
+
+            if (now < c.NgayKhoiHanh)
+                return 1;
+
+            if (now <= c.NgayKetThuc)
                 return 2;
-            return 4;   
+
+            return 4;
         }
     }
 }
