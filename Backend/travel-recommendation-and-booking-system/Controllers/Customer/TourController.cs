@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using travel_recommendation_and_booking_system.Constants;
+using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.Interfaces;
+using travel_recommendation_and_booking_system.Models;
 
 namespace travel_recommendation_and_booking_system.Controllers.Customer
 {
@@ -55,23 +57,23 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
         [HttpPost("wishlist/{tourId}")]
         public async Task<IActionResult> AddToWishlist(int tourId)
         {
+            // 1. Xác thực người dùng
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int maNguoiDung))
             {
-                return Unauthorized("Không xác định được danh tính người dùng.");
+                return Unauthorized(new { message = "Không xác định được danh tính người dùng." });
             }
-
             try
             {
                 var isSuccess = await _tour.AddFavoriteTourAsync(maNguoiDung, tourId);
 
                 if (isSuccess)
                 {
-                    //var tour = await _tour.GetTourByIdAsync(tourId);
-                    //if (tour != null)
-                    //{
-                    //    await _recommen.UpdatePreference(maNguoiDung, tour.MaLoaiTour, RecommendationWeights.WishlistTour);
-                    //}
+                    var tour = await _tour.GetTourByIdAsync(tourId);
+                    if (tour != null)
+                    {
+                        await _recommen.UpdatePreference(maNguoiDung, tourId, RecommendationWeights.WishlistTour,true);
+                    }
                     return Ok(new { message = "Đã thêm vào danh sách yêu thích thành công!" });
                 }
 
@@ -81,6 +83,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
             {
                 return StatusCode(500, new { message = $"Lỗi hệ thống: {ex.Message}" });
             }
+
         }
 
         [HttpDelete("wishlist")]
@@ -98,7 +101,12 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
 
                 if (isSuccess)
                 {
-                    return Ok(new { message = "Đã xóa các tour đã chọn khỏi danh sách yêu thích thành công!" });
+                    foreach (var tourId in tourIds)
+                    {
+                        await _recommen.UpdatePreference(maNguoiDung, tourId, RecommendationWeights.WishlistTour, false);
+                    }
+
+                    return Ok(new { message = "Đã xóa khỏi danh sách yêu thích thành công!" });
                 }
 
                 return BadRequest(new { message = "Không tìm thấy tour cần xóa hoặc danh sách ID rỗng." });
@@ -107,23 +115,6 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
             {
                 return StatusCode(500, new { message = $"Lỗi hệ thống: {ex.Message}" });
             }
-        }
-
-        // theo dõi hành vi người dùng
-        [HttpGet("Details/{id}")]
-        public async Task<IActionResult> Details(int id)
-        {
-            var tour = await _tour.GetTourByIdAsync(id);
-
-            if (tour == null) return NotFound();
-
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out int maNguoiDung))
-            {
-                await _recommen.UpdatePreference(maNguoiDung, tour.MaLoaiTour, RecommendationWeights.ViewTour);
-            }
-
-            return Ok(tour);
         }
 
         [HttpPost("confirm-interest/{id}")]
@@ -136,7 +127,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
 
             if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out int maNguoiDung))
             {
-                await _recommen.UpdatePreference(maNguoiDung, tour.MaLoaiTour, RecommendationWeights.ConfirmInterest);
+                await _recommen.UpdatePreference(maNguoiDung, tour.MaLoaiTour, RecommendationWeights.ConfirmInterest,true);
             }
             return Ok();
         }

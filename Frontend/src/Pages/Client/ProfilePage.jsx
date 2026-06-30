@@ -26,6 +26,7 @@ export default function ProfilePage() {
     //history
     const [historyData, setHistoryData] = useState({ items: [], pageNumber: 1, totalItems: 0, pageSize: 5 });
     const [searchTerm, setSearchTerm] = useState("");
+    const [filterStatus, setFilterStatus] = useState("");
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
     const fetchProfile = async () => {
@@ -150,16 +151,21 @@ const handleViewDetail = async (maDonDatTour) => {
                     <aside className="border-r border-slate-200 p-4">
 
                         <div className="mb-6 flex items-center gap-3">
-                            <div className="relative">
+                            {(!proFileData?.duongDanAnh || proFileData.duongDanAnh === "undefined" || proFileData.duongDanAnh === "null") ? (
+                                // Nếu không có ảnh -> Hiện khung tròn chữ
+                                <div className="h-14 w-14 flex items-center justify-center rounded-full bg-sky-500 text-white font-bold text-xl border border-slate-200 box-border shrink-0">
+                                    {(proFileData?.hoTen || "UN").substring(0, 2).toUpperCase()}
+                                </div>
+                            ) : (
+                                // Nếu có ảnh -> Hiện ảnh tròn
                                 <img
-                                    src={user.avatar}
+                                    src={`https://localhost:7016${proFileData.duongDanAnh}`}
                                     alt="Avatar"
-                                    className="h-14 w-14 rounded-full object-cover border border-slate-200"
+                                    className="h-14 w-14 rounded-full object-cover border border-slate-200 box-border shrink-0"
                                 />
-                            </div>
+                            )}
                             <h2 className="font-semibold">{user.name}</h2>
                         </div>
-
                         <div className="space-y-2">
                             {menus.map((item) => {
                                 const Icon = item.icon;
@@ -254,7 +260,7 @@ const handleViewDetail = async (maDonDatTour) => {
                                                 className="grid items-center gap-4 md:grid-cols-[80px_1fr_120px_100px]"
                                             >
                                                 <img
-                                                    src={tour.duongDanAnh ? `https://localhost:7016${tour.duongDanAnh}` : "https://placehold.co/150x100?text=No+Image"}
+                                                    src={`https://localhost:7016${tour.duongDanAnh}`}
                                                     alt={tour.tenTour}
                                                     className="h-16 w-20 rounded-lg object-cover"
                                                 />
@@ -267,7 +273,6 @@ const handleViewDetail = async (maDonDatTour) => {
                                                     <p className="text-sm text-slate-500">
                                                         {tour.ngayBatDau}
                                                     </p>
-
                                                     <p className="text-sm text-slate-500">
                                                         {tour.diaDiem}
                                                     </p>
@@ -327,7 +332,7 @@ const handleViewDetail = async (maDonDatTour) => {
                                             value={
                                                 proFileData?.ngaySinh
                                                     ? new Date(proFileData.ngaySinh).toLocaleDateString("vi-VN")
-                                                    : ""
+                                                    : "Chưa cập nhật"
                                             }
                                             readOnly
                                         />
@@ -346,7 +351,7 @@ const handleViewDetail = async (maDonDatTour) => {
 
                                         <InputField
                                             label="Địa chỉ"
-                                            value={proFileData?.diaChi || ""}
+                                            value={proFileData?.diaChi || "Chưa cập nhật"}
                                             readOnly
                                         />
                                     </div>
@@ -382,15 +387,30 @@ const handleViewDetail = async (maDonDatTour) => {
                                 <div className="mb-6 flex items-center justify-between">
                                     <h2 className="text-xl font-bold">Lịch sử đặt tour</h2>
                                     <div className="flex gap-2">
+                                        <select 
+                                            value={filterStatus}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setFilterStatus(val);
+                                                fetchHistory(1, searchTerm, val ? parseInt(val) : null);
+                                            }}
+                                            className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-sky-500"
+                                        >
+                                            <option value="">Tất cả trạng thái</option>
+                                            <option value="1">Chờ xác nhận</option>
+                                            <option value="2">Đã duyệt</option>
+                                            <option value="3">Hoàn tất</option>
+                                            <option value="4">Đã hủy</option>
+                                        </select>
                                         <input
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
-                                            onKeyDown={handleSearchKeyDown}
+                                            onKeyDown={(e) => e.key === 'Enter' && fetchHistory(1, searchTerm, filterStatus ? parseInt(filterStatus) : null)}
                                             placeholder="Tìm tour..."
                                             className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-sky-500"
                                         />
                                         <button 
-                                            onClick={() => fetchHistory(1, searchTerm)}
+                                            onClick={() => fetchHistory(1, searchTerm, filterStatus ? parseInt(filterStatus) : null)}
                                             className="rounded-lg bg-sky-500 px-4 py-2 text-sm text-white hover:bg-sky-600 transition"
                                         >
                                             Tìm
@@ -436,10 +456,10 @@ const handleViewDetail = async (maDonDatTour) => {
 
                                 {totalPages && (
                                     <div className="mt-8">
-                                        <Pagination
+                                       <Pagination
                                             currentPage={historyData.pageNumber}
                                             totalPages={totalPages}
-                                            onPageChange={(newPage) => fetchHistory(newPage, searchTerm)}
+                                            onPageChange={(newPage) => fetchHistory(newPage, searchTerm, filterStatus ? parseInt(filterStatus) : null)}
                                         />
                                     </div>
                                 )}

@@ -109,13 +109,10 @@ export default function UpdateUserProfileModal({
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        if (
-            formData.email &&
-            !emailRegex.test(formData.email)
-        ) {
-            validationErrors.Email = [
-                "Email không đúng định dạng"
-            ];
+        if (!formData.email || formData.email.trim() === "") {
+            validationErrors.Email = ["Email không được để trống"];
+        } else if (!emailRegex.test(formData.email)) {
+            validationErrors.Email = ["Email không đúng định dạng"];
         }
 
         const phoneRegex =
@@ -233,14 +230,19 @@ export default function UpdateUserProfileModal({
                 >
                     <div className="mb-8 flex flex-col items-center">
                         <div className="relative">
-                            <img
-                                src={
-                                    previewUrl ||
-                                    "https://i.pravatar.cc/200?img=32"
-                                }
-                                alt="avatar"
-                                className="h-28 w-28 rounded-full border-4 border-sky-100 object-cover shadow-md "
-                            />
+                            {(!previewUrl || previewUrl === "undefined" || previewUrl === "null" || previewUrl.trim() === "") ? (
+                                // Hiển thị khung tròn chữ nếu không có previewUrl
+                                <div className="h-28 w-28 flex items-center justify-center rounded-full bg-sky-500 text-white font-bold text-4xl border-4 border-sky-100 shadow-md">
+                                    {(formData.hoTen || "UN").substring(0, 2).toUpperCase()}
+                                </div>
+                            ) : (
+                                // Hiển thị ảnh tròn nếu có previewUrl
+                                <img
+                                    src={previewUrl}
+                                    alt="avatar"
+                                    className="h-28 w-28 rounded-full border-4 border-sky-100 object-cover shadow-md"
+                                />
+                            )}
 
                             <input
                                 ref={fileInputRef}
@@ -304,7 +306,7 @@ export default function UpdateUserProfileModal({
                         <InputField
                             label="Địa chỉ"
                             name="diaChi"
-                            value={formData.diaChi}
+                            value={formData.diaChi || "Chưa cập nhật"}
                             onChange={handleChange}
                         />
                         <div>

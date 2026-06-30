@@ -5,7 +5,6 @@ namespace travel_recommendation_and_booking_system.Models
     public class SoThichDiaDiemNguoiDung
     {
         [Key]
-        public int MaDiemDiaDiem { get; set; }
         public int MaNguoiDung { get; set; }
         public int MaDiaDiem { get; set; }
         public float DiemYeuThich { get; set; }

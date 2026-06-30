@@ -6,7 +6,7 @@ import { changePasswordApi } from '~/Services/UserProfile';
 import { toastSuccess, toastError } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
 
-export default function ChangePasswordModal({ isOpen, onClose }) {
+export default function ChangePasswordModal({ isOpen, onClose   }) {
     const [formData, setFormData] = useState({ matKhau: '', matKhauMoi: '', xacNhanMatKhau: '' });
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [errors, setErrors] = useState({});
@@ -37,7 +37,10 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
             newErrors.matKhauMoi = ["Phải có chữ hoa, thường, số và ký tự đặc biệt"];
         }
         
-        if (formData.matKhauMoi !== formData.xacNhanMatKhau) {
+        if (!formData.xacNhanMatKhau) {
+            newErrors.xacNhanMatKhau = ["Nhập xác nhận mật khẩu"];
+        }
+        else if (formData.matKhauMoi !== formData.xacNhanMatKhau) {
             newErrors.xacNhanMatKhau = ["Mật khẩu xác nhận không khớp"];
         }
         
@@ -48,9 +51,12 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
-        if (errors[name]) {
-            setErrors(prev => ({ ...prev, [name]: null }));
-        }
+        // if (errors[name]) {
+        //     setErrors(prev => ({ ...prev, [name]: null }));
+        // }
+        if (Object.keys(errors).length > 0) {
+        setErrors({});
+    }
     };
 
     const handleConfirmSubmit = async () => {

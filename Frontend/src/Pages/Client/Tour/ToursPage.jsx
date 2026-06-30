@@ -15,8 +15,10 @@ import { useBestTours } from "~/Hooks/useBestTours";
 import { getMyWishlistIdsApi } from '~/Services/TourService';
 import { mockTours, PAGE_SIZE } from "~/constants/Tours.constants";
 import { getToursByLocationSlugApi } from "~/Services/TourService";
+import { getTourDesignJustForYouApi,getRecommendedToursApi,searchToursApi,getLatestToursApi } from "~/Services/HomeService";
 
 export default function Tours() {
+    
     const [tours, setTours] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -37,7 +39,35 @@ export default function Tours() {
     const isLoggedIn = !!user;
     const { tours: bestTours, loading: bestToursLoading } = useBestTours(12, "next-trip");
     const [wishlistIds, setWishlistIds] = useState([]);
+    const [filterParams, setFilterParams] = useState({
+        keyword: "",
+        category: "Tất cả",
+        maxPrice: 50000000,
+        ratings: [],
+        dayFilters: [],
+        sort: "featured",
+        pageNumber: 1,
+        pageSize: 12
+    });
 
+    const [toursData, setToursData] = useState({ items: [], totalItems: 0 });
+
+    const fetchTours = async () => {
+        setLoading(true);
+        try {
+            const response = await searchToursApi(filterParams); 
+            setToursData(response);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchTours();
+    }, [filterParams]);
+    
     useEffect(() => {
         if (isAuthenticated) {
             getMyWishlistIdsApi().then(ids => setWishlistIds(ids));
@@ -45,6 +75,7 @@ export default function Tours() {
     }, [isAuthenticated]);
 
     const mapApiTourToCard = useCallback((tour) => ({
+       
         id: tour.maTour,
         maTour: tour.maTour,
         slug: tour.slug,
@@ -74,37 +105,41 @@ export default function Tours() {
     }), []);
 
     const loadTours = useCallback(async () => {
-        try {
-            setLoading(true);
+    try {
+        setLoading(true);
 
-            if (diaDiemSlug) {
-                const response =
-                    await getToursByLocationSlugApi(
-                        diaDiemSlug
-                    );
-
-                setTenDiaDiem(
-                    response?.tenDiaDiem || ""
-                );
-
-                const mappedTours =
-                    (response?.tours || []).map(
-                        mapApiTourToCard
-                    );
-
-                setTours(mappedTours);
-                console.log("API RESPONSE:", response);
-            } else {
-                setLocationName("");
-                setTours(mockTours);
-            }
-        } catch (error) {
-            console.error(error);
-            setTours([]);
-        } finally {
-            setLoading(false);
+        // Nếu người dùng muốn xem "Tour dành riêng cho bạn"
+        if (isLoggedIn && searchParams.get("view") === "personalized") {
+            const data = await getTourDesignJustForYouApi(20); // Gọi API không giới hạn limit
+            const mappedTours = (data || []).map(mapApiTourToCard);
+            setTours(mappedTours);
+            setTenDiaDiem("Tour dành riêng cho bạn");
+        } 
+        // Có thể bạn quan tâm
+        else if (isLoggedIn && searchParams.get("view") === "recommended") {
+            const data = await getRecommendedToursApi(20); 
+            setTours(data.map(mapApiTourToCard));
+            setTenDiaDiem("Có thể bạn quan tâm");
         }
-    }, [diaDiemSlug, mapApiTourToCard]);
+        //  Nếu người dùng chọn lọc theo địa điểm
+        else if (diaDiemSlug) {
+            const response = await getToursByLocationSlugApi(diaDiemSlug);
+            setTenDiaDiem(response?.tenDiaDiem || "");
+            const mappedTours = (response?.tours || []).map(mapApiTourToCard);
+            setTours(mappedTours);
+        } 
+        // 3. Mặc định
+        else {
+            const response = await getLatestToursApi();
+            setTours(response.map(mapApiTourToCard));
+        }
+    } catch (error) {
+        console.error("Lỗi loadTours:", error);
+        setTours([]);
+    } finally {
+        setLoading(false);
+    }
+}, [diaDiemSlug, isLoggedIn,filterParams, searchParams, mapApiTourToCard]);
 
     useEffect(() => {
         loadTours();
@@ -354,10 +389,11 @@ export default function Tours() {
                                         {paginated.map(
                                             (tour) => (
                                                 <TourCard
-                                                    key={
-                                                        tour.id
-                                                    }
+                                                    key={tour.id}
                                                     {...tour}
+                                                    initialWishlist={wishlistIds.includes(tour.id)}
+                                                    showWishlist={true}
+                                                    disableLink={true}
                                                 />
                                             )
                                         )}

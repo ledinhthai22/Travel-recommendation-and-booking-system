@@ -4,6 +4,6 @@ namespace Interfaces
 {
     public interface IRecommendationService
     {
-        Task UpdatePreference(int userId, int tourTypeId, float weight);
+        Task UpdatePreference(int userId, int tourId, float weight, bool isAdd);
     }
 }

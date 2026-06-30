@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { SlidersHorizontal, Star, Calendar, Tag, DollarSign } from 'lucide-react';
 import SelectField from '~/components/UI/Form/SelectField';
-import { CATEGORIES } from '~/constants/Tours.constants';
+import { useCategories } from '~/Hooks/useCategories';
 
 const SectionLabel = ({ icon: Icon, label }) => (
     <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -17,11 +17,6 @@ const DAY_OPTIONS = [
     { id: '2-3', name: '2 – 3 ngày' },
     { id: '4-7', name: '4 – 7 ngày' },
     { id: '7+', name: 'Trên 1 tuần' },
-];
-
-const CATEGORY_OPTIONS = [
-    { id: 'Tất cả', name: 'Tất cả' },
-    ...CATEGORIES.filter(c => c !== 'Tất cả').map(c => ({ id: c, name: c })),
 ];
 
 export default function TourFilter({
@@ -47,6 +42,9 @@ export default function TourFilter({
             prev.includes(value) ? prev.filter(r => r !== value) : [...prev, value]
         );
     };
+
+    const { categories, loading } = useCategories();
+
 
     return (
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
@@ -127,11 +125,11 @@ export default function TourFilter({
                 <SelectField
                     value={category}
                     onChange={setCategory}
-                    options={CATEGORY_OPTIONS}
+                    options={categories} // <--- Dùng danh sách động từ API
                     valueKey="id"
                     labelKey="name"
                     searchable={false}
-                    placeholder="Chọn loại tour"
+                    placeholder={loading ? "Đang tải..." : "Chọn loại tour"}
                 />
             </div>
 
@@ -191,18 +189,18 @@ export default function TourFilter({
             <FilterDivider />
 
             {/* ── Số ngày đi ── */}
-            <div>
-                <SectionLabel icon={Calendar} label="Số ngày đi" />
-                <SelectField
-                    value={dayFilters[0] ?? ''}
-                    onChange={v => setDayFilters(v ? [v] : [])}
-                    options={DAY_OPTIONS}
-                    valueKey="id"
-                    labelKey="name"
-                    searchable={false}
-                    placeholder="Chọn khoảng thời gian"
-                />
-            </div>
+           <div>
+            <SectionLabel icon={Calendar} label="Số ngày đi" />
+            <SelectField
+                value={dayFilters[0] ?? ''}
+                onChange={(val) => setDayFilters(val ? [val] : [])}
+                options={DAY_OPTIONS}
+                valueKey="id"
+                labelKey="name"
+                searchable={false}
+                placeholder="Chọn khoảng thời gian"
+            />
+        </div>
         </div>
     );
 }

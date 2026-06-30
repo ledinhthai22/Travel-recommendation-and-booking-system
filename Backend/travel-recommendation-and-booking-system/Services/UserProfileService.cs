@@ -189,7 +189,7 @@ namespace travel_recommendation_and_booking_system.Services
             };
         }
 
-        public async Task<PageDTO<HistoryTourDTO>> GetBookingHistoryAsync(int userId, string searchTerm, int page, int pageSize)
+        public async Task<PageDTO<HistoryTourDTO>> GetBookingHistoryAsync(int userId, string searchTerm, int page, int pageSize, int? status)
         {
             if (page < 1)
             {
@@ -213,6 +213,11 @@ namespace travel_recommendation_and_booking_system.Services
                     d.ChuyenKhoiHanh.Tour.TenTour.ToLower().Contains(searchTerm) ||
                     d.MaDatCho.ToLower().Contains(searchTerm)
                 );
+            }
+
+            if (status.HasValue)
+            {
+                query = query.Where(d => d.TrangThaiDon == status.Value);
             }
 
             var totalItems = await query.CountAsync();

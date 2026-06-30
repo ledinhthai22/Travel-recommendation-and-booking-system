@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Log;
 using travel_recommendation_and_booking_system.DTOs.LogSystem;
+using travel_recommendation_and_booking_system.DTOs.Tour;
 using travel_recommendation_and_booking_system.DTOs.TypeTour;
 using travel_recommendation_and_booking_system.Helper;
 using travel_recommendation_and_booking_system.Interfaces;
@@ -197,6 +198,19 @@ namespace Services
                 }
             });
             return true;
+        }
+
+        public async Task<List<CategoryDTO>> GetActiveCategoriesAsync()
+        {
+            return await _context.LoaiHinhTours
+                .AsNoTracking()
+                .Where(l => l.TrangThai == true) 
+                .Select(l => new CategoryDTO
+                {
+                    Id = l.MaLoaiTour,
+                    Name = l.TenLoaiTour
+                })
+                .ToListAsync();
         }
     }
 }

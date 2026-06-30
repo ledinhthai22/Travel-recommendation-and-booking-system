@@ -19,8 +19,6 @@ namespace travel_recommendation_and_booking_system.Models
         [StringLength(100)]
         public string TinhThanh { get; set; }
         [StringLength(100)]
-        //public string QuocGia { get; set; }
-        //public bool KhuVuc { get; set; }
         public DateTime NgayTao { get; set; } = DateTime.Now;
         public DateTime NgayCapNhat { get; set; } = DateTime.Now;
         public DateTime? NgayXoa { get; set; }
@@ -28,5 +26,7 @@ namespace travel_recommendation_and_booking_system.Models
         [ForeignKey("LoaiDiaDiem")]
         public virtual LoaiDiaDiem LoaiDiaDiemNavigation { get; set; }
         public virtual ICollection<CTLichTrinh> CTLichTrinhs { get; set; } = new List<CTLichTrinh>();
+        public virtual ICollection<SoThichDiaDiemNguoiDung> SoThichDiaDiemNguoiDungs { get; set; } = new List<SoThichDiaDiemNguoiDung>();
+
     }
 }

@@ -19,12 +19,14 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
         private readonly IRecommendationService _recommen;
         private readonly ITourService _tour;
         private readonly ILocationService _location;
+        private readonly ITypeTourService _tourService;
 
-        public HomeController(IRecommendationService recommen,ITourService tour, ILocationService location)
+        public HomeController(IRecommendationService recommen,ITourService tour, ILocationService location, ITypeTourService type)
         {
             _recommen = recommen;
             _tour = tour;
             _location = location;
+            _tourService = type;
            
         }
         
@@ -64,6 +66,13 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
         public async Task<IActionResult> Search([FromQuery] TourFilterParamsDTO p)
         {
             return Ok(await _tour.GetFilteredToursAsync(p));
+        }
+
+        [HttpGet("get-categories")]
+        public async Task<IActionResult> GetCategories()
+        {
+            var categories = await _tourService.GetActiveCategoriesAsync();
+            return Ok(categories);
         }
 
     }

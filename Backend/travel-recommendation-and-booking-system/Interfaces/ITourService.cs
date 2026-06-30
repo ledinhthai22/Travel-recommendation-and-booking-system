@@ -39,5 +39,9 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<List<TourCardDTO>> GetNextTripSuggestionsAsync(int userId, int? limit =null); // gợi ý cho chuyến tiếp theo
 
         Task<PageDTO<TourCardDTO>> GetFilteredToursAsync(TourFilterParamsDTO p); // tìm kiếm tour
+
+        //tính điểm xem chi tiết
+        Task TrackViewTourAsync(int userId, int tourId); // xem lướt
+        Task TrackDeepInterestAsync(int userId, int tourId); // xem lâu
     }
 }

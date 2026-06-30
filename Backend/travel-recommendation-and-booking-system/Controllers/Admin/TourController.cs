@@ -21,10 +21,11 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
     public class TourController : ControllerBase
     {
         private readonly ITourService _tour;
-
-        public TourController(ITourService tour)
+        private readonly IRecommendationService _recommendation;
+        public TourController(ITourService tour, IRecommendationService recommendation)
         {
             _tour = tour;
+            _recommendation = recommendation;
         }
 
         [HttpGet("paged")]
@@ -212,13 +213,26 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         [HttpGet("{id}")]
         public async Task<IActionResult> GetTourDetail(int id)
         {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int maNguoiDung))
+            {
+                return Unauthorized(new { message = "Không xác định được danh tính người dùng." });
+            }
+            bool isLogged = int.TryParse(userIdClaim, out maNguoiDung);
             try
             {
                 var tourDetail = await _tour.GetTourDetailAsync(id);
 
                 if (tourDetail == null)
                 {
-                    return NotFound(new { Message = $"Không tìm thấy tour với mã {id}" });
+                    return NotFound(new { message = "Không tìm thấy thông tin tour." });
+                }
+
+                // 3. Nếu người dùng đã đăng nhập, ghi nhận hành vi "Xem tour" vào hệ thống gợi ý
+                if (isLogged)
+                {
+                    // Sử dụng một trọng số nhỏ hơn "Yêu thích" (ví dụ: RecommendationWeights.ViewTour = 1.0f)
+                    await _recommendation.UpdatePreference(maNguoiDung, id, RecommendationWeights.ViewTour, true);
                 }
 
                 return Ok(tourDetail);

@@ -41,3 +41,13 @@ export const getNextTripSuggestionsApi = async (limit = 4) => {
     });
     return response.data;
 };
+
+export const searchToursApi = async (params) => {
+    const response = await axiosClient.get('/Home/search', { params });
+    return response.data;
+};
+
+export const getCategoriesApi = async () => {
+    const response = await axiosClient.get("/Home/get-categories");
+    return response.data;
+};

@@ -11,6 +11,7 @@ namespace travel_recommendation_and_booking_system.Data
         public DbSet<NhanVien> NhanViens { get; set; }
         public DbSet<DiaDiem> DiaDiems { get; set; }
         public DbSet<KhachSan> KhachSans { get; set; }
+        public DbSet<TrangThaiTuongTac> TrangThaiTuongTacs { get; set; }
         public DbSet<SoThichDiaDiemNguoiDung> SoThichDiaDiemNguoiDungs { get; set; }
         public DbSet<HinhAnhSK> HinhAnhSKs { get; set; }
         public DbSet<TienIch> TienIches { get; set; }
@@ -97,7 +98,19 @@ namespace travel_recommendation_and_booking_system.Data
                     .HasForeignKey(x => x.MaNhanVien)
                     .OnDelete(DeleteBehavior.Restrict);
             });
-            modelBuilder.Entity<SoThichNguoiDung>().HasKey(sn => new { sn.MaNguoiDung, sn.MaLoaiTour });
+            modelBuilder.Entity<SoThichNguoiDung>(entity =>
+            {
+                entity.HasKey(s => new { s.MaNguoiDung, s.MaLoaiTour });
+                entity.HasOne(s => s.NguoiDung).WithMany(n => n.SoThichNguoiDungs).HasForeignKey(s => s.MaNguoiDung);
+                entity.HasOne(s => s.LoaiHinhTour).WithMany(l => l.SoThichNguoiDungs).HasForeignKey(s => s.MaLoaiTour);
+            });
+
+            modelBuilder.Entity<SoThichDiaDiemNguoiDung>(entity =>
+            {
+                entity.HasKey(s => new { s.MaNguoiDung, s.MaDiaDiem });
+                entity.HasOne(s => s.NguoiDung).WithMany(n => n.SoThichDiaDiemNguoiDungs).HasForeignKey(s => s.MaNguoiDung);
+                entity.HasOne(s => s.DiaDiem).WithMany(d => d.SoThichDiaDiemNguoiDungs).HasForeignKey(s => s.MaDiaDiem);
+            });
 
             modelBuilder.Entity<DanhSachYeuThich>(entity =>
             {

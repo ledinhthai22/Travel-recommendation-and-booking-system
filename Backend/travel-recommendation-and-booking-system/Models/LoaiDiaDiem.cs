@@ -14,4 +14,5 @@ public class LoaiDiaDiem
     public DateTime NgayCapNhat { get; set; }
     public DateTime? Ngayxoa { get; set; } = null;
     public ICollection<DiaDiem> DanhSachDiaDiem { get; set; } = new List<DiaDiem>();
+
 }

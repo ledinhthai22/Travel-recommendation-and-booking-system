@@ -40,5 +40,6 @@ namespace travel_recommendation_and_booking_system.Models
         public virtual ICollection<Tour_KhachSan> Tour_KhachSans { get; set; } = new List<Tour_KhachSan>();
         public virtual ICollection<DanhSachYeuThich> DanhSachYeuThichs { get; set; } = new List<DanhSachYeuThich>();
         public virtual ICollection<DanhGia> DanhGias { get; set; } = new List<DanhGia>();
+        public virtual ICollection<TrangThaiTuongTac> TrangThaiTuongTacs { get; set; }
     }
 }

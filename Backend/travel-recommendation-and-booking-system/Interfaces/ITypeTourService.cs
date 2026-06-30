@@ -1,4 +1,5 @@
 ﻿using DTOs.Page;
+using travel_recommendation_and_booking_system.DTOs.Tour;
 using travel_recommendation_and_booking_system.DTOs.TypeLocation;
 using travel_recommendation_and_booking_system.DTOs.TypeTour;
 
@@ -10,5 +11,6 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<bool> CreateTypeTourAsync(TypeTourDTO typetour);
         Task<bool> UpdateTypeTourAsync(int id, TypeTourDTO typetour);
         Task<bool> SoftDeleteTypeTourAsync(int id);
+        Task<List<CategoryDTO>> GetActiveCategoriesAsync();
     }
 }

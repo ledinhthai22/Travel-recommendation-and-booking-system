@@ -58,7 +58,7 @@ function TourCard({
             // Nếu API thất bại, hoàn tác lại trạng thái cũ
             setWishlisted(previousState);
             toastError?.("Có lỗi xảy ra khi cập nhật danh sách yêu thích.");
-            console.error("Wishlist error:", error);
+            // console.error("Wishlist error:", error);
         }
     };
 

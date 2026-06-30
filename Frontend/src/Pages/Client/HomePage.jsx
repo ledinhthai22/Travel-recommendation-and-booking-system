@@ -124,7 +124,7 @@ export default function HomePage() {
                         }
                         action={
                             <Link
-                                to="/Cac-Chuyen-Di"
+                                to="/Cac-Chuyen-Di?view=personalized"
                                 className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-bold text-slate-600 transition hover:border-[#0EA5E5] hover:bg-[#0EA5E5] hover:text-white"
                             >
                                 Xem thêm
@@ -178,7 +178,7 @@ export default function HomePage() {
                         }
                         action={
                             <Link
-                                to="/Cac-Chuyen-Di"
+                                to="/Cac-Chuyen-Di?view=recommended"
                                 className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-bold text-slate-600 transition hover:border-[#0EA5E5] hover:bg-[#0EA5E5] hover:text-white"
                             >
                                 Xem thêm

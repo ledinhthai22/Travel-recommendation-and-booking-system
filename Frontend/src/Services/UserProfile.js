@@ -13,12 +13,13 @@ export const getOverviewApi = async ()=>{
 export const getHistoryApi = async (
     page = 1,
     pageSize = 5,
-    search = ''
+    search = '',
+    status=null
 ) => {
     const reponse = await axiosClient.get(
         "/customer/UserProfile/history",
         {
-            params: { page, pageSize, search: search || undefined }
+            params: { page, pageSize, search: search || undefined ,status:status ||undefined}
         }
     );
     return reponse.data;

@@ -128,7 +128,7 @@ namespace Controllers.Customer
         }
 
         [HttpGet("history")]
-        public async Task<IActionResult> GetHistory([FromQuery] string search = "", [FromQuery] int page = 1, [FromQuery] int pageSize = 5)
+        public async Task<IActionResult> GetHistory([FromQuery] string search = "", [FromQuery] int page = 1, [FromQuery] int pageSize = 5, [FromQuery] int? status=null)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
@@ -136,7 +136,7 @@ namespace Controllers.Customer
 
             try
             {
-                var result = await _user.GetBookingHistoryAsync(userId, search, page, pageSize);
+                var result = await _user.GetBookingHistoryAsync(userId, search, page, pageSize,status);
                 return Ok(result);
             }
             catch (System.Exception)

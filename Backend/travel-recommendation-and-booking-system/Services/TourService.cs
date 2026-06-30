@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Text;
 using DTOs.Page;
+using Interfaces;
 using Microsoft.EntityFrameworkCore;
+using travel_recommendation_and_booking_system.Constants;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Departure;
 using travel_recommendation_and_booking_system.DTOs.FavoriteTour;
@@ -27,13 +29,15 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly ILogService _logService;
         private readonly ICurrentUserService _currentUserService;
         private const string DEFAULT_SCHEDULE_IMAGE = "default-schedule.jpg";
+        private readonly IRecommendationService _recommendation;
 
-        public TourService(AppDbContext context, IWebHostEnvironment env, ILogService logService, ICurrentUserService currentUserService)
+        public TourService(AppDbContext context, IWebHostEnvironment env, ILogService logService, ICurrentUserService currentUserService,IRecommendationService recommendation)
         {
             _context = context;
             _env = env;
             _logService = logService;
             _currentUserService = currentUserService;
+            _recommendation = recommendation;
         }
 
 
@@ -1104,7 +1108,7 @@ namespace travel_recommendation_and_booking_system.Services
         {
             return await _context.Tours
                 .Include(t => t.LoaiHinhTour)
-                .FirstOrDefaultAsync(t => t.MaLoaiTour == id);
+                .FirstOrDefaultAsync(t => t.MaTour == id);
         }
 
         //Tour du lịch nổi bật (lượt đặt)
@@ -1179,53 +1183,54 @@ namespace travel_recommendation_and_booking_system.Services
         // tour dành riêng cho bạn
         public async Task<List<TourCardDTO>> GetTourDesignJustForYouAsync(int userId, int? limit = null)
         {
+            // 1. Lấy dữ liệu sở thích (cần lấy cả danh sách để tính tổng điểm)
             var topPreferences = await _context.SoThichNguoiDungs
                 .AsNoTracking()
                 .Where(s => s.MaNguoiDung == userId)
-                .OrderByDescending(s => s.DiemYeuThich)
-                .ThenByDescending(s => s.NgayCapNhat)
-                .Take(5)
+                .ToListAsync();
+
+            var locationScores = await _context.SoThichDiaDiemNguoiDungs
+                .AsNoTracking()
+                .Where(ui => ui.MaNguoiDung == userId)
                 .ToListAsync();
 
             var favoriteTourIds = await _context.DanhSachYeuThichs
-                .AsNoTracking()
                 .Where(y => y.MaNguoiDung == userId)
                 .Select(y => y.MaTour)
                 .ToListAsync();
 
-            var query = _context.Tours
+            // 2. Query Tour
+            var allTours = await _context.Tours
                 .AsNoTracking()
+                .Include(t => t.LichTrinhs).ThenInclude(l => l.CTLichTrinhs).ThenInclude(ct => ct.DiaDiem)
+                .Include(t => t.HinhAnhTours)
+                .Include(t => t.ChuyenKhoiHanhs).ThenInclude(ckh => ckh.GiaChuyens)
+                .Include(t => t.DanhGias)
+                .AsSplitQuery()
                 .Where(t => t.TrangThai == 1 && t.NgayXoa == null)
+                .ToListAsync();
+
+            // 3. Tính điểm và sắp xếp
+            var result = allTours
                 .Select(t => new
                 {
                     Tour = t,
-                    MaLoaiTour = t.MaLoaiTour
-                });
-
-            var allTours = await query.ToListAsync();
-
-            var result = allTours
-                .OrderByDescending(x => topPreferences.Any(p => p.MaLoaiTour == x.MaLoaiTour)) // Tầng 1: Thuộc loại yêu thích
-                .ThenByDescending(x => { // Tầng 2: "Trọng tài" ngày cập nhật sở thích gần nhất
-                    var pref = topPreferences.FirstOrDefault(p => p.MaLoaiTour == x.MaLoaiTour);
-                    return pref != null ? pref.NgayCapNhat : DateTime.MinValue;
+                    TotalScore = (favoriteTourIds.Contains(t.MaTour) ? 1000 : 0) +
+                                 (t.LichTrinhs.SelectMany(lt => lt.CTLichTrinhs).Sum(ct =>
+                                    locationScores.FirstOrDefault(ls => ls.MaDiaDiem == ct.MaDiaDiem)?.DiemYeuThich ?? 0)) +
+                                 (topPreferences.FirstOrDefault(p => p.MaLoaiTour == t.MaLoaiTour)?.DiemYeuThich ?? 0)
                 })
-                .ThenByDescending(x => x.Tour.LuotDat)
-                .Select(x => new TourCardDTO
+                .OrderByDescending(x => x.TotalScore)
+                .Select(x => new TourCardDTO // Bây giờ lấy từ x.Tour
                 {
                     MaTour = x.Tour.MaTour,
                     TenTour = x.Tour.TenTour,
-                    // Thêm dấu ? vào trước các thuộc tính truy cập từ FirstOrDefault
-                    DuongDanAnh = x.Tour.HinhAnhTours?.FirstOrDefault(l => l.AnhChinh)?.DuongDanAnh ?? "default-image.jpg",
+                    DuongDanAnh = x.Tour.HinhAnhTours?.FirstOrDefault(l => l.AnhChinh == true)?.DuongDanAnh ?? "default-image.jpg",
                     Ngay = x.Tour.Ngay,
                     Dem = x.Tour.Dem,
                     slug = x.Tour.Slug,
-                    DiemDen = x.Tour.LichTrinhs?.SelectMany(l => l.CTLichTrinhs)
-                       ?.Select(ct => ct.DiaDiem.TinhThanh)?.FirstOrDefault() ?? "Đang cập nhật",
-                    GiaChuyen = x.Tour.ChuyenKhoiHanhs?.SelectMany(ckh => ckh.GiaChuyens)
-                         ?.OrderBy(gc => gc.GiaNguoiLon)
-                         ?.Select(gc => gc.GiaNguoiLon)
-                         ?.FirstOrDefault() ?? 0,
+                    DiemDen = x.Tour.LichTrinhs?.SelectMany(l => l.CTLichTrinhs)?.Select(ct => ct.DiaDiem.TenDiaDiem)?.FirstOrDefault() ?? "Đang cập nhật",
+                    GiaChuyen = x.Tour.ChuyenKhoiHanhs?.SelectMany(ckh => ckh.GiaChuyens)?.OrderBy(gc => gc.GiaNguoiLon)?.Select(gc => gc.GiaNguoiLon)?.FirstOrDefault() ?? 0,
                     DiemDanhGia = x.Tour.DanhGias?.Any() == true ? Math.Round(x.Tour.DanhGias.Average(d => (double)d.DiemDanhGia), 1) : 0,
                     SoLuongDanhGia = x.Tour.DanhGias?.Count() ?? 0,
                     IsFavorite = favoriteTourIds.Contains(x.Tour.MaTour),
@@ -1235,61 +1240,69 @@ namespace travel_recommendation_and_booking_system.Services
 
             return limit.HasValue && limit.Value > 0 ? result.Take(limit.Value).ToList() : result;
         }
+
         // Có thể bạn quan tâm
         public async Task<List<TourCardDTO>> GetRecommendedToursAsync(int userId, int? limit = null)
         {
+            // 1. Lấy dữ liệu sở thích (Loại tour & Địa điểm)
             var topPreferences = await _context.SoThichNguoiDungs
                 .AsNoTracking()
                 .Where(s => s.MaNguoiDung == userId)
-                .OrderByDescending(s => s.DiemYeuThich)
-                .ThenByDescending(s => s.NgayCapNhat)
-                .Take(5)
                 .ToListAsync();
 
-            var topLocationPreferences = await _context.SoThichDiaDiemNguoiDungs
+            var locationScores = await _context.SoThichDiaDiemNguoiDungs
                 .AsNoTracking()
-                .Where(s => s.MaNguoiDung == userId)
-                .OrderByDescending(s => s.DiemYeuThich)
-                .ThenByDescending(s => s.NgayCapNhat)
-                .Take(5)
+                .Where(ui => ui.MaNguoiDung == userId)
                 .ToListAsync();
 
-            var query = _context.Tours
+            var favoriteTourIds = await _context.DanhSachYeuThichs
                 .AsNoTracking()
+                .Where(y => y.MaNguoiDung == userId)
+                .Select(y => y.MaTour)
+                .ToListAsync();
+
+            // 2. Query Tour (Include đầy đủ để lấy dữ liệu tính điểm)
+            var allTours = await _context.Tours
+                .AsNoTracking()
+                .Include(t => t.LichTrinhs).ThenInclude(l => l.CTLichTrinhs).ThenInclude(ct => ct.DiaDiem)
+                .Include(t => t.HinhAnhTours)
+                .Include(t => t.ChuyenKhoiHanhs).ThenInclude(ckh => ckh.GiaChuyens)
+                .Include(t => t.DanhGias)
+                .AsSplitQuery()
                 .Where(t => t.TrangThai == 1 && t.NgayXoa == null)
-                .Select(t => new TourCardDTO
-                {
-                    MaTour = t.MaTour,
-                    TenTour = t.TenTour,
-                    Ngay = t.Ngay,
-                    Dem = t.Dem,
-                    slug = t.Slug,
-                    DuongDanAnh = t.HinhAnhTours.FirstOrDefault(a => a.AnhChinh == true).DuongDanAnh ?? "",
-                    GiaChuyen = t.ChuyenKhoiHanhs.SelectMany(c => c.GiaChuyens).Min(g => (decimal?)g.GiaNguoiLon) ?? 0,
-                    DiemDanhGia = t.DanhGias.Any() ? Math.Round(t.DanhGias.Average(d => (double)d.DiemDanhGia), 1) : 0,
-                    LuotDat = t.LuotDat,
-                    MaLoaiTour = t.MaLoaiTour
-                });
+                .ToListAsync();
 
-            var allTours = await query.ToListAsync();
-
-            // 3. Sắp xếp đa tầng tại bộ nhớ (Sử dụng dữ liệu sở thích đã có ngày cập nhật)
+            // 3. Tính điểm và sắp xếp theo TotalScore (giống hàm JustForYou)
             var result = allTours
-                .OrderByDescending(t => {
-                    // Tầng 1: Khớp loại hình tour
-                    var pref = topPreferences.FirstOrDefault(p => p.MaLoaiTour == t.MaLoaiTour);
-                    return pref != null;
+                .Select(t => new
+                {
+                    Tour = t,
+                    // Logic tính điểm: Yêu thích (ưu tiên cao) + Điểm Địa điểm + Điểm Loại tour
+                    TotalScore = (favoriteTourIds.Contains(t.MaTour) ? 1000 : 0) +
+                                 (t.LichTrinhs.SelectMany(lt => lt.CTLichTrinhs).Sum(ct =>
+                                     locationScores.FirstOrDefault(ls => ls.MaDiaDiem == ct.MaDiaDiem)?.DiemYeuThich ?? 0)) +
+                                 (topPreferences.FirstOrDefault(p => p.MaLoaiTour == t.MaLoaiTour)?.DiemYeuThich ?? 0)
                 })
-                .ThenByDescending(t => {
-                    // Tầng 2: "Trọng tài thời gian" - Ngày cập nhật gần nhất của sở thích đó
-                    var pref = topPreferences.FirstOrDefault(p => p.MaLoaiTour == t.MaLoaiTour);
-                    return pref != null ? pref.NgayCapNhat : DateTime.MinValue;
+                .OrderByDescending(x => x.TotalScore) // Sắp xếp theo tổng điểm
+                .ThenByDescending(x => x.Tour.LuotDat) // Nếu bằng điểm thì ưu tiên tour hot
+                .Select(x => new TourCardDTO
+                {
+                    MaTour = x.Tour.MaTour,
+                    TenTour = x.Tour.TenTour,
+                    DuongDanAnh = x.Tour.HinhAnhTours?.FirstOrDefault(l => l.AnhChinh == true)?.DuongDanAnh ?? "default-image.jpg",
+                    Ngay = x.Tour.Ngay,
+                    Dem = x.Tour.Dem,
+                    slug = x.Tour.Slug,
+                    DiemDen = x.Tour.LichTrinhs?.SelectMany(l => l.CTLichTrinhs)?.Select(ct => ct.DiaDiem.TenDiaDiem)?.FirstOrDefault() ?? "Đang cập nhật",
+                    GiaChuyen = x.Tour.ChuyenKhoiHanhs?.SelectMany(ckh => ckh.GiaChuyens)?.OrderBy(gc => gc.GiaNguoiLon)?.Select(gc => gc.GiaNguoiLon)?.FirstOrDefault() ?? 0,
+                    DiemDanhGia = x.Tour.DanhGias?.Any() == true ? Math.Round(x.Tour.DanhGias.Average(d => (double)d.DiemDanhGia), 1) : 0,
+                    SoLuongDanhGia = x.Tour.DanhGias?.Count() ?? 0,
+                    IsFavorite = favoriteTourIds.Contains(x.Tour.MaTour),
+                    LuotDat = x.Tour.LuotDat
                 })
-                .ThenByDescending(t => t.LuotDat) // Tầng 3: Độ phổ biến
-                .Take(limit ?? 8)
                 .ToList();
 
-            return result;
+            return limit.HasValue && limit.Value > 0 ? result.Take(limit.Value).ToList() : result;
         }
 
         //Gợi ý cho chuyến tiếp theo
@@ -1505,6 +1518,58 @@ namespace travel_recommendation_and_booking_system.Services
             }
         }
 
+        //tính điểm xem lướt
+        public async Task TrackViewTourAsync(int userId, int tourId)
+        {
+            var interaction = await _context.TrangThaiTuongTacs
+                .FirstOrDefaultAsync(t => t.MaNguoiDung == userId && t.MaTour == tourId);
+
+            if (interaction == null)
+            {
+                _context.TrangThaiTuongTacs.Add(new TrangThaiTuongTac
+                {
+                    MaNguoiDung = userId,
+                    MaTour = tourId,
+                    DaXemChiTiet = true
+                });
+
+                await _recommendation.UpdatePreference(userId, tourId, RecommendationWeights.ViewTour, true);
+            }
+            else if (!interaction.DaXemChiTiet)
+            {
+                interaction.DaXemChiTiet = true;
+
+                await _recommendation.UpdatePreference(userId, tourId, RecommendationWeights.ViewTour, true);
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        // tính điểm xem lâu
+        public async Task TrackDeepInterestAsync(int userId, int tourId)
+        {
+            var interaction = await _context.TrangThaiTuongTacs
+                .FirstOrDefaultAsync(t => t.MaNguoiDung == userId && t.MaTour == tourId);
+
+            if (interaction == null)
+            {
+                _context.TrangThaiTuongTacs.Add(new TrangThaiTuongTac
+                {
+                    MaNguoiDung = userId,
+                    MaTour = tourId,
+                    DaXemChiTiet = true,
+                    DaQuanTamLau = true
+                });
+                await _recommendation.UpdatePreference(userId, tourId,RecommendationWeights.ConfirmInterest, true);
+            }
+            else if (!interaction.DaQuanTamLau)
+            {
+                interaction.DaQuanTamLau = true;
+                await _recommendation.UpdatePreference(userId, tourId, RecommendationWeights.ConfirmInterest, true);
+            }
+
+            await _context.SaveChangesAsync();
+        }
     }
 
 }

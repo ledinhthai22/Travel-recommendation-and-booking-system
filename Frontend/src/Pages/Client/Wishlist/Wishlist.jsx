@@ -180,7 +180,7 @@ export default function WishlistPage() {
                                         <div className="absolute inset-0 z-20 rounded-2xl ring-2 ring-sky-500 pointer-events-none" />
                                     )}
 
-                                    <TourCard {...tour} showWishlist={false}/>
+                                    <TourCard {...tour} showWishlist={false} disableLink={true}/>
                                 </div>
                             );
                         })}
