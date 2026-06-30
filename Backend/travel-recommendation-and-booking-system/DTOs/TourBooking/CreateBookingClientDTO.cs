@@ -8,12 +8,11 @@
         public int SoNguoiLon { get; set; }
         public int SoTreEm { get; set; }
         public int SoEmBe { get; set; }
-
+        public int? PhuongThucThanhToan { get; set; }
         public string GhiChu { get; set; } = string.Empty;
 
         public List<KhachHangInputDTO> DanhSachHanhKhach { get; set; } = new();
 
-        // === THÔNG TIN LIÊN LẠC (Contact) ===
         public string? HoTenLienHe { get; set; }
         public string? SoDienThoaiLienHe { get; set; }
         public string? EmailLienHe { get; set; }

@@ -26,6 +26,5 @@ namespace travel_recommendation_and_booking_system.Models
         public virtual ICollection<HinhAnhSK> HinhAnhSKs { get; set; } = new List<HinhAnhSK>();
         public virtual ICollection<KS_TI> KS_TNs { get; set; } = new List<KS_TI>();
         public virtual ICollection<Tour_KhachSan> Tour_KhachSans { get; set; } = new List<Tour_KhachSan>();
-        public virtual ICollection<DonDatTour> DonDatTours { get; set; } = new List<DonDatTour>();
     }
 }

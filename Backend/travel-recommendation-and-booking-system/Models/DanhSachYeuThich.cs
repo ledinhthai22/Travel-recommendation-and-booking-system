@@ -7,7 +7,6 @@ namespace travel_recommendation_and_booking_system.Models
     {
         public int MaNguoiDung { get; set; }
         public int MaTour { get; set; }
-
         public virtual NguoiDung NguoiDung { get; set; }
         public virtual Tour Tour { get; set; }
     }

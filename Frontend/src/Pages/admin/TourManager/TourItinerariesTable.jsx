@@ -1,5 +1,5 @@
 import React from "react";
-import { Utensils } from "lucide-react";
+import { Utensils, Bed } from "lucide-react";
 import CustomDataTable from "~/components/UI/Table/CustomDataTable";
 import RowActionsButton from "~/components/UI/Table/Button/RowActionsButton";
 
@@ -12,25 +12,22 @@ export default function TourItinerariesTable({
     isLocked = false
 }) {
     const safeData = Array.isArray(data) ? data : [];
+
     const getImageUrl = (path) => {
         if (!path) return null;
-
-        if (path.startsWith("blob:")) {
-            return path;
-        }
-
+        if (path.startsWith("blob:")) return path;
         if (path.startsWith("/")) {
             return `${import.meta.env.VITE_API_URL}${path}`;
         }
-
         return path;
     };
+
     const columns = [
         {
             name: "Ngày",
             selector: (row) => row.soThuTuNgay,
             cell: (row) => (
-                <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-md">
+                <span className="inline-block px-3 py-1 text-xs font-bold bg-slate-100 text-slate-700 rounded-md">
                     Ngày {row.soThuTuNgay}
                 </span>
             ),
@@ -40,13 +37,10 @@ export default function TourItinerariesTable({
         },
         {
             name: "Hình ảnh",
-            width: "170px",
+            width: "160px",
             center: true,
             cell: (row) => {
-                const imageSrc = row.preview
-                    ? row.preview
-                    : getImageUrl(row.duongDanAnh);
-
+                const imageSrc = row.preview || getImageUrl(row.duongDanAnh);
                 return (
                     <div className="w-32 h-16 bg-slate-100 rounded-lg overflow-hidden border border-slate-200 my-1">
                         {imageSrc ? (
@@ -56,8 +50,7 @@ export default function TourItinerariesTable({
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                     e.target.onerror = null;
-                                    e.target.src =
-                                        "https://placehold.co/100x60?text=No+Image";
+                                    e.target.src = "https://placehold.co/100x60?text=No+Image";
                                 }}
                             />
                         ) : (
@@ -73,16 +66,27 @@ export default function TourItinerariesTable({
             name: "Tiêu đề ngày",
             selector: (row) => row.tenLichTrinh || "---",
             cell: (row) => (
-                <p
-                    className="font-semibold text-slate-700 line-clamp-2"
-                    title={row.tenLichTrinh}
-                >
+                <p className="font-semibold text-slate-700 line-clamp-2" title={row.tenLichTrinh}>
                     {row.tenLichTrinh || "---"}
                 </p>
             ),
             grow: 2,
             sortable: true,
         },
+        // {
+        //     name: "Khách sạn",
+        //     width: "180px",
+        //     cell: (row) => (
+        //         row.tenk ? (
+        //             <div className="flex items-center gap-1.5 text-xs">
+        //                 <Bed size={14} className="text-emerald-600" />
+        //                 <span className="font-medium text-emerald-700">KS #{row.maKhachSan}</span>
+        //             </div>
+        //         ) : (
+        //             <span className="text-slate-400 italic text-xs">Chưa chọn</span>
+        //         )
+        //     ),
+        // },
         {
             name: "Bữa ăn",
             selector: (row) => row.buaAn || "",
@@ -93,34 +97,26 @@ export default function TourItinerariesTable({
                         {row.buaAn}
                     </span>
                 ) : (
-                    <span className="text-slate-400 italic text-xs">
-                        Không có
-                    </span>
+                    <span className="text-slate-400 italic text-xs">Không có</span>
                 ),
-            width: "180px",
+            width: "170px",
             center: true,
         },
         {
             name: "Hoạt động chính",
             selector: (row) => row.hoatDongChinh || "",
             cell: (row) => (
-                <p
-                    className="text-xs text-slate-500 leading-relaxed line-clamp-2"
-                    title={row.hoatDongChinh}
-                >
+                <p className="text-xs text-slate-600 leading-relaxed line-clamp-2" title={row.hoatDongChinh}>
                     {row.hoatDongChinh || "---"}
                 </p>
             ),
-            grow: 2
+            grow: 2,
         },
         {
             name: "Lưu ý",
             selector: (row) => row.luuY || "",
             cell: (row) => (
-                <p
-                    className="text-xs text-slate-500 leading-relaxed line-clamp-2"
-                    title={row.luuY}
-                >
+                <p className="text-xs text-slate-500 leading-relaxed line-clamp-2" title={row.luuY}>
                     {row.luuY || "---"}
                 </p>
             ),
@@ -132,24 +128,15 @@ export default function TourItinerariesTable({
                 <RowActionsButton
                     row={row}
                     onView={isViewMode || isLocked ? () => onEdit(row) : null}
-                    onEdit={
-                        !isViewMode && !isLocked
-                            ? () => onEdit(row)
-                            : null
-                    }
-                    onDelete={
-                        !isViewMode && !isLocked && safeData.length > 1
-                            ? () => onDelete(row)
-                            : null
-                    }
+                    onEdit={!isViewMode && !isLocked ? () => onEdit(row) : null}
+                    onDelete={!isViewMode && !isLocked && safeData.length > 1 ? () => onDelete(row) : null}
                     showDelete={!isViewMode && !isLocked && safeData.length > 1}
                 />
             ),
-            width: "125px",
+            width: "130px",
             center: true,
         },
     ];
-
 
     return (
         <CustomDataTable
@@ -166,8 +153,8 @@ export default function TourItinerariesTable({
             highlightOnHover
             pointerOnHover
             noDataComponent={
-                <div className="py-9 text-center">
-                    <p className="text-slate-400 text-sm">Không có dữ liệu</p>
+                <div className="py-12 text-center">
+                    <p className="text-slate-400 text-sm">Chưa có lịch trình nào</p>
                 </div>
             }
         />

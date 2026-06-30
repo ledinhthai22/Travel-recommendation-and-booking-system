@@ -6,8 +6,18 @@ import useAuth from "~/Hooks/useAuth";
 export default function AvatarDropdown({ user, onLogout }) {
     const [open, setOpen] = useState(false);
     const { isStaff } = useAuth();
-
     const dropdownRef = useRef(null);
+    
+    const timestamp = new Date().getTime(); // Hoặc dùng 1 giá trị cố định nếu không muốn ảnh load lại mỗi lần mở dropdown
+    const path = user?.duongDanAnh || user?.avatar;
+    
+    let avatarUrl;
+    if (!path || path === "undefined" || path === "null") {
+        avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.hoTen || "User")}&background=0EA5E5&color=fff`;
+    } else {
+        const baseUrl = path.startsWith("http") ? path : `https://localhost:7016${path.startsWith("/") ? path : "/" + path}`;
+        avatarUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${timestamp}`;
+    }
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -15,24 +25,15 @@ export default function AvatarDropdown({ user, onLogout }) {
                 setOpen(false);
             }
         };
-
         document.addEventListener("mousedown", handleClickOutside);
         document.addEventListener("touchstart", handleClickOutside);
-
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
             document.removeEventListener("touchstart", handleClickOutside);
         };
-    }, [open]); 
-
-    const avatarUrl = user?.duongDanAnh
-        ? `https://localhost:7016${user.duongDanAnh}`
-        : user?.avatar
-            ? `https://localhost:7016${user.avatar}`
-            : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.hoTen || "User")}&background=0EA5E5&color=fff`;
+    }, [open]);
 
     return (
-
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setOpen((prev) => !prev)}
@@ -48,7 +49,7 @@ export default function AvatarDropdown({ user, onLogout }) {
                     src={avatarUrl}
                     alt={user?.hoTen}
                     onError={(e) => {
-                        e.target.src = "https://ui-avatars.com/api/?name=User";
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.hoTen || "User")}&background=0EA5E5&color=fff`;
                     }}
                     className="h-10 w-10 rounded-xl object-cover"
                 />
@@ -61,6 +62,9 @@ export default function AvatarDropdown({ user, onLogout }) {
                             <img
                                 src={avatarUrl}
                                 alt={user?.hoTen}
+                                onError={(e) => {
+                                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.hoTen || "User")}&background=0EA5E5&color=fff`;
+                                }}
                                 className="h-10 w-10 rounded-2xl object-cover"
                             />
                             <div>
@@ -123,4 +127,4 @@ export default function AvatarDropdown({ user, onLogout }) {
             )}
         </div>
     );
-}
+}   

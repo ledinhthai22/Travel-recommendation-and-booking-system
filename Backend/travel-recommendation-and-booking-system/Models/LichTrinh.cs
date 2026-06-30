@@ -28,6 +28,11 @@ namespace travel_recommendation_and_booking_system.Models
         public DateTime? NgayXoa { get; set; }
 
         public virtual Tour Tour { get; set; }
+        public int? MaKhachSan { get; set; }
+        [ForeignKey("MaKhachSan")]
+        public virtual KhachSan? KhachSan { get; set; }
+
         public virtual ICollection<CTLichTrinh> CTLichTrinhs { get; set; } = new List<CTLichTrinh>();
+
     }
 }

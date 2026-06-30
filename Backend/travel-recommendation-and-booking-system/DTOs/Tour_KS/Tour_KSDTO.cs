@@ -3,5 +3,6 @@
     public class Tour_KSDTO {
         public int MaTour { get; set; }
         public int MaKhachSan { get; set; }
+        public int SoThuTuNgay { get; set; }
     }
 }

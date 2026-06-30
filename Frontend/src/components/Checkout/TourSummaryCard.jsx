@@ -29,10 +29,6 @@ export default function TourSummaryCard({
     const singleRoomPrice =
         bookingData?.gia?.phuThuPhongDon || 0;
     const [showTransport, setShowTransport] = useState(true);
-    console.log(
-        "phuThuPhongDon:",
-        bookingData?.gia?.phuThuPhongDon
-    );
     
 
     return (

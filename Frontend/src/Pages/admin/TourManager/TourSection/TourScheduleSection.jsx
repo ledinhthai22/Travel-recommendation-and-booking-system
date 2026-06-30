@@ -12,7 +12,9 @@ import "react-datepicker/dist/react-datepicker.css";
 import { registerLocale } from "react-datepicker";
 import DateTimePicker from "~/components/UI/Form/DateTimePicker";
 import { getDate } from "date-fns";
+
 registerLocale("vi", vi);
+
 const DIEM_DI_OPTIONS = [
     { value: "Hồ Chí Minh", label: "Hồ Chí Minh" },
     { value: "Đà Nẵng", label: "Đà Nẵng" },
@@ -44,8 +46,6 @@ const makeEmptySchedule = () => ({
     gia: { ...EMPTY_GIA }
 });
 
-
-
 const getVal = (e) => e?.target?.value ?? e;
 
 const isValidNonNegativeNumber = (val) => {
@@ -54,82 +54,79 @@ const isValidNonNegativeNumber = (val) => {
     return !Number.isNaN(num) && num >= 0;
 };
 
-
-
 const validateDeparture = (item) => {
     const errs = {};
 
     if (!item.maHDV) errs.maHDV = "Vui lòng chọn hướng dẫn viên";
     if (!item.maPhuongTien) errs.maPhuongTien = "Vui lòng chọn phương tiện";
     if (!item.diemKhoiHanh?.trim()) errs.diemKhoiHanh = "Vui lòng chọn điểm khởi hành";
-    if (!item.diemDen?.trim()) errs.diemDen = "Vui lòng nhập điểm đến";
+    if (!item.diemDen?.trim()) errs.diemDen = "Vui lòng chọn điểm đến";
 
-    if (
-        item.diemKhoiHanh?.trim() &&
-        item.diemDen?.trim() &&
-        item.diemKhoiHanh.trim().toLowerCase() === item.diemDen.trim().toLowerCase()
-    ) {
+    if (item.diemKhoiHanh?.trim() && item.diemDen?.trim() &&
+        item.diemKhoiHanh.trim().toLowerCase() === item.diemDen.trim().toLowerCase()) {
         errs.diemDen = "Điểm đến không được trùng với điểm khởi hành";
     }
 
     if (!item.soChoToiDa || !isValidNonNegativeNumber(item.soChoToiDa) || Number(item.soChoToiDa) <= 0) {
-        errs.soChoToiDa = "Số lượng chỗ phải là số lớn hơn 0";
+        errs.soChoToiDa = "Số chỗ phải lớn hơn 0";
     }
 
-    if (!item.ngayKhoiHanh) errs.ngayKhoiHanh = "Vui lòng nhập ngày khởi hành";
-    if (!item.gioDenNoiDi) errs.gioDenNoiDi = "Vui lòng nhập giờ đến nơi đi";
-    if (!item.ngayKetThuc) errs.ngayKetThuc = "Vui lòng nhập ngày kết thúc";
-    if (!item.gioDenNoiVe) errs.gioDenNoiVe = "Vui lòng nhập giờ đến nơi về";
-
-    const toDate = (val) => {
-        if (!val) return null;
-
-        const d = val instanceof Date
-            ? val
-            : new Date(val);
-
-        return isNaN(d.getTime())
-            ? null
-            : d;
-    };
-
-    const ngayKD = toDate(item.ngayKhoiHanh);
-    const ngayKT = toDate(item.ngayKetThuc);
-    const gioDi = toDate(item.gioDenNoiDi);
-    const gioVe = toDate(item.gioDenNoiVe);
+    const toDate = (val) => val ? (val instanceof Date ? new Date(val) : new Date(val)) : null;
+    const ngayKD = toDate(item.ngayKhoiHanh);  // VD: 07/07 03:15
+    const gioDi = toDate(item.gioDenNoiDi);   // VD: 07/07 06:45  → phải sau ngayKD
+    const ngayKT = toDate(item.ngayKetThuc);   // VD: 09/07 00:00  → phải sau ngayKD (khác ngày)
+    const gioVe = toDate(item.gioDenNoiVe);   // VD: 09/07 10:00  → phải sau ngayKT
     const now = new Date();
 
-    if (ngayKD && ngayKD < now) errs.ngayKhoiHanh = "Ngày giờ khởi hành phải lớn hơn hiện tại";
-    if (gioDi && gioDi < now) errs.gioDenNoiDi = "Ngày giờ đến nơi phải lớn hơn hiện tại";
-    if (ngayKT && ngayKT < now) errs.ngayKetThuc = "Ngày giờ kết thúc phải lớn hơn hiện tại";
-    if (gioVe && gioVe < now) errs.gioDenNoiVe = "Ngày giờ về phải lớn hơn hiện tại";
-
-    if (ngayKD && gioDi && gioDi <= ngayKD) errs.gioDenNoiDi = "Ngày giờ đến nơi phải sau ngày giờ khởi hành";
-    if (gioDi && ngayKT && ngayKT <= gioDi) errs.ngayKetThuc = "Ngày giờ kết thúc phải sau ngày giờ đến nơi";
-    if (ngayKT && gioVe && gioVe <= ngayKT) errs.gioDenNoiVe = "Ngày giờ về phải sau ngày giờ kết thúc";
-
-    if (ngayKD && gioDi && ngayKT && gioVe) {
-        const ok = ngayKD < gioDi && gioDi < ngayKT && ngayKT < gioVe;
-        if (!ok) errs.gioDenNoiVe = "Chuỗi thời gian chuyến đi không hợp lệ";
+    // 1. Ngày giờ khởi hành
+    if (!ngayKD) {
+        errs.ngayKhoiHanh = "Vui lòng chọn ngày giờ khởi hành";
+    } else if (ngayKD <= now) {
+        errs.ngayKhoiHanh = "Ngày giờ khởi hành phải lớn hơn hiện tại";
     }
 
-    if (!item.gia?.hangKhachSan?.toString().trim()) errs.hangKhachSan = "Vui lòng nhập hạng khách sạn";
+    // 2. Giờ đến nơi đi → phải sau ngayKD (cùng ngày, giờ sau)
+    if (!gioDi) {
+        errs.gioDenNoiDi = "Vui lòng chọn ngày giờ đến nơi đi";
+    } else if (ngayKD && gioDi <= ngayKD) {
+        errs.gioDenNoiDi = "Giờ đến nơi đi phải sau giờ khởi hành";
+    }
+
+    // 3. Ngày kết thúc → chỉ cần sau ngayKD theo ngày (không cần sau gioDi)
+    if (!ngayKT) {
+        errs.ngayKetThuc = "Vui lòng chọn ngày giờ kết thúc";
+    } else if (ngayKD) {
+        const ngayKDOnly = new Date(ngayKD); ngayKDOnly.setHours(0, 0, 0, 0);
+        const ngayKTOnly = new Date(ngayKT); ngayKTOnly.setHours(0, 0, 0, 0);
+        if (ngayKTOnly <= ngayKDOnly) {
+            errs.ngayKetThuc = "Ngày kết thúc phải sau ngày khởi hành";
+        }
+    }
+
+    // 4. Giờ về → phải sau ngayKT (cùng ngày cuối, giờ sau)
+    if (!gioVe) {
+        errs.gioDenNoiVe = "Vui lòng chọn ngày giờ về";
+    } else if (ngayKT && gioVe <= ngayKT) {
+        errs.gioDenNoiVe = "Giờ về phải sau giờ kết thúc";
+    }
+
     if (!isValidNonNegativeNumber(item.gia?.giaNguoiLon)) errs.giaNguoiLon = "Giá người lớn không hợp lệ";
     if (!isValidNonNegativeNumber(item.gia?.giaTreEm)) errs.giaTreEm = "Giá trẻ em không hợp lệ";
     if (!isValidNonNegativeNumber(item.gia?.giaEmBe)) errs.giaEmBe = "Giá em bé không hợp lệ";
 
     const phu = item.gia?.phuThuPhongDon;
-    if (phu != null && phu !== "" && !isValidNonNegativeNumber(phu))
+    if (phu != null && phu !== "" && !isValidNonNegativeNumber(phu)) {
         errs.phuThuPhongDon = "Phụ thu phòng đơn không hợp lệ";
+    }
 
     return errs;
 };
-
-
-
-const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = false }, ref) => {
+const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = false, trongNuoc, soNgay }, ref) => {
     const [vehicles, setVehicles] = useState([]);
     const [guides, setGuides] = useState([]);
+    const [provinces, setProvinces] = useState([]);
+    const [provincesLoading, setProvincesLoading] = useState(false);
+
     const [showModal, setShowModal] = useState(false);
     const [currentSchedule, setCurrentSchedule] = useState(null);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -137,9 +134,10 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
     const [isSaving, setIsSaving] = useState(false);
     const [showConfirmUpdate, setShowConfirmUpdate] = useState(false);
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+
     const safeData = Array.isArray(value) ? value : [];
-    const [provinces, setProvinces] = useState([]);
-    const [provincesLoading, setProvincesLoading] = useState(false);
+
+    // Fetch data
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -148,18 +146,17 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
                     getAllTourGuideApi()
                 ]);
                 setVehicles(Array.isArray(vehicleRes) ? vehicleRes : []);
-                setGuides(
-                    (guideRes.data || guideRes || []).map(({ maNhanVien, hoTen }) => ({
-                        maHDV: maNhanVien,
-                        tenHDV: hoTen
-                    }))
-                );
+                setGuides((guideRes.data || guideRes || []).map(({ maNhanVien, hoTen }) => ({
+                    maHDV: maNhanVien,
+                    tenHDV: hoTen
+                })));
             } catch {
                 toastError("Tải dữ liệu thất bại", "Không thể tải danh sách phương tiện hoặc hướng dẫn viên.");
             }
         };
         fetchData();
     }, []);
+
     useEffect(() => {
         const fetchProvinces = async () => {
             try {
@@ -175,22 +172,18 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
         fetchProvinces();
     }, []);
 
-
-    // ── Imperative handle ──────────────────────────────────────────────────────
-
+    // Imperative Handle
     useImperativeHandle(ref, () => ({
         openModal: () => {
             setCurrentSchedule(makeEmptySchedule());
             setIsEditMode(false);
             setModalErrors({});
-            setIsSaving(false);
             setShowModal(true);
         },
         openEditModal: (item) => {
             setCurrentSchedule(JSON.parse(JSON.stringify(item)));
             setIsEditMode(true);
             setModalErrors({});
-            setIsSaving(false);
             setShowModal(true);
         },
         validateAll: () => {
@@ -198,14 +191,10 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
             for (const item of safeData) {
                 const errs = validateDeparture(item);
                 if (Object.keys(errs).length > 0) {
-                    toastWarning(
-                        "Thiếu thông tin",
-                        `Chuyến ${item.maChuyenCode || "(chưa có mã)"} chưa nhập đầy đủ hoặc dữ liệu không hợp lệ.`
-                    );
+                    toastWarning("Thiếu thông tin", `Chuyến ${item.maChuyenCode || "(chưa có mã)"} chưa hợp lệ.`);
                     setCurrentSchedule(JSON.parse(JSON.stringify(item)));
                     setIsEditMode(true);
                     setModalErrors(errs);
-                    setIsSaving(false);
                     setShowModal(true);
                     return false;
                 }
@@ -215,28 +204,87 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
     }), [safeData]);
 
     const handleFieldChange = useCallback((field, val) => {
-        setCurrentSchedule(prev => ({ ...prev, [field]: val }));
-        // Xóa lỗi của field đó ngay khi user chọn/nhập
+        setCurrentSchedule(prev => {
+            const updated = { ...prev };
+
+            updated[field] = val;
+
+            if (field === "ngayKhoiHanh" && val) {
+                const start = new Date(val);
+
+                if (Number(soNgay) > 0) {
+                    const end = new Date(start);
+                    end.setDate(end.getDate() + Number(soNgay) - 1);
+
+                    // Chỉ set ngày, reset giờ về 00:00 để user tự chọn giờ kết thúc
+                    end.setHours(0, 0, 0, 0);
+
+                    updated.ngayKetThuc = end;
+
+                    // Reset luôn gioDenNoiDi và gioDenNoiVe khi đổi ngày khởi hành
+                    updated.gioDenNoiDi = null;
+                    updated.gioDenNoiVe = null;
+                } else {
+                    toastWarning(
+                        "Chưa có số ngày tour",
+                        "Vui lòng nhập số ngày ở thông tin cơ bản trước khi chọn ngày khởi hành."
+                    );
+                }
+            }
+            return updated;
+        });
+
         setModalErrors(prev => {
-            if (!prev[field]) return prev;
+            const next = { ...prev };
+            delete next[field];
+            if (field === "ngayKhoiHanh") delete next.ngayKetThuc;
+            return next;
+        });
+    }, [soNgay]);
+    const handleGiaChange = useCallback((field, val) => {
+        setCurrentSchedule(prev => ({
+            ...prev,
+            gia: { ...prev.gia, [field]: val }
+        }));
+        setModalErrors(prev => {
             const next = { ...prev };
             delete next[field];
             return next;
         });
     }, []);
+    const getDateOnly = (date) => {
+        if (!date) return null;
 
-    const handleGiaChange = useCallback((field, val) => {
-        setCurrentSchedule(prev => ({ ...prev, gia: { ...prev.gia, [field]: val } }));
-        setModalErrors(prev => prev[field] ? { ...prev, [field]: null } : prev);
-    }, []);
+        const d = date instanceof Date ? new Date(date) : new Date(date);
 
+        return new Date(
+            d.getFullYear(),
+            d.getMonth(),
+            d.getDate()
+        );
+    };
     const handleFieldBlur = useCallback((field) => {
         if (!currentSchedule) return;
+
+        // Chỉ check khớp số ngày khi user rời khỏi ô ngayKetThuc
+        if (field === "ngayKetThuc" && currentSchedule.ngayKetThuc && currentSchedule.ngayKhoiHanh && soNgay && Number(soNgay) > 0) {
+            const start = getDateOnly(currentSchedule.ngayKhoiHanh);
+            const end = getDateOnly(currentSchedule.ngayKetThuc);
+
+            const diffTime = end.getTime() - start.getTime();
+
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            if (diffDays !== Number(soNgay)) {
+                toastWarning(
+                    "Số ngày không khớp",
+                    `Tour có ${soNgay} ngày nhưng khoảng thời gian bạn chọn là ${diffDays} ngày.`
+                );
+            }
+        }
+
         const errs = validateDeparture(currentSchedule);
         setModalErrors(prev => ({ ...prev, [field]: errs[field] ?? null }));
-    }, [currentSchedule]);
-
-
+    }, [currentSchedule, soNgay]);
 
     const handleClose = useCallback(() => {
         if (isSaving) return;
@@ -244,330 +292,198 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
         setCurrentSchedule(null);
         setModalErrors({});
     }, [isSaving]);
-    const doSave = async () => {
-        const exists = safeData.some(
-            ch => ch.tempId === currentSchedule.tempId
-        );
 
+    const doSave = async () => {
+        const exists = safeData.some(ch => ch.tempId === currentSchedule.tempId);
         const updatedList = exists
-            ? safeData.map(ch =>
-                ch.tempId === currentSchedule.tempId
-                    ? currentSchedule
-                    : ch
-            )
+            ? safeData.map(ch => ch.tempId === currentSchedule.tempId ? currentSchedule : ch)
             : [...safeData, currentSchedule];
 
         try {
             setIsSaving(true);
-
             await onChange?.(updatedList);
-
-            toastSuccess(
-                "Thành công",
-                exists
-                    ? "Cập nhật chuyến khởi hành thành công."
-                    : "Thêm chuyến khởi hành thành công."
-            );
-
+            toastSuccess("Thành công", exists ? "Cập nhật chuyến khởi hành thành công." : "Thêm chuyến khởi hành thành công.");
             setShowModal(false);
         } catch (err) {
-            toastError(
-                "Lỗi",
-                err?.message || "Không thể lưu chuyến khởi hành."
-            );
+            toastError("Lỗi", err?.message || "Không thể lưu chuyến khởi hành.");
         } finally {
             setIsSaving(false);
         }
     };
+
     const handleSave = () => {
         if (!currentSchedule || isSaving) return;
 
         const errs = validateDeparture(currentSchedule);
-
         if (Object.keys(errs).length > 0) {
             setModalErrors(errs);
 
-            toastWarning(
-                "Dữ liệu chưa hợp lệ",
-                "Vui lòng kiểm tra lại các trường được đánh dấu đỏ."
-            );
-
+            // Toast lỗi đầu tiên tìm thấy theo thứ tự ưu tiên
+            const priority = [
+                "ngayKhoiHanh", "gioDenNoiDi", "ngayKetThuc", "gioDenNoiVe",
+                "maHDV", "maPhuongTien", "diemKhoiHanh", "diemDen",
+                "soChoToiDa", "giaNguoiLon", "giaTreEm", "giaEmBe", "phuThuPhongDon"
+            ];
+            const firstErrKey = priority.find(k => errs[k]);
+            if (firstErrKey) {
+                toastWarning("Dữ liệu chưa hợp lệ", errs[firstErrKey]);
+            }
             return;
         }
 
-        // Chỉ confirm khi sửa
         if (isEditMode) {
             setShowConfirmUpdate(true);
-            return;
+        } else {
+            doSave();
         }
-
-        // Thêm mới thì lưu luôn
-        doSave();
     };
-    // const handleSave = async () => {
-    //     if (!currentSchedule || isSaving) return;
 
-    //     const errs = validateDeparture(currentSchedule);
-    //     if (Object.keys(errs).length > 0) {
-    //         setModalErrors(errs);
-    //         toastWarning("Dữ liệu chưa hợp lệ", "Vui lòng kiểm tra lại các trường được đánh dấu đỏ.");
-    //         return;
-    //     }
-
-    //     const exists = safeData.some(ch => ch.tempId === currentSchedule.tempId);
-    //     const updatedList = exists
-    //         ? safeData.map(ch => ch.tempId === currentSchedule.tempId ? currentSchedule : ch)
-    //         : [...safeData, currentSchedule];
-
-    //     try {
-    //         setIsSaving(true);
-    //         await onChange?.(updatedList);
-    //         toastSuccess(
-    //             "Thành công",
-    //             exists ? "Cập nhật chuyến khởi hành thành công." : "Thêm chuyến khởi hành thành công."
-    //         );
-    //         setShowModal(false);
-    //     } catch (err) {
-    //         // Hiển thị lỗi từ server (ví dụ: "Ngày khởi hành phải nhỏ hơn ngày kết thúc")
-    //         toastError("Lỗi", err?.message || "Không thể lưu chuyến khởi hành.");
-    //     } finally {
-    //         setIsSaving(false);
-    //     }
-    // };
     const doDelete = async () => {
         if (!currentSchedule || isSaving) return;
-
-        const label = currentSchedule.maChuyenCode
-            ? `chuyến "${currentSchedule.maChuyenCode}"`
-            : "chuyến khởi hành này";
-
-        const updatedList = safeData.filter(
-            ch => ch.tempId !== currentSchedule.tempId
-        );
+        const updatedList = safeData.filter(ch => ch.tempId !== currentSchedule.tempId);
 
         try {
             setIsSaving(true);
-
             await onChange?.(updatedList);
-
-            toastSuccess(
-                "Đã xóa",
-                `Xóa ${label} thành công.`
-            );
-
+            toastSuccess("Đã xóa", `Xóa chuyến ${currentSchedule.maChuyenCode || ""} thành công.`);
             setShowModal(false);
             setCurrentSchedule(null);
             setModalErrors({});
         } catch (err) {
-            toastError(
-                "Lỗi",
-                err?.message || "Không thể xóa chuyến khởi hành."
-            );
+            toastError("Lỗi", err?.message || "Không thể xóa chuyến.");
         } finally {
             setIsSaving(false);
         }
     };
+
     const handleDelete = () => {
         if (!currentSchedule || isSaving) return;
-
         setShowConfirmDelete(true);
     };
-    // const handleDelete = async () => {
-    //     if (!currentSchedule || isSaving) return;
-
-    //     const label = currentSchedule.maChuyenCode
-    //         ? `chuyến "${currentSchedule.maChuyenCode}"`
-    //         : "chuyến khởi hành này";
-
-    //     const updatedList = safeData.filter(ch => ch.tempId !== currentSchedule.tempId);
-
-    //     try {
-    //         setIsSaving(true);
-    //         await onChange?.(updatedList);
-    //         toastSuccess("Đã xóa", `Xóa ${label} thành công.`);
-    //         setShowModal(false);
-    //         setCurrentSchedule(null);
-    //         setModalErrors({});
-    //     } catch (err) {
-    //         toastError("Lỗi", err?.message || "Không thể xóa chuyến khởi hành.");
-    //     } finally {
-    //         setIsSaving(false);
-    //     }
-    // };
-
-
 
     if (!showModal || !currentSchedule) return null;
 
-    const isView = isViewMode;
-    const disabled = isView || isSaving;
+    const disabled = isViewMode || isSaving;
     const isSavedInDB = !!currentSchedule.maChuyen;
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
             <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col overflow-hidden max-h-[95vh]">
-
                 {/* Header */}
                 <div className="flex justify-between items-center p-5 border-b border-slate-200">
                     <div className="flex items-center gap-2">
-                        {isEditMode
-                            ? <Edit size={18} className="text-sky-500" />
-                            : <Settings size={18} className="text-slate-500" />
-                        }
+                        {isEditMode ? <Edit size={18} className="text-sky-500" /> : <Settings size={18} className="text-slate-500" />}
                         <h2 className="text-sm font-bold text-slate-800">
-                            {isEditMode
-                                ? (isView ? "Chi tiết chuyến khởi hành" : "Cập nhật chuyến khởi hành")
-                                : "Thêm chuyến khởi hành mới"
-                            }
+                            {isEditMode ? (isViewMode ? "Chi tiết chuyến" : "Cập nhật chuyến") : "Thêm chuyến khởi hành mới"}
                         </h2>
-                        {/* Hiển thị mã chuyến sau khi đã lưu vào DB */}
                         {isSavedInDB && currentSchedule.maChuyenCode && (
-                            <span className="px-2 py-0.5 text-xs font-mono font-semibold
-                                             bg-sky-50 text-sky-700 border border-sky-200 rounded-lg">
+                            <span className="px-3 py-1 text-xs font-mono bg-sky-100 text-sky-700 rounded-lg border border-sky-200">
                                 {currentSchedule.maChuyenCode}
                             </span>
                         )}
                     </div>
-                    <button
-                        type="button"
-                        onClick={handleClose}
-                        disabled={isSaving}
-                        className="p-2 text-slate-400 hover:text-slate-600 rounded-xl transition disabled:opacity-40"
-                    >
-                        <X size={20} />
+                    <button onClick={handleClose} disabled={isSaving} className="p-2 text-slate-400 hover:text-slate-600">
+                        <X size={22} />
                     </button>
                 </div>
 
-                <div className="p-6 space-y-5 overflow-y-auto flex-1">
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                                HƯỚNG DẪN VIÊN <span className="text-red-500">*</span>
-                            </label>
-                            <SelectField
-                                searchable
-                                searchText="Tìm hướng dẫn viên"
-                                value={currentSchedule.maHDV || ""}
-                                options={guides}
-                                valueKey="maHDV"
-                                labelKey="tenHDV"
-                                error={modalErrors.maHDV}
-                                onChange={(e) => handleFieldChange("maHDV", getVal(e))}
-                                disabled={disabled}
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                                PHƯƠNG TIỆN <span className="text-red-500">*</span>
-                            </label>
-                            <SelectField
-                                value={currentSchedule.maPhuongTien || ""}
-                                options={vehicles}
-                                valueKey="maPhuongTien"
-                                labelKey="tenPhuongTien"
-                                error={modalErrors.maPhuongTien}
-                                onChange={(e) => handleFieldChange("maPhuongTien", getVal(e))}
-                                disabled={disabled}
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                                ĐIỂM ĐI <span className="text-red-500">*</span>
-                            </label>
-                            <SelectField
-                                value={currentSchedule.diemKhoiHanh || ""}
-                                options={DIEM_DI_OPTIONS}
-                                valueKey="value"
-                                labelKey="label"
-                                error={modalErrors.diemKhoiHanh}
-                                onChange={(e) => handleFieldChange("diemKhoiHanh", getVal(e))}
-                                disabled={disabled}
-                            />
-                        </div>
-                        <InputField
-                            type="number"
-                            label="SỐ LƯỢNG CHỖ"
-                            value={currentSchedule.soChoToiDa || ""}
-                            error={modalErrors.soChoToiDa}
-                            onChange={(e) => handleFieldChange("soChoToiDa", getVal(e))}
-                            onBlur={() => handleFieldBlur("soChoToiDa")}
+                <div className="p-6 space-y-6 overflow-y-auto flex-1">
+                    {/* Thông tin chính */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <SelectField
+                            label="Hướng dẫn viên *"
+                            searchable
+                            searchText="Tìm hướng dẫn viên"
+                            value={currentSchedule.maHDV || ""}
+                            options={guides}
+                            valueKey="maHDV"
+                            labelKey="tenHDV"
+                            error={modalErrors.maHDV}
+                            onChange={(e) => handleFieldChange("maHDV", getVal(e))}
                             disabled={disabled}
-                            required
+                        />
+                        <SelectField
+                            label="Phương tiện *"
+                            value={currentSchedule.maPhuongTien || ""}
+                            options={vehicles}
+                            valueKey="maPhuongTien"
+                            labelKey="tenPhuongTien"
+                            error={modalErrors.maPhuongTien}
+                            onChange={(e) => handleFieldChange("maPhuongTien", getVal(e))}
+                            disabled={disabled}
                         />
                     </div>
-                    <div>
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                            ĐIỂM ĐẾN <span className="text-red-500">*</span>
-                        </label>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <SelectField
+                            label="Điểm khởi hành *"
+                            value={currentSchedule.diemKhoiHanh || ""}
+                            options={DIEM_DI_OPTIONS}
+                            valueKey="value"
+                            labelKey="label"
+                            error={modalErrors.diemKhoiHanh}
+                            onChange={(e) => handleFieldChange("diemKhoiHanh", getVal(e))}
+                            disabled={disabled}
+                        />
+                        <SelectField
+                            label="Điểm đến *"
                             searchable
-                            searchText="Tìm tỉnh / thành phố..."
+                            searchText="Tìm tỉnh/thành phố..."
                             value={currentSchedule.diemDen || ""}
                             options={provinces}
                             valueKey="name"
                             labelKey="name"
-                            placeholder="Chọn tỉnh / thành phố"
                             error={modalErrors.diemDen}
-                            searching={provincesLoading}
-                            onChange={(val) => {
-                                handleFieldChange("diemDen", val);
-                                setModalErrors(prev => ({ ...prev, diemDen: null }));
-                            }}
+                            onChange={(val) => handleFieldChange("diemDen", val)}
                             disabled={disabled}
                         />
                     </div>
 
-
+                    <InputField
+                        type="number"
+                        label="Số chỗ tối đa *"
+                        value={currentSchedule.soChoToiDa || ""}
+                        error={modalErrors.soChoToiDa}
+                        onChange={(e) => handleFieldChange("soChoToiDa", getVal(e))}
+                        disabled={disabled}
+                        required
+                    />
 
                     {/* Timeline */}
-                    <div className="bg-slate-50 p-4 rounded-xl space-y-4 border border-slate-100">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block border-b border-slate-200 pb-1">
-                            CHI TIẾT MỐC THỜI GIAN LỊCH TRÌNH
-                        </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">THỜI GIAN LỊCH TRÌNH</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             {[
-                                { field: "ngayKhoiHanh", label: "NGÀY GIỜ KHỞI HÀNH", minDate: getDate(), disableToday: false },
-                                { field: "gioDenNoiDi", label: "NGÀY GIỜ ĐẾN NƠI", minDate: getDate(), disableToday: false },
-                                { field: "ngayKetThuc", label: "NGÀY GIỜ KẾT THÚC", minDate: getDate(), disableToday: false },
-                                { field: "gioDenNoiVe", label: "NGÀY GIỜ ĐẾN NƠI VỀ", minDate: getDate(), disableToday: false },
-                            ].map(({ field, label, minDate, disableToday }) => (
-                                <div key={field} className="flex flex-col gap-1.5">
-                                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                                        {label}
-                                        <span className="ml-1 text-red-500">*</span>
-                                    </label>
-
+                                { field: "ngayKhoiHanh", label: "Ngày giờ khởi hành *" },
+                                { field: "gioDenNoiDi", label: "Ngày giờ đến nơi đi *" },
+                                { field: "ngayKetThuc", label: "Ngày giờ kết thúc *" },
+                                { field: "gioDenNoiVe", label: "Ngày giờ về *" },
+                            ].map(({ field, label, hint }) => (
+                                <div key={field}>
+                                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600">{label}</label>
                                     <DateTimePicker
-                                        placeholderText="Chọn ngày giờ"
+                                        key={field}
+                                        label={label}
                                         value={currentSchedule[field] ? new Date(currentSchedule[field]) : null}
                                         onChange={(date) => handleFieldChange(field, date)}
                                         onBlur={() => handleFieldBlur(field)}
-                                        disabled={disabled}
                                         error={modalErrors[field]}
-                                        minDate={minDate}
-                                        disableToday={disableToday}
+                                        disabled={disabled}
                                     />
-
-                                    {modalErrors[field] && (
-                                        <p className="text-xs text-red-600">{modalErrors[field]}</p>
-                                    )}
                                 </div>
                             ))}
                         </div>
                     </div>
-                    <div className="bg-slate-50 p-4 rounded-xl space-y-4 border border-slate-100">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block border-b border-slate-200 pb-1">
-                            ĐƠN GIÁ PHÂN LOẠI KHÁCH HÀNG (VND)
-                        </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
 
+                    {/* Giá */}
+                    <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">BẢNG GIÁ</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                             {[
-                                { field: "giaNguoiLon", label: "GIÁ NGƯỜI LỚN" },
-                                { field: "giaTreEm", label: "GIÁ TRẺ EM" },
-                                { field: "giaEmBe", label: "GIÁ EM BÉ" },
-                                { field: "phuThuPhongDon", label: "PHỤ THU PHÒNG ĐƠN" }
+                                { field: "giaNguoiLon", label: "Giá người lớn " },
+                                { field: "giaTreEm", label: "Giá trẻ em " },
+                                { field: "giaEmBe", label: "Giá em bé " },
+                                { field: "phuThuPhongDon", label: "Phụ thu phòng đơn" },
                             ].map(({ field, label }) => (
                                 <InputField
                                     key={field}
@@ -576,7 +492,6 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
                                     value={currentSchedule.gia?.[field] || ""}
                                     error={modalErrors[field]}
                                     onChange={(e) => handleGiaChange(field, getVal(e))}
-                                    onBlur={() => handleFieldBlur(field)}
                                     disabled={disabled}
                                     required={field !== "phuThuPhongDon"}
                                 />
@@ -587,7 +502,7 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
                     <InputField
                         multiline
                         rows={3}
-                        label="GHI CHÚ CHUYẾN ĐI"
+                        label="Ghi chú chuyến đi"
                         value={currentSchedule.ghiChu || ""}
                         onChange={(e) => handleFieldChange("ghiChu", getVal(e))}
                         disabled={disabled}
@@ -595,88 +510,65 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center gap-2">
+                <div className="p-5 border-t border-slate-200 bg-slate-50 flex justify-between items-center">
                     <div>
-                        {!isView && isEditMode && (
+                        {isEditMode && !isViewMode && (
                             <button
-                                type="button"
                                 onClick={handleDelete}
                                 disabled={isSaving}
-                                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-red-600
-                                           hover:bg-red-50 border border-red-200 rounded-xl transition disabled:opacity-40"
+                                className="flex items-center gap-2 px-5 py-2.5 text-red-600 hover:bg-red-50 border border-red-200 rounded-xl text-sm font-medium"
                             >
-                                {isSaving
-                                    ? <Loader2 size={13} className="animate-spin" />
-                                    : <Trash2 size={14} />
-                                }
+                                <Trash2 size={16} />
                                 Xóa chuyến này
                             </button>
                         )}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        {isSaving && (
-                            <span className="flex items-center gap-1 text-xs text-slate-400">
-                                <Loader2 size={12} className="animate-spin" /> Đang lưu...
-                            </span>
-                        )}
+                    <div className="flex gap-3">
                         <button
-                            type="button"
                             onClick={handleClose}
                             disabled={isSaving}
-                            className="px-4 py-2 text-xs font-semibold bg-slate-200 hover:bg-slate-300
-                                       text-slate-700 rounded-xl transition disabled:opacity-40"
+                            className="px-6 py-2.5 text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-xl text-sm font-medium"
                         >
-                            {isView ? "Đóng" : "Hủy bỏ"}
+                            {isViewMode ? "Đóng" : "Hủy"}
                         </button>
-                        {!isView && (
+
+                        {!isViewMode && (
                             <button
-                                type="button"
                                 onClick={handleSave}
                                 disabled={isSaving}
-                                className="px-4 py-2 text-xs font-semibold bg-sky-500 hover:bg-sky-600
-                                           text-white rounded-xl shadow transition disabled:opacity-60
-                                           flex items-center gap-1.5"
+                                className="px-6 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-medium flex items-center gap-2"
                             >
-                                {isSaving && <Loader2 size={13} className="animate-spin" />}
-                                {isEditMode ? "Cập nhật" : "Xác nhận thêm"}
+                                {isSaving && <Loader2 size={18} className="animate-spin" />}
+                                {isEditMode ? "Cập nhật" : "Thêm chuyến"}
                             </button>
                         )}
                     </div>
                 </div>
             </div>
+
+            {/* Confirm Modals */}
             <ConfirmModal
                 isOpen={showConfirmDelete}
-                title="Xác nhận xóa chuyến đi"
-                message={`Bạn có chắc muốn xóa chuyến ${currentSchedule?.maChuyenCode || ""
-                    } không?`}
+                title="Xác nhận xóa"
+                message={`Xóa chuyến ${currentSchedule?.maChuyenCode || ""}?`}
                 confirmText="Xóa"
-                cancelText="Hủy"
                 type="danger"
+                onConfirm={() => { setShowConfirmDelete(false); doDelete(); }}
                 onCancel={() => setShowConfirmDelete(false)}
-                onConfirm={() => {
-                    setShowConfirmDelete(false);
-                    doDelete();
-                }}
             />
+
             <ConfirmModal
                 isOpen={showConfirmUpdate}
                 title="Xác nhận cập nhật"
-                message={`Bạn có chắc muốn cập nhật chuyến ${currentSchedule?.maChuyenCode || ""
-                    } không?`}
+                message={`Cập nhật chuyến ${currentSchedule?.maChuyenCode || ""}?`}
                 confirmText="Cập nhật"
-                cancelText="Hủy"
                 type="warning"
+                onConfirm={() => { setShowConfirmUpdate(false); doSave(); }}
                 onCancel={() => setShowConfirmUpdate(false)}
-                onConfirm={() => {
-                    setShowConfirmUpdate(false);
-                    doSave();
-                }}
             />
         </div>
-
     );
 });
-
 
 export default TourScheduleSection;

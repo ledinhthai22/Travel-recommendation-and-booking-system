@@ -11,14 +11,13 @@ namespace travel_recommendation_and_booking_system.DTOs.Tour
         [Required(ErrorMessage = "Vui lòng chọn loại tour.")]
         [Range(1, int.MaxValue, ErrorMessage = "Mã loại tour không hợp lệ.")]
         public int MaLoaiTour { get; set; }
-
+        public string TenLoaiTour { get; set; }
         [Required(ErrorMessage = "Mô tả tour không được để trống.")]
         public string MoTa { get; set; }
         public string? Slug { get; set; }
         public decimal GiaTu { get; set; }
         public int Ngay { get; set; }
         public int Dem { get; set; }
-        public bool TrongNuoc { get; set; }
         [Required(ErrorMessage = "Điểm khởi hành không được để trống.")]
         public int TrangThai { get; set; }
         public DateTime? NgayCapNhat { get; set; }

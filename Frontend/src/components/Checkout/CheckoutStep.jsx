@@ -1,8 +1,24 @@
-// CheckoutStep.jsx
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { releaseReservationApi } from "~/Services/TourBookingService";
 
-export default function CheckoutStep({ step, onBack }) {
+export default function CheckoutStep({ step, onBack, holdId }) {
+    const handleBack = async () => {
+        // Chỉ hủy giữ chỗ khi đang ở bước 1
+        if (step === 1 && holdId) {
+            try {
+                const storedUser = JSON.parse(localStorage.getItem("user"));
+                if (storedUser?.maNguoiDung) {
+                    await releaseReservationApi(storedUser.maNguoiDung, holdId);
+                    console.log(`[CheckoutStep] Hủy giữ chỗ ${holdId} khi back từ bước 1`);
+                }
+            } catch (err) {
+                console.log("[CheckoutStep] Lỗi hủy giữ chỗ:", err);
+            }
+        }
+        onBack(); // Gọi hàm onBack từ CheckoutPage
+    };
+
     const steps = [
         { number: 1, label: 'Nhập thông tin' },
         { number: 2, label: 'Thanh toán' },
@@ -16,7 +32,7 @@ export default function CheckoutStep({ step, onBack }) {
                 {/* NÚT QUAY LẠI */}
                 <button
                     type="button"
-                    onClick={onBack}
+                    onClick={handleBack}
                     className="flex items-center gap-2 text-slate-500 hover:text-[#0EA5E5] font-medium text-[15px] transition-colors duration-200 shrink-0 self-start mt-2.5"
                 >
                     <ArrowLeft size={18} />
@@ -26,7 +42,6 @@ export default function CheckoutStep({ step, onBack }) {
                 {/* THANH TIẾN TRÌNH */}
                 <div className="flex-1 relative">
 
-                    {/* Line segment 1 */}
                     <div
                         className="absolute top-5 h-[2px] overflow-hidden"
                         style={{
@@ -41,7 +56,6 @@ export default function CheckoutStep({ step, onBack }) {
                         />
                     </div>
 
-                    {/* Line segment 2 */}
                     <div
                         className="absolute top-5 h-[2px] overflow-hidden"
                         style={{
@@ -59,7 +73,7 @@ export default function CheckoutStep({ step, onBack }) {
                     <div className="grid grid-cols-3">
                         {steps.map((s) => {
                             const isActive = step === s.number;
-                            const isDone   = step > s.number;
+                            const isDone = step > s.number;
 
                             return (
                                 <div key={s.number} className="flex flex-col items-center z-10">
@@ -90,7 +104,6 @@ export default function CheckoutStep({ step, onBack }) {
                     </div>
                 </div>
 
-                {/* Spacer cân bằng với nút quay lại */}
                 <div className="shrink-0 w-[90px]" />
             </div>
         </div>

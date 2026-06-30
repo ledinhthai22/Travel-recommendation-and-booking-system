@@ -15,6 +15,7 @@ import RowActionsButton from '~/components/UI/Table/Button/RowActionsButton';
 import { getDate } from 'date-fns';
 import { connection } from '~/Services/signalRService';
 import { toastSuccess } from '~/utils/Toast';
+import { formatCurrency } from '~/Helper/FormatCurrency';
 export const ORDER_STATUS = {
     1: { text: 'Chờ duyệt', color: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-amber-400' },
     2: { text: 'Đã duyệt', color: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-400' },
@@ -160,20 +161,6 @@ export default function BookingManager() {
             ),
         },
         {
-            name: 'Khách hàng',
-            minWidth: '150px',
-            maxWidth: '200px',
-            selector: r => r.tenKhachHang,
-            cell: r => (
-                <div className="py-1">
-                    <p className="font-semibold text-sm text-slate-700 leading-snug">{r.tenKhachHang}</p>
-                    {r.soDienThoai && (
-                        <p className="text-[11px] text-slate-400 mt-0.5">{r.soDienThoai}</p>
-                    )}
-                </div>
-            ),
-        },
-        {
             name: 'Mã Chuyến',
             minWidth: '150px',
             maxWidth: '200px',
@@ -182,6 +169,17 @@ export default function BookingManager() {
                 <span className="font-mono text-[11px] font-semibold text-slate-600 break-all leading-tight">
                     {r.maCodeChuyen}
                 </span>
+            ),
+        },
+        {
+            name: 'Khách hàng',
+            minWidth: '150px',
+            maxWidth: '200px',
+            selector: r => r.tenKhachHang,
+            cell: r => (
+                <div className="py-1">
+                    <p className="font-semibold text-sm text-slate-700 leading-snug">{r.tenKhachHang}</p>
+                </div>
             ),
         },
         {
@@ -197,6 +195,20 @@ export default function BookingManager() {
                 </span>
             ),
         },
+        // {
+        //     name: 'Tổng tiền',
+        //     minWidth: '150px',
+        //     maxWidth: '200px',
+        //     selector: r => r.tongTien,
+        //     cell: r => (
+        //         <span className="font-mono text-[11px] font-semibold text-slate-600 break-all leading-tight">
+        //           {formatCurrency(r.tongTien)}
+        //         </span>
+        //     ),
+        // },
+
+        
+        
         {
             name: 'Tổng tiền',
             sortable: true,

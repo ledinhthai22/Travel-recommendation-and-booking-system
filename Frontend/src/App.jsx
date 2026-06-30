@@ -6,6 +6,9 @@ import MainLayout from '~/components/layout/UserLayout';
 import AdminLayout from '~/components/layout/AdminLayout';
 import RouteReset from '~/components/Common/RouteReset';
 import ProtectedRoute from './Routes/ProtectedRoute';
+import { useContext } from 'react'; // them moi 
+import { AuthContext } from '~/Context/AuthContext'; // them moi 
+import AuthModal from './components/Auth/AuthModal'; // them moi 
 
 import {
     ContactPage,
@@ -20,6 +23,7 @@ import {
     PaymentReturnPage,
     BookingSuccessPage,
 } from './Pages/Client';
+
 
 import {
     DashBoard,
@@ -37,11 +41,13 @@ import {
     TypeLocationManager,
     AmenitiesManager,
     LocationManager,
+    ReviewManager, // them moi
     TourFormPage,
     TypeTourManager,
 } from './Pages/admin';
 
 function App() {
+    const { showLoginModal, setShowLoginModal } = useContext(AuthContext);
     return (
         <BrowserRouter>
             <RouteReset />
@@ -57,7 +63,10 @@ function App() {
                 }
             >
                 <Toaster position="top-right" reverseOrder={false} gutter={12} />
-
+                <AuthModal
+                    open={showLoginModal}
+                    onClose={() => setShowLoginModal(false)}
+                />
                 <Routes>
                     {/* ── Client routes ── */}
                     <Route path="/" element={<MainLayout />}>
@@ -82,20 +91,14 @@ function App() {
                             <Route path="Dia-diem" element={<LocationManager />} />
                             <Route path="Loai-Dia-Diem" element={<TypeLocationManager />} />
                             <Route path="Loai-Tour" element={<TypeTourManager />} />
-
+                            <Route path="Danh-gia" element={<ReviewManager />} /> // them moi
                             <Route path="Cac-chuyen-di">
                                 <Route index element={<TourManager />} />
                                 <Route path="Them-Tour" element={<TourFormPage mode="add" />} />
                                 <Route path="Xem-chi-tiet/:id" element={<TourFormPage mode="view" />} />
                                 <Route path="Cap-nhat/:id" element={<TourFormPage mode="edit" />} />
                             </Route>
-
-                            {/*
-                             * Khách sạn: chỉ còn 1 route duy nhất.
-                             * Thêm / Xem / Sửa đều xử lý trong HotelManager thông qua HotelFormModal.
-                             */}
                             <Route path="Khach-san" element={<HotelManager />} />
-
                             <Route path="Tien-ich" element={<AmenitiesManager />} />
                             <Route path="Don-dat-cac-chuyen-di" element={<BookingManager />} />
                             <Route path="Lien-he" element={<ContactManager />} />
@@ -109,6 +112,7 @@ function App() {
                             <Route path="Tai-khoan" element={<UserManager />} />
                             <Route path="Newletter" element={<NewlettersManager />} />
                             <Route path="Banner" element={<BannerManager />} />
+
                             <Route path="Uu-Dai" element={<PromotionManager />} />
                             <Route path="Thong-tin-trang" element={<Webinfo />} />
                             <Route path="Hoat-dong-he-thong" element={<ActivityLogManager />} />

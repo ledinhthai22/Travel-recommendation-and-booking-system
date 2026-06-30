@@ -1,4 +1,5 @@
 ﻿using Hangfire;
+using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Job;
 using travel_recommendation_and_booking_system.Jobs;
 
@@ -19,6 +20,19 @@ namespace travel_recommendation_and_booking_system.Extensions
                 Cron.Daily
             );
         }
+
+        public static void UseCustomHangfireReview(this WebApplication app)
+        {
+            using var scope = app.Services.CreateScope();
+
+            RecurringJob.AddOrUpdate<IReviewService>(
+                "auto-process-reviews-batch",
+                service => service.ProcessReviewsBatchAsync(),
+                "0 23 * * *"
+            //Cron.Minutely()
+            );
+        }
+
         public static void UseCleanExpriedReservationsJob(this WebApplication app)
         {
             using var scope = app.Services.CreateScope();
@@ -42,6 +56,22 @@ namespace travel_recommendation_and_booking_system.Extensions
                 "Departure-Change-Status",
                 job => job.UpdateStatusesAsync(),
                 Cron.Daily
+            );
+        }
+        public static void UsePaymentWarningJobs(this WebApplication app)
+        {
+           
+            RecurringJob.AddOrUpdate<PaymentWarningJob>(
+                "cash-payment-reminder-7days",
+                job => job.SendPaymentReminders(),
+                "* * * * *"
+            );
+
+
+            RecurringJob.AddOrUpdate<PaymentWarningJob>(
+                "cancel-cash-booking-3days",
+                job => job.CancelExpiredCashBookings(),
+               "* * * * *" 
             );
         }
     }

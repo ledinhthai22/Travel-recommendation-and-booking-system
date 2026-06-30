@@ -16,6 +16,10 @@ namespace travel_recommendation_and_booking_system.DTOs.Schedule
         public DateTime NgayTao { get; set; }
         public DateTime NgayCapNhat { get; set; }
         public DateTime? NgayXoa { get; set; }
+        public int? MaKhachSan { get; set; }
+        public string? TenKhachSan { get; set; }
+        public string? SlugKhachSan { get; set; }
+        public int? SoSaoKhachSan { get; set; }
         public List<ScheduleDetailsDTO> ChiTietLichTrinhs { get; set; }
     }
 }

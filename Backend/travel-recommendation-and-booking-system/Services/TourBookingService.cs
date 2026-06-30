@@ -85,7 +85,9 @@ namespace travel_recommendation_and_booking_system.Services
             if (!string.IsNullOrWhiteSpace(keyword))
                 query = query.Where(x =>
                     x.MaDatCho.Contains(keyword) ||
-                    x.NguoiDung.HoTen.Contains(keyword));
+                    x.NguoiDung.HoTen.Contains(keyword) ||
+                    x.ChuyenKhoiHanh.MaChuyenCode.Contains(keyword)
+                    );
 
             if (trangThaiDon.HasValue)
                 query = query.Where(x => x.TrangThaiDon == trangThaiDon.Value);
@@ -843,10 +845,10 @@ namespace travel_recommendation_and_booking_system.Services
                             .FirstOrDefaultAsync(x => x.MaGiuCho == maGiuCho.Value && x.MaNguoiDung == maNguoiDung);
 
                         if (giuCho == null || giuCho.ThoiGianHetHan <= DateTime.Now)
-                            throw new InvalidOperationException("Phiên giữ chỗ đã hết hạn. Vui lòng chọn lại chuyến.");
+                            throw new InvalidOperationException("Phiên giữ chỗ đã hết hạn.");
 
                         if (giuCho.SoChoGiu < tongKhach)
-                            throw new InvalidOperationException("Số chỗ giữ không khớp với số khách.");
+                            throw new InvalidOperationException("Số chỗ giữ không khớp.");
                     }
                     else
                     {
@@ -872,7 +874,7 @@ namespace travel_recommendation_and_booking_system.Services
                                                    && x.NgayBatDau <= DateTime.Now
                                                    && x.NgayHetHan >= DateTime.Now
                                                    && x.SoLuongDaDung < x.SoLuongToiDa)
-                            ?? throw new InvalidOperationException("Mã ưu đãi không hợp lệ hoặc đã hết lượt sử dụng");
+                            ?? throw new InvalidOperationException("Mã ưu đãi không hợp lệ.");
                     }
 
                     int soPhongDon = dto.DanhSachHanhKhach.Count(k => k.PhongDon && k.LoaiKhach == 1);
@@ -909,18 +911,34 @@ namespace travel_recommendation_and_booking_system.Services
                     };
 
                     // Lưu thông tin liên lạc
-                    if (!string.IsNullOrEmpty(dto.HoTenLienHe) || !string.IsNullOrEmpty(dto.EmailLienHe))
+                    if (!string.IsNullOrEmpty(dto.HoTenLienHe))
                     {
                         order.GhiChu += $"\n[Liên hệ] {dto.HoTenLienHe} - {dto.SoDienThoaiLienHe} - {dto.EmailLienHe} - {dto.DiaChiLienHe ?? ""}";
                     }
 
                     _context.DonDatTours.Add(order);
 
+                    // === LƯU ĐƠN TRƯỚC ĐỂ CÓ ID ===
+                    await _context.SaveChangesAsync();
+
+                    // === TẠO THANH TOÁN ===
+                    var thanhToan = new ThanhToan
+                    {
+                        MaDonDatTour = order.MaDonDatTour,
+                        PhuongThucThanhToan = dto.PhuongThucThanhToan ?? 2,
+                        NgayThanhToan = DateTime.Now,
+                        TongTienThanhToan = tongTien,
+                        NoiDung = $"Thanh toán cho đơn {maDatCho}",
+                        TrangThaiThanhToan = (dto.PhuongThucThanhToan == 1) ? 1 : 0,
+                    };
+                    _context.ThanhToans.Add(thanhToan);
+
+                    // === TẠO KHÁCH HÀNG ===
                     if (dto.DanhSachHanhKhach.Any())
                     {
                         var khachHangs = dto.DanhSachHanhKhach.Select(k => new KhachHang
                         {
-                            MaDonDatTour = order.MaDonDatTour,
+                            MaDonDatTour = order.MaDonDatTour,   // ← ĐÃ CÓ GIÁ TRỊ
                             HoTen = k.HoTen,
                             SoDienThoai = k.SoDienThoai,
                             Email = k.Email,
@@ -930,7 +948,6 @@ namespace travel_recommendation_and_booking_system.Services
                             PhongDon = k.PhongDon,
                         }).ToList();
 
-                        foreach (var k in khachHangs) k.DonDatTour = order;
                         _context.KhachHangs.AddRange(khachHangs);
                     }
 
@@ -955,7 +972,6 @@ namespace travel_recommendation_and_booking_system.Services
                         Console.WriteLine($"[Email] Lỗi gửi mail: {ex.Message}");
                     }
 
-                    // SignalR
                     await _hubContext.Clients.All.SendAsync("BookingCreated", new
                     {
                         MaDonDatTour = order.MaDonDatTour,

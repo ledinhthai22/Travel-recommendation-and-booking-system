@@ -1,9 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DTOs.Page;
+using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Log;
 using travel_recommendation_and_booking_system.DTOs.LogSystem;
 using travel_recommendation_and_booking_system.DTOs.UserProfile;
 using travel_recommendation_and_booking_system.Interfaces;
+using travel_recommendation_and_booking_system.Models;
 
 namespace travel_recommendation_and_booking_system.Services
 {
@@ -124,6 +126,172 @@ namespace travel_recommendation_and_booking_system.Services
                 }
             });
 
+            return true;
+        }
+
+        public async Task<bool> ChangePasswordAsync(int userId, string oldPassword, string newPassword)
+        {
+            var user = await _context.NguoiDungs.FindAsync(userId);
+            if (user == null) return false;
+
+            bool isOldPasswordValid = BCrypt.Net.BCrypt.Verify(oldPassword, user.MatKhau);
+
+            if (!isOldPasswordValid)
+            {
+                return false;
+            }
+
+            string newPasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+
+            user.MatKhau = newPasswordHash;
+            user.NgayCapNhat= DateTime.Now;
+
+            _context.NguoiDungs.Update(user);
+             await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<AccountOverviewDTO> GetAccountOverviewAsync(int userId)
+        {
+            var tongTour = await _context.DonDatTours.CountAsync(d => d.MaNguoiDung == userId);
+            var tongDanhGia = await _context.DanhGias.CountAsync(d => d.MaNguoiDung == userId);
+            var tongTien = await _context.ThanhToans.Include(d => d.DonDatTour)
+                .Where(d => d.PhuongThucThanhToan == 1).SumAsync(d => (decimal?)d.TongTienThanhToan) ?? 0m;
+
+            var recentTours = await _context.DonDatTours
+                .Include(d => d.ChuyenKhoiHanh)
+                    .ThenInclude(c => c.Tour)
+                        .ThenInclude(t => t.HinhAnhTours)
+                .Where(d => d.MaNguoiDung == userId)
+                .OrderByDescending(d => d.NgayDat)
+                .Take(5)
+                .Select(d => new RecentTourDTO
+                {
+                    MaDonDatTour = d.MaDonDatTour,
+                    DuongDanAnh = d.ChuyenKhoiHanh.Tour.HinhAnhTours
+                                .OrderByDescending(a => a.AnhChinh)
+                                .Select(a => a.DuongDanAnh)
+                                .FirstOrDefault() ?? "",
+                    TenTour = d.ChuyenKhoiHanh.Tour.TenTour,
+                    NgayBatDau = d.ChuyenKhoiHanh.NgayKhoiHanh.ToString("dd/MM/yyyy"),
+                    DiaDiem = d.ChuyenKhoiHanh.DiemDen,
+                    TrangThai = d.TrangThaiDon
+                })
+                .ToListAsync();
+
+            return new AccountOverviewDTO
+            {
+                TongTour = tongTour,
+                TongDanhGia = tongDanhGia,
+                TongTien = tongTien,
+                Tours = recentTours
+            };
+        }
+
+        public async Task<PageDTO<HistoryTourDTO>> GetBookingHistoryAsync(int userId, string searchTerm, int page, int pageSize)
+        {
+            if (page < 1)
+            {
+                page = 1;
+            }
+            if (pageSize < 1)
+            {
+                pageSize = 5;
+            }
+            var query = _context.DonDatTours
+                .Include(d => d.ChuyenKhoiHanh)
+                    .ThenInclude(c => c.Tour)
+                        .ThenInclude(t => t.HinhAnhTours)
+                .Where(d => d.MaNguoiDung == userId)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                searchTerm = searchTerm.ToLower().Trim();
+                query = query.Where(d =>
+                    d.ChuyenKhoiHanh.Tour.TenTour.ToLower().Contains(searchTerm) ||
+                    d.MaDatCho.ToLower().Contains(searchTerm)
+                );
+            }
+
+            var totalItems = await query.CountAsync();
+
+            var tours = await query
+                .OrderByDescending(d => d.NgayDat)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(d => new HistoryTourDTO
+                {
+                    MaDonDatTour = d.MaDonDatTour,
+                    MaDatCho = d.MaDatCho, 
+                    DuongDanAnh = d.ChuyenKhoiHanh.Tour.HinhAnhTours
+                                    .OrderByDescending(a => a.AnhChinh)
+                                    .Select(a => a.DuongDanAnh)
+                                    .FirstOrDefault() ?? "",
+                    TenTour = d.ChuyenKhoiHanh.Tour.TenTour,
+                    NgayBatDau = d.ChuyenKhoiHanh.NgayKhoiHanh.ToString("dd/MM/yyyy"),
+                    TrangThai = d.TrangThaiDon
+                })
+                .ToListAsync();
+
+            return new PageDTO<HistoryTourDTO>
+            {
+                Items = tours,
+                PageNumber = page,
+                TotalItems = totalItems,
+                PageSize = pageSize
+            };
+        }
+
+        public async Task<HistoryTourDetailDTO> GetBookingDetailAsync(int userid, int maDonDatTour)
+        {
+            return await _context.DonDatTours
+                .Include(d => d.ChuyenKhoiHanh).ThenInclude(c => c.Tour)
+                .Include(d => d.ThanhToans)
+                .Where(d => d.MaDonDatTour == maDonDatTour && d.MaNguoiDung == userid)
+                .Select(d => new HistoryTourDetailDTO
+                {
+                    MaTour = d.ChuyenKhoiHanh.MaTour,
+                    MaNguoiDung= d.MaNguoiDung,
+                    MaDonDatTour = d.MaDonDatTour,
+                    MaDatCho = d.MaDatCho,
+                    TrangThai = d.TrangThaiDon,
+                    NgayDat = d.NgayDat.ToString("dd/MM/yyyy HH:mm"),
+                    TenTour = d.ChuyenKhoiHanh.Tour.TenTour,
+                    NgayKhoiHanh = d.ChuyenKhoiHanh.NgayKhoiHanh.ToString("dd/MM/yyyy"),
+                    NgayKetThuc = d.ChuyenKhoiHanh.NgayKetThuc.ToString("dd/MM/yyyy"),
+                    DiaDiem = d.ChuyenKhoiHanh.DiemDen,
+                    SoLuongNguoiLon = d.SoNguoiLon,
+                    SoLuongTreEm = d.SoTreEm,
+                    SoLuongEmBe = d.SoEmBe,
+                    TongTien = d.TongTien,
+                    PhuongThucThanhToan = d.ThanhToans.FirstOrDefault() == null ? "Chưa thanh toán" :
+                        (d.ThanhToans.FirstOrDefault().PhuongThucThanhToan == 1 ? "VNPay" :
+                        (d.ThanhToans.FirstOrDefault().PhuongThucThanhToan == 2 ? "Tiền mặt" : "Chuyển khoản"))
+                })
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> CancelBookingAsync(int userId, int maDonDatTour)
+        {
+            var booking = await _context.DonDatTours
+        .Include(d => d.ChuyenKhoiHanh)
+        .FirstOrDefaultAsync(d => d.MaDonDatTour == maDonDatTour && d.MaNguoiDung == userId);
+
+            if (booking == null) throw new Exception("Không tìm thấy đơn đặt tour.");
+
+            if (booking.TrangThaiDon != 1 && booking.TrangThaiDon != 2)
+                throw new Exception("Đơn hàng không thể hủy ở trạng thái hiện tại.");
+
+            if (booking.ChuyenKhoiHanh.NgayKhoiHanh <= DateTime.Now.AddDays(3))
+                throw new Exception("Không thể hủy tour trong vòng 3 ngày trước khởi hành.");
+
+            booking.TrangThaiDon = 4;
+            booking.NgayCapNhat = DateTime.Now;
+
+            _context.DonDatTours.Update(booking);
+            await _context.SaveChangesAsync();
             return true;
         }
     }

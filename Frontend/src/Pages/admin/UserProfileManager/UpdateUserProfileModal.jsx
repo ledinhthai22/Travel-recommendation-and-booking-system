@@ -7,6 +7,7 @@ import SelectField from "~/components/UI/Form/SelectField";
 import { updateUserProfileApi } from "~/Services/UserProfile";
 import useAuth from "~/Hooks/useAuth";
 
+// import { AuthContext } from "~/Context/AuthContext";
 import { toastSuccess, toastError } from "~/utils/Toast";
 
 export default function UpdateUserProfileModal({
@@ -43,12 +44,8 @@ export default function UpdateUserProfileModal({
             soDienThoai: profileData.soDienThoai || "",
             diaChi: profileData.diaChi || "",
             gioiTinh: profileData.gioiTinh ?? true,
-            ngaySinh: profileData.ngaySinh
-                ? new Date(profileData.ngaySinh)
-                    .toISOString()
-                    .split("T")[0]
-                : ""
-        });
+           ngaySinh: profileData.ngaySinh ? new Date(profileData.ngaySinh).toLocaleDateString('en-CA'):""
+            });
 
         setPreviewUrl(
             profileData.duongDanAnh
@@ -102,6 +99,7 @@ export default function UpdateUserProfileModal({
 
         img.src = URL.createObjectURL(file);
     };
+    
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -174,23 +172,29 @@ export default function UpdateUserProfileModal({
             const res = await updateUserProfileApi(
                 data
             );
+            console.log("Dữ liệu API trả về:", res);
 
             toastSuccess(
                 res?.message ||
                 "Cập nhật thông tin thành công"
             );
 
-            onUpdateSuccess?.();
+            const currentUser = JSON.parse(localStorage.getItem("user"));
 
-            setUser((prev) => ({
-                ...prev,
+            const updatedUser = {
+                ...currentUser,
                 hoTen: formData.hoTen,
                 email: formData.email,
-                duongDanAnh: selectedFile
-                    ? URL.createObjectURL(selectedFile)
-                    : prev.duongDanAnh
-            }));
+                duongDanAnh: res.newImagePath || currentUser.duongDanAnh
+            };
 
+            localStorage.setItem("user", JSON.stringify(updatedUser));
+
+            setUser(updatedUser);
+
+            window.dispatchEvent(new Event("profileUpdated"));
+
+            onUpdateSuccess?.();
             onClose();
         } catch (error) {
             if (error.response?.data?.errors) {

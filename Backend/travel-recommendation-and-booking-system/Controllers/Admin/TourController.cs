@@ -1,10 +1,17 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using System.Text.Json;
+using Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Newtonsoft.Json;
+using travel_recommendation_and_booking_system.Constants;
 using travel_recommendation_and_booking_system.DTOs.Departure;
 using travel_recommendation_and_booking_system.DTOs.Schedule;
 using travel_recommendation_and_booking_system.DTOs.Tour;
+using travel_recommendation_and_booking_system.DTOs.Tour_KS;
 using travel_recommendation_and_booking_system.Interfaces;
-using travel_recommendation_and_booking_system.Services;
+
 
 namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
@@ -14,6 +21,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
     public class TourController : ControllerBase
     {
         private readonly ITourService _tour;
+
         public TourController(ITourService tour)
         {
             _tour = tour;
@@ -70,7 +78,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
                         dto.TourInfo = System.Text.Json.JsonSerializer.Deserialize<TourDTO>(tInfo, options);
 
                     if (requestForm.TryGetValue("DanhSachKhachSan", out var ks) || requestForm.TryGetValue("danhSachKhachSan", out ks))
-                        dto.DanhSachKhachSan = System.Text.Json.JsonSerializer.Deserialize<List<int>>(ks, options);
+                        dto.DanhSachKhachSan = System.Text.Json.JsonSerializer.Deserialize<List<Tour_KSDTO>>(ks, options);
 
                     if (requestForm.TryGetValue("LichTrinh", out var lt) || requestForm.TryGetValue("lichTrinh", out lt))
                         dto.LichTrinh = System.Text.Json.JsonSerializer.Deserialize<List<ScheduleDTO>>(lt, options);
@@ -138,7 +146,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
                     if (requestForm.TryGetValue("TourInfo", out var tInfo) || requestForm.TryGetValue("tourInfo", out tInfo))
                         dto.TourInfo = System.Text.Json.JsonSerializer.Deserialize<TourDTO>(tInfo, options);
                     if (requestForm.TryGetValue("DanhSachKhachSan", out var ks) || requestForm.TryGetValue("danhSachKhachSan", out ks))
-                        dto.DanhSachKhachSan = System.Text.Json.JsonSerializer.Deserialize<List<int>>(ks, options);
+                        dto.DanhSachKhachSan = System.Text.Json.JsonSerializer.Deserialize<List<Tour_KSDTO>>(ks, options);
                     if (requestForm.TryGetValue("LichTrinh", out var lt) || requestForm.TryGetValue("lichTrinh", out lt))
                         dto.LichTrinh = System.Text.Json.JsonSerializer.Deserialize<List<ScheduleDTO>>(lt, options);
                     if (requestForm.TryGetValue("ChuyenKhoiHanhs", out var ck) || requestForm.TryGetValue("chuyenKhoiHanhs", out ck))

@@ -12,27 +12,24 @@ import { getErrorMessage } from "~/utils/errorHelper";
 export default function TourManager() {
     const navigate = useNavigate();
 
-    // ── Filter / Paging ───────────────────────────────────────────────────
+
     const [keyword, setKeyword] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [perPage, setPerPage] = useState(8);
 
-    // ── Data ──────────────────────────────────────────────────────────────
     const [tours, setTours] = useState([]);
     const [totalRows, setTotalRows] = useState(0);
     const [loading, setLoading] = useState(true);
     const [isFetching, setIsFetching] = useState(false);
 
-    // ── Modal ─────────────────────────────────────────────────────────────
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [selectedTour, setSelectedTour] = useState(null);
 
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [selectedStatusTour, setSelectedStatusTour] = useState(null);
 
-    // ── Fetch data ────────────────────────────────────────────────────────
     const fetchTours = useCallback(async () => {
         const isInitialOrFilterChange = currentPage === 1 || searchTerm || statusFilter;
 
@@ -55,13 +52,14 @@ export default function TourManager() {
                 tenKhachSans: x.tenKhachSans,
                 lichTrinh: x.lichTrinh,
                 chuyenKhoiHanhs: x.chuyenKhoiHanhs,
+                tenLoaiTour: x.tourInfo.tenLoaiTour,
                 images: x.images || [],
                 hinhAnhTour:
                     x.images?.find((img) => img.anhChinh)?.duongDanAnh ||
                     x.images?.[0]?.duongDanAnh ||
                     null,
             }));
-
+            console.log(mappedTours);
             setTours(mappedTours);
             setTotalRows(data.totalItems || data.totalRecords || 0);
         } catch (error) {
@@ -76,7 +74,7 @@ export default function TourManager() {
         fetchTours();
     }, [fetchTours]);
 
-    // Debounce search
+
     useEffect(() => {
         const timer = setTimeout(() => {
             setSearchTerm(keyword);
@@ -85,7 +83,6 @@ export default function TourManager() {
         return () => clearTimeout(timer);
     }, [keyword]);
 
-    // ── Pagination helper ─────────────────────────────────────────────────
     const totalPages = Math.ceil(totalRows / perPage);
 
     const generatePaginationPages = (current, total) => {
@@ -108,7 +105,6 @@ export default function TourManager() {
         return [...new Set(pages)];
     };
 
-    // ── Handlers ──────────────────────────────────────────────────────────
     const handleAddTour = () => navigate("Them-Tour");
     const handleViewTour = (tour) => navigate(`Xem-chi-tiet/${tour.maTour}`);
     const handleEditTour = (tour) => navigate(`Cap-nhat/${tour.maTour}`);
@@ -185,7 +181,6 @@ export default function TourManager() {
                 ]}
             />
 
-            {/* Overlay khi chuyển trang */}
             {isFetching && (
                 <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
                     <div className="bg-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3">
@@ -195,7 +190,6 @@ export default function TourManager() {
                 </div>
             )}
 
-            {/* Danh sách */}
             {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {Array.from({ length: perPage }).map((_, i) => (
@@ -229,7 +223,6 @@ export default function TourManager() {
                 </div>
             )}
 
-            {/* Pagination - Thông minh */}
             {totalRows > 0 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between px-2 pt-6 border-t border-slate-100 gap-4 mt-6">
                     <div className="flex items-center gap-4">
@@ -288,7 +281,6 @@ export default function TourManager() {
                 </div>
             )}
 
-            {/* Modals */}
             <ConfirmModal
                 isOpen={statusModalOpen}
                 title="Xác nhận thay đổi trạng thái"

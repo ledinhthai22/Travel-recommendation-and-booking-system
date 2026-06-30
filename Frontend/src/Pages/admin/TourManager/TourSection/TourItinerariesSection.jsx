@@ -1,26 +1,22 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { Utensils, Camera, X, Trash2, Plus, Loader2, Pencil } from "lucide-react";
+import { Utensils, Camera, X, Trash2, Plus, Loader2, Pencil, Bed } from "lucide-react";
 import TourItinerariesTable from "../TourItinerariesTable";
 import InputField from "~/components/UI/Form/InputField";
 import Dropdown from "~/components/Common/Dropdown";
-import { toastSuccess, toastWarning } from "~/utils/Toast";
-import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
 import SelectField from "~/components/UI/Form/SelectField";
 import TimePicker from "~/components/UI/Form/TimePicker";
+import { toastSuccess, toastWarning } from "~/utils/Toast";
+import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
 
-// ─── Options bữa ăn ──────────────────────────────────────────────────────────
 const BUA_AN_OPTIONS = [
     { value: "", label: "Không có" },
-    { value: "Trưa, Tối", label: "2 bữa — Trưa, Tối" },
-    { value: "Sáng, Trưa, Chiều, Tối", label: "3 bữa — Sáng, Trưa, Chiều, Tối" },
+    { value: "Trưa, Tối", label: "Trưa, Tối" },
+    { value: "Sáng, Trưa, Tối", label: "Sáng,  Chiều, Tối" },
 ];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const getVal = (e) => e?.target?.value ?? e;
 
 const makeTempId = () => `CTLT-TEMP-${Date.now()}-${Math.random()}`;
 
-const getSubKey = (sub) => sub.maCTLT > 0 ? `DB-${sub.maCTLT}` : sub.tempId;
+const getSubKey = (sub) => (sub.maCTLT > 0 ? `DB-${sub.maCTLT}` : sub.tempId);
 
 const timeToMinutes = (time) => {
     if (!time) return 0;
@@ -29,7 +25,7 @@ const timeToMinutes = (time) => {
 };
 
 const hasTimeOverlap = (rows, newStart, newEnd) =>
-    rows.some(row => {
+    rows.some((row) => {
         const start = timeToMinutes(row.gioBatDau);
         const end = timeToMinutes(row.gioKetThuc || row.gioBatDau);
         return newStart < end && newEnd > start;
@@ -41,7 +37,7 @@ const makeSubRow = () => ({
     gioBatDau: "",
     gioKetThuc: null,
     maDiaDiem: "",
-    hoatDong: ""
+    hoatDong: "",
 });
 
 const makeDayRow = (nextDayNumber) => ({
@@ -52,29 +48,29 @@ const makeDayRow = (nextDayNumber) => ({
     hoatDongChinh: "",
     luuY: "",
     trangThai: true,
+    maKhachSan: "",
     preview: null,
     file: null,
-    chiTietLichTrinhs: []
+    chiTietLichTrinhs: [],
 });
 
 const validateItinerary = (item) => {
     const errs = {};
-    if (!item?.tenLichTrinh?.trim())
-        errs.tenLichTrinh = "Vui lòng nhập tiêu đề ngày";
-    if (!item?.chiTietLichTrinhs?.length)
-        errs.chiTietLichTrinhs = "Vui lòng thêm ít nhất 1 mốc thời gian/hoạt động cho ngày này";
+    if (!item?.tenLichTrinh?.trim()) errs.tenLichTrinh = "Vui lòng nhập tiêu đề ngày";
+    if (!item?.chiTietLichTrinhs?.length) errs.chiTietLichTrinhs = "Vui lòng thêm ít nhất 1 mốc hoạt động";
     return errs;
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function TourItinerariesSection({
     value = [],
     onChange,
     diaDiems = [],
+    khachSans = [],
     isViewMode = false,
     loading = false,
     canAddDay,
-    isLocked = false
+    isLocked = false,
 }) {
     const [showItineraryModal, setShowItineraryModal] = useState(false);
     const [currentItinerary, setCurrentItinerary] = useState(null);
@@ -91,24 +87,26 @@ export default function TourItinerariesSection({
     const safeData = Array.isArray(value) ? value : [];
 
     const selectedLocationIds = useMemo(
-        () => currentItinerary?.chiTietLichTrinhs?.map(item => String(item.maDiaDiem)).filter(Boolean) ?? [],
+        () => currentItinerary?.chiTietLichTrinhs?.map((item) => String(item.maDiaDiem)).filter(Boolean) ?? [],
         [currentItinerary?.chiTietLichTrinhs]
     );
 
     const availableLocations = useMemo(
-        () => diaDiems.filter(item => !selectedLocationIds.includes(String(item.maDiaDiem))),
+        () => diaDiems.filter((item) => !selectedLocationIds.includes(String(item.maDiaDiem))),
         [diaDiems, selectedLocationIds]
     );
 
-    const getAvailableLocationsForEdit = useCallback((currentLocationId) =>
-        diaDiems.filter(item =>
-            String(item.maDiaDiem) === String(currentLocationId) ||
-            !selectedLocationIds.includes(String(item.maDiaDiem))
-        ),
+    const getAvailableLocationsForEdit = useCallback(
+        (currentLocationId) =>
+            diaDiems.filter(
+                (item) =>
+                    String(item.maDiaDiem) === String(currentLocationId) ||
+                    !selectedLocationIds.includes(String(item.maDiaDiem))
+            ),
         [diaDiems, selectedLocationIds]
     );
 
-    // ── Modal open/close ──────────────────────────────────────────────────
+    // Modal handlers
     const openAddModal = () => {
         setCurrentItinerary(makeDayRow(safeData.length + 1));
         setNewSubRow(makeSubRow());
@@ -123,15 +121,15 @@ export default function TourItinerariesSection({
             ...row,
             file: null,
             preview: row.preview || null,
-            chiTietLichTrinhs: (row.chiTietLichTrinhs || []).map(sub => ({
+            maKhachSan: row.maKhachSan?.toString() || "",
+            chiTietLichTrinhs: (row.chiTietLichTrinhs || []).map((sub) => ({
                 tempId: sub.tempId || makeTempId(),
                 maCTLT: Number(sub.maCTLT || 0),
-                maLichTrinh: Number(sub.maLichTrinh || row.id || 0),
                 gioBatDau: sub.gioBatDau || "",
                 gioKetThuc: sub.gioKetThuc || null,
                 maDiaDiem: sub.maDiaDiem || "",
-                hoatDong: sub.hoatDong || ""
-            }))
+                hoatDong: sub.hoatDong || "",
+            })),
         });
         setNewSubRow(makeSubRow());
         setModalErrors({});
@@ -149,29 +147,22 @@ export default function TourItinerariesSection({
         setEditingSubRow(null);
     };
 
-    // ── Field handlers ────────────────────────────────────────────────────
+    const handleFieldChange = useCallback((field, val) => {
+        setCurrentItinerary((prev) => ({ ...prev, [field]: val }));
+        setModalErrors((prev) => (prev[field] ? { ...prev, [field]: null } : prev));
+    }, []);
+
     const handleModalImageChange = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setCurrentItinerary(prev => ({ ...prev, file, preview: URL.createObjectURL(file) }));
+        setCurrentItinerary((prev) => ({ ...prev, file, preview: URL.createObjectURL(file) }));
     };
 
-    const handleFieldChange = useCallback((field, val) => {
-        setCurrentItinerary(prev => ({ ...prev, [field]: val }));
-        setModalErrors(prev => prev[field] ? { ...prev, [field]: null } : prev);
-    }, []);
-
-    const handleFieldBlur = useCallback((field) => {
-        if (!currentItinerary) return;
-        const errs = validateItinerary(currentItinerary);
-        if (errs[field]) setModalErrors(prev => ({ ...prev, [field]: errs[field] }));
-    }, [currentItinerary]);
-
-    // ── Sub-row handlers ──────────────────────────────────────────────────
+    // Sub-row handlers
     const handleAddSubRow = () => {
         if (!newSubRow.gioBatDau) {
             setTimelineError("Vui lòng nhập giờ bắt đầu");
-            toastWarning("Thiếu dữ liệu", "Mốc thời gian bắt đầu hành trình không được để trống.");
+            toastWarning("Thiếu dữ liệu", "Mốc thời gian bắt đầu không được để trống.");
             return;
         }
 
@@ -188,129 +179,122 @@ export default function TourItinerariesSection({
             return;
         }
         if (!newSubRow.hoatDong?.trim()) {
-            setTimelineError("Vui lòng nhập nội dung hoạt động cụ thể");
+            setTimelineError("Vui lòng nhập nội dung hoạt động");
             return;
         }
 
         const existingRows = currentItinerary?.chiTietLichTrinhs || [];
         if (hasTimeOverlap(existingRows, newStart, newEnd)) {
-            setTimelineError("Khoảng thời gian bị trùng với mốc khác");
-            toastWarning("Trùng thời gian", "Khoảng thời gian này đang giao với một hoạt động khác.");
+            setTimelineError("Khoảng thời gian bị trùng");
+            toastWarning("Trùng thời gian", "Khoảng thời gian này giao với hoạt động khác.");
             return;
         }
 
-        setCurrentItinerary(prev => ({
+        setCurrentItinerary((prev) => ({
             ...prev,
             chiTietLichTrinhs: [
                 ...(prev.chiTietLichTrinhs || []),
-                { ...newSubRow, tempId: makeTempId(), maCTLT: 0 }
-            ]
+                { ...newSubRow, tempId: makeTempId(), maCTLT: 0 },
+            ],
         }));
-        setModalErrors(prev => prev.chiTietLichTrinhs ? { ...prev, chiTietLichTrinhs: null } : prev);
         setNewSubRow(makeSubRow());
         setTimelineError("");
     };
 
-    const handleEditSubRow = (sub) => { setEditingSubKey(getSubKey(sub)); setEditingSubRow({ ...sub }); };
-    const handleCancelEditSubRow = () => { setEditingSubKey(null); setEditingSubRow(null); };
+    const handleEditSubRow = (sub) => {
+        setEditingSubKey(getSubKey(sub));
+        setEditingSubRow({ ...sub });
+    };
+
+    const handleCancelEditSubRow = () => {
+        setEditingSubKey(null);
+        setEditingSubRow(null);
+    };
 
     const handleSaveSubRow = () => {
-        if (!editingSubRow.gioBatDau) { toastWarning("Thiếu dữ liệu", "Vui lòng nhập giờ bắt đầu."); return; }
+        if (!editingSubRow.gioBatDau) return toastWarning("Thiếu dữ liệu", "Vui lòng nhập giờ bắt đầu.");
         if (editingSubRow.gioKetThuc && timeToMinutes(editingSubRow.gioKetThuc) <= timeToMinutes(editingSubRow.gioBatDau)) {
-            toastWarning("Sai thời gian", "Giờ kết thúc phải lớn hơn giờ bắt đầu."); return;
+            return toastWarning("Sai thời gian", "Giờ kết thúc phải lớn hơn giờ bắt đầu.");
         }
-        if (!editingSubRow.maDiaDiem) { toastWarning("Thiếu dữ liệu", "Vui lòng chọn địa điểm."); return; }
-        if (!editingSubRow.hoatDong?.trim()) { toastWarning("Thiếu dữ liệu", "Nội dung hoạt động không được để trống."); return; }
+        if (!editingSubRow.maDiaDiem) return toastWarning("Thiếu dữ liệu", "Vui lòng chọn địa điểm.");
+        if (!editingSubRow.hoatDong?.trim()) return toastWarning("Thiếu dữ liệu", "Nội dung hoạt động không được để trống.");
 
-        const otherRows = currentItinerary.chiTietLichTrinhs.filter(item => getSubKey(item) !== editingSubKey);
+        const otherRows = currentItinerary.chiTietLichTrinhs.filter((item) => getSubKey(item) !== editingSubKey);
 
-        if (otherRows.some(item => String(item.maDiaDiem) === String(editingSubRow.maDiaDiem))) {
-            toastWarning("Trùng địa điểm", "Địa điểm này đã được sử dụng trong ngày."); return;
-        }
-
-        const editStart = timeToMinutes(editingSubRow.gioBatDau);
-        const editEnd = timeToMinutes(editingSubRow.gioKetThuc || editingSubRow.gioBatDau);
-
-        if (hasTimeOverlap(otherRows, editStart, editEnd)) {
-            toastWarning("Trùng thời gian", "Khoảng thời gian bị giao với mốc khác."); return;
+        if (hasTimeOverlap(otherRows, timeToMinutes(editingSubRow.gioBatDau), timeToMinutes(editingSubRow.gioKetThuc || editingSubRow.gioBatDau))) {
+            return toastWarning("Trùng thời gian", "Khoảng thời gian bị giao với mốc khác.");
         }
 
-        setCurrentItinerary(prev => ({
+        setCurrentItinerary((prev) => ({
             ...prev,
-            chiTietLichTrinhs: prev.chiTietLichTrinhs.map(
-                sub => getSubKey(sub) === editingSubKey ? editingSubRow : sub
-            )
+            chiTietLichTrinhs: prev.chiTietLichTrinhs.map((sub) =>
+                getSubKey(sub) === editingSubKey ? editingSubRow : sub
+            ),
         }));
         setEditingSubKey(null);
         setEditingSubRow(null);
     };
 
     const handleRemoveSubRow = (targetKey) => {
-        setCurrentItinerary(prev => ({
+        setCurrentItinerary((prev) => ({
             ...prev,
-            chiTietLichTrinhs: (prev.chiTietLichTrinhs || []).filter(sub => getSubKey(sub) !== targetKey)
+            chiTietLichTrinhs: (prev.chiTietLichTrinhs || []).filter((sub) => getSubKey(sub) !== targetKey),
         }));
     };
 
-    // ── Save itinerary ────────────────────────────────────────────────────
     const handleSaveItineraryModal = async () => {
         const errors = validateItinerary(currentItinerary);
         if (Object.keys(errors).length > 0) {
             setModalErrors(errors);
-            toastWarning(
-                "Dữ liệu chưa hợp lệ",
-                errors.chiTietLichTrinhs
-                    ? "Vui lòng cấu hình ít nhất 1 mốc thời gian cụ thể cho ngày này."
-                    : "Vui lòng nhập tên/tiêu đề cho ngày hành trình."
-            );
+            toastWarning("Dữ liệu chưa hợp lệ", "Vui lòng kiểm tra lại thông tin.");
             return;
         }
 
-        const sortedTimeline = [...currentItinerary.chiTietLichTrinhs]
-            .sort((a, b) => timeToMinutes(a.gioBatDau) - timeToMinutes(b.gioBatDau));
+        const sortedTimeline = [...currentItinerary.chiTietLichTrinhs].sort(
+            (a, b) => timeToMinutes(a.gioBatDau) - timeToMinutes(b.gioBatDau)
+        );
+
         const itineraryToSave = { ...currentItinerary, chiTietLichTrinhs: sortedTimeline };
-        const exists = safeData.some(lt => lt.id === currentItinerary.id);
+        const exists = safeData.some((lt) => lt.id === currentItinerary.id);
         const updatedList = exists
-            ? safeData.map(lt => lt.id === itineraryToSave.id ? itineraryToSave : lt)
+            ? safeData.map((lt) => (lt.id === itineraryToSave.id ? itineraryToSave : lt))
             : [...safeData, itineraryToSave];
 
         try {
             setIsSaving(true);
             await onChange?.(updatedList);
-            toastSuccess("Hoàn tất", `Đã lưu thành công dữ liệu lịch trình Ngày ${currentItinerary.soThuTuNgay}`);
+            toastSuccess("Thành công", `Đã lưu Ngày ${currentItinerary.soThuTuNgay}`);
             setShowItineraryModal(false);
         } catch {
-            // Lỗi đã toast ở TourFormPage
+            // Lỗi đã toast ở component cha
         } finally {
             setIsSaving(false);
         }
     };
 
-    // ── Delete ────────────────────────────────────────────────────────────
-    const handleDeleteClick = (row) => { setSelectedDeleteItem(row); setShowDeleteModal(true); };
+    const handleDeleteClick = (row) => {
+        setSelectedDeleteItem(row);
+        setShowDeleteModal(true);
+    };
 
     const confirmDeleteItinerary = async () => {
         if (!selectedDeleteItem) return;
-        const updatedList = safeData.filter(lt => lt.id !== selectedDeleteItem.id);
+        const updatedList = safeData.filter((lt) => lt.id !== selectedDeleteItem.id);
         try {
             setIsSaving(true);
             await onChange?.(updatedList);
             toastSuccess("Thành công", `Đã xóa Ngày ${selectedDeleteItem.soThuTuNgay}`);
+        } finally {
             setShowDeleteModal(false);
             setSelectedDeleteItem(null);
-        } catch {
-            // Lỗi đã toast ở TourFormPage
-        } finally {
             setIsSaving(false);
         }
     };
 
     const disabled = isViewMode || isSaving || isLocked;
 
-    // ─────────────────────────────────────────────────────────────────────
     return (
         <section className="border-t border-slate-200 pt-8 space-y-4">
-
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <div>
                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">
@@ -318,311 +302,298 @@ export default function TourItinerariesSection({
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">Tổng số: {safeData.length} ngày hành trình</p>
                 </div>
+
                 {!isViewMode && !isLocked && (
                     <button
                         type="button"
-                        disabled={isSaving || loading || !canAddDay || isLocked}
+                        disabled={!canAddDay || isSaving || isLocked}
                         onClick={openAddModal}
-                        className={`flex items-center gap-1.5 px-4 py-2 text-white font-medium text-xs rounded-xl shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed
-                            ${!canAddDay ? "bg-slate-300 cursor-not-allowed" : "bg-sky-400/80 hover:bg-sky-400/60"}`}
+                        className="flex items-center gap-1.5 px-4 py-2 text-white font-medium text-xs rounded-xl bg-sky-500 hover:bg-sky-600 disabled:opacity-50"
                     >
-                        <Plus size={16} /> Thêm ngày {safeData.length + 1}
+                        <Plus size={16} /> Thêm ngày
                     </button>
                 )}
             </div>
 
-            <div>
-                <TourItinerariesTable
-                    data={safeData}
-                    onEdit={handleEditClick}
-                    onDelete={handleDeleteClick}
-                    isViewMode={isViewMode}
-                    loading={loading}
-                    isLocked={isLocked}
-                />
-            </div>
+            <TourItinerariesTable
+                data={safeData}
+                onEdit={handleEditClick}
+                onDelete={handleDeleteClick}
+                isViewMode={isViewMode}
+                loading={loading}
+                isLocked={isLocked}
+            />
 
-            {/* ── Itinerary Modal ── */}
+            {/* Modal */}
             {showItineraryModal && currentItinerary && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                     <div className="bg-white w-full max-w-6xl rounded-2xl shadow-2xl flex flex-col overflow-hidden max-h-[95vh]">
-
                         {/* Header */}
-                        <div className="flex justify-between items-center p-6 border-b border-slate-200 bg-slate-50">
+                        <div className="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
                             <h2 className="text-lg font-bold text-slate-800">
-                                {isViewMode || isLocked
-                                    ? "Chi tiết Lịch trình"
-                                    : modalMode === "ADD" ? "Thêm mới Lịch trình" : "Cấu hình Lịch trình"}
-                                {" "}: Ngày {currentItinerary.soThuTuNgay}
+                                Ngày {currentItinerary.soThuTuNgay} —{" "}
+                                {modalMode === "ADD" ? "Thêm mới" : "Cập nhật"} lịch trình
                             </h2>
-                            <button
-                                disabled={isSaving}
-                                onClick={handleCloseModal}
-                                className="p-2 text-slate-400 hover:text-red-500 rounded-xl transition disabled:opacity-30"
-                            >
-                                <X size={20} />
+                            <button onClick={handleCloseModal} disabled={isSaving} className="text-slate-400 hover:text-red-500 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                                <X size={24} />
                             </button>
                         </div>
 
-                        {/* Body */}
-                        <div className="p-6 space-y-6 overflow-y-auto flex-1">
-
-                            {/* Info row */}
-                            <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-6 items-start bg-slate-50 p-4 rounded-xl">
-                                {/* Image */}
-                                <div className="w-full aspect-[4/3] md:w-36 md:h-28 rounded-xl border border-slate-200 bg-white relative overflow-hidden flex flex-col items-center justify-center text-slate-400 group mx-auto">
-                                    {currentItinerary.preview ? (
-                                        <>
-                                            <img src={currentItinerary.preview} alt="Ảnh lịch trình" className="w-full h-full object-cover" />
-                                            {!disabled && (
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer">
-                                                    <Camera size={18} className="mb-1" />
-                                                    <span className="text-[10px] font-medium">Thay đổi ảnh</span>
-                                                </div>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <label className="cursor-pointer flex flex-col items-center justify-center text-center p-2 w-full h-full hover:bg-slate-50 transition">
-                                            <Camera size={20} className="mb-1 text-slate-400" />
-                                            <span className="text-slate-500 font-semibold text-[10px]">Ảnh ngày</span>
-                                        </label>
-                                    )}
-                                    {!disabled && (
-                                        <input type="file" accept="image/*" onChange={handleModalImageChange} className="absolute inset-0 opacity-0 cursor-pointer" />
-                                    )}
+                        <div className="p-6 space-y-6 overflow-y-auto flex-1 bg-slate-50/50">
+                            {/* Thông tin chung - Layout Thoải mái hơn */}
+                            <div className="flex flex-col md:flex-row gap-6 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                                {/* Khối Ảnh bên trái */}
+                                <div className="w-full md:w-1/4 shrink-0">
+                                    <div className="aspect-[5/3] w-full rounded-xl border border-slate-200 overflow-hidden relative group bg-slate-50">
+                                        {currentItinerary.preview ? (
+                                            <img src={currentItinerary.preview} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-1">
+                                                <Camera size={40} />
+                                                <span className="text-[11px] text-slate-400 font-medium">Chưa có ảnh đại diện</span>
+                                            </div>
+                                        )}
+                                        {!disabled && (
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleModalImageChange}
+                                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                            />
+                                        )}
+                                    </div>
                                 </div>
 
-                                {/* Fields */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                                {/* Khối Các Input bên phải */}
+                                <div className="flex-1 space-y-5">
                                     <InputField
                                         label="Tiêu đề ngày"
                                         value={currentItinerary.tenLichTrinh || ""}
-                                        error={modalErrors.tenLichTrinh}
-                                        onChange={(e) => handleFieldChange("tenLichTrinh", getVal(e))}
-                                        onBlur={() => handleFieldBlur("tenLichTrinh")}
+                                        onChange={(e) => handleFieldChange("tenLichTrinh", e.target.value)}
                                         disabled={disabled}
                                         required
                                     />
 
-                                    {/* ── Bữa ăn: SelectField thay vì InputField ── */}
-                                    <div>
-                                        <label className="text-[11px] font-semibold text-slate-500 mb-1 flex items-center gap-1.5">
-                                            <Utensils size={13} /> Chế độ bữa ăn
-                                        </label>
-                                        <Dropdown
-                                            value={currentItinerary.buaAn || ""}
-                                            options={BUA_AN_OPTIONS}
-                                            onChange={(val) => handleFieldChange("buaAn", val)}
-                                            disabled={disabled}
-                                            fullWidth
-                                            placeholder="Chọn chế độ bữa ăn"
-                                        />
-                                    </div>
-
-                                    <div className="sm:col-span-2">
-                                        <InputField
-                                            label="Tóm tắt hoạt động"
-                                            value={currentItinerary.hoatDongChinh || ""}
-                                            onChange={(e) => handleFieldChange("hoatDongChinh", getVal(e))}
-                                            disabled={disabled}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Timeline table */}
-                            <div className={`border rounded-xl overflow-visible bg-white ${modalErrors.chiTietLichTrinhs ? "border-red-400" : "border-slate-200"}`}>
-
-                                {/* Add sub-row form */}
-                                {!isViewMode && !isLocked && (
-                                    <div className="p-4 bg-slate-50 border-b border-slate-100 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                                        <div className="sm:col-span-3">
-                                            <label className="text-[11px] font-semibold text-slate-500 mb-1 block">Bắt đầu <span className="text-red-500">*</span></label>
-                                            <TimePicker
-                                                value={newSubRow.gioBatDau}
-                                                disabled={isSaving}
-                                                onChange={(timeStr) => setNewSubRow(p => ({
-                                                    ...p,
-                                                    gioBatDau: timeStr,
-                                                    ...(!timeStr ? { gioKetThuc: null } : {})
-                                                }))}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1.5">
+                                                <Utensils size={14} className="text-slate-400" /> Chế độ bữa ăn
+                                            </label>
+                                            <Dropdown
+                                                value={currentItinerary.buaAn || ""}
+                                                options={BUA_AN_OPTIONS}
+                                                onChange={(val) => handleFieldChange("buaAn", val)}
+                                                disabled={disabled}
+                                                fullWidth
                                             />
                                         </div>
-                                        <div className="sm:col-span-3">
-                                            <label className="text-[11px] font-semibold text-slate-500 mb-1 block">Kết thúc</label>
-                                            <TimePicker
-                                                value={newSubRow.gioKetThuc}
-                                                disabled={isSaving}
-                                                onChange={(timeStr) => setNewSubRow(p => ({ ...p, gioKetThuc: timeStr }))}
-                                            />
-                                        </div>
-                                        <div className="sm:col-span-4">
-                                            <label className="text-[11px] font-semibold text-slate-500 mb-1 block">Địa điểm ghé thăm</label>
+
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1.5">
+                                                <Bed size={14} className="text-slate-400" /> Khách sạn nghỉ đêm
+                                            </label>
                                             <SelectField
                                                 searchable
-                                                searchText="Tìm kiếm địa điểm tham quan"
-                                                value={newSubRow.maDiaDiem}
-                                                options={availableLocations}
-                                                valueKey="maDiaDiem"
-                                                labelKey="tenDiaDiem"
-                                                placeholder="Chọn địa điểm"
-                                                onChange={(val) => setNewSubRow(prev => ({ ...prev, maDiaDiem: val }))}
-                                                disabled={isSaving}
+                                                value={currentItinerary.maKhachSan || ""}
+                                                options={khachSans}
+                                                valueKey="maKhachSan"
+                                                labelKey="tenKhachSan"
+                                                placeholder="Chọn khách sạn"
+                                                onChange={(val) => handleFieldChange("maKhachSan", val)}
+                                                disabled={disabled}
                                             />
                                         </div>
-                                        <div className="sm:col-span-2">
-                                            <button
-                                                type="button"
-                                                disabled={isSaving}
-                                                onClick={handleAddSubRow}
-                                                className="w-full py-[13px] text-center bg-sky-400 hover:bg-sky-700 disabled:bg-slate-400 transition text-white text-xs rounded-lg font-medium"
-                                            >
-                                                Thêm mốc
-                                            </button>
-                                        </div>
-                                        <div className="sm:col-span-12 mt-2">
-                                            <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
-                                                Nội dung hoạt động chi tiết <span className="text-red-500">*</span>
-                                            </label>
-                                            <InputField
-                                                multiline
-                                                disabled={isSaving}
-                                                placeholder="Nội dung hoạt động chi tiết cụ thể..."
-                                                value={newSubRow.hoatDong}
-                                                onChange={(e) => { setNewSubRow(p => ({ ...p, hoatDong: e.target.value })); setTimelineError(""); }}
-                                            />
-                                        </div>
-                                        {timelineError && (
-                                            <div className="sm:col-span-12 text-red-500 text-[11px] font-medium mt-1">
-                                                * {timelineError}
+                                    </div>
+
+
+                                </div>
+                            </div>
+                            <InputField
+                                label="Tóm tắt hoạt động chính"
+                                multiline
+                                rows={2}
+                                value={currentItinerary.hoatDongChinh || ""}
+                                onChange={(e) => handleFieldChange("hoatDongChinh", e.target.value)}
+                                disabled={disabled}
+                                placeholder="Nhập khái quát các điểm đến, trải nghiệm nổi bật của ngày..."
+                            />
+
+                            {/* Khung thêm & hiển thị danh sách hoạt động chi tiết (Timeline Table) */}
+                            <div className={`bg-white border rounded-2xl shadow-sm ${modalErrors.chiTietLichTrinhs ? "border-red-400" : "border-slate-200"}`}> 
+                                {/* Header bảng và Form thêm mốc */}
+                                {!isViewMode && !isLocked && (
+                                    <div className="p-5 bg-slate-50/70 border-b border-slate-100 space-y-4">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Thêm mốc thời gian & hoạt động</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                                            <div className="md:col-span-3">
+                                                <label className="text-[11px] font-semibold text-slate-500 mb-1 block">Giờ bắt đầu *</label>
+                                                <TimePicker
+                                                
+                                                    value={newSubRow.gioBatDau}
+                                                    onChange={(timeStr) => setNewSubRow((p) => ({ ...p, gioBatDau: timeStr }))}
+                                                />
                                             </div>
-                                        )}
+                                            <div className="md:col-span-3">
+                                                <label className="text-[11px] font-semibold text-slate-500 mb-1 block">Giờ kết thúc</label>
+                                                <TimePicker
+                                                    value={newSubRow.gioKetThuc}
+                                                    onChange={(timeStr) => setNewSubRow((p) => ({ ...p, gioKetThuc: timeStr }))}
+                                                />
+                                            </div>
+                                            <div className="md:col-span-5">
+                                                <label className="text-[11px] font-semibold text-slate-500 mb-1 block">Địa điểm tham quan</label>
+                                                <SelectField
+                                                    searchable
+                                                    value={newSubRow.maDiaDiem}
+                                                    options={availableLocations}
+                                                    valueKey="maDiaDiem"
+                                                    labelKey="tenDiaDiem"
+                                                    placeholder="Chọn địa điểm"
+                                                    onChange={(val) => setNewSubRow((p) => ({ ...p, maDiaDiem: val }))}
+                                                    disabled={isSaving}
+                                                />
+                                            </div>
+                                            <div className="md:col-span-1 pt-6">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleAddSubRow}
+                                                    disabled={isSaving}
+                                                    className="px-7 py-3.5  bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold rounded-4xl shadow-sm transition-colors"
+                                                >
+                                                    Thêm
+                                                </button>
+                                            </div>
+
+                                            <div className="md:col-span-12">
+                                                <InputField
+                                                    multiline
+                                                    rows={2}
+                                                    placeholder="Nội dung hoạt động chi tiết tại địa điểm này..."
+                                                    value={newSubRow.hoatDong}
+                                                    onChange={(e) => setNewSubRow((p) => ({ ...p, hoatDong: e.target.value }))}
+                                                />
+                                            </div>
+                                            {timelineError && <p className="text-red-500 text-xs md:col-span-12 font-medium mt-1">{timelineError}</p>}
+                                        </div>
                                     </div>
                                 )}
 
-                                {/* Sub-rows table */}
-                                <table className="w-full text-left text-xs">
-                                    <thead>
-                                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
-                                            <th className="p-3 w-32">Khoảng thời gian</th>
-                                            <th className="p-3">Địa điểm</th>
-                                            <th className="p-3">Hoạt động</th>
-                                            {!isViewMode && !isLocked && (
-                                                <th className="p-3 text-center w-24">Thao tác</th>
-                                            )}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {(currentItinerary.chiTietLichTrinhs || []).length === 0 ? (
-                                            <tr>
-                                                <td colSpan={isViewMode || isLocked ? 3 : 4} className="p-4 text-center text-slate-400 italic">
-                                                    Chưa có mốc chi tiết timeline nào.
-                                                </td>
+                                {/* Bảng danh sách mốc thời gian làm lại thông thoáng hơn */}
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-100 text-xs uppercase tracking-wider">
+                                                <th className="py-3 px-5 w-44">Thời gian</th>
+                                                <th className="py-3 px-5 w-64">Địa điểm</th>
+                                                <th className="py-3 px-5">Chi tiết hoạt động</th>
+                                                {!isViewMode && !isLocked && <th className="py-3 px-5 w-28 text-center">Thao tác</th>}
                                             </tr>
-                                        ) : (
-                                            currentItinerary.chiTietLichTrinhs.map((sub) => {
-                                                const subKey = getSubKey(sub);
-                                                const isEditing = editingSubKey === subKey;
-                                                const loc = diaDiems.find(d => String(d.maDiaDiem) === String(sub.maDiaDiem));
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {(currentItinerary.chiTietLichTrinhs || []).length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={isViewMode || isLocked ? 3 : 4} className="py-10 px-5 text-center text-slate-400 italic">
+                                                        Chưa có mốc hoạt động chi tiết nào cho ngày này.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                currentItinerary.chiTietLichTrinhs.map((sub) => {
+                                                    const subKey = getSubKey(sub);
+                                                    const isEditing = editingSubKey === subKey;
+                                                    const loc = diaDiems.find((d) => String(d.maDiaDiem) === String(sub.maDiaDiem));
 
-                                                return (
-                                                    <tr key={subKey} className="hover:bg-slate-50/50 transition">
-                                                        {/* Time */}
-                                                        <td className="p-3">
-                                                            {isEditing ? (
-                                                                <div className="flex flex-col gap-1 w-[120px]">
-                                                                    <TimePicker value={editingSubRow.gioBatDau} onChange={(t) => setEditingSubRow(p => ({ ...p, gioBatDau: t }))} />
-                                                                    <TimePicker value={editingSubRow.gioKetThuc} onChange={(t) => setEditingSubRow(p => ({ ...p, gioKetThuc: t }))} />
-                                                                </div>
-                                                            ) : (
-                                                                <span>{sub.gioBatDau}{sub.gioKetThuc ? ` - ${sub.gioKetThuc}` : ""}</span>
-                                                            )}
-                                                        </td>
-
-                                                        {/* Location */}
-                                                        <td className="p-3 w-[250px]">
-                                                            {isEditing ? (
-                                                                <SelectField
-                                                                    searchable
-                                                                    searchText="Tìm kiếm địa điểm tham quan"
-                                                                    value={editingSubRow.maDiaDiem}
-                                                                    options={getAvailableLocationsForEdit(editingSubRow.maDiaDiem)}
-                                                                    valueKey="maDiaDiem"
-                                                                    labelKey="tenDiaDiem"
-                                                                    placeholder="Chọn địa điểm"
-                                                                    onChange={(val) => setEditingSubRow(p => ({ ...p, maDiaDiem: val }))}
-                                                                />
-                                                            ) : (
-                                                                loc?.tenDiaDiem || "Không chọn"
-                                                            )}
-                                                        </td>
-
-                                                        {/* Activity */}
-                                                        <td className="p-3 w-[350px]">
-                                                            {isEditing ? (
-                                                                <InputField
-                                                                    multiline rows={1}
-                                                                    value={editingSubRow.hoatDong}
-                                                                    onChange={(e) => setEditingSubRow(p => ({ ...p, hoatDong: e.target.value }))}
-                                                                />
-                                                            ) : sub.hoatDong}
-                                                        </td>
-
-                                                        {/* Actions */}
-                                                        {!isViewMode && !isLocked && (
-                                                            <td className="p-3 text-center">
-                                                                <div className="flex justify-center gap-2">
-                                                                    {isEditing ? (
-                                                                        <>
-                                                                            <button type="button" onClick={handleSaveSubRow} className="text-slate-500 hover:text-amber-400 text-xs font-semibold">Lưu</button>
-                                                                            <button type="button" onClick={handleCancelEditSubRow} className="text-slate-500 hover:text-red-700 text-xs font-semibold">Hủy</button>
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <button type="button" onClick={() => handleEditSubRow(sub)} className="text-sky-500 hover:text-sky-700"><Pencil size={14} /></button>
-                                                                            <button type="button" onClick={() => handleRemoveSubRow(subKey)} className="text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
-                                                                        </>
-                                                                    )}
-                                                                </div>
+                                                    return (
+                                                        <tr key={subKey} className="hover:bg-slate-50/60 transition-colors">
+                                                            <td className="py-4 px-5 vertical-align-top font-medium text-slate-700">
+                                                                {isEditing ? (
+                                                                    <div className="flex items-center gap-1.5 max-w-[160px]">
+                                                                        <TimePicker value={editingSubRow.gioBatDau} onChange={(t) => setEditingSubRow((p) => ({ ...p, gioBatDau: t }))} />
+                                                                        <span className="text-slate-400">-</span>
+                                                                        <TimePicker value={editingSubRow.gioKetThuc} onChange={(t) => setEditingSubRow((p) => ({ ...p, gioKetThuc: t }))} />
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 text-xs font-semibold">
+                                                                        {sub.gioBatDau}{sub.gioKetThuc ? ` - ${sub.gioKetThuc}` : ""}
+                                                                    </div>
+                                                                )}
                                                             </td>
-                                                        )}
-                                                    </tr>
-                                                );
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
+                                                            <td className="py-4 px-5 text-slate-700">
+                                                                {isEditing ? (
+                                                                    <SelectField
+                                                                        value={editingSubRow.maDiaDiem}
+                                                                        options={getAvailableLocationsForEdit(editingSubRow.maDiaDiem)}
+                                                                        valueKey="maDiaDiem"
+                                                                        labelKey="tenDiaDiem"
+                                                                        onChange={(val) => setEditingSubRow((p) => ({ ...p, maDiaDiem: val }))}
+                                                                    />
+                                                                ) : (
+                                                                    <span className="font-semibold text-slate-800">{loc?.tenDiaDiem || "Không chọn"}</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="py-4 px-5 text-slate-600 whitespace-pre-line leading-relaxed">
+                                                                {isEditing ? (
+                                                                    <InputField
+                                                                        multiline
+                                                                        rows={2}
+                                                                        value={editingSubRow.hoatDong}
+                                                                        onChange={(e) => setEditingSubRow((p) => ({ ...p, hoatDong: e.target.value }))}
+                                                                    />
+                                                                ) : (
+                                                                    sub.hoatDong
+                                                                )}
+                                                            </td>
+                                                            {!isViewMode && !isLocked && (
+                                                                <td className="py-4 px-5 text-center">
+                                                                    {isEditing ? (
+                                                                        <div className="flex items-center justify-center gap-2">
+                                                                            <button onClick={handleSaveSubRow} className="px-2 py-1 text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-md hover:bg-emerald-100 font-medium transition-colors">Lưu</button>
+                                                                            <button onClick={handleCancelEditSubRow} className="px-2 py-1 text-xs bg-slate-50 text-slate-500 border border-slate-200 rounded-md hover:bg-slate-100 transition-colors">Hủy</button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex items-center justify-center gap-1">
+                                                                            <button onClick={() => handleEditSubRow(sub)} className="p-1.5 text-slate-500 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors" title="Sửa"><Pencil size={15} /></button>
+                                                                            <button onClick={() => handleRemoveSubRow(subKey)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Xóa"><Trash2 size={15} /></button>
+                                                                        </div>
+                                                                    )}
+                                                                </td>
+                                                            )}
+                                                        </tr>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
 
-                            {modalErrors.chiTietLichTrinhs && (
-                                <p className="text-red-600 text-xs -mt-4">{modalErrors.chiTietLichTrinhs}</p>
-                            )}
+                            {modalErrors.chiTietLichTrinhs && <p className="text-red-600 text-sm font-medium">{modalErrors.chiTietLichTrinhs}</p>}
 
+                            {/* Lưu ý quan trọng */}
                             <InputField
-                                label="Lưu ý quan trọng"
-                                multiline rows={4}
+                                label="Lưu ý quan trọng cho ngày này"
+                                multiline
+                                rows={3}
                                 value={currentItinerary.luuY || ""}
-                                onChange={(e) => handleFieldChange("luuY", getVal(e))}
+                                onChange={(e) => handleFieldChange("luuY", e.target.value)}
                                 disabled={disabled}
+                                placeholder="Nhập các quy định, trang phục khuyên dùng, ghi chú sức khỏe hoặc lưu ý đặc biệt cho khách hàng..."
                             />
                         </div>
 
-                       
+                        {/* Footer Modal */}
                         {!isViewMode && !isLocked && (
-                            <div className="p-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+                            <div className="p-4 px-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+
                                 <button
-                                    disabled={isSaving}
                                     onClick={handleSaveItineraryModal}
-                                    className="px-5 py-2 text-xs font-semibold bg-sky-500 hover:bg-sky-600 disabled:bg-sky-400 text-white rounded-xl shadow transition flex items-center gap-1.5 min-w-[120px] justify-center"
+                                    disabled={isSaving}
+                                    className="px-6 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-semibold text-sm flex items-center gap-2 shadow-sm shadow-sky-100 transition-colors"
                                 >
-                                    {isSaving
-                                        ? <><Loader2 size={14} className="animate-spin" />Đang lưu...</>
-                                        : modalMode === "ADD" ? "Thêm vào lịch trình" : "Cập nhật lịch trình"
-                                    }
+                                    {isSaving && <Loader2 size={16} className="animate-spin" />}
+                                    {modalMode === "ADD" ? "Thêm vào lịch trình" : "Cập nhật lịch trình"}
                                 </button>
                             </div>
                         )}
-
                     </div>
                 </div>
             )}
@@ -630,12 +601,16 @@ export default function TourItinerariesSection({
             <ConfirmModal
                 isOpen={showDeleteModal}
                 title="Xóa lịch trình"
-                message={selectedDeleteItem ? `Bạn có chắc muốn xóa Ngày ${selectedDeleteItem.soThuTuNgay}?` : ""}
+                message={selectedDeleteItem ? `Bạn có chắc muốn xóa Hành trình Ngày ${selectedDeleteItem.soThuTuNgay}?` : ""}
                 confirmText="Xóa"
                 cancelText="Hủy"
                 type="danger"
                 onConfirm={confirmDeleteItinerary}
-                onCancel={() => { setShowDeleteModal(false); setSelectedDeleteItem(null); }}
+                onCancel={() => {
+                    setShowDeleteModal(false);
+                    setSelectedDeleteItem(null);
+                    setIsSaving(false);
+                }}
             />
         </section>
     );

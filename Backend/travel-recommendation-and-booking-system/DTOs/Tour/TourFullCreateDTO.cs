@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs.Departure;
 using travel_recommendation_and_booking_system.DTOs.Schedule;
+using travel_recommendation_and_booking_system.DTOs.Tour_KS;
+using travel_recommendation_and_booking_system.Models;
 
 namespace travel_recommendation_and_booking_system.DTOs.Tour
 {
@@ -9,7 +11,7 @@ namespace travel_recommendation_and_booking_system.DTOs.Tour
         [FromForm]
         public TourDTO TourInfo { get; set; }
         [FromForm]
-        public List<int> DanhSachKhachSan { get; set; }
+        public List<Tour_KSDTO> DanhSachKhachSan { get; set; }
         [FromForm]
         public List<ScheduleDTO> LichTrinh { get; set; }
         [FromForm]

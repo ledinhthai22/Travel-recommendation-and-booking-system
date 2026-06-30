@@ -5,21 +5,30 @@ import HeroSection from '~/components/Hero/HeroSection';
 import FeaturedCarousel from '~/components/Common/FeaturedCarousel';
 import TourCard from '~/components/Tours/TourCard';
 import SectionTitle from '~/components/Common/SectionTitle';
-import { bestTours, hotDeals } from '~/constants/Home.constants';
 import useBanner from '~/Hooks/useBanner';
-import useHomeLocationsCard from '~/Hooks/useHomeLocationsCard';
 import useAuth from '~/Hooks/useAuth';
-
+import useHomeLocations from '~/Hooks/useHomeLocations';
+import { useReviews } from '~/Hooks/useReview';
+import { useBestTours } from "~/Hooks/useBestTours";
+import { useLasterTours } from '~/Hooks/useLatestTour';
+import { useState,useEffect } from 'react';
+import { getMyWishlistIdsApi } from '~/Services/TourService';
 export default function HomePage() {
-    const { user } = useAuth();
-
+    const { reviews, reviewsLoading } = useReviews();
+    const { tours: bestTours, loading: bestToursLoading } = useBestTours(12);
+    const { user, isAuthenticated } = useAuth();
     const { banners } = useBanner();
-    const { destinations, loading: locationLoading } = useHomeLocationsCard(12);
-
+    const { location, loading : locationLoading } = useHomeLocations(12);
+    const { tours:latestTours, loading: latestToursLoading } = useLasterTours(12);
     const activeBanner = banners;
-
     const isLoggedIn = !!user
+    const [wishlistIds, setWishlistIds] = useState([]);
 
+    useEffect(() => {
+        if (isAuthenticated) {
+            getMyWishlistIdsApi().then(ids => setWishlistIds(ids));
+        }
+    }, [isAuthenticated]);
     return (
         <div className="min-h-screen bg-white">
             <HeroSection
@@ -69,10 +78,10 @@ export default function HomePage() {
                                 <div key={i} className="h-72 w-full animate-pulse rounded-3xl bg-slate-200" />
                             ))}
                         </div>
-                    ) : destinations && destinations.length > 0 ? (
+                    ) : location && location.length > 0 ? (
 
                         <FeaturedCarousel
-                            items={destinations}
+                            items={location}
                             itemsPerPage={12}
                             gap={30}
                             autoPlayMs={4500}
@@ -123,13 +132,35 @@ export default function HomePage() {
                             </Link>
                         }
                     />
+                    {bestToursLoading ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-[30px]">
+                            {[...Array(4)].map((_, i) => (
+                                <div key={i} className="h-72 w-full animate-pulse rounded-3xl bg-slate-200" />
+                            ))}
+                        </div>
+                    ) : bestTours && bestTours.length > 0 ? (
                     <FeaturedCarousel
                         items={bestTours.slice(0, 6)}
-                        renderItem={(tour) => <TourCard {...tour} />}
+                        renderItem={(tour) => <TourCard 
+                        id={tour.maTour}
+                        slug={tour.slug || tour.maTour}
+                        name={tour.tenTour}
+                        image={`https://localhost:7016${tour.duongDanAnh}`}
+                        duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
+                        destination={tour.diemDen || "Đang cập nhật"}
+                        price={tour.giaChuyen}
+                        rating={tour.diemDanhGia}
+                        reviewCount={tour.soLuongDanhGia} 
+                        initialWishlist={wishlistIds.includes(tour.maTour)}
+                        />
+                    }
                         itemsPerPage={4}
                         gap={30}
                         autoPlayMs={5000}
                     />
+                    ) : (
+                        <p className="text-center text-slate-400 py-6">Không tìm thấy tour nào.</p>
+                    )}
                 </div>
             </section>
             <section className="py-16 md:py-20">
@@ -155,81 +186,74 @@ export default function HomePage() {
                             </Link>
                         }
                     />
-                    <FeaturedCarousel
-                        items={hotDeals.slice(0, 6)}
-                        renderItem={(tour) => <TourCard {...tour} />}
+                    
+                    {latestToursLoading ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-[30px]">
+                            {[...Array(4)].map((_, i) => (
+                                <div key={i} className="h-72 w-full animate-pulse rounded-3xl bg-slate-200" />
+                            ))}
+                        </div>
+                    ) : latestTours && latestTours.length > 0 ? (
+                        <FeaturedCarousel
+                        items={latestTours.slice(0, 6)}
+                        renderItem={(tour) => <TourCard 
+                        id={tour.maTour}
+                        slug={tour.slug || tour.maTour}
+                        name={tour.tenTour}
+                        image={`https://localhost:7016${tour.duongDanAnh}`}
+                        duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
+                        destination={tour.diemDen || "Đang cập nhật"}
+                        price={tour.giaChuyen}
+                        rating={tour.diemDanhGia}
+                        reviewCount={tour.soLuongDanhGia} 
+                        initialWishlist={wishlistIds.includes(tour.maTour)}
+                        />
+                    }
                         itemsPerPage={4}
                         gap={30}
                         autoPlayMs={5000}
                     />
+                    ) : (
+                        <p className="text-center text-slate-400 py-6">Không tìm thấy tour nào.</p>
+                    )}
                 </div>
             </section>
 
-            {/* --- SECTION ĐÁNH GIÁ KHÁCH HÀNG --- */}
+            {/*Top 3 đánh giá tốt nhất*/}
             <section className="border-t border-slate-100 py-20">
-                <div className="mx-auto max-w-[1440px] px-4 md:px-8">
-                    <div className="mb-12 text-center">
-                        <h2 className="text-4xl font-bold text-slate-900">
-                            Khách hàng nói gì về chúng tôi
-                        </h2>
-                        <p className="mt-3 text-slate-500">
-                            Những đánh giá chân thực từ khách hàng đã trải nghiệm dịch vụ
-                        </p>
-                    </div>
-
+            <div className="mx-auto max-w-[1440px] px-4 md:px-8">
+                <div className="mb-12 text-center">
+                    <h2 className="text-4xl font-bold text-slate-900">Khách hàng nói gì về chúng tôi</h2>
+                    <p className="mt-3 text-slate-500">Những đánh giá chân thực từ khách hàng đã trải nghiệm dịch vụ</p>
+                </div>
+                {reviewsLoading ? (
+                    <div className="text-center">Đang tải đánh giá...</div>
+                ) : (
                     <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
-                        {[
-                            {
-                                id: 1,
-                                name: 'Nguyễn Văn A',
-                                avatar: 'https://i.pravatar.cc/150?img=12',
-                                review: 'Tour được tổ chức rất chuyên nghiệp. Hướng dẫn viên nhiệt tình và lịch trình hợp lý.',
-                            },
-                            {
-                                id: 2,
-                                name: 'Trần Thị B',
-                                avatar: 'https://i.pravatar.cc/150?img=24',
-                                review: 'Đặt tour nhanh chóng, hỗ trợ khách hàng tốt. Chắc chắn sẽ quay lại sử dụng dịch vụ.',
-                            },
-                            {
-                                id: 3,
-                                name: 'Lê Minh C',
-                                avatar: 'https://i.pravatar.cc/150?img=33',
-                                review: 'Khách sạn đẹp, xe đưa đón đúng giờ. Trải nghiệm vượt ngoài mong đợi.',
-                            },
-                        ].map((review) => (
-                            <div
-                                key={review.id}
-                                className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-                            >
+                        {reviews.map((review, index) => (
+                            <div key={index} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+
                                 <div className="mb-4 flex items-center gap-4">
                                     <img
-                                        src={review.avatar}
-                                        alt={review.name}
+                                        src={`https://localhost:7016${review.duongDanAnh}`} 
+                                        alt={review.tenNguoiDung}
                                         className="h-14 w-14 rounded-full object-cover"
                                     />
                                     <div>
-                                        <h3 className="font-semibold text-slate-900">
-                                            {review.name}
-                                        </h3>
+                                        <h3 className="font-semibold text-slate-900">{review.tenNguoiDung}</h3>
                                         <div className="flex items-center gap-1">
-                                            {[...Array(5)].map((_, index) => (
-                                                <Star
-                                                    key={index}
-                                                    size={12}
-                                                    className="fill-amber-400 text-amber-400"
-                                                />
+                                            {[...Array(review.diemDanhGia || 5)].map((_, i) => (
+                                                <Star key={i} size={12} className="fill-amber-400 text-amber-400" />
                                             ))}
                                         </div>
                                     </div>
                                 </div>
-                                <p className="leading-7 text-slate-600">
-                                    "{review.review}"
-                                </p>
+                                <p className="leading-7 text-slate-600">"{review.noiDung}"</p>
                             </div>
                         ))}
                     </div>
-                </div>
+                )}
+            </div>
             </section>
         </div>
     );

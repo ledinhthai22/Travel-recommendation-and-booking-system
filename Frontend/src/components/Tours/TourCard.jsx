@@ -1,7 +1,11 @@
-import { memo, useState } from 'react';
+import { memo, useState, useContext,useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Heart, Calendar, ArrowRight, MapPin } from 'lucide-react';
 import { formatCurrency } from '~/Helper/FormatCurrency';
+
+import { AuthContext } from '~/Context/AuthContext';
+import { addToWishlistApi, deleteWishlistApi } from '~/Services/TourService';
+import { toastError, toastSuccess } from '~/utils/Toast'; // Thêm toast để báo lỗi nếu cần
 
 function TourCard({
     id,
@@ -14,8 +18,49 @@ function TourCard({
     rating,
     reviewCount,
     availableSlots,
+    showWishlist = true,
+    disableLink = false,
+    initialWishlist = false
 }) {
-    const [wishlisted, setWishlisted] = useState(false);
+    const { isAuthenticated, setShowLoginModal } = useContext(AuthContext);
+    const [wishlisted, setWishlisted] = useState(initialWishlist);
+
+    useEffect(() => {
+        setWishlisted(initialWishlist);
+    }, [initialWishlist]);
+
+    const handleWishlistClick = async (e) => {
+        e.preventDefault(); // Ngăn chặn sự kiện click kích hoạt thẻ <Link> bao ngoài
+
+        // Kiểm tra đăng nhập
+        if (!isAuthenticated) {
+            // Giả sử context của bạn có hàm mở modal đăng nhập
+            if (setShowLoginModal) {
+                setShowLoginModal(true);
+            }
+            return;
+        }
+
+        // Kỹ thuật Optimistic Update: Cập nhật giao diện ngay lập tức để người dùng thấy phản hồi mượt mà
+        const previousState = wishlisted;
+        setWishlisted(!previousState);
+
+        try {
+            if (!previousState) {
+                // Chưa yêu thích -> Gọi API thêm
+                await addToWishlistApi(id);
+                toastSuccess("Tour đã được thêm vào danh sách yêu thích của bạn")
+            } else {
+                // Đã yêu thích -> Gọi API xóa
+                await deleteWishlistApi([id]); 
+            }
+        } catch (error) {
+            // Nếu API thất bại, hoàn tác lại trạng thái cũ
+            setWishlisted(previousState);
+            toastError?.("Có lỗi xảy ra khi cập nhật danh sách yêu thích.");
+            console.error("Wishlist error:", error);
+        }
+    };
 
     return (
         <article
@@ -28,6 +73,23 @@ function TourCard({
         >
             {/* Vùng hình ảnh */}
             <div className="relative h-40 sm:h-44 w-full flex-shrink-0 overflow-hidden block">
+                {disableLink ?
+                (
+                    <div className="relative h-40 sm:h-44 w-full flex-shrink-0 overflow-hidden block cursor-default">
+                        <img
+                        src={image}
+                        alt={name || 'Tour du lịch'}
+                        loading="lazy"
+                        className="
+                            h-full w-full object-cover
+                            transition-transform duration-500 ease-out
+                            group-hover:scale-105
+                        "
+                        />
+                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all duration-300" />
+                    </div>   
+                )
+                :(
                 <Link to={`/Cac-Chuyen-Di/${slug}`}>
                     <img
                         src={image}
@@ -41,7 +103,8 @@ function TourCard({
                     />
                     <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all duration-300" />
                 </Link>
-
+                )
+            }
                 {/* Đánh giá hình sao */}
                 <div className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-slate-900/40 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm">
                     <Star size={11} className="fill-amber-400 text-amber-400" />
@@ -49,18 +112,23 @@ function TourCard({
                     {reviewCount ? <span className="text-white/80">({reviewCount})</span> : null}
                 </div>
 
-                {/* Nút yêu thích */}
-                <button
-                    type="button"
-                    onClick={(e) => { e.preventDefault(); setWishlisted(v => !v); }}
-                    aria-label={wishlisted ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
-                    className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow backdrop-blur-sm transition hover:scale-110 active:scale-95"
-                >
-                    <Heart
-                        size={15}
-                        className={wishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}
-                    />
-                </button>
+                {/* Nút yêu thích - Chỉ hiển thị khi showWishlist = true */}
+                {showWishlist && (
+                    <button
+                        type="button"
+                        onClick={handleWishlistClick}
+                        aria-label={wishlisted ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+                        className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow backdrop-blur-sm transition hover:scale-110 active:scale-95"
+                    >
+                        <Heart
+                            size={15}
+                            // Đổi màu đỏ nếu đã yêu thích, ngược lại là màu xám nhạt
+                            className={`transition-colors duration-200 ${
+                                wishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-400'
+                            }`}
+                        />
+                    </button>
+                )}
 
                 {/* Địa điểm trên hình */}
                 {destination && (
@@ -71,10 +139,8 @@ function TourCard({
                 )}
             </div>
 
-            {/* Vùng nội dung: Đổi sang flex-col không dùng justify-between để kiểm soát khoảng cách tốt hơn */}
+            {/* Vùng nội dung */}
             <div className="flex flex-1 flex-col p-3 pt-2">
-                
-                {/* Phần thông tin chữ (Tên + Thời gian) */}
                 <div className="flex flex-col gap-1">
                     <Link to={`/Cac-Chuyen-Di/${slug}`} className="text-left block">
                         <h3
@@ -95,7 +161,6 @@ function TourCard({
                     </div>
                 </div>
 
-                {/* Phần giá tiền và nút bấm: Đẩy sát lên bằng cách đổi từ border-t sang mt-auto / pt-2 */}
                 <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100/80 pt-2.5">
                     <div style={{ fontFamily: "'Inter', sans-serif" }} className="flex flex-col text-left">
                         <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Giá từ</span>

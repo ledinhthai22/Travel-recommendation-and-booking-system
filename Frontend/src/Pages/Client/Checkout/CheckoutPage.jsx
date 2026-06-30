@@ -23,6 +23,16 @@ function formatDate(dateString) {
     return new Date(dateString).toLocaleDateString("vi-VN");
 }
 
+// Tính số ngày còn lại đến ngày khởi hành (so sánh theo ngày, bỏ giờ phút)
+function calcDaysUntilDeparture(ngayKhoiHanh) {
+    if (!ngayKhoiHanh) return 999;
+    const departure = new Date(ngayKhoiHanh);
+    departure.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((departure - today) / (1000 * 60 * 60 * 24));
+}
+
 export default function CheckoutPage() {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -43,6 +53,7 @@ export default function CheckoutPage() {
     const [holdId, setHoldId] = useState(null);
     const [vnpayUrl, setVnpayUrl] = useState(null);
     const [txnRef, setTxnRef] = useState(null);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     // Load booking data from sessionStorage
     useEffect(() => {
@@ -54,7 +65,7 @@ export default function CheckoutPage() {
         }
     }, []);
 
-    // Cleanup single rooms
+    // Cleanup single rooms khi số hành khách thay đổi
     useEffect(() => {
         setSingleRooms((prev) => {
             const next = {};
@@ -64,25 +75,35 @@ export default function CheckoutPage() {
                     if (prev[key]) next[key] = true;
                 }
             });
-            return Object.keys(prev).length === Object.keys(next).length &&
-                Object.keys(next).every(k => prev[k] === next[k]) ? prev : next;
+            const unchanged =
+                Object.keys(prev).length === Object.keys(next).length &&
+                Object.keys(next).every((k) => prev[k] === next[k]);
+            return unchanged ? prev : next;
         });
     }, [passengers]);
 
-    // TỰ ĐỘNG XÓA GIỮ CHỖ KHI RỜI KHỎI TRANG
+    // Tự động xóa giữ chỗ khi rời khỏi trang
     useEffect(() => {
         return () => {
             if (holdId) {
                 const storedUser = JSON.parse(localStorage.getItem("user"));
                 if (storedUser?.maNguoiDung) {
-                    console.log(`[Cleanup] Xóa giữ chỗ ${holdId} vì rời trang`);
                     releaseReservationApi(storedUser.maNguoiDung, holdId).catch(() => {});
                 }
             }
         };
     }, [holdId]);
 
-    const singleRoomCount = useMemo(() => Object.values(singleRooms).filter(Boolean).length, [singleRooms]);
+    // Reset paymentMethod về VNPAY mỗi lần mở modal
+    const handleOpenPaymentModal = () => {
+        setPaymentMethod(PAYMENT_METHOD.VNPAY);
+        setShowPaymentModal(true);
+    };
+
+    const singleRoomCount = useMemo(
+        () => Object.values(singleRooms).filter(Boolean).length,
+        [singleRooms]
+    );
 
     const totalPrice = useMemo(() => {
         if (!bookingData) return 0;
@@ -95,10 +116,15 @@ export default function CheckoutPage() {
         );
     }, [bookingData, passengers, singleRoomCount]);
 
-    const passengerList = useMemo(() =>
-        Object.entries(passengerDetails).map(([key, p]) => ({
-            key, ...p, singleRoom: singleRooms[key] || false,
-        })), [passengerDetails, singleRooms]);
+    const passengerList = useMemo(
+        () =>
+            Object.entries(passengerDetails).map(([key, p]) => ({
+                key,
+                ...p,
+                singleRoom: singleRooms[key] || false,
+            })),
+        [passengerDetails, singleRooms]
+    );
 
     const validate = () => {
         let valid = true;
@@ -118,7 +144,10 @@ export default function CheckoutPage() {
             if (!p.fullName?.trim()) err.fullName = "Nhập họ tên";
             if (!p.dob) err.dob = "Chọn ngày sinh";
             if (p.phone && !/^0\d{9}$/.test(p.phone)) err.phone = "SĐT không hợp lệ";
-            if (Object.keys(err).length > 0) { passengerErr[key] = err; valid = false; }
+            if (Object.keys(err).length > 0) {
+                passengerErr[key] = err;
+                valid = false;
+            }
         };
 
         for (let i = 0; i < passengers.adults; i++) checkPassenger(`adults-${i}`);
@@ -166,6 +195,7 @@ export default function CheckoutPage() {
         soDienThoaiLienHe: contact.phone,
         emailLienHe: contact.email,
         diaChiLienHe: contact.address,
+        phuongThucThanhToan: paymentMethod,
     });
 
     const handleSubmit = async () => {
@@ -207,20 +237,20 @@ export default function CheckoutPage() {
             toastError("Phiên giữ chỗ không hợp lệ. Vui lòng thử lại từ đầu.");
             return;
         }
+        setIsProcessing(true);
 
+        // Tiền mặt hoặc chuyển khoản
         if (paymentMethod === PAYMENT_METHOD.TIEN_MAT || paymentMethod === PAYMENT_METHOD.CHUYEN_KHOAN) {
             try {
                 const storedUser = JSON.parse(localStorage.getItem("user"));
                 await createBookingClientApi(storedUser.maNguoiDung, buildBookingDto(), holdId);
-                
                 sessionStorage.removeItem("bookingData");
-                
                 const methodName = paymentMethod === PAYMENT_METHOD.TIEN_MAT ? "cash" : "transfer";
-                
                 toastSuccess("Đặt tour thành công", "Chúng tôi sẽ liên hệ xác nhận với bạn sớm nhất.");
-                navigate("/dat-tour-thanh-cong", { state: { method: methodName } });
+                navigate("/dat-tour-thanh-cong", { state: { method: methodName, hold: holdId } });
             } catch (err) {
                 toastError("Tạo đơn thất bại", getErrorMessage(err));
+                setIsProcessing(false);
             }
             return;
         }
@@ -257,6 +287,7 @@ export default function CheckoutPage() {
                 toastError("Lỗi kết nối", "Không thể kết nối tới cổng thanh toán VNPay.");
             } finally {
                 setVnpayLoading(false);
+                setIsProcessing(false);
             }
         }
     };
@@ -266,7 +297,7 @@ export default function CheckoutPage() {
         setTxnRef(null);
         setShowPaymentModal(false);
         setVnpayLoading(false);
-        setHoldId(null); // Xóa holdId sau khi thành công
+        setHoldId(null);
         navigate("/dat-tour-thanh-cong", { state: { method: "vnpay" } });
     }, [navigate]);
 
@@ -275,22 +306,32 @@ export default function CheckoutPage() {
     return (
         <div>
             <div className="mx-auto max-w-[1440px] px-7 mt-30">
-                <CheckoutStep step={step} onBack={handleBack} />
+                <CheckoutStep step={step} onBack={handleBack} holdId={holdId} />
                 <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12">
                     <div className="space-y-6 lg:col-span-8">
                         {step === 1 && (
                             <>
-                                <ContactForm contact={contact} onChange={(e) => {
-                                    const { name, value } = e.target;
-                                    setContact(prev => ({ ...prev, [name]: value }));
-                                }} errors={contactErrors} />
-                                <PassengerForm passengers={passengers} onChange={(type, value) =>
-                                    setPassengers(prev => ({ ...prev, [type]: value }))
-                                } />
+                                <ContactForm
+                                    contact={contact}
+                                    onChange={(e) => {
+                                        const { name, value } = e.target;
+                                        setContact((prev) => ({ ...prev, [name]: value }));
+                                    }}
+                                    onTabChange={(newContactData) => setContact(newContactData)}
+                                    errors={contactErrors}
+                                />
+                                <PassengerForm
+                                    passengers={passengers}
+                                    onChange={(type, value) =>
+                                        setPassengers((prev) => ({ ...prev, [type]: value }))
+                                    }
+                                />
                                 <PassengerDetailsForm
                                     passengers={passengers}
                                     singleRooms={singleRooms}
-                                    onToggleSingleRoom={(key) => setSingleRooms(prev => ({ ...prev, [key]: !prev[key] }))}
+                                    onToggleSingleRoom={(key) =>
+                                        setSingleRooms((prev) => ({ ...prev, [key]: !prev[key] }))
+                                    }
                                     bookingData={bookingData}
                                     details={passengerDetails}
                                     setDetails={setPassengerDetails}
@@ -300,14 +341,26 @@ export default function CheckoutPage() {
                                     <h2 className="mb-4 text-xl font-bold text-slate-900">Mã ưu đãi</h2>
                                     <div className="flex items-center gap-3">
                                         <div className="min-w-0 flex-1">
-                                            <InputField value={promoCode} onChange={(e) => setPromoCode(e.target.value)} placeholder="Nhập mã giảm giá" />
+                                            <InputField
+                                                value={promoCode}
+                                                onChange={(e) => setPromoCode(e.target.value)}
+                                                placeholder="Nhập mã giảm giá"
+                                            />
                                         </div>
-                                        <button className="rounded-2xl bg-sky-500 px-8 py-3 font-medium text-white hover:bg-sky-600 transition">Áp dụng</button>
+                                        <button className="rounded-2xl bg-sky-500 px-8 py-3 font-medium text-white hover:bg-sky-600 transition">
+                                            Áp dụng
+                                        </button>
                                     </div>
                                 </div>
                                 <div className="mb-10 rounded-3xl bg-white p-6 shadow-sm">
                                     <h2 className="mb-4 text-xl font-bold text-slate-900">Ghi chú</h2>
-                                    <textarea rows={4} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhập ghi chú cho đơn hàng..." className="w-full rounded-2xl border border-slate-300 p-4 outline-none focus:border-sky-400 resize-none" />
+                                    <textarea
+                                        rows={4}
+                                        value={note}
+                                        onChange={(e) => setNote(e.target.value)}
+                                        placeholder="Nhập ghi chú cho đơn hàng..."
+                                        className="w-full rounded-2xl border border-slate-300 p-4 outline-none focus:border-sky-400 resize-none"
+                                    />
                                 </div>
                             </>
                         )}
@@ -317,14 +370,23 @@ export default function CheckoutPage() {
                                 <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                                     <div className="flex items-center justify-between mb-5">
                                         <h2 className="text-xl font-bold">Thông tin liên lạc</h2>
-                                        <button onClick={() => setStep(1)} className="text-sm font-medium text-sky-500 hover:underline">Chỉnh sửa</button>
+                                        <button
+                                            onClick={() => setStep(1)}
+                                            className="text-sm font-medium text-sky-500 hover:underline"
+                                        >
+                                            Chỉnh sửa
+                                        </button>
                                     </div>
                                     <div className="grid grid-cols-3 gap-6">
                                         <InfoCell label="Họ tên" value={contact.fullName} />
                                         <InfoCell label="Email" value={contact.email} />
                                         <InfoCell label="Số điện thoại" value={contact.phone} />
                                     </div>
-                                    {note && <div className="mt-4"><InfoCell label="Ghi chú" value={note} /></div>}
+                                    {note && (
+                                        <div className="mt-4">
+                                            <InfoCell label="Ghi chú" value={note} />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -334,8 +396,18 @@ export default function CheckoutPage() {
                                         <SummaryRow label="Mã chuyến đi" value={bookingData.maChuyenCode || "—"} />
                                         <SummaryRow label="Ngày khởi hành" value={formatDate(bookingData.ngayKhoiHanh)} />
                                         <SummaryRow label="Ngày kết thúc" value={formatDate(bookingData.ngayKetThuc)} />
-                                        <SummaryRow label="Trị giá đơn đặt" value={<span className="font-bold text-sky-600">{formatCurrency(totalPrice)}</span>} />
-                                        <SummaryRow label="Tình trạng thanh toán" value={<span className="inline-block rounded-md bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">Chờ thanh toán</span>} />
+                                        <SummaryRow
+                                            label="Trị giá đơn đặt"
+                                            value={<span className="font-bold text-sky-600">{formatCurrency(totalPrice)}</span>}
+                                        />
+                                        <SummaryRow
+                                            label="Tình trạng thanh toán"
+                                            value={
+                                                <span className="inline-block rounded-md bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                                                    Chờ thanh toán
+                                                </span>
+                                            }
+                                        />
                                     </div>
                                 </div>
 
@@ -357,7 +429,11 @@ export default function CheckoutPage() {
                                             </thead>
                                             <tbody>
                                                 {passengerList.map((p, index) => {
-                                                    const typeLabel = p.key.startsWith("adults") ? "Người lớn" : p.key.startsWith("children") ? "Trẻ em" : "Em bé";
+                                                    const typeLabel = p.key.startsWith("adults")
+                                                        ? "Người lớn"
+                                                        : p.key.startsWith("children")
+                                                        ? "Trẻ em"
+                                                        : "Em bé";
                                                     return (
                                                         <tr key={p.key} className="border-t border-slate-100">
                                                             <td className="py-3 text-slate-400">#{index + 1}</td>
@@ -366,7 +442,10 @@ export default function CheckoutPage() {
                                                             <td className="py-3 text-slate-600">{p.gender || "—"}</td>
                                                             <td className="py-3"><PassengerTypeBadge label={typeLabel} /></td>
                                                             <td className="py-3">
-                                                                {p.singleRoom ? <span className="text-emerald-600 font-medium">Có</span> : <span className="text-slate-400">Không</span>}
+                                                                {p.singleRoom
+                                                                    ? <span className="text-emerald-600 font-medium">Có</span>
+                                                                    : <span className="text-slate-400">Không</span>
+                                                                }
                                                             </td>
                                                         </tr>
                                                     );
@@ -385,7 +464,7 @@ export default function CheckoutPage() {
                             passengers={passengers}
                             singleRoomCount={singleRoomCount}
                             step={step}
-                            setShowPaymentModal={setShowPaymentModal}
+                            setShowPaymentModal={handleOpenPaymentModal}
                             onSubmit={handleSubmit}
                         />
                     </div>
@@ -400,6 +479,7 @@ export default function CheckoutPage() {
                     totalPrice={totalPrice}
                     onClose={() => setShowPaymentModal(false)}
                     onConfirm={handleConfirmPayment}
+                    bookingData={bookingData}
                 />
             )}
 
@@ -411,11 +491,22 @@ export default function CheckoutPage() {
                     onClose={() => { setVnpayUrl(null); setTxnRef(null); }}
                 />
             )}
+
+            {isProcessing && (
+                <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center">
+                    <div className="bg-white rounded-3xl p-8 flex flex-col items-center shadow-2xl">
+                        <div className="w-16 h-16 border-4 border-sky-200 border-t-sky-500 rounded-full animate-spin mb-6" />
+                        <p className="text-lg font-semibold text-slate-800">Đang tạo đơn đặt tour...</p>
+                        <p className="text-sm text-slate-500 mt-2">Vui lòng không đóng trang</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
-// Các component nhỏ giữ nguyên
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
 function InfoCell({ label, value }) {
     return (
         <div>
@@ -447,40 +538,100 @@ function PassengerTypeBadge({ label }) {
     );
 }
 
-function PaymentModal({ paymentMethod, setPaymentMethod, vnpayLoading, totalPrice, onClose, onConfirm }) {
+function PaymentModal({ paymentMethod, setPaymentMethod, vnpayLoading, totalPrice, onClose, onConfirm, bookingData }) {
+    const daysUntilDeparture = useMemo(
+        () => calcDaysUntilDeparture(bookingData?.ngayKhoiHanh),
+        [bookingData]
+    );
+
+    // Chỉ hiện tiền mặt nếu còn hơn 3 ngày
+    const canPayCash = daysUntilDeparture > 3;
+
     const options = [
-        { value: PAYMENT_METHOD.VNPAY, label: "Thanh toán trực tuyến qua VNPay", desc: "Hệ thống sẽ mở cửa sổ thanh toán VNPay. Đơn hàng tự động xác nhận sau khi giao dịch thành công.", icon: <CreditCard size={20} className="text-sky-500" /> },
-        { value: PAYMENT_METHOD.TIEN_MAT, label: "Tiền mặt tại quầy", desc: "Thanh toán trực tiếp tại văn phòng công ty. Đơn sẽ được tạo ngay, nhân viên sẽ liên hệ xác nhận.", icon: <Banknote size={20} className="text-emerald-500" /> },
-    ];
+        {
+            value: PAYMENT_METHOD.VNPAY,
+            label: "Thanh toán trực tuyến qua VNPay",
+            desc: "Hệ thống sẽ mở cửa sổ thanh toán VNPay. Đơn hàng tự động xác nhận sau khi giao dịch thành công.",
+            icon: <CreditCard size={20} className="text-sky-500" />,
+        },
+        canPayCash && {
+            value: PAYMENT_METHOD.TIEN_MAT,
+            label: "Tiền mặt tại quầy",
+            desc: "Thanh toán trực tiếp tại văn phòng công ty. Đơn sẽ được tạo ngay, nhân viên sẽ liên hệ xác nhận.",
+            icon: <Banknote size={20} className="text-emerald-500" />,
+        },
+    ].filter(Boolean);
 
     return (
         <div className="fixed inset-0 z-[999] bg-black/40 flex items-center justify-center p-4">
             <div className="w-full max-w-2xl rounded-3xl bg-white shadow-xl overflow-hidden">
+                {/* Header */}
                 <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
                     <h2 className="text-xl font-bold text-slate-900">Chọn hình thức thanh toán</h2>
-                    <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"><X size={20} /></button>
+                    <button
+                        onClick={onClose}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                    >
+                        <X size={20} />
+                    </button>
                 </div>
+
+                {/* Options */}
                 <div className="p-6 space-y-3">
                     {options.map((opt) => {
                         const isSelected = paymentMethod === opt.value;
                         return (
-                            <label key={opt.value} className={`w-full text-left rounded-2xl border p-4 transition-all cursor-pointer flex items-center gap-3 ${isSelected ? "border-sky-500 bg-sky-50/60 ring-1 ring-sky-200" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}>
-                                <input type="radio" name="paymentMethod" checked={isSelected} onChange={() => setPaymentMethod(opt.value)} className="w-3 h-3 shrink-0 appearance-none rounded-full border-2 border-slate-300 checked:border-sky-500 checked:bg-sky-500 transition-colors cursor-pointer" />
-                                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${isSelected ? "bg-white shadow-sm" : "bg-slate-100"}`}>{opt.icon}</div>
+                            <div
+                                key={opt.value}
+                                onClick={() => setPaymentMethod(opt.value)}
+                                className={`w-full rounded-2xl border p-4 transition-all cursor-pointer flex items-center gap-3
+                                    ${isSelected
+                                        ? "border-sky-500 bg-sky-50/60 ring-1 ring-sky-200"
+                                        : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                                    }`}
+                            >
+                                {/* Icon */}
+                                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors
+                                    ${isSelected ? "bg-white shadow-sm" : "bg-slate-100"}`}
+                                >
+                                    {opt.icon}
+                                </div>
+
+                                {/* Label + desc */}
                                 <div className="flex-1 min-w-0">
                                     <p className="font-semibold text-slate-800 text-sm">{opt.label}</p>
-                                    {isSelected && <p className="mt-0.5 text-xs text-slate-500 leading-relaxed">{opt.desc}</p>}
+                                    {isSelected && (
+                                        <p className="mt-0.5 text-xs text-slate-500 leading-relaxed">{opt.desc}</p>
+                                    )}
                                 </div>
-                            </label>
+
+                                {/* Radio indicator */}
+                                <div className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors
+                                    ${isSelected ? "border-sky-500 bg-sky-500" : "border-slate-300"}`}
+                                />
+                            </div>
                         );
                     })}
+
+                    {/* Cảnh báo nếu gần khởi hành */}
+                    {!canPayCash && (
+                        <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5">
+                            ⚠️ Chuyến khởi hành trong vòng 3 ngày — chỉ chấp nhận thanh toán trực tuyến qua VNPay.
+                        </p>
+                    )}
                 </div>
+
+                {/* Footer */}
                 <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-4">
                     <div>
                         <p className="text-xs text-slate-400">Tổng thanh toán</p>
                         <p className="text-lg font-extrabold text-sky-600">{formatCurrency(totalPrice)}</p>
                     </div>
-                    <button onClick={onConfirm} disabled={vnpayLoading} className="rounded-full bg-sky-500 px-8 py-3 font-semibold text-white shadow-md hover:bg-sky-600 transition disabled:opacity-60 disabled:cursor-not-allowed">
+                    <button
+                        onClick={onConfirm}
+                        disabled={vnpayLoading}
+                        className="rounded-full bg-sky-500 px-8 py-3 font-semibold text-white shadow-md hover:bg-sky-600 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
                         {vnpayLoading ? "Đang xử lý..." : "Xác nhận thanh toán"}
                     </button>
                 </div>
@@ -501,9 +652,7 @@ function VNPayWaitingModal({ url, txnRef, onSuccess, onClose }) {
     }, []);
 
     const closePopup = useCallback(() => {
-        if (popupRef.current && !popupRef.current.closed) {
-            popupRef.current.close();
-        }
+        if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
     }, []);
 
     const checkPopupClosed = useCallback(() => {
@@ -517,7 +666,6 @@ function VNPayWaitingModal({ url, txnRef, onSuccess, onClose }) {
         const handleMessage = (event) => {
             if (event.origin !== window.location.origin) return;
             if (event.data?.type === "VNPAY_RETURN" && event.data.success) {
-                console.log("✅ Received success message from popup");
                 if (calledRef.current) return;
                 calledRef.current = true;
                 stopPolling();
@@ -525,7 +673,6 @@ function VNPayWaitingModal({ url, txnRef, onSuccess, onClose }) {
                 onSuccess();
             }
         };
-
         window.addEventListener("message", handleMessage);
         return () => window.removeEventListener("message", handleMessage);
     }, [onSuccess, stopPolling, closePopup]);
@@ -537,10 +684,7 @@ function VNPayWaitingModal({ url, txnRef, onSuccess, onClose }) {
             try {
                 const res = await fetch(`https://localhost:7016/api/client/payment/status/${txnRef}`);
                 const data = await res.json();
-                console.log(`[Polling] Status: ${data.status}`);
-
                 if (data.status === "SUCCESS") {
-                    console.log("✅ Polling detected SUCCESS");
                     calledRef.current = true;
                     stopPolling();
                     closePopup();
@@ -551,9 +695,7 @@ function VNPayWaitingModal({ url, txnRef, onSuccess, onClose }) {
                     closePopup();
                     onClose();
                 }
-            } catch (err) {
-                console.log("[Polling] Error");
-            }
+            } catch {}
         }, POLL_INTERVAL_MS);
 
         timeoutRef.current = setTimeout(() => {
@@ -572,7 +714,11 @@ function VNPayWaitingModal({ url, txnRef, onSuccess, onClose }) {
         const w = 820, h = 680;
         const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
         const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
-        popupRef.current = window.open(url, "vnpay_payment", `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no`);
+        popupRef.current = window.open(
+            url,
+            "vnpay_payment",
+            `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no`
+        );
     }, [url]);
 
     useEffect(() => {
@@ -596,7 +742,10 @@ function VNPayWaitingModal({ url, txnRef, onSuccess, onClose }) {
                         </div>
                         <span className="font-bold text-slate-800">Thanh toán qua VNPay</span>
                     </div>
-                    <button onClick={() => { stopPolling(); closePopup(); onClose(); }} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition">
+                    <button
+                        onClick={() => { stopPolling(); closePopup(); onClose(); }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                    >
                         <X size={18} />
                     </button>
                 </div>
@@ -611,13 +760,18 @@ function VNPayWaitingModal({ url, txnRef, onSuccess, onClose }) {
                     </div>
                     <div>
                         <p className="font-bold text-slate-800 text-lg">Đang chờ thanh toán...</p>
-                        <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">Cửa sổ VNPay đã được mở.<br />Vui lòng hoàn tất thanh toán trong cửa sổ đó.</p>
+                        <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
+                            Cửa sổ VNPay đã được mở.<br />Vui lòng hoàn tất thanh toán trong cửa sổ đó.
+                        </p>
                     </div>
                     <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 text-xs text-amber-700 text-left flex gap-2">
                         <span className="shrink-0 mt-0.5">⚠️</span>
                         <span>Không đóng trang này trong khi thanh toán. Đơn hàng sẽ tự động cập nhật sau khi giao dịch hoàn tất.</span>
                     </div>
-                    <button onClick={openPopup} className="inline-flex items-center gap-1.5 text-sm text-sky-500 hover:text-sky-600 hover:underline transition">
+                    <button
+                        onClick={openPopup}
+                        className="inline-flex items-center gap-1.5 text-sm text-sky-500 hover:text-sky-600 hover:underline transition"
+                    >
                         Cửa sổ bị đóng? <span className="font-semibold">Mở lại tại đây →</span>
                     </button>
                 </div>

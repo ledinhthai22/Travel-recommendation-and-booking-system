@@ -11,6 +11,7 @@ namespace travel_recommendation_and_booking_system.Data
         public DbSet<NhanVien> NhanViens { get; set; }
         public DbSet<DiaDiem> DiaDiems { get; set; }
         public DbSet<KhachSan> KhachSans { get; set; }
+        public DbSet<SoThichDiaDiemNguoiDung> SoThichDiaDiemNguoiDungs { get; set; }
         public DbSet<HinhAnhSK> HinhAnhSKs { get; set; }
         public DbSet<TienIch> TienIches { get; set; }
         public DbSet<LoaiDiaDiem> LoaiDiaDiem { get; set; }
@@ -69,11 +70,13 @@ namespace travel_recommendation_and_booking_system.Data
 
                 entity.HasOne(tk => tk.Tour)
                       .WithMany(t => t.Tour_KhachSans)
-                      .HasForeignKey(tk => tk.MaTour);
+                      .HasForeignKey(tk => tk.MaTour)
+                    .OnDelete(DeleteBehavior.NoAction);
 
                 entity.HasOne(tk => tk.KhachSan)
                       .WithMany(ks => ks.Tour_KhachSans)
-                      .HasForeignKey(tk => tk.MaKhachSan);
+                      .HasForeignKey(tk => tk.MaKhachSan)
+                        .OnDelete(DeleteBehavior.NoAction);
 
                 entity.HasIndex(tk => tk.MaKhachSan)
                       .HasDatabaseName("IX_Tour_KhachSan_MaKhachSan");
@@ -96,7 +99,21 @@ namespace travel_recommendation_and_booking_system.Data
             });
             modelBuilder.Entity<SoThichNguoiDung>().HasKey(sn => new { sn.MaNguoiDung, sn.MaLoaiTour });
 
-            modelBuilder.Entity<DanhSachYeuThich>().HasKey(dy => new { dy.MaNguoiDung, dy.MaTour });
+            modelBuilder.Entity<DanhSachYeuThich>(entity =>
+            {
+                entity.HasKey(yt => new { yt.MaNguoiDung, yt.MaTour });
+
+                entity.HasOne(yt => yt.NguoiDung)
+                      .WithMany(nd => nd.DanhSachYeuThichs)
+                      .HasForeignKey(yt => yt.MaNguoiDung);
+
+                entity.HasOne(yt => yt.Tour)
+                      .WithMany(t => t.DanhSachYeuThichs)
+                      .HasForeignKey(yt => yt.MaTour);
+
+                entity.HasIndex(yt => yt.MaTour)
+                      .HasDatabaseName("IX_DanhSachYeuThich_MaTour");
+            });
 
             modelBuilder.Entity<DonDatTour>()
                 .HasOne(d => d.NguoiDung)
@@ -122,6 +139,11 @@ namespace travel_recommendation_and_booking_system.Data
                 .WithMany()
                 .HasForeignKey(x => x.MaNhanVienDuyet)
                 .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<LichTrinh>()
+                .HasOne(x => x.Tour)
+                .WithMany(x => x.LichTrinhs)
+                .HasForeignKey(x => x.MaTour)
+                .OnDelete(DeleteBehavior.NoAction);
             modelBuilder.Entity<VaiTro>().HasData(
                     new VaiTro { MaVaiTro = 1, TenVaiTro = "Quản Trị Viên" },
                     new VaiTro { MaVaiTro = 2, TenVaiTro = "Nhân Viên" },

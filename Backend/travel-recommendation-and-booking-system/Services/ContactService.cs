@@ -37,27 +37,6 @@ namespace travel_recommendation_and_booking_system.Services
 
                 _context.LienHes.Add(lienhe);
                 await _context.SaveChangesAsync();
-                var currentUserId = _currentUserService.GetUserId();
-                await _logService.LoggingAsync(new LogDTO
-                {
-                    LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
-                    Email = _currentUserService.GetEmail(),
-                    MaTaiKhoan = currentUserId ?? 0,
-
-                    TenHanhDong = ActionLogDTO.GuilienHe,
-
-                    TenBangTacDong = "LienHe",
-
-                    MaDoiTuong = lienhe.MaLienHe,
-
-                    GiaTriSau = new
-                    {
-                        lienhe.Email,
-                        lienhe.HoTen,
-                        lienhe.SoDienThoai,
-                        lienhe.NoiDung
-                    }
-                });
                 return true;
             }
             catch

@@ -73,7 +73,7 @@ export default function AddTypeLocationModal({ isOpen, onClose, onSuccess }) {
                             className="flex-1 py-3 px-6 rounded-xl bg-[#0EA5E5] hover:bg-[#0284c7] text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                            Thêm tiện nghi
+                            Thêm loại địa điểm
                         </button>
                     </div>
                 </form>

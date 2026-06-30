@@ -53,7 +53,7 @@ const DateTimePicker = ({
             const currentHour = activeDate.getHours();
             const currentMinute = Math.floor(activeDate.getMinutes() / 15) * 15;
             const index = currentHour * 4 + currentMinute / 15;
-            const itemHeight = 34; 
+            const itemHeight = 34;
             timeListRef.current.scrollTop = index * itemHeight;
         }
     }, [isOpen, value]);
@@ -91,11 +91,11 @@ const DateTimePicker = ({
     };
 
     const handleTimeClick = (hours, minutes) => {
+        // Phải dùng đúng ngày đang được chọn, không dùng new Date()
         const baseDate = value instanceof Date && isValid(value) ? value : new Date();
-        const updatedDate = setMinutes(setHours(baseDate, hours), minutes);
+        const updatedDate = setMinutes(setHours(new Date(baseDate), hours), minutes);
         onChange?.(updatedDate);
     };
-
     const daysInMonth = eachDayOfInterval({
         start: startOfMonth(currentMonth),
         end: endOfMonth(currentMonth),
@@ -165,7 +165,7 @@ const DateTimePicker = ({
                                 className={`p-1 rounded-lg ${canGoPreviousMonth
                                     ? "hover:bg-slate-100 text-slate-600"
                                     : "text-slate-300 cursor-not-allowed"
-                                }`}
+                                    }`}
                             >
                                 ‹
                             </button>

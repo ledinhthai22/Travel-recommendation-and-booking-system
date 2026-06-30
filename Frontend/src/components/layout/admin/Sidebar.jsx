@@ -15,15 +15,17 @@ import {
     Images,
     HousePlus,
     Tags,
+    MessageSquare,
     Layers,
-    FileLock
+    FileLock,
+    UserStar
 } from 'lucide-react';
 
 export default function Sidebar() {
     const { webInfo } = useWebInfo();
     const url = "https://localhost:7016";
 
-    const user = JSON.parse(localStorage.getItem("user"));
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
     const role = user?.maVaiTro;
 
     const baseLinkClass =
@@ -42,65 +44,60 @@ export default function Sidebar() {
         {
             heading: null,
             items: [
-                { title: "Dashboard", path: "/Quan-ly", icon: LayoutDashboard, end: true }
+                { title: "Dashboard", path: "/Quan-ly", icon: LayoutDashboard, end: true, roles: [1, 2] }
             ]
         },
         {
             heading: "Vận hành Tour",
             items: [
-                { title: "Quản lý tour", path: "/Quan-ly/Cac-chuyen-di", icon: Luggage },
-                { title: "Loại tour", path: "/Quan-ly/Loai-Tour", icon: Layers },
-                { title: "Đơn đặt tour", path: "/Quan-ly/Don-dat-cac-chuyen-di", icon: Ticket }
+                { title: "Quản lý tour", path: "/Quan-ly/Cac-chuyen-di", icon: Luggage, roles: [1, 2] },
+                { title: "Loại tour", path: "/Quan-ly/Loai-Tour", icon: Layers, roles: [1] },
+                { title: "Đơn đặt tour", path: "/Quan-ly/Don-dat-cac-chuyen-di", icon: Ticket, roles: [1, 2] }
             ]
         },
         {
             heading: "Địa điểm & Khách sạn",
             items: [
-                { title: "Quản lý địa điểm", path: "/Quan-ly/Dia-diem", icon: MapPin },
-                { title: "Loại địa điểm", path: "/Quan-ly/Loai-Dia-Diem", icon: Tags },
-                { title: "Quản lý khách sạn", path: "/Quan-ly/Khach-san", icon: Building2 },
-                { title: "Tiện ích khách sạn", path: "/Quan-ly/Tien-Ich", icon: HousePlus }
+                { title: "Quản lý địa điểm", path: "/Quan-ly/Dia-diem", icon: MapPin, roles: [1, 2] },
+                { title: "Loại địa điểm", path: "/Quan-ly/Loai-Dia-Diem", icon: Tags, roles: [1] },
+                { title: "Quản lý khách sạn", path: "/Quan-ly/Khach-san", icon: Building2, roles: [1, 2] },
+                { title: "Tiện ích khách sạn", path: "/Quan-ly/Tien-Ich", icon: HousePlus, roles: [1] }
             ]
         },
         {
             heading: "Khách hàng & Ưu đãi",
-            role: [1],
             items: [
-                { title: "Tài khoản khách hàng", path: "/Quan-ly/Tai-khoan", icon: User },
-                { title: "Ưu đãi & Mã giảm giá", path: "/Quan-ly/Uu-Dai", icon: BadgePercent },
-                { title: "Liên hệ & Hỗ trợ", path: "/Quan-ly/Lien-he", icon: Mailbox }
+                { title: "Tài khoản khách hàng", path: "/Quan-ly/Tai-khoan", icon: User, roles: [1] },
+                { title: "Ưu đãi & Mã giảm giá", path: "/Quan-ly/Uu-Dai", icon: BadgePercent, roles: [1] },
+                { title: "Liên hệ & Hỗ trợ", path: "/Quan-ly/Lien-he", icon: Mailbox, roles: [1, 2] },
+                { title: "Đánh giá", path: "/Quan-ly/Danh-gia", icon: UserStar, roles: [1, 2] }
             ]
         },
         {
             heading: "Nhân sự",
-            role: [1],
             items: [
-                { title: "Quản lý nhân sự", path: "/Quan-ly/Nhan-vien", icon: ContactRound }
+                { title: "Quản lý nhân sự", path: "/Quan-ly/Nhan-vien", icon: ContactRound, roles: [1] }
             ]
         },
         {
             heading: "Marketing & Nội dung",
-            role: [1],
             items: [
-                { title: "Banner", path: "/Quan-ly/Banner", icon: Images },
-                { title: "Newsletters", path: "/Quan-ly/Newletter", icon: UserPlus2 },
-                { title: "Thông tin trang", path: "/Quan-ly/Thong-tin-trang", icon: Columns3Cog }
+                { title: "Banner", path: "/Quan-ly/Banner", icon: Images, roles: [1] },
+                { title: "Newsletters", path: "/Quan-ly/Newletter", icon: UserPlus2, roles: [1] },
+                { title: "Thông tin trang", path: "/Quan-ly/Thong-tin-trang", icon: Columns3Cog, roles: [1] }
             ]
         },
         {
             heading: "Hệ thống",
-            role: [1],
             items: [
-                { title: "Nhật ký hoạt động", path: "/Quan-ly/Hoat-dong-he-thong", icon: FileLock }
+                { title: "Nhật ký hoạt động", path: "/Quan-ly/Hoat-dong-he-thong", icon: FileLock, roles: [1] }
             ]
         }
     ];
 
     return (
         <aside className="h-full w-85 flex flex-col fixed left-0 top-0 bg-slate-50 border-r border-slate-200 z-[100] antialiased">
-
-            {/* Logo - cố định, không cuộn */}
-            <div className="px-6 pt-6 pb-4 flex items-center gap-3 shrink-0 border-b border-slate-100">
+            <div className="px-6 pt-1 pb-4 flex items-center gap-3 shrink-0 border-b border-slate-100">
                 <div className="w-10 h-10 rounded-xl shrink-0 bg-white border border-sky-100 overflow-hidden flex items-center justify-center shadow-sm">
                     <img
                         src={`${url}${webInfo.logo_url}`}
@@ -115,15 +112,19 @@ export default function Sidebar() {
                 </div>
             </div>
 
-            {/* Nav - scroll riêng */}
+            {/* Nav */}
             <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
                 {menuGroups.map((group, index) => {
-                    if (group.role && !group.role.includes(role)) return null;
+                    const filteredItems = group.items.filter(item => 
+                        !item.roles || item.roles.includes(role)
+                    );
+
+                    if (filteredItems.length === 0) return null;
 
                     return (
                         <div key={index}>
                             {group.heading && <MenuHeading title={group.heading} />}
-                            {group.items.map((item) => {
+                            {filteredItems.map((item) => {
                                 const Icon = item.icon;
                                 return (
                                     <NavLink
@@ -143,7 +144,6 @@ export default function Sidebar() {
                     );
                 })}
             </nav>
-
         </aside>
     );
 }

@@ -264,7 +264,6 @@ export default function UserManager() {
             />
 
             <CustomDataTable
-                selectableRows
                 selectableRowsHighlight
                 columns={columns}
                 data={users}

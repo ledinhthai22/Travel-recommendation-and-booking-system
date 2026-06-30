@@ -100,6 +100,38 @@ export const deleteTourImageApi = async (imageId) => {
     return response.data;
 };
 
+//tour yêu thích
+
+export const getMyWishlistIdsApi = async () => {
+    try {
+        const response = await axiosClient.get(`/customer/Tour/wishlist-ids`);
+        return response.data;
+    } catch (error) {
+        console.error("Lỗi lấy danh sách ID yêu thích:", error);
+        return [];
+    }
+};
+
+export const getWishlistApi = async (pageNumber = 1, pageSize = 10) => {
+    return await axiosClient.get(`/customer/Tour/wishlist`, {
+        params: {
+            pageNumber,
+            pageSize
+        }
+    });
+};
+
+export const deleteWishlistApi = async (tourIds) => {
+    return await axiosClient.delete(`/customer/Tour/wishlist`, {
+        data: tourIds 
+    });
+};
+
+export const addToWishlistApi = async (tourId) => {
+    return await axiosClient.post(`/customer/Tour/wishlist/${tourId}`);
+}
+    
+
 export const getTourBySlugApi = async (slug) => {
     const response = await axiosClient.get(
         `/PublicTour/slug/${slug}`

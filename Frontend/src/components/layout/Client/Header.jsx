@@ -7,7 +7,9 @@ import NavMenu from '~/components/UI/Header/NavMenu';
 import MobileMenu from '~/components/UI/Header/MobileMenu';
 import UserAction from '~/components/UI/Header/UserAction';
 import AuthModal from '~/components/Auth/AuthModal';
-import useAuth from "~/Hooks/useAuth";
+import { useContext } from 'react';
+import { AuthContext } from '~/Context/AuthContext';
+
 const navLinks = [
   { to: '/', label: 'Trang chủ' },
   { to: '/Cac-Chuyen-Di', label: 'Các chuyến đi' },
@@ -18,10 +20,8 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-
   const { pathname } = useLocation();
-
-  const { user, logout } = useAuth();
+  const { user, logout } = useContext(AuthContext);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30);

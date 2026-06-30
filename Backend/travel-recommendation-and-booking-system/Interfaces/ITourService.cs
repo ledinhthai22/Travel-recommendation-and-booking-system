@@ -1,11 +1,14 @@
 ﻿using DTOs.Page;
+using travel_recommendation_and_booking_system.DTOs.FavoriteTour;
+using travel_recommendation_and_booking_system.DTOs.Hotel;
 using travel_recommendation_and_booking_system.DTOs.Tour;
+using travel_recommendation_and_booking_system.Models;
 
 namespace travel_recommendation_and_booking_system.Interfaces
 {
     public interface ITourService
     {
-
+        //ql tour
         Task<int> CreateFullTourAsync(TourFullCreateDTO dto, List<IFormFile> images, List<IFormFile> scheduleImages);
         Task<bool> UpdateFullTourAsync(int tourId, TourFullCreateDTO dto, List<IFormFile> images, List<IFormFile> scheduleImages);
         Task<TourReponseDTO?> GetTourDetailBySlugAsync(string slug);
@@ -18,6 +21,23 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<bool> DeleteImageAsync(int imageId);
         Task<List<TourSelectDTO>> GetToursForSelectAsync(string? keyword = null, int? status = null);
 
+        // tour yêu thích
+        Task<List<int>> GetFavoriteTourIdsAsync(int userId);
+        Task<PageDTO<FavoriteTourRepnoseDTO>> GetFavoriteToursAsync(int userId, int pageNumber = 1, int pageSize = 10);
+        Task<bool> DeleteFavoriteToursAsync(int userId, List<int> tourIds);
+        Task<bool> AddFavoriteTourAsync(int userId, int tourId);
+        Task<Tour> GetTourByIdAsync(int id);
+        //Home
+        //chưa đăng nhập
+        Task<List<TourCardDTO>> GetBestToursCardAsync(int? limit = null); // tour nổi bật
+        Task<List<TourCardDTO>> GetLatestToursAsync(int? limit = null); // tour mới
+        //đăng nhập
+        Task<List<TourCardDTO>> GetTourDesignJustForYouAsync(int userId, int? limit = null); // tour dành riêng cho bạn
 
+        Task<List<TourCardDTO>> GetRecommendedToursAsync(int userId, int? limit = null); // Có thể bạn quan tâm
+
+        Task<List<TourCardDTO>> GetNextTripSuggestionsAsync(int userId, int? limit =null); // gợi ý cho chuyến tiếp theo
+
+        Task<PageDTO<TourCardDTO>> GetFilteredToursAsync(TourFilterParamsDTO p); // tìm kiếm tour
     }
 }

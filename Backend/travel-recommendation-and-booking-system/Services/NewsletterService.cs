@@ -37,24 +37,6 @@ namespace travel_recommendation_and_booking_system.Services
             };
             _context.Newsletters.Add(newSubscription);
             await _context.SaveChangesAsync();
-            var currentUserId = _currentUserService.GetUserId();
-            await _logService.LoggingAsync(new LogDTO
-            {
-                LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
-                Email = null,
-                MaTaiKhoan = currentUserId ?? 0,
-
-                TenHanhDong = ActionLogDTO.Tao,
-
-                TenBangTacDong = "Newsletter",
-
-                MaDoiTuong = newSubscription.MaNewsletter,
-
-                GiaTriSau = new
-                {
-                    newSubscription.Email
-                }
-            });
             return true;
         }
         public async Task<PageDTO<NewsletterResponseDTO>> GetPagedNewslettersAsync(string? keyword, int page, int size)

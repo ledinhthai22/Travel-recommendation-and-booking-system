@@ -29,15 +29,14 @@ namespace travel_recommendation_and_booking_system.Services
             _currentUserService = currentUserService;
         }
 
+        // ─── Helpers ──────────────────────────────────────────────────────────
+
         private static string ToSafeFileName(string value)
         {
             if (string.IsNullOrWhiteSpace(value)) return "khong_co_ten";
 
             value = value.Trim().ToLowerInvariant();
-
-            // FIX: replace đ/Đ TRƯỚC khi normalize để tránh mất ký tự
             value = value.Replace("đ", "d").Replace("Đ", "D");
-
             value = value.Normalize(NormalizationForm.FormD);
 
             var builder = new StringBuilder();
@@ -45,24 +44,18 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
                 if (unicodeCategory != UnicodeCategory.NonSpacingMark)
-                {
                     builder.Append(c);
-                }
             }
 
             value = builder.ToString().Normalize(NormalizationForm.FormC);
 
             foreach (char c in Path.GetInvalidFileNameChars())
-            {
                 value = value.Replace(c, '_');
-            }
 
             value = value.Replace(" ", "_");
 
             while (value.Contains("__"))
-            {
                 value = value.Replace("__", "_");
-            }
 
             return value;
         }
@@ -96,21 +89,15 @@ namespace travel_recommendation_and_booking_system.Services
             string maTour = dto.MaTour.ToString();
             string tenLichTrinh = ToSafeFileName(dto.TenLichTrinh);
             string diemThamQuan = ToSafeFileName(tenDiemThamQuan ?? "khong_co_diem_tham_quan");
-
             string fileName = $"{timeStamp}_{maTour}_{tenLichTrinh}_{diemThamQuan}{fileExtension}";
 
             string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "schedules");
             if (!Directory.Exists(folderPath))
-            {
                 Directory.CreateDirectory(folderPath);
-            }
 
             string path = Path.Combine(folderPath, fileName);
-
             using (var stream = new FileStream(path, FileMode.Create))
-            {
                 await dto.DuongDanAnh.CopyToAsync(stream);
-            }
 
             return $"/img/schedules/{fileName}";
         }
@@ -121,30 +108,36 @@ namespace travel_recommendation_and_booking_system.Services
             if (fileName == DEFAULT_SCHEDULE_IMAGE) return;
 
             var physicalFileName = Path.GetFileName(fileName);
-
             string oldPath = Path.Combine(
                 Directory.GetCurrentDirectory(),
-                "wwwroot",
-                "img",
-                "schedules",
+                "wwwroot", "img", "schedules",
                 physicalFileName
             );
 
             if (File.Exists(oldPath))
-            {
                 File.Delete(oldPath);
-            }
         }
+
+
+
+        private async Task<bool> HasStartedDepartureAsync(int maTour)
+        {
+            return await _context.ChuyenKhoiHanhs
+                .AnyAsync(x =>
+                    x.MaTour == maTour &&
+                    x.NgayXoa == null &&
+                    (x.TrangThai == 2 || x.TrangThai == 3 || x.SoChoDaDat > 0));
+        }
+
+        // ─── CRUD LichTrinh ───────────────────────────────────────────────────
 
         public async Task<bool> AddScheduleAsync(ScheduleDTO dto)
         {
             validatorSheduleTour.ValidateSchedules(new List<ScheduleDTO> { dto });
+
             if (await HasStartedDepartureAsync(dto.MaTour))
-            {
-                throw new Exception(
-                    "Tour đã có chuyến khởi hành hoặc đã kết thúc, không thể thêm lịch trình."
-                );
-            }
+                throw new Exception("Tour đã có chuyến khởi hành hoặc đã kết thúc, không thể thêm lịch trình.");
+
             string fileName = await SaveScheduleImageAsync(dto);
 
             var lichTrinh = new LichTrinh
@@ -157,6 +150,10 @@ namespace travel_recommendation_and_booking_system.Services
                 LuuY = dto.LuuY,
                 DuongDanAnh = string.IsNullOrEmpty(fileName) ? DEFAULT_SCHEDULE_IMAGE : fileName,
                 TrangThai = true,
+                // ← lưu khách sạn theo ngày lịch trình
+                MaKhachSan = (dto.MaKhachSan.HasValue && dto.MaKhachSan > 0)
+                                    ? dto.MaKhachSan
+                                    : null,
                 NgayTao = DateTime.Now,
                 NgayCapNhat = DateTime.Now
             };
@@ -165,7 +162,6 @@ namespace travel_recommendation_and_booking_system.Services
             await _context.SaveChangesAsync();
 
             var details = dto.ChiTietLichTrinh ?? new List<ScheduleDetailsDTO>();
-
             foreach (var item in details)
             {
                 _context.CTLichTrinhs.Add(new CTLichTrinh
@@ -179,7 +175,9 @@ namespace travel_recommendation_and_booking_system.Services
             }
 
             await _context.SaveChangesAsync();
-            var currentAccount = _currentUserService.GetUserId() == 1? AccountTypeDTO.QuanTriVien: AccountTypeDTO.NguoiDung;
+            var currentAccount = _currentUserService.GetUserId() == 1
+                ? AccountTypeDTO.QuanTriVien
+                : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan = currentAccount,
@@ -194,7 +192,8 @@ namespace travel_recommendation_and_booking_system.Services
                     lichTrinh.TenLichTrinh,
                     lichTrinh.SoThuTuNgay,
                     lichTrinh.BuaAn,
-                    lichTrinh.HoatDongChinh
+                    lichTrinh.HoatDongChinh,
+                    lichTrinh.MaKhachSan   // ← log thêm KS
                 }
             });
 
@@ -205,6 +204,7 @@ namespace travel_recommendation_and_booking_system.Services
         {
             return await _context.LichTrinhs
                 .AsNoTracking()
+                .Include(x => x.KhachSan)   // ← include để lấy tên KS
                 .Where(x => x.MaTour == maTour && x.NgayXoa == null)
                 .OrderBy(x => x.SoThuTuNgay)
                 .Select(x => new ScheduleReponseDTO
@@ -221,6 +221,11 @@ namespace travel_recommendation_and_booking_system.Services
                     NgayTao = x.NgayTao,
                     NgayCapNhat = x.NgayCapNhat,
                     NgayXoa = x.NgayXoa,
+                    // ← khách sạn của ngày này
+                    MaKhachSan = x.MaKhachSan,
+                    TenKhachSan = x.KhachSan != null ? x.KhachSan.TenKhachSan : null,
+                    SlugKhachSan = x.KhachSan != null ? x.KhachSan.Slug : null,
+                    SoSaoKhachSan = x.KhachSan != null ? x.KhachSan.SoSao : (int?)null,
                     ChiTietLichTrinhs = x.CTLichTrinhs
                         .OrderBy(ct => ct.GioBatDau)
                         .Select(ct => new ScheduleDetailsDTO
@@ -243,12 +248,10 @@ namespace travel_recommendation_and_booking_system.Services
 
             var lt = await _context.LichTrinhs.FindAsync(maLichTrinh);
             if (lt == null) return false;
+
             if (await HasStartedDepartureAsync(lt.MaTour))
-            {
-                throw new Exception(
-                    "Tour đã có chuyến khởi hành hoặc đã kết thúc, không thể chỉnh sửa lịch trình."
-                );
-            }
+                throw new Exception("Tour đã có chuyến khởi hành hoặc đã kết thúc, không thể chỉnh sửa lịch trình.");
+
             var oldData = new
             {
                 lt.TenLichTrinh,
@@ -256,7 +259,8 @@ namespace travel_recommendation_and_booking_system.Services
                 lt.SoThuTuNgay,
                 lt.HoatDongChinh,
                 lt.LuuY,
-                lt.TrangThai
+                lt.TrangThai,
+                lt.MaKhachSan   // ← log giá trị cũ
             };
 
             lt.TenLichTrinh = dto.TenLichTrinh;
@@ -266,14 +270,17 @@ namespace travel_recommendation_and_booking_system.Services
             lt.LuuY = dto.LuuY;
             lt.TrangThai = dto.TrangThai;
             lt.NgayCapNhat = DateTime.Now;
+            // ← cập nhật khách sạn theo ngày
+            lt.MaKhachSan = (dto.MaKhachSan.HasValue && dto.MaKhachSan > 0)
+                                    ? dto.MaKhachSan
+                                    : null;
 
             string? oldImagePath = null;
-            string? newImagePath = null;
 
             if (dto.DuongDanAnh != null)
             {
                 dto.MaTour = dto.MaTour > 0 ? dto.MaTour : lt.MaTour;
-                newImagePath = await SaveScheduleImageAsync(dto);
+                var newImagePath = await SaveScheduleImageAsync(dto);
 
                 if (!string.IsNullOrEmpty(newImagePath))
                 {
@@ -282,6 +289,7 @@ namespace travel_recommendation_and_booking_system.Services
                 }
             }
 
+            // Sync CTLichTrinh
             var oldDetails = await _context.CTLichTrinhs
                 .Where(x => x.MaLichTrinh == maLichTrinh)
                 .ToListAsync();
@@ -327,12 +335,11 @@ namespace travel_recommendation_and_booking_system.Services
 
             await _context.SaveChangesAsync();
 
-
             if (oldImagePath != null)
-            {
                 DeleteOldScheduleImage(oldImagePath);
-            }
-            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
+            var currentAccount = _currentUserService.GetUserId() == 1
+              ? AccountTypeDTO.QuanTriVien
+              : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan = currentAccount,
@@ -349,7 +356,8 @@ namespace travel_recommendation_and_booking_system.Services
                     lt.SoThuTuNgay,
                     lt.HoatDongChinh,
                     lt.LuuY,
-                    lt.TrangThai
+                    lt.TrangThai,
+                    lt.MaKhachSan   // ← log giá trị mới
                 }
             });
 
@@ -360,32 +368,29 @@ namespace travel_recommendation_and_booking_system.Services
         {
             var lt = await _context.LichTrinhs.FindAsync(maLichTrinh);
 
-            if (lt == null || lt.NgayXoa != null)
-            {
-                return false;
-            }
+            if (lt == null || lt.NgayXoa != null) return false;
+
             if (await HasStartedDepartureAsync(lt.MaTour))
-            {
-                throw new Exception(
-                    "Tour đã có chuyến khởi hành hoặc đã kết thúc, không thể xóa lịch trình."
-                );
-            }
+                throw new Exception("Tour đã có chuyến khởi hành hoặc đã kết thúc, không thể xóa lịch trình.");
+
             var oldData = new
             {
                 lt.MaLichTrinh,
                 lt.TenLichTrinh,
                 lt.MaTour,
-                lt.TrangThai
+                lt.TrangThai,
+                lt.MaKhachSan
             };
 
             lt.NgayXoa = DateTime.Now;
             lt.NgayCapNhat = DateTime.Now;
             lt.TrangThai = false;
 
-
             var result = await _context.SaveChangesAsync() > 0;
             if (!result) return false;
-            var currentAccount = _currentUserService.GetUserId() == 1? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
+            var currentAccount = _currentUserService.GetUserId() == 1
+                ? AccountTypeDTO.QuanTriVien
+                : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan = currentAccount,
@@ -395,14 +400,13 @@ namespace travel_recommendation_and_booking_system.Services
                 TenBangTacDong = TableNameDTO.LichTrinh,
                 MaDoiTuong = lt.MaLichTrinh,
                 GiaTriTruoc = oldData,
-                GiaTriSau = new
-                {
-                    lt.NgayXoa
-                }
+                GiaTriSau = new { lt.NgayXoa }
             });
 
             return true;
         }
+
+        // ─── CRUD CTLichTrinh ─────────────────────────────────────────────────
 
         public async Task<bool> AddCTLTAsync(ScheduleDetailsDTO dto)
         {
@@ -528,14 +532,6 @@ namespace travel_recommendation_and_booking_system.Services
             });
 
             return true;
-        }
-        private async Task<bool> HasStartedDepartureAsync(int maTour)
-        {
-            return await _context.ChuyenKhoiHanhs
-                .AnyAsync(x =>
-                    x.MaTour == maTour &&
-                    x.NgayXoa == null &&
-                    (x.TrangThai == 2 || x.TrangThai == 3 || x.SoChoDaDat > 0));
         }
     }
 }

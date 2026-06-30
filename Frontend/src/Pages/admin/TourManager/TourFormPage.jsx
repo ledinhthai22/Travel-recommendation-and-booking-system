@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Camera, Clock, Plus, Save, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Camera, Loader2, CheckCircle2, Plus } from "lucide-react";
+
 import TourItinerariesSection from "./TourSection/TourItinerariesSection";
 import InputField from "~/components/UI/Form/InputField";
 import SelectField from "~/components/UI/Form/SelectField";
 import TourSchedulesTable from "./TourSchedulesTable";
 import TourScheduleSection from "./TourSection/TourScheduleSection";
+
 import { getAllTypeTourApi } from "~/Services/TypeTourService";
 import { getHotelListApi } from "~/Services/HotelService";
 import { getLocatioListApi } from "~/Services/LocationService";
 import { toastSuccess, toastError, toastWarning } from "~/utils/Toast";
+
 import {
     createFullTourApi,
     updateFullTourApi,
@@ -17,20 +20,21 @@ import {
     deleteTourImageApi,
     setMainTourImageApi
 } from "~/Services/TourService";
+
 import {
     createScheduleApi,
     updateScheduleApi,
     deleteScheduleApi
 } from "~/Services/ScheduleService";
+
 import {
     createDepartureApi,
     updateDepartureApi,
     deleteDepartureApi
 } from "~/Services/DepartureService";
 
-
-
 const API_BASE = "https://localhost:7016";
+
 const DEFAULT_FORM_DATA = {
     tenTour: "",
     maLoaiTour: "",
@@ -42,11 +46,6 @@ const DEFAULT_FORM_DATA = {
     trangThai: 1,
     diemKhoiHanh: ""
 };
-const PHAN_LOAI_TOURS = [
-    { value: true, label: "Trong nước" },
-    { value: false, label: "Nước ngoài" }
-];
-
 
 const getVal = (e) => e?.target?.value ?? e;
 
@@ -79,14 +78,11 @@ const normalizeImageUrl = (path) => {
     return path.startsWith("http") ? path : `${API_BASE}${path}`;
 };
 
-
-
 const mapScheduleDetailFromApi = (ct, maLichTrinh) => ({
     maCTLT: toNumber(ct.maCTLT),
     maLichTrinh: toNumber(ct.maLichTrinh || maLichTrinh),
     maDiaDiem: toNumber(ct.maDiaDiem),
     gioBatDau: ct.gioBatDau || "",
-
     gioKetThuc: ct.gioKetThuc || null,
     hoatDong: ct.hoatDong || ""
 });
@@ -97,6 +93,7 @@ const mapScheduleFromApi = (lt) => ({
     tenLichTrinh: lt.tenLichTrinh || "",
     buaAn: lt.buaAn || "",
     hoatDongChinh: lt.hoatDongChinh || "",
+    maKhachSan: lt.maKhachSan?.toString() || "",
     luuY: lt.luuY || "",
     trangThai: lt.trangThai ?? true,
     preview: normalizeImageUrl(lt.duongDanAnh),
@@ -127,8 +124,6 @@ const mapDepartureFromApi = (ch) => ({
     }
 });
 
-
-
 const buildScheduleFormData = (lt, tourId) => {
     const fd = new FormData();
     fd.append("MaTour", tourId ? Number(tourId) : 0);
@@ -138,20 +133,16 @@ const buildScheduleFormData = (lt, tourId) => {
     fd.append("HoatDongChinh", lt.hoatDongChinh || "");
     fd.append("LuuY", lt.luuY || "");
     fd.append("TrangThai", String(lt.trangThai ?? true));
-
     if (lt.file) fd.append("DuongDanAnh", lt.file);
-
+    if (lt.maKhachSan) fd.append("MaKhachSan", Number(lt.maKhachSan));
     (lt.chiTietLichTrinhs || []).forEach((ct, index) => {
         fd.append(`ChiTietLichTrinh[${index}].MaCTLT`, toNumber(ct.maCTLT));
         fd.append(`ChiTietLichTrinh[${index}].MaLichTrinh`, toNumber(ct.maLichTrinh || lt.id));
         fd.append(`ChiTietLichTrinh[${index}].MaDiaDiem`, toNumber(ct.maDiaDiem));
         fd.append(`ChiTietLichTrinh[${index}].GioBatDau`, ct.gioBatDau || "");
-        if (ct.gioKetThuc?.trim()) {
-            fd.append(`ChiTietLichTrinh[${index}].GioKetThuc`, ct.gioKetThuc);
-        }
+        if (ct.gioKetThuc?.trim()) fd.append(`ChiTietLichTrinh[${index}].GioKetThuc`, ct.gioKetThuc);
         fd.append(`ChiTietLichTrinh[${index}].HoatDong`, ct.hoatDong || "");
     });
-
     return fd;
 };
 
@@ -199,10 +190,10 @@ const buildCreateTourDto = (formDataObj, lichTrinhs, chuyenKhoiHanhs) => ({
         HoatDongChinh: lt.hoatDongChinh,
         LuuY: lt.luuY,
         TrangThai: lt.trangThai,
+        MaKhachSan: lt.maKhachSan ? Number(lt.maKhachSan) : null,
         ChiTietLichTrinh: (lt.chiTietLichTrinhs || []).map(ct => ({
             MaDiaDiem: toNumber(ct.maDiaDiem),
             GioBatDau: ct.gioBatDau,
-
             GioKetThuc: ct.gioKetThuc?.trim() || null,
             HoatDong: ct.hoatDong
         }))
@@ -210,14 +201,13 @@ const buildCreateTourDto = (formDataObj, lichTrinhs, chuyenKhoiHanhs) => ({
     ChuyenKhoiHanhs: chuyenKhoiHanhs.map(ch => buildDeparturePayload(ch, 0))
 });
 
-
-
 const serializeSchedule = (lt) => JSON.stringify({
     tenLichTrinh: lt.tenLichTrinh,
     buaAn: lt.buaAn,
     hoatDongChinh: lt.hoatDongChinh,
     luuY: lt.luuY,
     trangThai: lt.trangThai,
+    maKhachSan: lt.maKhachSan,
     hasFile: !!lt.file,
     chiTiet: (lt.chiTietLichTrinhs || []).map(ct => ({
         maCTLT: ct.maCTLT,
@@ -227,7 +217,6 @@ const serializeSchedule = (lt) => JSON.stringify({
         hoatDong: ct.hoatDong
     }))
 });
-
 
 const serializeDeparture = (ch) => JSON.stringify({
     maChuyen: ch.maChuyen,
@@ -241,6 +230,7 @@ const serializeDeparture = (ch) => JSON.stringify({
     soChoToiDa: ch.soChoToiDa,
     gia: ch.gia
 });
+
 function useSectionSaving() {
     const [state, setState] = useState("idle");
     const timerRef = useRef(null);
@@ -265,7 +255,6 @@ function useSectionSaving() {
     return { state, markSaving, markSaved, markIdle };
 }
 
-
 function SaveStatusBadge({ state }) {
     if (state === "idle") return null;
     if (state === "saving") return (
@@ -280,7 +269,6 @@ function SaveStatusBadge({ state }) {
     );
 }
 
-
 export default function TourFormPage({ mode }) {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -293,6 +281,9 @@ export default function TourFormPage({ mode }) {
     const originalDataRef = useRef(null);
     const scheduleSnapshotRef = useRef({});
     const departureSnapshotRef = useRef({});
+    // Theo dõi người dùng có tự nhập đêm chưa hay để auto-tính
+    const demManualRef = useRef(false);
+
     const [loading, setLoading] = useState(false);
     const [loaiTours, setLoaiTours] = useState([]);
     const [khachSans, setKhachSans] = useState([]);
@@ -311,6 +302,24 @@ export default function TourFormPage({ mode }) {
     const isScheduleLocked = chuyenKhoiHanhs.some(
         x => x.trangThai === 2 || x.trangThai === 3 || x.soChoDaDat > 0
     );
+
+    // Realtime validation: số ngày vs số lịch trình
+    useEffect(() => {
+        if (isEdit && formData.ngay && lichTrinhs.length > 0) {
+            if (Number(formData.ngay) !== lichTrinhs.length) {
+                setErrors(prev => ({
+                    ...prev,
+                    ngay: `Số ngày (${formData.ngay}) phải bằng số lịch trình (${lichTrinhs.length}). Vui lòng thêm hoặc xóa lịch trình cho khớp.`
+                }));
+            } else {
+                setErrors(prev => {
+                    const { ngay, ...rest } = prev;
+                    return rest;
+                });
+            }
+        }
+    }, [formData.ngay, lichTrinhs.length, isEdit]);
+
     useEffect(() => {
         const fetchMasterData = async () => {
             try {
@@ -341,8 +350,10 @@ export default function TourFormPage({ mode }) {
 
     const applyTourData = (tourData, hotelRes) => {
         originalDataRef.current = tourData;
-        const info = tourData.tourInfo;
+        // Dữ liệu từ API → coi đêm đã được set, không auto-override
+        demManualRef.current = true;
 
+        const info = tourData.tourInfo;
         const matchedKhachSan = tourData.maKhachSans?.length
             ? hotelRes.find(ks => ks.maKhachSan === tourData.maKhachSans[0])
             : hotelRes.find(ks => tourData.tenKhachSans?.includes(ks.tenKhachSan));
@@ -363,20 +374,15 @@ export default function TourFormPage({ mode }) {
 
         const mapped = (tourData.lichTrinh || []).map(mapScheduleFromApi);
         setLichTrinhs(mapped);
-
         scheduleSnapshotRef.current = Object.fromEntries(
             mapped.map(lt => [lt.id, serializeSchedule(lt)])
         );
 
         const mappedDepartures = (tourData.chuyenKhoiHanhs || []).map(mapDepartureFromApi);
-
         departureSnapshotRef.current = Object.fromEntries(
             mappedDepartures.map(ch => [ch.maChuyen, serializeDeparture(ch)])
         );
-
         setChuyenKhoiHanhs(mappedDepartures);
-
-        setChuyenKhoiHanhs((tourData.chuyenKhoiHanhs || []).map(mapDepartureFromApi));
     };
 
     const refreshLichTrinhs = async () => {
@@ -394,7 +400,60 @@ export default function TourFormPage({ mode }) {
         }
     };
 
+    // ── Số ngày / số đêm ────────────────────────────────────────────────────
+    // Quy tắc: 1 ngày = 0 đêm (dem = ngay - 1).
+    // Khi người dùng nhập ngay → tự tính dem TRỪ KHI họ đã tự sửa dem trước.
+    // Khi người dùng tự nhập dem → đánh dấu demManual và giữ nguyên giá trị.
+    const handleNumberChange = (field, value) => {
+        if (value === "") {
+            if (field === "dem") demManualRef.current = true;
+            setFormData(prev => ({ ...prev, [field]: "" }));
+            // Xóa lỗi tương ứng khi người dùng xóa trắng
+            setErrors(prev => { const { [field]: _, ...rest } = prev; return rest; });
+            return;
+        }
 
+        const number = Number(value);
+        if (number < 0) return;
+
+        if (field === "ngay") {
+            setFormData(prev => {
+                const autoDem = Math.max(0, number - 1);
+                const newDem = demManualRef.current ? prev.dem : autoDem;
+                return { ...prev, ngay: number, dem: newDem };
+            });
+            // Xóa lỗi ngay khi nhập lại
+            setErrors(prev => { const { ngay: _, dem: __, ...rest } = prev; return rest; });
+        } else if (field === "dem") {
+            demManualRef.current = true;
+            setFormData(prev => ({ ...prev, dem: number }));
+            setErrors(prev => { const { dem: _, ...rest } = prev; return rest; });
+        } else {
+            setFormData(prev => ({ ...prev, [field]: number }));
+        }
+    };
+
+    // ── Validate chung cho số ngày & đêm ────────────────────────────────────
+    const validateNgayDem = (errs, ngayVal, demVal, checkScheduleMatch = false) => {
+        const ngayNum = Number(ngayVal);
+        const demNum = Number(demVal);
+
+        if (!ngayVal || ngayNum <= 0) {
+            errs.ngay = "Số ngày phải lớn hơn 0.";
+        } else if (checkScheduleMatch && lichTrinhs.length > 0 && ngayNum !== lichTrinhs.length) {
+            errs.ngay = `Số ngày (${ngayNum}) phải bằng số lịch trình (${lichTrinhs.length}).`;
+        }
+
+        if (demVal === "" || demVal == null) {
+            errs.dem = "Số đêm không được để trống.";
+        } else if (demNum < 0) {
+            errs.dem = "Số đêm không được âm.";
+        } else if (ngayVal && ngayNum > 0 && demNum >= ngayNum) {
+            errs.dem = `Số đêm phải nhỏ hơn số ngày (tối đa ${ngayNum - 1} đêm).`;
+        }
+    };
+
+    // ── Image handlers ───────────────────────────────────────────────────────
     const handleImageChange = async (e) => {
         if (isViewMode) return;
         const files = Array.from(e.target.files || []);
@@ -425,9 +484,7 @@ export default function TourFormPage({ mode }) {
             const fd = new FormData();
             fd.append("TourDataJson", JSON.stringify(buildTourInfoJson()));
             files.forEach(file => fd.append("Images", file));
-
             await updateFullTourApi(id, fd);
-
             const tourData = await getTourDetailApi(id);
             originalDataRef.current = { ...originalDataRef.current, images: tourData.images };
             setImages((tourData.images || []).map(mapImageFromApi));
@@ -440,7 +497,6 @@ export default function TourFormPage({ mode }) {
 
     const handleRemoveImage = async (targetId) => {
         if (isViewMode) return;
-
         if (!isEdit) {
             setImages(prev => {
                 const target = prev.find(img => img.id === targetId);
@@ -451,7 +507,6 @@ export default function TourFormPage({ mode }) {
             });
             return;
         }
-
         try {
             imgSaving.markSaving();
             await deleteTourImageApi(targetId);
@@ -469,12 +524,10 @@ export default function TourFormPage({ mode }) {
 
     const handleSetMainImage = async (targetId) => {
         if (isViewMode) return;
-
         if (!isEdit) {
             setImages(prev => prev.map(img => ({ ...img, anhChinh: img.id === targetId })));
             return;
         }
-
         try {
             imgSaving.markSaving();
             await setMainTourImageApi(targetId);
@@ -486,13 +539,12 @@ export default function TourFormPage({ mode }) {
         }
     };
 
-
+    // ── Schedule handlers ────────────────────────────────────────────────────
     const handleLichTrinhsChange = async (newLichTrinhs) => {
         if (!isEdit || !id) {
             setLichTrinhs(newLichTrinhs);
             return;
         }
-
         try {
             scheduleSaving.markSaving();
             await syncSchedulesImmediate(newLichTrinhs);
@@ -507,13 +559,10 @@ export default function TourFormPage({ mode }) {
 
     const syncSchedulesImmediate = async (snapshotLichTrinhs) => {
         const originalSchedules = originalDataRef.current?.lichTrinh || [];
-
         const deletedSchedules = originalSchedules.filter(ol => {
             const originalId = toNumber(ol.maLichTrinh);
-            return isExistingId(originalId) &&
-                !snapshotLichTrinhs.some(sl => toNumber(sl.id) === originalId);
+            return isExistingId(originalId) && !snapshotLichTrinhs.some(sl => toNumber(sl.id) === originalId);
         });
-
 
         const toUpsert = snapshotLichTrinhs.filter(lt => {
             const scheduleId = toNumber(lt.id);
@@ -525,33 +574,22 @@ export default function TourFormPage({ mode }) {
         const deleteResults = await Promise.allSettled(
             deletedSchedules.map(lt => deleteScheduleApi(toNumber(lt.maLichTrinh)))
         );
-
         const upsertResults = await Promise.allSettled(
             toUpsert.map(lt => {
                 const scheduleId = toNumber(lt.id);
                 const fd = buildScheduleFormData(lt, id);
-                return isExistingId(scheduleId)
-                    ? updateScheduleApi(scheduleId, fd)
-                    : createScheduleApi(fd);
+                return isExistingId(scheduleId) ? updateScheduleApi(scheduleId, fd) : createScheduleApi(fd);
             })
         );
 
         const failed = [...deleteResults, ...upsertResults].filter(r => r.status === "rejected");
-        if (failed.length > 0) {
-            console.error(
-                "Chi tiết lỗi lịch trình:",
-                failed.map(f => f.reason?.response?.data ?? f.reason?.message ?? f.reason)
-            );
-            throw new Error(`Có ${failed.length} thao tác lịch trình thất bại, vui lòng kiểm tra lại.`);
-        }
+        if (failed.length > 0) throw new Error(`Có ${failed.length} thao tác lịch trình thất bại.`);
     };
 
-
+    // ── Departure handlers ───────────────────────────────────────────────────
     const handleChuyenKhoiHanhsChange = async (newChuyen) => {
         setChuyenKhoiHanhs(newChuyen);
-
         if (!isEdit || !id) return;
-
         try {
             departureSaving.markSaving();
             await syncDeparturesImmediate(newChuyen);
@@ -567,11 +605,9 @@ export default function TourFormPage({ mode }) {
 
     const syncDeparturesImmediate = async (snapshotChuyenKhoiHanhs) => {
         const originalDepartures = originalDataRef.current?.chuyenKhoiHanhs || [];
-
         const deletedDepartures = originalDepartures.filter(oc => {
             const maChuyen = toNumber(oc.chuyenKhoiHanh?.maChuyen);
-            return isExistingId(maChuyen) &&
-                !snapshotChuyenKhoiHanhs.some(sc => toNumber(sc.maChuyen) === maChuyen);
+            return isExistingId(maChuyen) && !snapshotChuyenKhoiHanhs.some(sc => toNumber(sc.maChuyen) === maChuyen);
         });
 
         const deleteResults = await Promise.allSettled(
@@ -589,20 +625,15 @@ export default function TourFormPage({ mode }) {
             toUpsert.map(ch => {
                 const maChuyen = toNumber(ch.maChuyen);
                 const payload = buildDeparturePayload(ch, id);
-                return isExistingId(maChuyen)
-                    ? updateDepartureApi(maChuyen, payload)
-                    : createDepartureApi(payload);
+                return isExistingId(maChuyen) ? updateDepartureApi(maChuyen, payload) : createDepartureApi(payload);
             })
         );
 
         const failed = [...deleteResults, ...upsertResults].filter(r => r.status === "rejected");
-        if (failed.length > 0) {
-            console.error("Chi tiết lỗi chuyến khởi hành:", failed.map(f => f.reason));
-            throw new Error(`Có ${failed.length} thao tác chuyến khởi hành thất bại, vui lòng kiểm tra lại.`);
-        }
+        if (failed.length > 0) throw new Error(`Có ${failed.length} thao tác chuyến khởi hành thất bại.`);
     };
 
-
+    // ── Build payload ────────────────────────────────────────────────────────
     const buildTourInfoJson = () => ({
         TourInfo: {
             TenTour: formData.tenTour,
@@ -619,33 +650,18 @@ export default function TourFormPage({ mode }) {
         ChuyenKhoiHanhs: []
     });
 
+    // ── Validate ─────────────────────────────────────────────────────────────
     const validateBasicInfo = () => {
         const errs = {};
         if (!formData.tenTour?.trim()) errs.tenTour = "Tên tour không được để trống.";
         if (!formData.maLoaiTour) errs.maLoaiTour = "Vui lòng chọn loại danh mục tour.";
+        validateNgayDem(errs, formData.ngay, formData.dem, true);
         setErrors(prev => ({ ...prev, ...errs }));
         return Object.keys(errs).length === 0;
     };
 
-    const handleSaveBasicInfo = async () => {
-        if (isViewMode || !validateBasicInfo()) return;
-
-        try {
-            infoSaving.markSaving();
-            const fd = new FormData();
-            fd.append("TourDataJson", JSON.stringify(buildTourInfoJson()));
-            await updateFullTourApi(id, fd);
-            infoSaving.markSaved();
-        } catch (err) {
-            infoSaving.markIdle();
-            toastError("Lỗi cập nhật thông tin", getErrorMessage(err));
-        }
-    };
-
-
     const validateCreate = () => {
         const errs = {};
-
         if (!formData.tenTour?.trim()) errs.tenTour = "Tên tour không được để trống.";
         if (!formData.maLoaiTour) errs.maLoaiTour = "Vui lòng chọn loại danh mục tour.";
         if (images.length === 0) errs.images = "Bạn phải tải lên ít nhất 1 hình ảnh.";
@@ -654,81 +670,80 @@ export default function TourFormPage({ mode }) {
             lt => !lt.chiTietLichTrinhs || lt.chiTietLichTrinhs.length === 0
         );
         if (scheduleWithoutDetail) {
-            errs.lichTrinhs = `Ngày ${scheduleWithoutDetail.soThuTuNgay} chưa có mốc chi tiết địa điểm tham quan nào.`;
-            toastWarning(
-                "Thiếu thông tin lịch trình",
-                `Ngày ${scheduleWithoutDetail.soThuTuNgay} chưa có mốc chi tiết. Vui lòng thêm ít nhất 1 mốc.`
-            );
+            errs.lichTrinhs = `Ngày ${scheduleWithoutDetail.soThuTuNgay} chưa có mốc chi tiết.`;
         }
-        if (!formData.ngay)
-            errs.ngay = "Vui lòng nhập số ngày";
 
-        if (!formData.dem && formData.dem !== 0)
-            errs.dem = "Vui lòng nhập số đêm";
+        validateNgayDem(errs, formData.ngay, formData.dem, false);
 
         const isDeparturesValid = tourScheduleRef.current?.validateAll?.() ?? true;
         setErrors(errs);
         return Object.keys(errs).length === 0 && isDeparturesValid;
     };
 
+    // ── Save handlers ────────────────────────────────────────────────────────
+    const handleSaveBasicInfo = async () => {
+        if (isViewMode || !validateBasicInfo()) return;
+
+        if (Number(formData.ngay) !== lichTrinhs.length) {
+            toastWarning(
+                "Số ngày không khớp",
+                `Tour có ${formData.ngay} ngày nhưng đang có ${lichTrinhs.length} lịch trình.`
+            );
+            return;
+        }
+
+        try {
+            infoSaving.markSaving();
+            const fd = new FormData();
+            fd.append("TourDataJson", JSON.stringify(buildTourInfoJson()));
+            await updateFullTourApi(id, fd);
+            infoSaving.markSaved();
+            toastSuccess("Thành công", "Đã lưu thông tin cơ bản.");
+        } catch (err) {
+            infoSaving.markIdle();
+            toastError("Lỗi cập nhật thông tin", getErrorMessage(err));
+        }
+    };
+
     const handleCreateTour = async () => {
         if (!validateCreate()) return;
-
         try {
             setLoading(true);
             const fd = new FormData();
-            fd.append("TourDataJson", JSON.stringify(
-                buildCreateTourDto(formData, lichTrinhs, chuyenKhoiHanhs)
-            ));
-            images.forEach(img => {
-                if (img.file) fd.append("Images", img.file);
-            });
-            lichTrinhs.forEach(lt => {
-                if (lt.file) fd.append("ScheduleFiles", lt.file, lt.file.name);
-            });
-
+            fd.append("TourDataJson", JSON.stringify(buildCreateTourDto(formData, lichTrinhs, chuyenKhoiHanhs)));
+            images.forEach(img => { if (img.file) fd.append("Images", img.file); });
+            lichTrinhs.forEach(lt => { if (lt.file) fd.append("ScheduleFiles", lt.file, lt.file.name); });
             await createFullTourApi(fd);
             toastSuccess("Thành công", "Thêm mới tour trọn gói thành công!");
             navigate("/Quan-ly/Cac-chuyen-di");
         } catch (err) {
-            toastError("Có lỗi xảy ra", getErrorMessage(err, "Có lỗi xảy ra trong quá trình tạo tour!"));
+            toastError("Có lỗi xảy ra", getErrorMessage(err));
         } finally {
             setLoading(false);
         }
     };
 
+    // ── Derived state ────────────────────────────────────────────────────────
     const isBasicInfoCompleted =
         formData.tenTour?.trim() &&
         formData.maLoaiTour &&
-        formData.ngay !== "" && formData.ngay !== null && formData.ngay !== undefined &&
-        formData.dem !== "" && formData.dem !== null && formData.dem !== undefined &&
-        formData.maKhachSan &&
+        formData.ngay &&
+        formData.dem !== "" &&
         formData.moTa?.trim();
 
     const hasSchedule = lichTrinhs.length > 0;
+    const canAddDay = isBasicInfoCompleted && lichTrinhs.length < Number(formData.ngay || 0);
+    const canSaveBasicInfo = isEdit && !isScheduleLocked && Number(formData.ngay) === lichTrinhs.length;
 
-    const handleNumberChange = (field, value) => {
-        const number = Number(value);
+    // Hint tự động tính đêm chỉ hiện khi người dùng chưa tự nhập và đã có ngày
+    // const demAutoHint =
+    //     !demManualRef.current && formData.ngay
+    //         ? `Tự động: ${formData.ngay} ngày → ${Math.max(0, Number(formData.ngay) - 1)} đêm`
+    //         : null;
 
-        if (value === "") {
-            setFormData(prev => ({
-                ...prev,
-                [field]: ""
-            }));
-            return;
-        }
-
-        if (number < 0) return;
-
-        setFormData(prev => ({
-            ...prev,
-            [field]: number
-        }));
-    };
-
+    // ── Render ───────────────────────────────────────────────────────────────
     return (
         <div className="bg-white border border-slate-200 rounded-2xl shadow">
-            {/* Header */}
             <div className="p-6 flex justify-between items-center border-b border-slate-200 bg-slate-50 rounded-t-2xl">
                 <button
                     onClick={() => navigate(-1)}
@@ -737,22 +752,23 @@ export default function TourFormPage({ mode }) {
                     <ArrowLeft size={20} />
                     <span className="font-medium">Quay lại</span>
                 </button>
-                {!isViewMode && !isEdit && (
-                    <button
-                        onClick={handleCreateTour}
-                        disabled={loading}
-                        className="text-white font-semibold px-8 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 transition disabled:opacity-70 flex items-center gap-2"
-                    >
-                        {loading
-                            ? <><Loader2 size={16} className="animate-spin" /> Đang tạo...</>
-                            : "Thêm Tour"
-                        }
-                    </button>
+                {/* ── Create button (add mode only) ── */}
+                {!isEdit && !isViewMode && (
+                    <div className="flex justify-end">
+                        <button
+                            onClick={handleCreateTour}
+                            disabled={loading}
+                            className="flex items-center gap-2 px-6 py-3 text-sm font-medium text-white bg-sky-500 hover:bg-sky-600 rounded-xl transition disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            {loading && <Loader2 size={16} className="animate-spin" />}
+                            Thêm tour
+                        </button>
+                    </div>
                 )}
             </div>
 
             <div className="p-8 space-y-10">
-                {/* Images */}
+                {/* ── Images Section ── */}
                 <section>
                     <div className="flex items-center gap-3 mb-4">
                         <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
@@ -760,7 +776,6 @@ export default function TourFormPage({ mode }) {
                         </p>
                         {isEdit && <SaveStatusBadge state={imgSaving.state} />}
                     </div>
-
                     <div className="flex flex-wrap gap-3">
                         {images.map((img) => (
                             <div
@@ -774,7 +789,7 @@ export default function TourFormPage({ mode }) {
                                     </span>
                                 )}
                                 {!isViewMode && (
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-1 transition-all">
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-1">
                                         {!img.anhChinh && (
                                             <button
                                                 onClick={() => handleSetMainImage(img.id)}
@@ -804,7 +819,9 @@ export default function TourFormPage({ mode }) {
                             </button>
                         )}
                     </div>
-
+                    {errors.images && (
+                        <p className="mt-2 text-xs text-red-500">{errors.images}</p>
+                    )}
                     <input
                         type="file"
                         ref={fileInputRef}
@@ -813,27 +830,22 @@ export default function TourFormPage({ mode }) {
                         onChange={handleImageChange}
                         className="hidden"
                     />
-                    {errors.images && <p className="text-red-600 text-sm mt-2">{errors.images}</p>}
                 </section>
 
-                {/* Basic Info */}
+                {/* ── Basic Info ── */}
                 <section className="border-t border-slate-200 pt-8 space-y-6">
                     <div className="flex items-center justify-between">
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                            Thông tin cơ bản
-                        </p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Thông tin cơ bản</p>
                         {isEdit && !isScheduleLocked && (
                             <div className="flex items-center gap-3">
                                 <SaveStatusBadge state={infoSaving.state} />
-                                {isEdit && (
-                                    <button
-                                        onClick={handleSaveBasicInfo}
-                                        disabled={infoSaving.state === "saving"}
-                                        className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium text-white bg-sky-400/80 hover:bg-sky-400/60 rounded-xl transition disabled:opacity-60"
-                                    >
-                                        <span>Lưu thông tin</span>
-                                    </button>
-                                )}
+                                <button
+                                    onClick={handleSaveBasicInfo}
+                                    disabled={!canSaveBasicInfo || infoSaving.state === "saving"}
+                                    className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium text-white bg-sky-500 hover:bg-sky-600 rounded-xl transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                    Lưu thông tin
+                                </button>
                             </div>
                         )}
                     </div>
@@ -848,10 +860,11 @@ export default function TourFormPage({ mode }) {
                             required
                         />
                         <div>
-                            <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Loại tour *</label>
+                            <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                                Loại tour *
+                            </label>
                             <SelectField
                                 searchable
-                                searchText="Tìm kiếm loại tour"
                                 value={formData.maLoaiTour}
                                 options={loaiTours}
                                 valueKey="maLoaiTour"
@@ -861,46 +874,30 @@ export default function TourFormPage({ mode }) {
                                 disabled={isViewMode || isScheduleLocked}
                             />
                         </div>
-                        <div >
-                            <InputField
-                                type="number"
-                                label="Số ngày"
-                                value={formData.ngay}
-                                onChange={(e) =>
-                                    handleNumberChange("ngay", getVal(e))
-                                }
-                                disabled={isViewMode || isScheduleLocked}
-                                min={1}
-                            />
 
+                        {/* Số ngày */}
+                        <InputField
+                            type="number"
+                            label="Số ngày"
+                            value={formData.ngay}
+                            onChange={(e) => handleNumberChange("ngay", getVal(e))}
+                            disabled={isViewMode || isScheduleLocked}
+                            min={1}
+                            error={errors.ngay}
+                        />
 
-                        </div>
-                        <div>
+                        {/* Số đêm — có hint khi đang auto-tính */}
+                        <div className="flex flex-col gap-1">
                             <InputField
                                 type="number"
                                 label="Số đêm"
                                 value={formData.dem}
-                                onChange={(e) =>
-                                    handleNumberChange("dem", getVal(e))
-                                }
+                                onChange={(e) => handleNumberChange("dem", getVal(e))}
                                 disabled={isViewMode || isScheduleLocked}
-                                min={1}
+                                min={0}
+                                error={errors.dem}
                             />
                         </div>
-                    </div>
-
-                    <div>
-                        <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Khách sạn</label>
-                        <SelectField
-                            searchable
-                            searchText="Tìm kiếm khách sạn"
-                            value={formData.maKhachSan}
-                            options={khachSans}
-                            valueKey="maKhachSan"
-                            labelKey="tenKhachSan"
-                            onChange={(e) => setFormData(p => ({ ...p, maKhachSan: getVal(e) }))}
-                            disabled={isViewMode || isScheduleLocked}
-                        />
                     </div>
 
                     <InputField
@@ -914,27 +911,28 @@ export default function TourFormPage({ mode }) {
                     />
                 </section>
 
-                {/* Itineraries */}
+                {/* ── Itineraries Section ── */}
                 <div>
                     <div className="flex items-center gap-3 mb-2">
                         {isEdit && <SaveStatusBadge state={scheduleSaving.state} />}
                     </div>
+                    {errors.lichTrinhs && (
+                        <p className="mb-2 text-xs text-red-500">{errors.lichTrinhs}</p>
+                    )}
                     <TourItinerariesSection
                         maTour={id}
                         value={lichTrinhs}
                         onChange={isEdit ? handleLichTrinhsChange : (val) => setLichTrinhs(val)}
                         diaDiems={diaDiems}
+                        khachSans={khachSans}
                         isViewMode={isViewMode}
                         loading={loading}
-                        canAddDay={isBasicInfoCompleted}
+                        canAddDay={canAddDay}
                         isLocked={isScheduleLocked}
                     />
-                    {errors.lichTrinhs && (
-                        <p className="text-red-600 text-sm mt-2">{errors.lichTrinhs}</p>
-                    )}
                 </div>
 
-                {/* Departures */}
+                {/* ── Departures Section ── */}
                 <section className="border-t border-slate-200 pt-8 space-y-4">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
@@ -948,12 +946,10 @@ export default function TourFormPage({ mode }) {
                                 type="button"
                                 disabled={!hasSchedule}
                                 onClick={() => tourScheduleRef.current?.openModal()}
-                                className={`flex items-center gap-1.5 px-4 py-2 text-white font-medium text-xs rounded-xl shadow-sm transition
-                                    ${!hasSchedule ? "bg-slate-300 cursor-not-allowed" : "bg-sky-400/80 hover:bg-sky-400/60"}
-                                `}
+                                className={`flex items-center gap-1.5 px-4 py-2 text-white font-medium text-xs rounded-xl ${!hasSchedule ? "bg-slate-300 cursor-not-allowed" : "bg-sky-500 hover:bg-sky-600"
+                                    }`}
                             >
-                                <Plus size={18} />
-                                Thêm chuyến số {chuyenKhoiHanhs.length + 1}
+                                <Plus size={18} /> Thêm chuyến số {chuyenKhoiHanhs.length + 1}
                             </button>
                         )}
                     </div>
@@ -966,17 +962,16 @@ export default function TourFormPage({ mode }) {
                         <TourSchedulesTable
                             data={chuyenKhoiHanhs}
                             onView={(item) => tourScheduleRef.current?.openEditModal(item)}
-                            onEdit={
-                                !isViewMode
-                                    ? (item) => tourScheduleRef.current?.openEditModal(item)
-                                    : null
-                            }
+                            onEdit={!isViewMode ? (item) => tourScheduleRef.current?.openEditModal(item) : null}
                             loading={loading}
                             showStatus={isEdit || isViewMode}
                             showCodeChuyen={isEdit || isViewMode}
+                            isCreateMode={!isEdit && !isViewMode}
                         />
                     )}
                 </section>
+
+
             </div>
 
             <TourScheduleSection
@@ -985,6 +980,7 @@ export default function TourFormPage({ mode }) {
                 onChange={isEdit ? handleChuyenKhoiHanhsChange : setChuyenKhoiHanhs}
                 isViewMode={isViewMode}
                 trongNuoc={formData.trongNuoc}
+                soNgay={formData.ngay}
             />
         </div>
     );

@@ -45,3 +45,4 @@ export const getHomeLocationCardsApi = async (limit = 4) => {
     });
     return response.data;
 };
+

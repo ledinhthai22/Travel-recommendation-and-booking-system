@@ -27,6 +27,7 @@ namespace travel_recommendation_and_booking_system.DTOs.Schedule
         public string? LuuY { get; set; }
 
         public bool TrangThai { get; set; }
+        public int? MaKhachSan { get; set; }
 
         [Required(ErrorMessage = "Danh sách chi tiết hoạt động không được để trống.")]
         public List<ScheduleDetailsDTO> ChiTietLichTrinh { get; set; } = new();

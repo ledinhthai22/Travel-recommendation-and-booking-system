@@ -34,17 +34,16 @@ const DatePicker = ({
     const containerRef = useRef(null);
     const inputRef = useRef(null);
     const popupRef = useRef(null);
+    // ✅ FIX: Flag để biết user đang tương tác với SelectField
+    const isSelectingYear = useRef(false);
     const [isOpen, setIsOpen] = useState(false);
     const [popupStyle, setPopupStyle] = useState({});
 
-
     const dateValue = typeof value === "string" && value ? parseISO(value) : value;
-
 
     const [currentMonth, setCurrentMonth] = useState(
         dateValue instanceof Date && isValid(dateValue) ? dateValue : new Date()
     );
-
 
     useEffect(() => {
         if (dateValue instanceof Date && isValid(dateValue)) {
@@ -52,26 +51,24 @@ const DatePicker = ({
         }
     }, [value]);
 
-
     const updatePopupPosition = useCallback(() => {
         if (!inputRef.current) return;
         const rect = inputRef.current.getBoundingClientRect();
         const viewportHeight = window.innerHeight;
-        const popupHeight = 370; 
+        const popupHeight = 370;
         const spaceBelow = viewportHeight - rect.bottom;
         const openUpward = spaceBelow < popupHeight && rect.top > popupHeight;
 
         setPopupStyle({
             position: "fixed",
             left: rect.left,
-            width: Math.max(rect.width, 300), 
+            width: Math.max(rect.width, 300),
             zIndex: 99999,
             ...(openUpward
                 ? { bottom: viewportHeight - rect.top + 4 }
                 : { top: rect.bottom + 4 }),
         });
     }, []);
-
 
     useEffect(() => {
         if (isOpen) {
@@ -85,16 +82,20 @@ const DatePicker = ({
         };
     }, [isOpen, updatePopupPosition]);
 
-
     useEffect(() => {
         const handleClickOutside = (event) => {
+            // ✅ FIX: Nếu đang tương tác với year select thì bỏ qua hoàn toàn
+            if (isSelectingYear.current) return;
+
             const clickedInsideContainer = containerRef.current?.contains(event.target);
             const clickedInsidePopup = popupRef.current?.contains(event.target);
+
             if (!clickedInsideContainer && !clickedInsidePopup) {
                 setIsOpen(false);
                 onBlur?.();
             }
         };
+
         if (isOpen) {
             document.addEventListener("mousedown", handleClickOutside);
         }
@@ -103,14 +104,12 @@ const DatePicker = ({
 
     const effectiveMinDate = minDate ?? (disableToday ? startOfDay(addDays(new Date(), 1)) : null);
 
-
     const isDateDisabled = (date) => {
         const d = startOfDay(date);
         if (effectiveMinDate && d < effectiveMinDate) return true;
         if (maxDate && d > startOfDay(maxDate)) return true;
         return false;
     };
-
 
     const handleDateClick = (date) => {
         if (isDateDisabled(date)) return;
@@ -119,7 +118,7 @@ const DatePicker = ({
     };
 
     const startYear = minDate ? minDate.getFullYear() : 1950;
-    const endYear = maxDate ? maxDate.getFullYear() : new Date().getFullYear();
+    const endYear = maxDate ? maxDate.getFullYear() : new Date().getFullYear() + 10;
     const yearOptions = [];
     for (let y = endYear; y >= startYear; y--) {
         yearOptions.push({ value: String(y), label: `Năm ${y}` });
@@ -138,14 +137,12 @@ const DatePicker = ({
         ? startOfMonth(currentMonth) > startOfMonth(effectiveMinDate)
         : true;
 
-
     const popup = isOpen ? (
         <div
             ref={popupRef}
             style={popupStyle}
             className="rounded-2xl border border-slate-100 bg-white p-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
         >
-
             <div className="mb-4 flex items-center justify-between gap-2">
                 <button
                     type="button"
@@ -165,7 +162,20 @@ const DatePicker = ({
                         {format(currentMonth, "MMMM", { locale: vi })}
                     </span>
 
-                    <div className="w-[130px] datepicker-year-select">
+                    {/* ✅ FIX: onMouseDown stopPropagation để event không lan ra document listener */}
+                    <div
+                        className="w-[130px]"
+                        onMouseDown={(e) => {
+                            e.stopPropagation();
+                            isSelectingYear.current = true;
+                        }}
+                        onMouseUp={() => {
+                            // Reset sau một tick để click handler của document không bị ảnh hưởng
+                            setTimeout(() => {
+                                isSelectingYear.current = false;
+                            }, 0);
+                        }}
+                    >
                         <SelectField
                             value={String(currentMonth.getFullYear())}
                             onChange={handleYearChange}
@@ -186,13 +196,11 @@ const DatePicker = ({
                 </button>
             </div>
 
-
             <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-400 uppercase">
                 {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
                     <div key={d} className="py-1">{d}</div>
                 ))}
             </div>
-
 
             <div className="grid grid-cols-7 gap-1">
                 {Array.from({
@@ -277,7 +285,6 @@ const DatePicker = ({
                                 const defaultDate = minDate && today < startOfDay(minDate) ? minDate : today;
                                 onChange?.(format(defaultDate, "yyyy-MM-dd"));
                             }
-
                             updatePopupPosition();
                             setIsOpen((prev) => !prev);
                         }
@@ -292,7 +299,6 @@ const DatePicker = ({
                         }`}
                 />
             </div>
-
 
             {typeof document !== "undefined" && createPortal(popup, document.body)}
         </div>

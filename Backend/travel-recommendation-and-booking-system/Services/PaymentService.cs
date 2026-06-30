@@ -96,8 +96,7 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<(string RspCode, string Message)> ProcessVnPayIpnAsync(Dictionary<string, string> queryData)
         {
-            Console.WriteLine("=== [IPN] START ===");
-            Console.WriteLine($"[IPN] Total Params: {queryData.Count}");
+
 
             try
             {
@@ -106,7 +105,7 @@ namespace travel_recommendation_and_booking_system.Services
 
                 foreach (var kv in queryData)
                 {
-                    Console.WriteLine($"[IPN] Param → {kv.Key} = {kv.Value}");
+                  
                     if (string.IsNullOrEmpty(kv.Key)) continue;
                     if (kv.Key == "vnp_SecureHash")
                         vnp_SecureHash = kv.Value;
@@ -134,13 +133,12 @@ namespace travel_recommendation_and_booking_system.Services
                 }
 
                 string maCodeChuyen = txnRef.Split('_')[0];
-                Console.WriteLine($"[IPN] Parsed MaCodeChuyen: {maCodeChuyen}");
 
                 var giuCho = await _context.GiuChos
                     .Include(x => x.ChuyenKhoiHanh).ThenInclude(x => x.GiaChuyens)
                     .FirstOrDefaultAsync(x => x.ChuyenKhoiHanh.MaChuyenCode == maCodeChuyen);
 
-                Console.WriteLine($"[IPN] GiuCho found: {giuCho != null}");
+
 
                 if (giuCho == null)
                     return ("01", "GiuCho not found");
@@ -155,13 +153,12 @@ namespace travel_recommendation_and_booking_system.Services
                 if (payload == null)
                     return ("01", "PaymentPayload not found");
 
-                // ====================== TRANSACTION ======================
                 await using var transaction = await _context.Database.BeginTransactionAsync();
                 DonDatTour order = null;
 
                 try
                 {
-                    Console.WriteLine("[IPN] Starting transaction...");
+                  
 
                     var chuyen = giuCho.ChuyenKhoiHanh;
                     var gia = chuyen.GiaChuyens.FirstOrDefault()
@@ -190,7 +187,7 @@ namespace travel_recommendation_and_booking_system.Services
 
                     decimal tongTien = tongTienGoc + phuThuPhongDon - giaTriGiam;
 
-                    Console.WriteLine($"[IPN] Calculated Total: {tongTien} | VNPay: {vnpayAmount}");
+                  
 
                     if (Math.Abs(tongTien - vnpayAmount) > 1)
                     {
@@ -266,7 +263,7 @@ namespace travel_recommendation_and_booking_system.Services
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
-                    Console.WriteLine($"[IPN] SUCCESS - Booking created: {maDatCho}, MaDonDatTour={order.MaDonDatTour}");
+              
 
                     try
                     {

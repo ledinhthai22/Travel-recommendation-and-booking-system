@@ -37,20 +37,16 @@ namespace Services
         }
 
 
-        private async Task<string> GenerateUniqueCodeAsync(
-            string diemKhoiHanh,
-            string tenPhuongTien,
-            DateTime ngayKhoiHanh)
+        private async Task<string> GenerateUniqueCodeAsync(bool trongNuoc, string diemKhoiHanh, string tenPhuongTien, DateTime ngayKhoiHanh)
         {
+            var regionCode = trongNuoc ? "TN" : "NN";
             var locationCode = LocationCodeMap.GetValueOrDefault(diemKhoiHanh?.Trim() ?? "", "XX");
             var vehicleCode = VehicleCodeMap.GetValueOrDefault(tenPhuongTien?.Trim() ?? "", "XX");
             var dateCode = ngayKhoiHanh.ToString("ddMMyy");
-            var prefix = $"{locationCode}-{vehicleCode}-{dateCode}-";
-
+            var prefix = $"{regionCode}-{locationCode}-{vehicleCode}-{dateCode}-";
 
             var existingCount = await _context.ChuyenKhoiHanhs
                 .CountAsync(c => c.MaChuyenCode.StartsWith(prefix));
-
 
             int seq = existingCount + 1;
             string code;
@@ -59,8 +55,7 @@ namespace Services
                 code = $"{prefix}{seq:D3}";
                 seq++;
             }
-            while (await _context.ChuyenKhoiHanhs
-                       .AnyAsync(c => c.MaChuyenCode == code));
+            while (await _context.ChuyenKhoiHanhs.AnyAsync(c => c.MaChuyenCode == code));
 
             return code;
         }
@@ -159,7 +154,8 @@ namespace Services
             {
 
                 var tenPhuongTien = await GetTenPhuongTienAsync(dep.MaPhuongTien);
-                var maChuyenCode = await GenerateUniqueCodeAsync(dep.DiemKhoiHanh, tenPhuongTien, dep.NgayKhoiHanh);
+                bool TrongNuoc = true;
+                var maChuyenCode = await GenerateUniqueCodeAsync(TrongNuoc,dep.DiemKhoiHanh, tenPhuongTien, dep.NgayKhoiHanh);
 
                 var chuyen = new ChuyenKhoiHanh
                 {

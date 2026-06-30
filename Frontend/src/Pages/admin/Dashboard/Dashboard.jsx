@@ -245,7 +245,6 @@ export default function Dashboard() {
                     </ResponsiveContainer>
                 </div>
 
-                {/* Pie Donut: Hành vi khách hàng */}
                 <div className="col-span-12 lg:col-span-3 bg-white rounded-3xl border border-slate-200 p-6">
                     <div className="mb-3">
                         <h3 className="font-semibold text-slate-800 text-base">Hành vi khách hàng</h3>

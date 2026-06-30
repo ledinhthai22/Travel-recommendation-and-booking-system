@@ -3,9 +3,9 @@ import { formatCurrency } from "~/Helper/FormatCurrency";
 import { formatDate } from "~/Helper/FormatDate";
 import { Clock, Calendar, MapPin, Users, Phone, Ticket } from "lucide-react";
 import useAuth from "~/Hooks/useAuth";
-export function BookingCard({ tour, departure, hotel ,onOpenAuthModal}) {
+export function BookingCard({ tour, departure, hotel, onOpenAuthModal }) {
     const navigate = useNavigate();
-    const {user} = useAuth();
+    const { user } = useAuth();
     if (!tour || !departure) return null;
 
     const ckh = departure.chuyenKhoiHanh;
@@ -18,9 +18,11 @@ export function BookingCard({ tour, departure, hotel ,onOpenAuthModal}) {
     const handleBooking = () => {
         if (!user) {
             if (typeof onOpenAuthModal === "function") {
-                onOpenAuthModal(); 
+                onOpenAuthModal({
+                    redirectAfterLogin: window.location.pathname + window.location.search,
+                });
             }
-            return; 
+            return;
         }
         const bookingData = {
             maNguoiDung: user.maNguoiDung,
@@ -28,7 +30,7 @@ export function BookingCard({ tour, departure, hotel ,onOpenAuthModal}) {
             tenTour: tour.tenTour,
             hinhAnh: tour.hinhAnh,
             thoiGianTour: tour.thoiGianTour,
-            slug:tour.slug,
+            slug: tour.slug,
             maChuyen: ckh?.maChuyen,
             maChuyenCode: ckh?.maChuyenCode,
             ngayKhoiHanh: ckh?.ngayKhoiHanh,

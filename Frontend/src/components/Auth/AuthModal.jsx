@@ -110,7 +110,7 @@ const PasswordToggle = React.memo(function PasswordToggle({ show, onToggle }) {
 
 
 
-export default function AuthModal({ open, onClose }) {
+export default function AuthModal({ open, onClose,redirectAfterLogin = null }) {
     const [mode, setMode] = useState('login');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -305,7 +305,13 @@ export default function AuthModal({ open, onClose }) {
                 const profile = await login(result);
                 toastSuccess('Đăng nhập thành công', 'Chào mừng bạn quay trở lại.');
                 onClose?.();
-                navigate(profile.maVaiTro === 1 || profile.maVaiTro === 2 ? '/Quan-ly' : '/');
+                if (redirectAfterLogin) {
+                    navigate(redirectAfterLogin);           // Quay lại trang chi tiết tour
+                } else if (profile.maVaiTro === 1 || profile.maVaiTro === 2) {
+                    navigate('/Quan-ly');
+                } else {
+                    navigate('/');
+                }
                 return;
             }
 
@@ -333,7 +339,7 @@ export default function AuthModal({ open, onClose }) {
     }, [
         hasError, isRegister, isForgot, isLogin,
         form, otpSent, otpVerified,
-        login, navigate, onClose, switchMode,
+        login, navigate, onClose, switchMode,redirectAfterLogin
     ]);
 
 

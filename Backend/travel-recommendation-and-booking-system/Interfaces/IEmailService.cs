@@ -6,5 +6,7 @@ namespace travel_recommendation_and_booking_system.Interfaces
     {
         Task SendEmailAsync(string toEmail, string subject, string body);
         Task SendBookingConfirmationAsync(DonDatTour order);
+        Task SendPaymentReminderAsync(DonDatTour order);
+        Task SendBookingCancelledAsync(DonDatTour order);
     }
 }

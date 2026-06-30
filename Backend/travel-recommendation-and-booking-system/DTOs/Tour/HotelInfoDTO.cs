@@ -6,5 +6,6 @@
         public string Slug { get; set; }
         public string TenKhachSan { get; set; }
         public int SoSao { get; set; }
+        public int SoThuTuNgay { get; set; }
     }
 }

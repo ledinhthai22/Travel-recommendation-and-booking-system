@@ -1,41 +1,39 @@
 ﻿using System.Net.Mail;
 using System.Net;
-using QuestPDF.Fluent;
-using QuestPDF.Helpers;
-using QuestPDF.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
+using travel_recommendation_and_booking_system.Data;
 
 namespace travel_recommendation_and_booking_system.Services
 {
     public class EmailService : IEmailService
     {
         private readonly IConfiguration _configuration;
+        private readonly AppDbContext _context;
 
-        public EmailService(IConfiguration configuration)
+        public EmailService(IConfiguration configuration, AppDbContext context)
         {
             _configuration = configuration;
-            QuestPDF.Settings.License = LicenseType.Community;
+            _context = context;
+        }
+        private string FormatPrice(decimal price)
+        {
+            return price.ToString("#,##0", System.Globalization.CultureInfo.InvariantCulture)
+                        .Replace(",", ".");
         }
 
         public async Task SendEmailAsync(string toEmail, string subject, string body)
         {
             var emailSettings = _configuration.GetSection("EmailSettings");
-            var smtpServer = emailSettings["SmtpServer"];
-            var port = int.Parse(emailSettings["Port"]!);
-            var senderEmail = emailSettings["SenderEmail"];
-            var password = emailSettings["Password"];
-            var senderName = emailSettings["SenderName"];
-
-            using var client = new SmtpClient(smtpServer, port)
+            using var client = new SmtpClient(emailSettings["SmtpServer"], int.Parse(emailSettings["Port"]!))
             {
-                Credentials = new NetworkCredential(senderEmail, password),
+                Credentials = new NetworkCredential(emailSettings["SenderEmail"], emailSettings["Password"]),
                 EnableSsl = true,
             };
-
             var mailMessage = new MailMessage
             {
-                From = new MailAddress(senderEmail!, senderName),
+                From = new MailAddress(emailSettings["SenderEmail"]!, emailSettings["SenderName"]),
                 Subject = subject,
                 Body = body,
                 IsBodyHtml = true,
@@ -43,17 +41,57 @@ namespace travel_recommendation_and_booking_system.Services
             mailMessage.To.Add(toEmail);
             await client.SendMailAsync(mailMessage);
         }
+        public async Task SendPaymentReminderAsync(DonDatTour order)
+        {
+            string subject = $"[Nhắc thanh toán] Đơn {order.MaDatCho} sắp khởi hành";
+            string diemThanhToan = order.ChuyenKhoiHanh?.DiemKhoiHanh ?? "Chưa có thông tin";
+            if (order.ChuyenKhoiHanh?.DiemKhoiHanh?.Contains("Hồ Chí Minh", StringComparison.OrdinalIgnoreCase) == true)
+                diemThanhToan = "địa chỉ: 65 Huỳnh Thúc Kháng, Phường Sài Gòn, TP. HCM";
+            else if (order.ChuyenKhoiHanh?.DiemKhoiHanh?.Contains("Hà Nội", StringComparison.OrdinalIgnoreCase) == true)
+                diemThanhToan = "địa chỉ: Số 48 ngách 26 ngõ Thái Thịnh 2, Phường Thịnh Quang, Quận Đống Đa, Hà Nội";
+            else if (order.ChuyenKhoiHanh?.DiemKhoiHanh?.Contains("Đà Nẵng", StringComparison.OrdinalIgnoreCase) == true)
+                diemThanhToan = "địa chỉ: Tòa nhà EH1, phường An Hải Bắc, quận Sơn Trà.";
+            string body = $@"
+                <h2>Nhắc nhở thanh toán</h2>
+                <p>Kính gửi Quý khách <strong>{order.NguoiDung?.HoTen}</strong>,</p>
+                <p>Đơn đặt tour <strong>{order.MaDatCho}</strong> của Quý khách sẽ khởi hành vào ngày <strong>{order.ChuyenKhoiHanh?.NgayKhoiHanh:dd/MM/yyyy}</strong> (còn 7 ngày).</p>
+                <p><strong>Số tiền cần thanh toán: {order.TongTien:N0} đ</strong></p>
+                <p>Vui lòng thanh toán sớm để tránh đơn bị hủy.</p>
+                <p>Điểm thanh toán: {diemThanhToan} </p>
+                <p>Trân trọng,<br/>Lối Riêng Travel</p>";
 
+            await SendEmailAsync(order.NguoiDung!.Email, subject, body);
+        }
+
+        public async Task SendBookingCancelledAsync(DonDatTour order)
+        {
+            string subject = $"[Hủy đơn] Đơn {order.MaDatCho}";
+
+            string body = $@"
+                <h2>Thông báo hủy đơn đặt tour</h2>
+                <p>Kính gửi Quý khách,</p>
+                <p>Đơn đặt tour <strong>{order.MaDatCho}</strong> đã bị hủy tự động vì Quý khách chưa thanh toán trước 3 ngày khởi hành.</p>
+                <p>Trân trọng,<br/>Lối Riêng Travel</p>";
+
+            await SendEmailAsync(order.NguoiDung?.Email, subject, body);
+        }
         public async Task SendBookingConfirmationAsync(DonDatTour order)
         {
             try
             {
-                var pdfBytes = GenerateBookingPdf(order);
                 var emailSettings = _configuration.GetSection("EmailSettings");
 
-                // Ưu tiên email từ thông tin liên lạc
-                string toEmail = order.KhachHangs?.FirstOrDefault(k => !string.IsNullOrEmpty(k.Email))?.Email
-                              ?? order.NguoiDung?.Email
+                // Load đầy đủ dữ liệu cần thiết
+                var fullOrder = await _context.DonDatTours
+                    .Include(x => x.ThanhToans)
+                    .Include(x => x.KhachHangs)
+                    .Include(x => x.ChuyenKhoiHanh).ThenInclude(x => x.Tour)
+                    .FirstOrDefaultAsync(x => x.MaDonDatTour == order.MaDonDatTour);
+
+                if (fullOrder == null) fullOrder = order;
+
+                string toEmail = fullOrder.KhachHangs?.FirstOrDefault(k => !string.IsNullOrEmpty(k.Email))?.Email
+                              ?? fullOrder.NguoiDung?.Email
                               ?? throw new Exception("Không tìm thấy email người nhận");
 
                 using var client = new SmtpClient(emailSettings["SmtpServer"], int.Parse(emailSettings["Port"]!))
@@ -65,23 +103,14 @@ namespace travel_recommendation_and_booking_system.Services
                 var mail = new MailMessage
                 {
                     From = new MailAddress(emailSettings["SenderEmail"]!, emailSettings["SenderName"]),
-                    Subject = $"Xác nhận đặt tour - {order.MaDatCho}",
-                    Body = $"""
-                        <h2>Đặt tour thành công!</h2>
-                        <p>Xin chào <strong>{order.NguoiDung?.HoTen ?? "Quý khách"}</strong>,</p>
-                        <p>Đơn đặt tour <strong>{order.MaDatCho}</strong> đã được ghi nhận thành công.</p>
-                        <p>Vui lòng xem file PDF đính kèm để biết thông tin chi tiết.</p>
-                        <p>Trân trọng,<br/>Đội ngũ Travel System</p>
-                        """,
+                    Subject = $"Xác nhận đặt tour - {fullOrder.MaDatCho}",
+                    Body = GenerateBookingEmailHtml(fullOrder),
                     IsBodyHtml = true
                 };
 
                 mail.To.Add(toEmail);
-
-                var attachment = new Attachment(new MemoryStream(pdfBytes), $"DonDatTour_{order.MaDatCho}.pdf", "application/pdf");
-                mail.Attachments.Add(attachment);
-
                 await client.SendMailAsync(mail);
+
                 Console.WriteLine($"[Email] Gửi thành công đến {toEmail}");
             }
             catch (Exception ex)
@@ -90,38 +119,13 @@ namespace travel_recommendation_and_booking_system.Services
             }
         }
 
-        private byte[] GenerateBookingPdf(DonDatTour order)
+        private string GenerateBookingEmailHtml(DonDatTour order)
         {
-            var colorPrimary = "#1A1A1A";
-            var colorMuted = "#555555";
-            var colorBorder = "#E5E5E5";
-            var colorAccent = "#0EA5E9";
-            var colorWhite = "#FFFFFF";
-
-            string GetTrangThaiDonText(int status) => status switch
-            {
-                1 => "CHỜ DUYỆT",
-                2 => "ĐÃ DUYỆT",
-                3 => "HOÀN TẤT",
-                4 => "ĐÃ HỦY",
-                _ => "KHÔNG XÁC ĐỊNH"
-            };
-
-            string GetPhuongThucThanhToanText(int? method) => method switch
-            {
-                1 => "VNPay",
-                2 => "Tiền mặt",
-                3 => "Chuyển khoản ngân hàng",
-                _ => "Chưa thanh toán"
-            };
-
-            // ====================== LẤY THÔNG TIN LIÊN LẠC ======================
-            string hoTen = "N/A";
+            string hoTen = order.NguoiDung?.HoTen ?? "Quý khách";
             string sdt = "N/A";
             string email = "N/A";
             string diaChi = "";
 
-            // Parse từ GhiChu (ưu tiên)
             if (!string.IsNullOrWhiteSpace(order.GhiChu))
             {
                 var match = System.Text.RegularExpressions.Regex.Match(
@@ -139,7 +143,6 @@ namespace travel_recommendation_and_booking_system.Services
                 }
             }
 
-            // Nếu chưa có thì lấy từ KhachHangs
             if (email == "N/A" && order.KhachHangs?.Any() == true)
             {
                 var kh = order.KhachHangs.First();
@@ -148,181 +151,201 @@ namespace travel_recommendation_and_booking_system.Services
                 email = kh.Email ?? email;
             }
 
-            // ====================== TẠO PDF ======================
-            var document = Document.Create(container =>
+            string GetTrangThaiLabel(int s) => s switch
             {
-                container.Page(page =>
-                {
-                    page.Size(PageSizes.A4);
-                    page.Margin(40);
-                    page.DefaultTextStyle(x => x.FontFamily("Arial").FontSize(11).FontColor(colorPrimary));
+                1 => "CHỜ DUYỆT",
+                2 => "ĐÃ DUYỆT",
+                3 => "HOÀN TẤT",
+                4 => "ĐÃ HỦY",
+                _ => "KHÔNG XÁC ĐỊNH"
+            };
 
-                    // HEADER
-                    page.Header().BorderBottom(3, Unit.Point).BorderColor(colorAccent).PaddingBottom(20).Row(row =>
-                    {
-                        row.RelativeItem().Column(col =>
-                        {
-                            col.Item().Text("TRAVEL SYSTEM PLATFORM").FontSize(18).ExtraBold();
-                            col.Item().Text("XÁC NHẬN ĐẶT TOUR").FontSize(24).ExtraBold().LetterSpacing(-0.5f);
-                        });
+            string GetTrangThaiColor(int s) => s switch   // ← ĐÃ THÊM HÀM NÀY
+            {
+                1 => "#c50000",
+                2 => "#008000",
+                3 => "#025da6",
+                4 => "#888888",
+                _ => "#555555"
+            };
 
-                        row.ConstantItem(240).AlignRight().Column(col =>
-                        {
-                            col.Item().Text(t => { t.Span("Mã đơn: ").Bold(); t.Span(order.MaDatCho).Bold().FontSize(13); });
-                            col.Item().Text($"Ngày đặt: {order.NgayDat:dd/MM/yyyy HH:mm}").FontSize(10).FontColor(colorMuted);
-                        });
-                    });
+            string GetPhuongThucText(int? m) => m switch
+            {
+                1 => "VNPay",
+                2 => "Tiền mặt",
+                3 => "Chuyển khoản ngân hàng",
+                _ => "Chưa thanh toán"
+            };
 
-                    page.Content().PaddingVertical(25).Column(col =>
-                    {
-                        // THÔNG TIN KHÁCH HÀNG (ĐÃ SỬA)
-                        col.Item().Row(row =>
-                        {
-                            row.RelativeItem().Column(c =>
-                            {
-                                c.Item().BorderBottom(1, Unit.Point).BorderColor(colorAccent).PaddingBottom(6)
-                                    .Text("THÔNG TIN KHÁCH HÀNG").Bold().FontSize(12);
+            // Lấy ThanhToan mới nhất
+            var latestPayment = order.ThanhToans?
+                .OrderByDescending(t => t.NgayThanhToan)
+                .FirstOrDefault();
 
-                                c.Item().PaddingTop(10).Text(t => { t.Span("Họ tên: ").FontColor(colorMuted); t.Span(hoTen); });
-                                c.Item().Text(t => { t.Span("Email: ").FontColor(colorMuted); t.Span(email); });
-                                c.Item().Text(t => { t.Span("SĐT: ").FontColor(colorMuted); t.Span(sdt); });
-                                if (!string.IsNullOrWhiteSpace(diaChi))
-                                    c.Item().Text(t => { t.Span("Địa chỉ: ").FontColor(colorMuted); t.Span(diaChi); });
-                            });
+            string transactionInfo = latestPayment?.PhuongThucThanhToan switch
+            {
+                1 => !string.IsNullOrWhiteSpace(latestPayment.MaGiaoDich)
+                    ? latestPayment.MaGiaoDich
+                    : "Mã giao dịch VNPay đang được cập nhật",
+                2 => "Thanh toán trực tiếp tại văn phòng hoặc khi nhận dịch vụ",
+                3 => !string.IsNullOrWhiteSpace(latestPayment.MaGiaoDich)
+                    ? $"Mã tham chiếu: {latestPayment.MaGiaoDich}"
+                    : "Vui lòng sử dụng mã booking khi chuyển khoản",
+                _ => "Chưa phát sinh giao dịch"
+            };
 
-                            row.ConstantItem(50);
+            string diemTapTrung = order.ChuyenKhoiHanh?.DiemKhoiHanh ?? "Chưa có thông tin";
+            if (order.ChuyenKhoiHanh?.DiemKhoiHanh?.Contains("Hồ Chí Minh", StringComparison.OrdinalIgnoreCase) == true)
+                diemTapTrung = "địa chỉ: 65 Huỳnh Thúc Kháng, Phường Sài Gòn, TP. HCM";
+            else if (order.ChuyenKhoiHanh?.DiemKhoiHanh?.Contains("Hà Nội", StringComparison.OrdinalIgnoreCase) == true)
+                diemTapTrung = "địa chỉ: Số 48 ngách 26 ngõ Thái Thịnh 2, Phường Thịnh Quang, Quận Đống Đa, Hà Nội";
+            else if (order.ChuyenKhoiHanh?.DiemKhoiHanh?.Contains("Đà Nẵng", StringComparison.OrdinalIgnoreCase) == true)
+                diemTapTrung = "địa chỉ: Tòa nhà EH1, phường An Hải Bắc, quận Sơn Trà.";
 
-                            row.RelativeItem().Column(c =>
-                            {
-                                c.Item().BorderBottom(1, Unit.Point).BorderColor(colorAccent).PaddingBottom(6)
-                                    .Text("TRẠNG THÁI & THANH TOÁN").Bold().FontSize(12);
+            decimal tamTinh = (order.SoNguoiLon * order.GiaNguoiLonTaiDat)
+                            + (order.SoTreEm * order.GiaTreEmTaiDat)
+                            + (order.SoEmBe * order.GiaEmBeTaiDat)
+                            + (order.SoPhongDon * order.PhuThuPhongDonTaiDat);
 
-                                c.Item().PaddingTop(10).Text(t => { t.Span("Trạng thái: ").FontColor(colorMuted); t.Span(GetTrangThaiDonText(order.TrangThaiDon)).Bold(); });
-                                c.Item().Text(t => { t.Span("Phương thức: ").FontColor(colorMuted); t.Span(GetPhuongThucThanhToanText(order.ThanhToanMoiNhat?.PhuongThucThanhToan)); });
-                                c.Item().Text(t => { t.Span("Mã giao dịch: ").FontColor(colorMuted); t.Span(order.ThanhToanMoiNhat?.MaGiaoDich ?? "Chưa có"); });
-                            });
-                        });
+            string Row(string label, string value) => $@"
+            <tr>
+              <td width='150' align='right' valign='top' style='padding:8px 12px; background:#f8f9fa; font-weight:500; border-bottom:1px solid #eee;'>{label}:</td>
+              <td style='padding:8px 12px; border-bottom:1px solid #eee;'>{value}</td>
+            </tr>";
 
-                        // CHI TIẾT CHUYẾN ĐI
-                        col.Item().PaddingTop(30).Column(c =>
-                        {
-                            c.Item().BorderBottom(1, Unit.Point).BorderColor(colorAccent).PaddingBottom(6)
-                                .Text("CHI TIẾT CHUYẾN ĐI").Bold().FontSize(12);
+            string CostRows()
+            {
+                var sb = new System.Text.StringBuilder();
+                if (order.SoNguoiLon > 0)
+                    sb.Append(Row("Người lớn", $"{order.SoNguoiLon} x {FormatPrice(order.GiaNguoiLonTaiDat)} đ = <b>{FormatPrice(order.SoNguoiLon * order.GiaNguoiLonTaiDat)} đ</b>"));
+                if (order.SoTreEm > 0)
+                    sb.Append(Row("Trẻ em", $"{order.SoTreEm} x {FormatPrice(order.GiaTreEmTaiDat)} đ = <b>{FormatPrice(order.SoTreEm * order.GiaTreEmTaiDat)} đ</b>"));
+                if (order.SoEmBe > 0)
+                    sb.Append(Row("Em bé", $"{order.SoEmBe} x {FormatPrice(order.GiaEmBeTaiDat)} đ = <b>{FormatPrice(order.SoEmBe * order.GiaEmBeTaiDat)} đ</b>"));
+                if (order.SoPhongDon > 0)
+                    sb.Append(Row("Phụ thu phòng đơn", $"{order.SoPhongDon} x {FormatPrice(order.PhuThuPhongDonTaiDat)} đ = <b>{FormatPrice(order.SoPhongDon * order.PhuThuPhongDonTaiDat)} đ</b>"));
+                if (order.GiaTriGiamTaiDat > 0)
+                    sb.Append(Row("Giảm giá", $"<span style='color:#c50000;'>-{FormatPrice(order.GiaTriGiamTaiDat)} đ</span>"));
+                sb.Append(Row("Tổng tiền", $"<b style='font-size:12pt;color:#c50000;'>{FormatPrice(order.TongTien)} đ</b>"));
+                return sb.ToString();
+            }
 
-                            c.Item().PaddingTop(12).Table(table =>
-                            {
-                                table.ColumnsDefinition(columns => { columns.RelativeColumn(3); columns.RelativeColumn(2); columns.RelativeColumn(2); });
+            string ghiChuRow = !string.IsNullOrWhiteSpace(order.GhiChu) ? Row("Ghi chú thông tin", $"<i>{order.GhiChu}</i>") : "";
 
-                                table.Header(header =>
-                                {
-                                    header.Cell().Background(colorAccent).Padding(10).Text("Tên Tour").FontColor(colorWhite).Bold();
-                                    header.Cell().Background(colorAccent).Padding(10).Text("Mã Chuyến").FontColor(colorWhite).Bold();
-                                    header.Cell().Background(colorAccent).Padding(10).Text("Ngày Khởi Hành").FontColor(colorWhite).Bold();
-                                });
+            return $@"<!DOCTYPE html>
+                    <html lang='vi'>
+                    <head>
+                        <meta charset='UTF-8'>
+                        <meta name='viewport' content='width=device-width,initial-scale=1'>
+                        <title>Xác nhận đặt tour</title>
+                    </head>
+                    <body style='margin:0;padding:0;background:#ffffff;font-family:Roboto,Arial,sans-serif;'>
+                    <table width='100%' cellpadding='0' cellspacing='0' style='max-width:640px;margin:0;background:#fff;'>
+                    <tbody>
+                      <!-- TIÊU ĐỀ -->
+                      <tr>
+                        <td style='padding:0;'>
+                          <p style='margin:0;padding:12px 0 8px 0;text-align:center;font-size:18pt;font-family:Roboto,Arial,sans-serif;font-weight:bold;color:#000;text-transform:uppercase;letter-spacing:0.5px;'>
+                            Booking của quý khách
+                          </p>
+                        </td>
+                      </tr>
 
-                                table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(10).Text(order.ChuyenKhoiHanh?.Tour?.TenTour ?? "N/A").Bold();
-                                table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(10).Text(order.ChuyenKhoiHanh?.MaChuyenCode ?? "N/A");
-                                table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(10).Text(order.ChuyenKhoiHanh?.NgayKhoiHanh.ToString("dd/MM/yyyy"));
-                            });
-                        });
+                      <!-- I. PHIẾU XÁC NHẬN -->
+                      <tr>
+                        <td style='padding:0;'>
+                          <p style='margin:8px 0 4px 0;font-family:Roboto,Arial,sans-serif;font-weight:bold;color:#c50000;text-transform:uppercase;font-size:10.5pt;'>
+                            I. Phiếu xác nhận booking:
+                          </p>
+                          <table border='0' cellpadding='0' cellspacing='0' width='100%'>
+                            <tbody>
+                              <tr>
+                                <td colspan='2' style='padding:3.75pt 7.5pt;'>
+                                  <p style='margin:0 0 7.5pt 0;text-align:justify;line-height:13.5pt;font-size:10.5pt;font-family:Roboto,Arial,sans-serif;color:#025da6;'>
+                                    {order.ChuyenKhoiHanh?.Tour?.TenTour ?? "N/A"}
+                                  </p>
+                                </td>
+                              </tr>
+                              {Row("Mã tour", order.ChuyenKhoiHanh?.MaChuyenCode ?? "N/A")}
+                              {Row("Ngày đi", order.ChuyenKhoiHanh?.NgayKhoiHanh.ToString("dd/MM/yyyy HH:mm") ?? "N/A")}
+                              {Row("Ngày về", order.ChuyenKhoiHanh?.NgayKetThuc.ToString("dd/MM/yyyy HH:mm") ?? "N/A")}
+                              {Row("Nơi tập trung di chuyển", diemTapTrung)}
+                              {Row("Điểm khởi hành", order.ChuyenKhoiHanh?.DiemKhoiHanh ?? "N/A")}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
 
-                        // BẢNG CHI PHÍ (giữ nguyên)
-                        col.Item().PaddingTop(30).Column(c =>
-                        {
-                            c.Item().BorderBottom(1, Unit.Point).BorderColor(colorAccent).PaddingBottom(6)
-                                .Text("CHI TIẾT CHI PHÍ").Bold().FontSize(12);
+                      <!-- II. CHI TIẾT BOOKING -->
+                      <tr>
+                        <td style='padding:0;'>
+                          <p style='margin:8px 0 4px 0;font-family:Roboto,Arial,sans-serif;font-weight:bold;color:#c50000;text-transform:uppercase;font-size:10.5pt;'>
+                            II. Chi tiết booking:
+                          </p>
+                          <table border='0' cellpadding='0' cellspacing='0' width='100%'>
+                            <tbody>
+                              {Row("Số booking", $"<b>{order.MaDatCho}</b>")}
+                              {Row("Tổng trị giá booking", $"<b style='color:#c50000;'>{FormatPrice(order.TongTien)} đ</b>")}
+                              {Row("Ngày đặt", $"{order.NgayDat:dd/MM/yyyy HH:mm:ss}")}
+                              {Row("Phương thức thanh toán", GetPhuongThucText(latestPayment?.PhuongThucThanhToan))}
+                              {Row("Mã giao dịch", transactionInfo)}
+                              {Row("Tình trạng", $"<span style='color:{GetTrangThaiColor(order.TrangThaiDon)};'>{GetTrangThaiLabel(order.TrangThaiDon)}</span>")}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
 
-                            c.Item().PaddingTop(12).Table(table =>
-                            {
-                                table.ColumnsDefinition(columns =>
-                                {
-                                    columns.RelativeColumn(3);
-                                    columns.RelativeColumn(1);
-                                    columns.RelativeColumn(1.5f);
-                                    columns.RelativeColumn(1.5f);
-                                });
+                      <!-- CHI TIẾT CHI PHÍ -->
+                      <tr>
+                        <td style='padding:0;'>
+                          <p style='margin:8px 0 4px 0;font-family:Roboto,Arial,sans-serif;font-weight:bold;color:#c50000;text-transform:uppercase;font-size:10.5pt;'>
+                            Chi tiết chi phí:
+                          </p>
+                          <table border='0' cellpadding='0' cellspacing='0' width='100%'>
+                            <tbody>
+                              {CostRows()}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
 
-                                table.Header(header =>
-                                {
-                                    header.Cell().Background(colorAccent).Padding(10).Text("Loại").FontColor(colorWhite).Bold();
-                                    header.Cell().Background(colorAccent).Padding(10).Text("Số lượng").FontColor(colorWhite).Bold().AlignCenter();
-                                    header.Cell().Background(colorAccent).Padding(10).Text("Đơn giá").FontColor(colorWhite).Bold().AlignRight();
-                                    header.Cell().Background(colorAccent).Padding(10).Text("Thành tiền").FontColor(colorWhite).Bold().AlignRight();
-                                });
+                      <!-- III. THÔNG TIN LIÊN LẠC -->
+                      <tr>
+                        <td style='padding:0;'>
+                          <p style='margin:8px 0 4px 0;font-family:Roboto,Arial,sans-serif;font-weight:bold;color:#c50000;text-transform:uppercase;font-size:10.5pt;'>
+                            III. Thông tin liên lạc:
+                          </p>
+                          <table border='0' cellpadding='0' cellspacing='0' width='100%'>
+                            <tbody>
+                              {ghiChuRow}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
 
-                                if (order.SoNguoiLon > 0)
-                                {
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text("Người lớn");
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text(order.SoNguoiLon.ToString()).AlignCenter();
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text($"{order.GiaNguoiLonTaiDat:N0} đ").AlignRight();
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text($"{(order.SoNguoiLon * order.GiaNguoiLonTaiDat):N0} đ").AlignRight();
-                                }
+                      <!-- LỜI CHÚC -->
+                      <tr>
+                        <td style='padding:8px 0 4px 0;'>
+                          <p style='margin:0;font-size:10.5pt;font-family:Roboto,Arial,sans-serif;font-weight:bold;'>
+                            Chúc quý khách 1 chuyến hành trình tuyệt vời và những trải nghiệm đầy hạnh phúc
+                          </p>
+                        </td>
+                      </tr>
 
-                                if (order.SoTreEm > 0)
-                                {
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text("Trẻ em");
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text(order.SoTreEm.ToString()).AlignCenter();
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text($"{order.GiaTreEmTaiDat:N0} đ").AlignRight();
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text($"{(order.SoTreEm * order.GiaTreEmTaiDat):N0} đ").AlignRight();
-                                }
+                      <!-- FOOTER -->
+                      <tr>
+                        <td style='padding:0 0 12px 0;'>
+                          <p style='margin:0;font-size:10.5pt;font-family:Roboto,Arial,sans-serif;'>
+                            Trân trọng,<br/>
+                            <strong>Đội ngũ Lối Riêng Travel</strong>
+                          </p>
+                        </td>
+                      </tr>
 
-                                if (order.SoEmBe > 0)
-                                {
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text("Em bé");
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text(order.SoEmBe.ToString()).AlignCenter();
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text($"{order.GiaEmBeTaiDat:N0} đ").AlignRight();
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text($"{(order.SoEmBe * order.GiaEmBeTaiDat):N0} đ").AlignRight();
-                                }
-
-                                if (order.SoPhongDon > 0)
-                                {
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text("Phụ thu phòng đơn");
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text(order.SoPhongDon.ToString()).AlignCenter();
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text($"{order.PhuThuPhongDonTaiDat:N0} đ").AlignRight();
-                                    table.Cell().BorderBottom(1, Unit.Point).BorderColor(colorBorder).Padding(8).Text($"{(order.SoPhongDon * order.PhuThuPhongDonTaiDat):N0} đ").AlignRight();
-                                }
-                            });
-                        });
-
-                        // TỔNG TIỀN
-                        col.Item().PaddingTop(20).AlignRight().Width(320).Column(s =>
-                        {
-                            decimal tamTinh = (order.SoNguoiLon * order.GiaNguoiLonTaiDat) +
-                                              (order.SoTreEm * order.GiaTreEmTaiDat) +
-                                              (order.SoEmBe * order.GiaEmBeTaiDat) +
-                                              (order.SoPhongDon * order.PhuThuPhongDonTaiDat);
-
-                            s.Item().Row(r => { r.RelativeItem().Text("Tạm tính:").FontSize(12); r.ConstantItem(160).AlignRight().Text($"{tamTinh:N0} đ"); });
-
-                            if (order.GiaTriGiamTaiDat > 0)
-                            {
-                                s.Item().PaddingTop(4).Row(r => { r.RelativeItem().Text("Giảm giá:").FontSize(12); r.ConstantItem(160).AlignRight().Text($"-{order.GiaTriGiamTaiDat:N0} đ").FontColor("#EF4444"); });
-                            }
-
-                            s.Item().PaddingTop(12).BorderTop(2, Unit.Point).BorderColor(colorPrimary).Row(r =>
-                            {
-                                r.RelativeItem().Text("TỔNG TIỀN:").ExtraBold().FontSize(16);
-                                r.ConstantItem(160).AlignRight().Text($"{order.TongTien:N0} đ").ExtraBold().FontSize(16);
-                            });
-                        });
-
-                        // Ghi chú
-                        if (!string.IsNullOrWhiteSpace(order.GhiChu))
-                        {
-                            col.Item().PaddingTop(30).Border(1, Unit.Point).BorderColor(colorBorder).Background("#FAFAFA").Padding(15)
-                                .Text(order.GhiChu).Italic().FontSize(10);
-                        }
-                    });
-
-                    page.Footer().BorderTop(1, Unit.Point).BorderColor(colorBorder).PaddingTop(15).Row(row =>
-                    {
-                        row.RelativeItem().Text("Cảm ơn quý khách đã tin tưởng Travel System!").FontSize(9).Italic().FontColor(colorMuted);
-                        row.ConstantItem(80).AlignRight().Text(x => x.CurrentPageNumber());
-                    });
-                });
-            });
-
-            return document.GeneratePdf();
+                    </tbody>
+                    </table>
+                    </body>
+                    </html>";
         }
     }
 }
