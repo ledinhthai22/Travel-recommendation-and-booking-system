@@ -16,6 +16,33 @@ import WebInfoDetailModal from "./WebInfoDetailModal";
 import WebInfoEditModal from "./WebInfoEditModal";
 import ConfirmModal from '~/components/UI/Modal/ConfirmModal';
 
+// Dictionary mapping dịch các Key sang tiếng Việt dựa theo JSON dữ liệu của bạn
+const KEY_TRANSLATIONS = {
+    "ten_trang": "Tên trang",
+    "logo_url": "Đường dẫn Logo",
+    "Map_Trang_Lien_He": "Bản đồ trang liên hệ",
+    "zalo": "Số Zalo",
+    "email_hotro": "Email hỗ trợ",
+    "so_dien_thoai": "Số điện thoại",
+    "dia_chi": "Địa chỉ",
+    "facebook_url": "Đường dẫn Facebook",
+    // FAQ 1
+    "faq_1_question": "FAQ 1: Câu hỏi",
+    "faq_1_answer": "FAQ 1: Câu trả lời",
+    // FAQ 2
+    "faq_2_question": "FAQ 2: Câu hỏi",
+    "faq_2_answer": "FAQ 2: Câu trả lời",
+    // FAQ 3
+    "faq_3_question": "FAQ 3: Câu hỏi",
+    "faq_3_answer": "FAQ 3: Câu trả lời",
+    // FAQ 4
+    "faq_4_question": "FAQ 4: Câu hỏi",
+    "faq_4_answer": "FAQ 4: Câu trả lời",
+    // FAQ 5
+    "faq_5_question": "FAQ 5: Câu hỏi",
+    "faq_5_answer": "FAQ 5: Câu trả lời",
+};
+
 export default function Webinfo() {
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -35,6 +62,7 @@ export default function Webinfo() {
         action: null
     });
     const pageSize = 100000000;
+    
     const fetchWebInfo = useCallback(async (key = '', statusValue = "") => {
         setLoading(true);
 
@@ -56,6 +84,7 @@ export default function Webinfo() {
 
         return () => clearTimeout(timer);
     }, [searchTerm, status, fetchWebInfo]);
+    
     const handleConfirm = async () => {
         try {
             await confirmConfig.action?.();
@@ -77,9 +106,10 @@ export default function Webinfo() {
     }, []);
 
     const handleToggleStatus = useCallback((row) => {
+        const displayName = KEY_TRANSLATIONS[row.key] || row.key; // Tên hiển thị dạng tiếng Việt
         setConfirmConfig({
             title: "Cập nhật trạng thái",
-            message: `Bạn muốn thay đổi trạng thái "${row.key}"?`,
+            message: `Bạn muốn thay đổi trạng thái "${displayName}"?`,
             type: "warning",
             confirmText: "Cập nhật",
             action: async () => {
@@ -93,14 +123,15 @@ export default function Webinfo() {
     }, [fetchWebInfo, searchTerm]);
 
     const handleDelete = useCallback((row) => {
+        const displayName = KEY_TRANSLATIONS[row.key] || row.key; // Tên hiển thị dạng tiếng Việt
         setConfirmConfig({
             title: "Xóa thông tin",
-            message: `Bạn có chắc muốn xóa "${row.key}" không?`,
+            message: `Bạn có chắc muốn xóa nội dung "${displayName}" không?`,
             type: "danger",
             confirmText: "Xóa",
             action: async () => {
                 await clearWebInfoContentApi(row.maTTTrang);
-                toastSuccess("Xóa thành công", row.key);
+                toastSuccess("Xóa thành công", displayName);
                 fetchWebInfo(searchTerm);
             }
         });
@@ -117,11 +148,19 @@ export default function Webinfo() {
             sortable: true,
         },
         {
-            name: 'Key',
-            selector: row => row.key,
+            name: 'Tên thông tin (Key)',
+            selector: row => KEY_TRANSLATIONS[row.key] || row.key, // Hỗ trợ sort theo tiếng Việt nếu thư viện CustomDataTable có tích hợp
+            sortable: true,
             cell: (row) => (
-                <div className="font-mono text-sm font-semibold text-blue-600 px-3 py-1 rounded-lg">
-                    {row.key}
+                <div>
+                    {/* Hiển thị Tiếng Việt in đậm nổi bật hơn */}
+                    <div className="text-sm font-semibold text-slate-800">
+                        {KEY_TRANSLATIONS[row.key] || row.key} 
+                    </div>
+                    {/* Giữ lại key gốc font-mono nhỏ hơn ở dưới để tiện đối chiếu dev khi cần */}
+                    <div className="font-mono text-xs text-slate-400 mt-0.5">
+                        {row.key}
+                    </div>
                 </div>
             ),
         },
@@ -134,14 +173,14 @@ export default function Webinfo() {
                         <img
                             src={`https://localhost:7016${row.noidung}`}
                             alt="Logo"
-                            className="h-12 object-contain"
+                            className="h-12 object-contain py-1"
                         />
                     );
                 }
 
                 return (
-                    <div className="text-sm text-slate-700 max-w-xs truncate">
-                        {row.noidung}
+                    <div className="text-sm text-slate-700 max-w-xs truncate" title={row.noidung}>
+                        {row.noidung || <em className="text-slate-300">Chưa có dữ liệu</em>}
                     </div>
                 );
             }
@@ -191,7 +230,7 @@ export default function Webinfo() {
                 />
             )
         }
-    ], [handleView, handleEdit, handleDelete, handleToggleStatus]);
+    ], [handleView, handleEdit, handleDelete]);
 
     return (
         <div className="space-y-6 p-4">
@@ -241,14 +280,14 @@ export default function Webinfo() {
                 isOpen={openView}
                 onClose={() => setOpenView(false)}
                 data={selectedItem}
-                onReload={() => fetchWebInfo(searchTerm)}
+                onReload={() => fetchWebInfo(searchTerm, status)}
             />
 
             <WebInfoEditModal
                 isOpen={openEdit}
                 onClose={() => setOpenEdit(false)}
                 data={selectedItem}
-                onReload={() => fetchWebInfo(searchTerm)}
+                onReload={() => fetchWebInfo(searchTerm, status)}
             />
 
             <ConfirmModal

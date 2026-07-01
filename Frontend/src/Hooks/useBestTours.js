@@ -11,8 +11,9 @@ export const useBestTours = (limit = 12, type = "best") => {
     const fetchTours = useCallback(async () => {
         try {
             setLoading(true);
-            let data;
+            setError(null);                    // Reset lỗi trước khi fetch
 
+            let data;
             if (isAuthenticated) {
                 if (type === "next-trip") {
                     data = await getNextTripSuggestionsApi(limit);
@@ -21,10 +22,13 @@ export const useBestTours = (limit = 12, type = "best") => {
                 }
             } else {
                 data = await getBestToursApi(limit);
-            }
-            setTours(data);
+            };
+
+            setTours(data || []);              // Đảm bảo là mảng
         } catch (err) {
+            console.error("Lỗi khi tải best tours:", err);
             setError(err.message);
+            setTours([]);                      // Reset data khi lỗi
         } finally {
             setLoading(false);
         }
@@ -34,5 +38,10 @@ export const useBestTours = (limit = 12, type = "best") => {
         fetchTours();
     }, [fetchTours]);
 
-    return { tours, loading, error, refetch: fetchTours };
+    return { 
+        tours, 
+        loading, 
+        error, 
+        refetch: fetchTours 
+    };
 };

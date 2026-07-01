@@ -19,5 +19,6 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<List<NewCustomerTrendDTO>> GetNewCustomerTrendAsync(int year);
 
         Task<List<TourEngagementDTO>> GetTourEngagementAsync(int? month = null, int? year = null);
+        Task<List<RecentTransactionDTO>> GetRecentTransactionsAsync(int limit = 6);
     }
 }

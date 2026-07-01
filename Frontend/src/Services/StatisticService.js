@@ -46,7 +46,11 @@ export const StatisticService = {
         if (month) params.month = month;
         const response = await axiosClient.get("/statistics/tour-engagement", { params });
         return response.data;
-    }
+    },
+    getRecentTransactions: async (limit = 6) => {
+        const response = await axiosClient.get("/statistics/recent-transactions", { params: { limit } });
+        return response.data;
+    },
 };
 
 export default StatisticService;

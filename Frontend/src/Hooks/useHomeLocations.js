@@ -12,25 +12,34 @@ export default function useHomeLocations(limit = 12) {
     const fetchLocations = useCallback(async () => {
         try {
             setLoading(true);
-            let data;
+            setError(null);                    // Reset error mỗi lần fetch
 
+            let data;
             if (isAuthenticated) {
                 data = await getRecommendedLocationsApi(limit);
             } else {
                 data = await getHomeLocationCardsApi(limit);
             }
 
-            setDestinations(data);
+            setDestinations(data || []);       // Đảm bảo luôn là mảng
         } catch (err) {
+            console.error("Lỗi tải địa điểm:", err);
             setError(err.message || 'Có lỗi xảy ra khi tải địa điểm.');
+            setDestinations([]);               // Reset data khi lỗi
         } finally {
             setLoading(false);
         }
     }, [limit, isAuthenticated]);
 
+    // Fetch khi component mount và khi dependencies thay đổi
     useEffect(() => {
         fetchLocations();
     }, [fetchLocations]);
 
-    return { location, loading, error, refetch: fetchLocations };
+    return { 
+        location, 
+        loading, 
+        error, 
+        refetch: fetchLocations 
+    };
 }

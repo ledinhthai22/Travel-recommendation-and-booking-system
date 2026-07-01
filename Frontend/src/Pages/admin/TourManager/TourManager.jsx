@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import ManagerCard from "~/components/UI/Card/ManagerCard";
 import ManagerToolbar from "~/components/UI/ToolBar/ToolBar";
 import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
+import SelectField from "~/components/UI/Form/SelectField"; // Import component SelectField của bạn
 
 import { getPagedToursApi, deleteTourApi, changeTourStatusApi } from "~/Services/TourService";
 import { toastSuccess, toastWarning, toastError } from "~/utils/Toast";
@@ -29,7 +30,14 @@ export default function TourManager() {
     // Quản lý Modal thay đổi trạng thái linh hoạt
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [selectedStatusTour, setSelectedStatusTour] = useState(null);
-    const [nextStatus, setNextStatus] = useState(1); // Mặc định trạng thái đích cần đổi
+    const [nextStatus, setNextStatus] = useState(1);
+
+    // Mảng danh sách options dùng cho bộ lọc Trạng thái và Chọn trạng thái mới trong Modal
+    const statusOptions = [
+        { value: "1", label: "Mở bán" },
+        { value: "2", label: "Tạm ngưng" },
+        { value: "3", label: "Ngừng kinh doanh" }
+    ];
 
     const fetchTours = useCallback(async () => {
         const isInitialOrFilterChange = currentPage === 1 || searchTerm || statusFilter;
@@ -65,7 +73,7 @@ export default function TourManager() {
         } catch (error) {
             toastError(getErrorMessage(error));
         } finally {
-            loading && setLoading(false);
+            setLoading(false);
             setIsFetching(false);
         }
     }, [currentPage, perPage, searchTerm, statusFilter]);
@@ -128,18 +136,15 @@ export default function TourManager() {
         }
     };
 
-    // Hàm mở Modal và gợi ý trạng thái tiếp theo mặc định dựa trên trạng thái hiện tại
     const handleChangeStatus = (tour) => {
         setSelectedStatusTour(tour);
         const current = Number(tour.trangThai);
-        // Gợi ý: Nếu đang mở bán (1) -> Tạm ngưng (2). Nếu đang tạm ngưng (2) -> Mở bán (1).
         setNextStatus(current === 1 ? 2 : 1);
         setStatusModalOpen(true);
     };
 
     const executeChangeStatus = async () => {
         try {
-            // Gọi API đổi trạng thái linh hoạt theo lựa chọn tiếp theo của người dùng
             await changeTourStatusApi(selectedStatusTour.maTour, nextStatus);
             toastSuccess("Cập nhật trạng thái thành công!");
             setStatusModalOpen(false);
@@ -157,28 +162,44 @@ export default function TourManager() {
         return "Không xác định";
     };
 
+    // Lọc bỏ trạng thái hiện tại của tour để hiển thị trong select dropdown của Modal đổi trạng thái
+    const getNextStatusOptions = () => {
+        if (!selectedStatusTour) return [];
+        const currentStatus = String(selectedStatusTour.trangThai);
+        return statusOptions.filter(opt => opt.value !== currentStatus);
+    };
+
     return (
         <div className="p-4 space-y-6">
-            <ManagerToolbar
-                searchPlaceholder="Tìm kiếm tour..."
-                onSearchChange={(value) => setKeyword(value)}
-                addButtonText="Thêm tour"
-                onAddClick={handleAddTour}
-                showExcel={false}
-                filters={[
-                    {
-                        placeholder: "Trạng thái",
-                        value: statusFilter,
-                        onChange: (value) => { setStatusFilter(value); setCurrentPage(1); },
-                        options: [
-                            { value: "", label: "Tất cả" },
-                            { value: "1", label: "Mở bán" },
-                            { value: "2", label: "Tạm ngưng" },
-                            { value: "3", label: "Ngừng kinh doanh" },
-                        ],
-                    },
-                ]}
-            />
+            {/* Sử dụng cấu trúc linh hoạt cho Toolbar, truyền component SelectField tùy chỉnh của bạn vào phần filters */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="flex-1 max-w-md">
+                    <ManagerToolbar
+                        searchPlaceholder="Tìm kiếm tour..."
+                        onSearchChange={(value) => setKeyword(value)}
+                        addButtonText="Thêm tour"
+                        onAddClick={handleAddTour}
+                        showExcel={false}
+                        filters={[]} // Bỏ trống mảng filters mặc định của toolbar cũ để tự custom bằng SelectField của bạn dưới đây
+                    />
+                </div>
+                
+                <div className="flex items-center gap-3 min-w-[200px]">
+                    {/* Tích hợp SelectField tùy chỉnh của bạn làm bộ lọc trạng thái */}
+                    <SelectField
+                        label="Trạng thái"
+                        value={statusFilter}
+                        onChange={(value) => {
+                            setStatusFilter(value);
+                            setCurrentPage(1);
+                        }}
+                        options={[{ value: "", label: "Tất cả" }, ...statusOptions]}
+                        placeholder="Tất cả"
+                        valueKey="value"
+                        labelKey="label"
+                    />
+                </div>
+            </div>
 
             {isFetching && (
                 <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
@@ -263,7 +284,7 @@ export default function TourManager() {
                                         ? "bg-sky-500 text-white"
                                         : "border border-slate-200 text-slate-600 hover:bg-slate-50"
                                         }`}
-                                App>
+                                >
                                     {page}
                                 </button>
                             )
@@ -280,34 +301,35 @@ export default function TourManager() {
                 </div>
             )}
 
-            {/* Custom Modal hỗ trợ lựa chọn trạng thái mới linh hoạt để bấm chọn được cả trạng thái 3 */}
+            {/* Custom Modal sử dụng SelectField của bạn để lựa chọn trạng thái mới */}
             <ConfirmModal
                 isOpen={statusModalOpen}
                 title="Thay đổi trạng thái kinh doanh Tour"
                 message={
                     selectedStatusTour ? (
-                        <div className="space-y-4">
+                        <div className="space-y-4 text-left">
                             <p className="text-slate-600">
                                 Trạng thái hiện tại của tour <strong>"{selectedStatusTour.tenTour}"</strong> là:{" "}
                                 <span className="px-2 py-1 rounded bg-slate-100 text-slate-800 font-semibold text-sm">
                                     {statusLabel(selectedStatusTour.trangThai)}
                                 </span>
                             </p>
-                            <div className="flex items-center gap-3 mt-2">
-                                <label className="text-sm font-medium text-slate-700 whitespace-nowrap">Chọn trạng thái mới:</label>
-                                <select
+                            
+                            <div className="mt-4">
+                                {/* Tích hợp component SelectField của bạn vào đây */}
+                                <SelectField
+                                    label="Chọn trạng thái mới"
                                     value={nextStatus}
-                                    onChange={(e) => setNextStatus(Number(e.target.value))}
-                                    className="w-full bg-white border border-slate-300 text-slate-800 text-sm rounded-xl p-2.5 font-medium outline-none focus:border-sky-500 shadow-sm"
-                                >
-                                    {/* Không render lại trạng thái hiện tại để tránh dư thừa */}
-                                    {Number(selectedStatusTour.trangThai) !== 1 && <option value="1">Mở bán (Active)</option>}
-                                    {Number(selectedStatusTour.trangThai) !== 2 && <option value="2">Tạm ngưng (Pause)</option>}
-                                    {Number(selectedStatusTour.trangThai) !== 3 && <option value="3">Ngừng kinh doanh (Stop Operation)</option>}
-                                </select>
+                                    onChange={(val) => setNextStatus(Number(val))}
+                                    options={getNextStatusOptions()}
+                                    valueKey="value"
+                                    labelKey="label"
+                                    placeholder="Chọn trạng thái..."
+                                />
                             </div>
+                            
                             <p className="text-xs text-amber-600 italic bg-amber-50 p-2 rounded-lg mt-2">
-                                * Lưu ý: Khi chuyển sang "Ngừng kinh doanh", hệ thống sẽ kiểm tra nghiêm ngặt các chuyến đi đang diễn ra trước khi phê duyệt.
+                                * Lưu ý: Khi chuyển sang "Ngừng kinh doanh", hệ thống Backend sẽ kiểm tra nghiêm ngặt các chuyến đi đang diễn ra trước khi phê duyệt.
                             </p>
                         </div>
                     ) : ""

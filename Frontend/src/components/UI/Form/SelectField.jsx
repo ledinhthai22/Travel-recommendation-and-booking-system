@@ -1,354 +1,343 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import React, {
+    useState,
+    useRef,
+    useEffect,
+    useCallback,
+} from "react";
 
-import ManagerCard from "~/components/UI/Card/ManagerCard";
-import ManagerToolbar from "~/components/UI/ToolBar/ToolBar";
-import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
-import SelectField from "~/components/UI/Form/SelectField"; // Import component SelectField của bạn
+import { createPortal } from "react-dom";
+import { ChevronDown, Search, Loader2 } from "lucide-react";
 
-import { getPagedToursApi, deleteTourApi, changeTourStatusApi } from "~/Services/TourService";
-import { toastSuccess, toastWarning, toastError } from "~/utils/Toast";
-import { getErrorMessage } from "~/utils/errorHelper";
+export default function SelectField({
+    label,
+    value,
+    onChange,
+    options = [],
+    valueKey = "value",
+    labelKey = "label",
+    placeholder = "Chọn...",
+    error = "",
+    disabled = false,
+    searchable = false,
+    searchText = "Tìm kiếm...",
+    IconComponent = null,
 
-export default function TourManager() {
-    const navigate = useNavigate();
-
-    const [keyword, setKeyword] = useState("");
+    onSearch = null,
+    searchDebounce = 300,
+    searching = false,
+}) {
+    const [open, setOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    const [statusFilter, setStatusFilter] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [perPage, setPerPage] = useState(8);
 
-    const [tours, setTours] = useState([]);
-    const [totalRows, setTotalRows] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [isFetching, setIsFetching] = useState(false);
+    const triggerRef = useRef(null);
+    const dropdownRef = useRef(null);
+    const searchInputRef = useRef(null);
+    const debounceTimer = useRef(null);
 
-    const [confirmOpen, setConfirmOpen] = useState(false);
-    const [selectedTour, setSelectedTour] = useState(null);
+    const [position, setPosition] = useState({
+        top: 0,
+        left: 0,
+        width: 0,
+    });
 
-    // Quản lý Modal thay đổi trạng thái linh hoạt
-    const [statusModalOpen, setStatusModalOpen] = useState(false);
-    const [selectedStatusTour, setSelectedStatusTour] = useState(null);
-    const [nextStatus, setNextStatus] = useState(1);
+    const selectedOption = options.find(
+        (x) => String(x[valueKey]) === String(value)
+    );
 
-    // Mảng danh sách options dùng cho bộ lọc Trạng thái và Chọn trạng thái mới trong Modal
-    const statusOptions = [
-        { value: "1", label: "Mở bán" },
-        { value: "2", label: "Tạm ngưng" },
-        { value: "3", label: "Ngừng kinh doanh" }
-    ];
+    const selectedLabel = selectedOption
+        ? selectedOption[labelKey]
+        : placeholder;
 
-    const fetchTours = useCallback(async () => {
-        const isInitialOrFilterChange = currentPage === 1 || searchTerm || statusFilter;
+    const filteredOptions =
+        searchable && !onSearch
+            ? options.filter((x) =>
+                String(x[labelKey] || "")
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase())
+            )
+            : options;
 
-        try {
-            if (isInitialOrFilterChange) {
-                setLoading(true);
-            } else {
-                setIsFetching(true);
-            }
+    const updatePosition = useCallback(() => {
+        if (!triggerRef.current) return;
 
-            const data = await getPagedToursApi(
-                currentPage,
-                perPage,
-                searchTerm,
-                statusFilter === "" ? null : Number(statusFilter)
+        const rect =
+            triggerRef.current.getBoundingClientRect();
+
+        setPosition({
+            top: rect.bottom + 4,
+            left: rect.left,
+            width: rect.width,
+        });
+    }, []);
+
+    useEffect(() => {
+        if (!open) return;
+
+        updatePosition();
+
+        const handleScrollResize = () => {
+            updatePosition();
+        };
+
+        window.addEventListener(
+            "scroll",
+            handleScrollResize,
+            true
+        );
+
+        window.addEventListener(
+            "resize",
+            handleScrollResize
+        );
+
+        return () => {
+            window.removeEventListener(
+                "scroll",
+                handleScrollResize,
+                true
             );
 
-            const mappedTours = (data.items || []).map((x) => ({
-                ...x.tourInfo,
-                tenKhachSans: x.tenKhachSans,
-                lichTrinh: x.lichTrinh,
-                chuyenKhoiHanhs: x.chuyenKhoiHanhs,
-                tenLoaiTour: x.tourInfo.tenLoaiTour,
-                images: x.images || [],
-                hinhAnhTour:
-                    x.images?.find((img) => img.anhChinh)?.duongDanAnh ||
-                    x.images?.[0]?.duongDanAnh ||
-                    null,
-            }));
-            setTours(mappedTours);
-            setTotalRows(data.totalItems || data.totalRecords || 0);
-        } catch (error) {
-            toastError(getErrorMessage(error));
-        } finally {
-            setLoading(false);
-            setIsFetching(false);
+            window.removeEventListener(
+                "resize",
+                handleScrollResize
+            );
+        };
+    }, [open, updatePosition]);
+
+    useEffect(() => {
+        const handleOutsideClick = (e) => {
+            const clickedTrigger =
+                triggerRef.current?.contains(e.target);
+
+            const clickedDropdown =
+                dropdownRef.current?.contains(e.target);
+
+            if (!clickedTrigger && !clickedDropdown) {
+                setOpen(false);
+            }
+        };
+
+        document.addEventListener(
+            "mousedown",
+            handleOutsideClick
+        );
+
+        return () => {
+            document.removeEventListener(
+                "mousedown",
+                handleOutsideClick
+            );
+        };
+    }, []);
+
+    useEffect(() => {
+        if (open && searchable) {
+            setTimeout(() => {
+                searchInputRef.current?.focus();
+            }, 50);
         }
-    }, [currentPage, perPage, searchTerm, statusFilter]);
 
-    useEffect(() => {
-        fetchTours();
-    }, [fetchTours]);
+        if (!open) {
+            setSearchTerm("");
+        }
+    }, [open, searchable]);
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
+    const handleSearch = useCallback(
+        (keyword) => {
             setSearchTerm(keyword);
-            setCurrentPage(1);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [keyword]);
 
-    const totalPages = Math.ceil(totalRows / perPage);
+            if (!onSearch) return;
 
-    const generatePaginationPages = (current, total) => {
-        if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+            clearTimeout(debounceTimer.current);
 
-        const pages = [];
-        const showFirst = 2, showLast = 2, showAround = 2;
+            debounceTimer.current = setTimeout(() => {
+                onSearch(keyword);
+            }, searchDebounce);
+        },
+        [onSearch, searchDebounce]
+    );
 
-        for (let i = 1; i <= Math.min(showFirst, total); i++) pages.push(i);
-
-        const start = Math.max(showFirst + 1, current - showAround);
-        const end = Math.min(total - showLast, current + showAround);
-
-        if (start > showFirst + 1) pages.push('...');
-        for (let i = start; i <= end; i++) pages.push(i);
-        if (end < total - showLast) pages.push('...');
-
-        for (let i = Math.max(total - showLast + 1, end + 1); i <= total; i++) pages.push(i);
-
-        return [...new Set(pages)];
-    };
-
-    const handleAddTour = () => navigate("Them-Tour");
-    const handleViewTour = (tour) => navigate(`Xem-chi-tiet/${tour.maTour}`);
-    const handleEditTour = (tour) => navigate(`Cap-nhat/${tour.maTour}`);
-
-    const handleDelete = (tour) => {
-        if (tour.trangThai === 1) {
-            toastWarning("Không thể xóa tour đang hoạt động mở bán.");
-            return;
+    useEffect(() => {
+        if (open && onSearch && searchTerm === "") {
+            onSearch("");
         }
-        setSelectedTour(tour);
-        setConfirmOpen(true);
-    };
+    }, [open]);
 
-    const executeDelete = async () => {
-        try {
-            await deleteTourApi(selectedTour.maTour);
-            toastSuccess("Xóa tour thành công!");
-            setConfirmOpen(false);
-            fetchTours();
-        } catch (error) {
-            toastError(getErrorMessage(error));
-        }
-    };
-
-    const handleChangeStatus = (tour) => {
-        setSelectedStatusTour(tour);
-        const current = Number(tour.trangThai);
-        setNextStatus(current === 1 ? 2 : 1);
-        setStatusModalOpen(true);
-    };
-
-    const executeChangeStatus = async () => {
-        try {
-            await changeTourStatusApi(selectedStatusTour.maTour, nextStatus);
-            toastSuccess("Cập nhật trạng thái thành công!");
-            setStatusModalOpen(false);
-            fetchTours();
-        } catch (error) {
-            toastError(getErrorMessage(error));
-        }
-    };
-
-    const statusLabel = (status) => {
-        const s = Number(status);
-        if (s === 1) return "Mở bán";
-        if (s === 2) return "Tạm ngưng";
-        if (s === 3) return "Ngừng kinh doanh";
-        return "Không xác định";
-    };
-
-    // Lọc bỏ trạng thái hiện tại của tour để hiển thị trong select dropdown của Modal đổi trạng thái
-    const getNextStatusOptions = () => {
-        if (!selectedStatusTour) return [];
-        const currentStatus = String(selectedStatusTour.trangThai);
-        return statusOptions.filter(opt => opt.value !== currentStatus);
+    const handleSelect = (option) => {
+        onChange(option[valueKey]);
+        setOpen(false);
     };
 
     return (
-        <div className="p-4 space-y-6">
-            {/* Sử dụng cấu trúc linh hoạt cho Toolbar, truyền component SelectField tùy chỉnh của bạn vào phần filters */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                <div className="flex-1 max-w-md">
-                    <ManagerToolbar
-                        searchPlaceholder="Tìm kiếm tour..."
-                        onSearchChange={(value) => setKeyword(value)}
-                        addButtonText="Thêm tour"
-                        onAddClick={handleAddTour}
-                        showExcel={false}
-                        filters={[]} // Bỏ trống mảng filters mặc định của toolbar cũ để tự custom bằng SelectField của bạn dưới đây
-                    />
-                </div>
-                
-                <div className="flex items-center gap-3 min-w-[200px]">
-                    {/* Tích hợp SelectField tùy chỉnh của bạn làm bộ lọc trạng thái */}
-                    <SelectField
-                        label="Trạng thái"
-                        value={statusFilter}
-                        onChange={(value) => {
-                            setStatusFilter(value);
-                            setCurrentPage(1);
-                        }}
-                        options={[{ value: "", label: "Tất cả" }, ...statusOptions]}
-                        placeholder="Tất cả"
-                        valueKey="value"
-                        labelKey="label"
-                    />
-                </div>
+        <>
+            <div
+                ref={triggerRef}
+                className="relative w-full"
+            >
+                <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() =>
+                        !disabled &&
+                        setOpen((prev) => !prev)
+                    }
+                    className={`group flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all
+                    ${error
+                            ? "border-red-300 bg-red-50"
+                            : disabled
+                                ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
+                                : open
+                                    ? "border-sky-500 ring-1 ring-sky-100"
+                                    : "border-gray-200 hover:border-sky-300"
+                        }`}
+                >
+                    {IconComponent && (
+                        <IconComponent
+                            size={20}
+                            className="text-sky-500"
+                        />
+                    )}
+
+                    <div className="flex-1 min-w-0">
+                        {label && (
+                            <div className="text-[10px] uppercase font-bold text-gray-400">
+                                {label}
+                            </div>
+                        )}
+
+                        <div
+                            className={`text-sm truncate ${selectedOption
+                                    ? "text-gray-800"
+                                    : "text-gray-400"
+                                }`}
+                        >
+                            {selectedLabel}
+                        </div>
+                    </div>
+
+                    {searching ? (
+                        <Loader2
+                            size={16}
+                            className="animate-spin"
+                        />
+                    ) : (
+                        <ChevronDown
+                            size={16}
+                            className={`transition ${open
+                                    ? "rotate-180"
+                                    : ""
+                                }`}
+                        />
+                    )}
+                </button>
+
+                {error && (
+                    <p className="mt-1 text-xs text-red-500">
+                        {error}
+                    </p>
+                )}
             </div>
 
-            {isFetching && (
-                <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-                    <div className="bg-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3">
-                        <div className="w-6 h-6 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
-                        <span className="text-slate-600 font-medium">Đang tải...</span>
-                    </div>
-                </div>
-            )}
+            {open &&
+                createPortal(
+                    <div
+                        ref={dropdownRef}
+                        className="fixed z-[999999] rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden"
+                        style={{
+                            top: position.top,
+                            left: position.left,
+                            width: position.width,
+                        }}
+                    >
+                        {searchable && (
+                            <div className="p-3">
+                                <div className="relative">
+                                    <Search
+                                        size={14}
+                                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                                    />
 
-            {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {Array.from({ length: perPage }).map((_, i) => (
-                        <div key={i} className="bg-white rounded-2xl border border-slate-100 overflow-hidden animate-pulse">
-                            <div className="h-48 bg-slate-200" />
-                            <div className="p-4 space-y-3">
-                                <div className="h-5 bg-slate-200 rounded w-3/4" />
-                                <div className="h-4 bg-slate-200 rounded w-1/2" />
-                                <div className="h-4 bg-slate-200 rounded w-full" />
+                                    <input
+                                        ref={
+                                            searchInputRef
+                                        }
+                                        value={
+                                            searchTerm
+                                        }
+                                        onChange={(e) =>
+                                            handleSearch(
+                                                e.target
+                                                    .value
+                                            )
+                                        }
+                                        placeholder={
+                                            searchText
+                                        }
+                                        /* Đổi sang border-gray-200 và thêm trạng thái focus mượt mà */
+                                        className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm transition-all focus:border-sky-400 focus:ring-1 focus:ring-sky-100 outline-none"
+                                    />
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
-            ) : tours.length === 0 ? (
-                <div className="text-center py-20 text-slate-500 font-medium bg-white rounded-2xl border border-dashed border-slate-300">
-                    Không tìm thấy tour nào!
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {tours.map((tour) => (
-                        <ManagerCard
-                            key={tour.maTour}
-                            item={tour}
-                            type="tour"
-                            onView={() => handleViewTour(tour)}
-                            onEdit={tour.trangThai !== 3 ? () => handleEditTour(tour) : null}
-                            onDelete={tour.trangThai !== 1 ? () => handleDelete(tour) : null}
-                            onChangeStatus={() => handleChangeStatus(tour)}
-                        />
-                    ))}
-                </div>
-            )}
+                        )}
 
-            {totalRows > 0 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between px-2 pt-6 border-t border-slate-100 gap-4 mt-6">
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm text-slate-500">Số lượng:</span>
-                            <select
-                                value={perPage}
-                                onChange={(e) => { setPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                                className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-1.5 outline-none cursor-pointer"
-                            >
-                                {[8, 16, 24, 32].map((n) => (
-                                    <option key={n} value={n}>{n}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <span className="text-sm text-slate-400 font-medium">
-                            Hiển thị {(currentPage - 1) * perPage + 1} –{" "}
-                            {Math.min(currentPage * perPage, totalRows)} / {totalRows}
-                        </span>
-                    </div>
+                        <div className="max-h-60 overflow-y-auto py-1">
+                            {searching &&
+                                filteredOptions.length ===
+                                0 ? (
+                                <div className="p-4 text-center text-sm text-gray-400">
+                                    Đang tải...
+                                </div>
+                            ) : filteredOptions.length >
+                                0 ? (
+                                filteredOptions.map(
+                                    (option) => {
+                                        const active =
+                                            String(
+                                                value
+                                            ) ===
+                                            String(
+                                                option[
+                                                valueKey
+                                                ]
+                                            );
 
-                    <div className="flex items-center gap-1.5">
-                        <button
-                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            disabled={currentPage === 1}
-                            className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-sky-600 disabled:opacity-40 transition-all"
-                        >
-                            <span className="material-symbols-outlined text-xl">chevron_left</span>
-                        </button>
-
-                        {generatePaginationPages(currentPage, totalPages).map((page, index) => (
-                            page === '...' ? (
-                                <span key={`ellipsis-${index}`} className="w-9 h-9 flex items-center justify-center text-slate-400">...</span>
+                                        return (
+                                            <button
+                                                key={
+                                                    option[
+                                                    valueKey
+                                                    ]
+                                                }
+                                                type="button"
+                                                onClick={() =>
+                                                    handleSelect(
+                                                        option
+                                                    )
+                                                }
+                                                className={`block w-full px-4 py-2 text-left text-sm transition
+                                                ${active
+                                                        ? "bg-sky-50 text-sky-600"
+                                                        : "hover:bg-gray-50"
+                                                    }`}
+                                            >
+                                                {
+                                                    option[
+                                                    labelKey
+                                                    ]
+                                                }
+                                            </button>
+                                        );
+                                    }
+                                )
                             ) : (
-                                <button
-                                    key={page}
-                                    onClick={() => setCurrentPage(page)}
-                                    className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${currentPage === page
-                                        ? "bg-sky-500 text-white"
-                                        : "border border-slate-200 text-slate-600 hover:bg-slate-50"
-                                        }`}
-                                >
-                                    {page}
-                                </button>
-                            )
-                        ))}
-
-                        <button
-                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                            disabled={currentPage === totalPages}
-                            className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-sky-600 disabled:opacity-40 transition-all"
-                        >
-                            <span className="material-symbols-outlined text-xl">chevron_right</span>
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Custom Modal sử dụng SelectField của bạn để lựa chọn trạng thái mới */}
-            <ConfirmModal
-                isOpen={statusModalOpen}
-                title="Thay đổi trạng thái kinh doanh Tour"
-                message={
-                    selectedStatusTour ? (
-                        <div className="space-y-4 text-left">
-                            <p className="text-slate-600">
-                                Trạng thái hiện tại của tour <strong>"{selectedStatusTour.tenTour}"</strong> là:{" "}
-                                <span className="px-2 py-1 rounded bg-slate-100 text-slate-800 font-semibold text-sm">
-                                    {statusLabel(selectedStatusTour.trangThai)}
-                                </span>
-                            </p>
-                            
-                            <div className="mt-4">
-                                {/* Tích hợp component SelectField của bạn vào đây */}
-                                <SelectField
-                                    label="Chọn trạng thái mới"
-                                    value={nextStatus}
-                                    onChange={(val) => setNextStatus(Number(val))}
-                                    options={getNextStatusOptions()}
-                                    valueKey="value"
-                                    labelKey="label"
-                                    placeholder="Chọn trạng thái..."
-                                />
-                            </div>
-                            
-                            <p className="text-xs text-amber-600 italic bg-amber-50 p-2 rounded-lg mt-2">
-                                * Lưu ý: Khi chuyển sang "Ngừng kinh doanh", hệ thống Backend sẽ kiểm tra nghiêm ngặt các chuyến đi đang diễn ra trước khi phê duyệt.
-                            </p>
+                                <div className="p-4 text-center text-sm text-gray-400">
+                                    Không có dữ liệu
+                                </div>
+                            )}
                         </div>
-                    ) : ""
-                }
-                type="warning"
-                confirmText="Cập nhật ngay"
-                onCancel={() => setStatusModalOpen(false)}
-                onConfirm={executeChangeStatus}
-            />
-
-            <ConfirmModal
-                isOpen={confirmOpen}
-                title="Xác nhận xóa tour"
-                message={`Bạn có chắc chắn muốn xóa tour "${selectedTour?.tenTour}" không? Dữ liệu liên quan sẽ bị xóa mềm.`}
-                type="danger"
-                confirmText="Xóa"
-                onCancel={() => setConfirmOpen(false)}
-                onConfirm={executeDelete}
-            />
-        </div>
+                    </div>,
+                    document.body
+                )}
+        </>
     );
 }

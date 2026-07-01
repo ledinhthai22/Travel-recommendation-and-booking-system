@@ -45,6 +45,7 @@ export default function HomePage() {
     }, [refetchReviews, refetchBestTours, refetchBanner, refetchLocations, refetchLatestTours, fetchWishlist]);
 
     useRefetchOnBack(refetchAll);
+    
     return (
         <div className="min-h-screen bg-white">
             <HeroSection

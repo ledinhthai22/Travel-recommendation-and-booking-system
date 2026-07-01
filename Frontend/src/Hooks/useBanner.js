@@ -11,7 +11,8 @@ export default function useBanner() {
             const data = await getPublicBannerApi();
             setBanners(data || []);
         } catch (error) {
-            console.error(error);
+            console.error("Lỗi khi tải banner:", error);
+            setBanners([]);           // Reset khi lỗi
         } finally {
             setLoading(false);
         }

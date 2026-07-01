@@ -22,49 +22,83 @@ namespace travel_recommendation_and_booking_system.Services
             var targetMonth = month ?? currentDate.Month;
 
             var startOfCurrentMonth = new DateTime(targetYear, targetMonth, 1);
+            var endOfCurrentMonth = startOfCurrentMonth.AddMonths(1);
             var startOfPreviousMonth = startOfCurrentMonth.AddMonths(-1);
 
-            // Tổng đơn đặt tour
-            var totalBookings = await _context.DonDatTours.CountAsync();
+            bool isCurrentMonthInProgress = targetYear == currentDate.Year
+                                             && targetMonth == currentDate.Month;
 
-            // Tổng doanh thu từ thanh toán thành công
+            var currentPeriodEnd = isCurrentMonthInProgress
+                ? currentDate                                  
+                : endOfCurrentMonth;                            
+
+            var previousPeriodEnd = isCurrentMonthInProgress
+                ? startOfPreviousMonth.AddDays((currentDate - startOfCurrentMonth).Days)
+                : startOfCurrentMonth;                          
+
+            var totalBookings = await _context.DonDatTours
+                .CountAsync(d => d.NgayDat >= startOfCurrentMonth && d.NgayDat < currentPeriodEnd);
+
+            var prevBookings = await _context.DonDatTours
+                .CountAsync(d => d.NgayDat >= startOfPreviousMonth && d.NgayDat < previousPeriodEnd);
+
             var totalRevenue = await _context.ThanhToans
-                .Where(t => t.TrangThaiThanhToan == 1)
-                .SumAsync(t => t.TongTienThanhToan);
+                .Where(t => t.TrangThaiThanhToan == 1 &&
+                            t.NgayThanhToan >= startOfCurrentMonth &&
+                            t.NgayThanhToan < currentPeriodEnd)
+                .SumAsync(t => (decimal?)t.TongTienThanhToan) ?? 0m;
 
-            // Khách hàng mới (MaVaiTro == 4)
+            var prevRevenue = await _context.ThanhToans
+                .Where(t => t.TrangThaiThanhToan == 1 &&
+                            t.NgayThanhToan >= startOfPreviousMonth &&
+                            t.NgayThanhToan < previousPeriodEnd)
+                .SumAsync(t => (decimal?)t.TongTienThanhToan) ?? 0m;
+
             var newCustomers = await _context.NguoiDungs
                 .CountAsync(u => u.NgayTao >= startOfCurrentMonth &&
-                         u.NgayTao < startOfCurrentMonth.AddMonths(1) &&
-                         u.MaVaiTro == 4);
+                                 u.NgayTao < currentPeriodEnd &&
+                                 u.MaVaiTro == 4);
 
-            // Tour đang diễn ra
+            var prevNewCustomers = await _context.NguoiDungs
+                .CountAsync(u => u.NgayTao >= startOfPreviousMonth &&
+                                 u.NgayTao < previousPeriodEnd &&
+                                 u.MaVaiTro == 4);
+
+          
             var activeTours = await _context.ChuyenKhoiHanhs
-                .CountAsync(c => c.NgayKhoiHanh <= currentDate &&
-                                 c.NgayKetThuc >= currentDate &&
-                                 c.TrangThai == 2);
+                .CountAsync(c => c.NgayXoa == null &&
+                                 c.NgayKhoiHanh < endOfCurrentMonth &&
+                                 c.NgayKetThuc >= startOfCurrentMonth);
 
-            // Doanh thu tháng trước
-            var prevRevenue = await _context.ThanhToans
-                .Where(t => t.NgayThanhToan >= startOfPreviousMonth &&
-                            t.NgayThanhToan < startOfCurrentMonth &&
-                            t.TrangThaiThanhToan == 1)
-                .SumAsync(t => t.TongTienThanhToan);
-
-            var revenueGrowth = prevRevenue > 0
-                ? Math.Round((totalRevenue - prevRevenue) * 100m / prevRevenue, 1)
-                : 0m;
+            var prevActiveTours = await _context.ChuyenKhoiHanhs
+                .CountAsync(c => c.NgayXoa == null &&
+                                 c.NgayKhoiHanh < startOfCurrentMonth &&
+                                 c.NgayKetThuc >= startOfPreviousMonth);
 
             return new DashboardOverviewDTO
             {
+                
                 TotalBookings = totalBookings,
                 TotalRevenue = totalRevenue,
                 NewCustomersThisMonth = newCustomers,
                 ActiveTours = activeTours,
-                RevenueGrowthPercent = revenueGrowth,
-                BookingGrowthPercent = 12
+                RevenueGrowthPercent = CalculateGrowthPercent(totalRevenue, prevRevenue),
+                BookingGrowthPercent = CalculateGrowthPercent(totalBookings, prevBookings),
+                NewCustomersGrowthPercent = CalculateGrowthPercent(newCustomers, prevNewCustomers),
+                ActiveToursGrowthPercent = CalculateGrowthPercent(activeTours, prevActiveTours)
             };
         }
+
+        private static decimal? CalculateGrowthPercent(decimal current, decimal previous)
+        {
+            if (previous == 0)
+                return current == 0 ? 0m : (decimal?)null;
+
+            return Math.Round((current - previous) * 100m / previous, 1);
+        }
+
+        private static decimal? CalculateGrowthPercent(int current, int previous)
+            => CalculateGrowthPercent((decimal)current, (decimal)previous);
 
         public async Task<RevenueChartDTO> GetRevenueChartAsync(int year)
         {
@@ -112,7 +146,6 @@ namespace travel_recommendation_and_booking_system.Services
 
             return statusGroups.Select(g =>
             {
-                // SỬA Ở ĐÂY - Dùng destructuring
                 var (statusName, statusColor) = statusMap.GetValueOrDefault(g.Status, ("Khác", "#6B7280"));
 
                 return new OrderStatusDTO
@@ -204,12 +237,50 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<List<TourEngagementDTO>> GetTourEngagementAsync(int? month = null, int? year = null)
         {
+            var bookedQuery = _context.DonDatTours.AsQueryable();
+            if (year.HasValue) bookedQuery = bookedQuery.Where(d => d.NgayDat.Year == year.Value);
+            if (month.HasValue) bookedQuery = bookedQuery.Where(d => d.NgayDat.Month == month.Value);
+            var bookedCount = await bookedQuery.CountAsync();
+            var favoriteCount = await _context.Set<DanhSachYeuThich>().CountAsync();
+
+            const int viewCount = 0; 
+
             return new List<TourEngagementDTO>
             {
-                new() { Name = "Lượt xem", Value = 12480, Color = "#8B5CF6" },
-                new() { Name = "Yêu thích", Value = 3240, Color = "#EC4899" },
-                new() { Name = "Đặt tour", Value = 1248, Color = "#10B981" }
+                new() { Name = "Lượt xem", Value = viewCount, Color = "#8B5CF6" },
+                new() { Name = "Yêu thích", Value = favoriteCount, Color = "#EC4899" },
+                new() { Name = "Đặt tour", Value = bookedCount, Color = "#10B981" }
             };
+        }
+        public async Task<List<RecentTransactionDTO>> GetRecentTransactionsAsync(int limit = 6)
+        {
+      
+            var raw = await _context.ThanhToans
+                .Include(t => t.DonDatTour!)
+                    .ThenInclude(d => d.NguoiDung)
+                .Include(t => t.DonDatTour!)
+                    .ThenInclude(d => d.ChuyenKhoiHanh!)
+                        .ThenInclude(c => c.Tour)
+                .OrderByDescending(t => t.NgayThanhToan)
+                .Take(limit)
+                .ToListAsync();
+
+            var statusMap = new Dictionary<int, string>
+            {
+                { 0, "Chờ thanh toán" },
+                { 1, "Đã thanh toán" },
+                { 2, "Đã hủy" }
+            };
+
+            return raw.Select(t => new RecentTransactionDTO
+            {
+                MaDon = t.DonDatTour!.MaDonDatTour,
+                CustomerName = t.DonDatTour.NguoiDung?.HoTen ?? "Khách vãng lai",
+                TourName = t.DonDatTour.ChuyenKhoiHanh?.Tour?.TenTour ?? "—",
+                Amount = t.TongTienThanhToan,
+                Status = statusMap.GetValueOrDefault(t.TrangThaiThanhToan, "Không xác định"),
+                Time = t.NgayThanhToan
+            }).ToList();
         }
     }
 }

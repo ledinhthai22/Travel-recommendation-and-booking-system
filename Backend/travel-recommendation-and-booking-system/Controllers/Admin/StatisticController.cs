@@ -89,5 +89,11 @@ namespace travel_recommendation_and_booking_system.Controllers
             var result = await _statisticService.GetTourEngagementAsync(month, year);
             return Ok(result);
         }
+        [HttpGet("recent-transactions")]
+        public async Task<IActionResult> GetRecentTransactions([FromQuery] int limit = 6)
+        {
+            var result = await _statisticService.GetRecentTransactionsAsync(limit);
+            return Ok(result);
+        }
     }
 }

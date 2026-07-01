@@ -1,15 +1,32 @@
-import { useEffect } from 'react';
+// ~/Hooks/useRefetchOnBack.js
+import { useEffect, useRef } from 'react';
 
-// Refetch lại data khi trang được phục hồi từ bfcache (back/forward của trình duyệt
-// hoặc breadcrumb điều hướng khiến trang bị "đóng băng" rồi phục hồi nguyên trạng cũ).
 export default function useRefetchOnBack(refetchFn) {
+    const refetchRef = useRef(refetchFn);
+    refetchRef.current = refetchFn;
+
     useEffect(() => {
-        const handlePageShow = (event) => {
-            if (event.persisted) {
-                refetchFn();
-            }
+        const handleRefetch = () => {
+            // Delay một chút để đảm bảo component đã mounted lại
+            setTimeout(() => {
+                refetchRef.current();
+            }, 100);
         };
-        window.addEventListener('pageshow', handlePageShow);
-        return () => window.removeEventListener('pageshow', handlePageShow);
-    }, [refetchFn]);
+
+        window.addEventListener('pageshow', handleRefetch);
+        window.addEventListener('focus', handleRefetch);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') handleRefetch();
+        });
+
+        // Popstate (khi bấm back/forward)
+        window.addEventListener('popstate', handleRefetch);
+
+        return () => {
+            window.removeEventListener('pageshow', handleRefetch);
+            window.removeEventListener('focus', handleRefetch);
+            document.removeEventListener('visibilitychange', handleRefetch);
+            window.removeEventListener('popstate', handleRefetch);
+        };
+    }, []);
 }

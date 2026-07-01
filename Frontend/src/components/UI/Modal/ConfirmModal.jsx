@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom"; // Thêm dòng này
 import { X } from "lucide-react";
 
 export default function ConfirmModal({
@@ -30,9 +31,10 @@ export default function ConfirmModal({
         info: "bg-sky-500 hover:bg-sky-600"
     };
 
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[999]">
-            <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl animate-in fade-in zoom-in-95 duration-200">
+    // Sử dụng createPortal để đưa Modal ra ngoài body, tránh xung đột CSS từ modal cha
+    return createPortal(
+        <div className="fixed inset-0 w-screen h-screen bg-black/50 flex items-center justify-center z-[9999]">
+            <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl animate-in fade-in zoom-in-95 duration-200 management-modal">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-lg font-bold text-slate-800">{title}</h2>
                     <button onClick={onCancel} className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -59,6 +61,7 @@ export default function ConfirmModal({
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body // Gắn trực tiếp vào body của trang web
     );
 }

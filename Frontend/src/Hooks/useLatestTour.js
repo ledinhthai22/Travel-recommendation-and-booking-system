@@ -11,7 +11,7 @@ export const useLasterTours = (limit = 12) => {
     const fetchTours = useCallback(async () => {
         try {
             setLoading(true);
-            setError(null);
+            setError(null);                    // Reset lỗi trước khi fetch
 
             let data;
             if (isAuthenticated) {
@@ -20,9 +20,11 @@ export const useLasterTours = (limit = 12) => {
                 data = await getLatestToursApi(limit);
             }
 
-            setTours(data);
+            setTours(data || []);              // Đảm bảo luôn là mảng
         } catch (err) {
+            console.error("Lỗi khi tải tour mới:", err);
             setError(err.message || "Lỗi khi tải dữ liệu tour.");
+            setTours([]);                      // Reset data khi lỗi
         } finally {
             setLoading(false);
         }
@@ -32,5 +34,10 @@ export const useLasterTours = (limit = 12) => {
         fetchTours();
     }, [fetchTours]);
 
-    return { tours, loading, error, refetch: fetchTours };
+    return { 
+        tours, 
+        loading, 
+        error, 
+        refetch: fetchTours 
+    };
 };

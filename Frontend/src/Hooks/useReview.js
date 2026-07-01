@@ -9,11 +9,15 @@ export const useReviews = () => {
     const loadReviews = useCallback(async () => {
         try {
             setLoading(true);
+            setError(null);                    // Reset lỗi trước khi fetch
+
             const data = await getApprovedReviewsApi();
-            setReviews(data);
+            
+            setReviews(data || []);            // Đảm bảo là mảng
         } catch (err) {
             console.error("Lỗi khi load đánh giá:", err);
             setError(err);
+            setReviews([]);                    // Reset data khi lỗi
         } finally {
             setLoading(false);
         }
