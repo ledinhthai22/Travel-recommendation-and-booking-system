@@ -1,4 +1,4 @@
-import { memo, useState, useContext,useEffect } from 'react';
+import { memo, useState, useContext, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Heart, Calendar, ArrowRight, MapPin } from 'lucide-react';
 import { formatCurrency } from '~/Helper/FormatCurrency';
@@ -20,18 +20,20 @@ function TourCard({
     availableSlots,
     showWishlist = true,
     disableLink = false,
+    tourType,
     initialWishlist = false
 }) {
     const { isAuthenticated, setShowLoginModal } = useContext(AuthContext);
     const [wishlisted, setWishlisted] = useState(initialWishlist);
 
     useEffect(() => {
+        console.log("initialWishlist =", initialWishlist);
         setWishlisted(initialWishlist);
     }, [initialWishlist]);
 
     const handleWishlistClick = async (e) => {
         e.preventDefault(); // Ngăn chặn sự kiện click kích hoạt thẻ <Link> bao ngoài
-
+        console.log("Delete tour:", id);
         // Kiểm tra đăng nhập
         if (!isAuthenticated) {
             // Giả sử context của bạn có hàm mở modal đăng nhập
@@ -52,7 +54,7 @@ function TourCard({
                 toastSuccess("Tour đã được thêm vào danh sách yêu thích của bạn")
             } else {
                 // Đã yêu thích -> Gọi API xóa
-                await deleteWishlistApi([id]); 
+                await deleteWishlistApi([id]);
             }
         } catch (error) {
             // Nếu API thất bại, hoàn tác lại trạng thái cũ
@@ -74,37 +76,37 @@ function TourCard({
             {/* Vùng hình ảnh */}
             <div className="relative h-40 sm:h-44 w-full flex-shrink-0 overflow-hidden block">
                 {disableLink ?
-                (
-                    <div className="relative h-40 sm:h-44 w-full flex-shrink-0 overflow-hidden block cursor-default">
-                        <img
-                        src={image}
-                        alt={name || 'Tour du lịch'}
-                        loading="lazy"
-                        className="
+                    (
+                        <div className="relative h-40 sm:h-44 w-full flex-shrink-0 overflow-hidden block cursor-default">
+                            <img
+                                src={image}
+                                alt={name || 'Tour du lịch'}
+                                loading="lazy"
+                                className="
                             h-full w-full object-cover
                             transition-transform duration-500 ease-out
                             group-hover:scale-105
                         "
-                        />
-                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all duration-300" />
-                    </div>   
-                )
-                :(
-                <Link to={`/Cac-Chuyen-Di/${slug}`}>
-                    <img
-                        src={image}
-                        alt={name || 'Tour du lịch'}
-                        loading="lazy"
-                        className="
+                            />
+                            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all duration-300" />
+                        </div>
+                    )
+                    : (
+                        <Link to={`/Cac-Chuyen-Di/${slug}`}>
+                            <img
+                                src={image}
+                                alt={name || 'Tour du lịch'}
+                                loading="lazy"
+                                className="
                             h-full w-full object-cover
                             transition-transform duration-500 ease-out
                             group-hover:scale-105
                         "
-                    />
-                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all duration-300" />
-                </Link>
-                )
-            }
+                            />
+                            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all duration-300" />
+                        </Link>
+                    )
+                }
                 {/* Đánh giá hình sao */}
                 <div className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-slate-900/40 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm">
                     <Star size={11} className="fill-amber-400 text-amber-400" />
@@ -123,9 +125,8 @@ function TourCard({
                         <Heart
                             size={15}
                             // Đổi màu đỏ nếu đã yêu thích, ngược lại là màu xám nhạt
-                            className={`transition-colors duration-200 ${
-                                wishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-400'
-                            }`}
+                            className={`transition-colors duration-200 ${wishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-400'
+                                }`}
                         />
                     </button>
                 )}
@@ -154,6 +155,13 @@ function TourCard({
                             {name}
                         </h3>
                     </Link>
+                    {tourType && (
+                        <div className="mt-1">
+                            <span className="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-medium text-sky-700">
+                                {tourType}
+                            </span>
+                        </div>
+                    )}
 
                     <div className="flex items-center gap-1 text-left text-[11px] text-slate-500">
                         <Calendar size={12} className="shrink-0 text-slate-400" />

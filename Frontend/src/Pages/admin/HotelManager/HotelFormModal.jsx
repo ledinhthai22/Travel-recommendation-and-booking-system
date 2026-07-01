@@ -17,8 +17,6 @@ import {
     setMainHotelImageApi,
 } from '~/Services/HotelService';
 
-
-
 const renderStars = (count) => (
     <div className="flex items-center gap-1">
         {[...Array(count)].map((_, i) => (
@@ -34,8 +32,6 @@ const STAR_OPTIONS = [5, 4, 3, 2, 1].map((n) => ({
 
 const VALID_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-
-
 export default function HotelFormModal({
     isOpen,
     onClose,
@@ -49,12 +45,9 @@ export default function HotelFormModal({
     const isView = mode === 'view';
     const isEdit = mode === 'edit';
     const isAdd = mode === 'add';
-
     const isOverlay = typeof isOpen === 'boolean';
 
-
     const fileInputRef = useRef(null);
-
 
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -71,7 +64,6 @@ export default function HotelFormModal({
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmConfig, setConfirmConfig] = useState({});
 
-
     const loadAmenities = useCallback(async () => {
         try {
             const data = await getAmenitiesApi();
@@ -83,10 +75,13 @@ export default function HotelFormModal({
 
     useEffect(() => { loadAmenities(); }, [loadAmenities]);
 
-
     useEffect(() => {
         if (isView || isEdit) {
             if (!initialData) return;
+
+            // Console log để bạn dễ dàng debug cấu trúc hình ảnh nếu cần thiết
+            console.log("Dữ liệu hình ảnh từ initialData:", initialData.hinhAnh);
+
             setFormData({
                 tenKhachSan: initialData.tenKhachSan || '',
                 soDienThoai: initialData.soDienThoai || '',
@@ -95,20 +90,32 @@ export default function HotelFormModal({
                 moTa: initialData.moTa || '',
                 trangThai: initialData.trangThai ?? true,
             });
+
             setImages(
-                (initialData.hinhAnh || []).map((img) => ({
-                    id: img.maAnhSK,
-                    previewUrl: `https://localhost:7016${img.duongDanAnh}`,
-                    anhChinh: img.anhChinh || false,
-                    soThuTu: img.soThuTu || 1,
-                    isExisting: true,
-                }))
+                (initialData.hinhAnh || []).map((img) => {
+                    // Dự phòng tất cả các trường định danh ID có thể trả về từ Backend
+                    const imageId = img.maHinhAnh || img.id || img.maAnhSK;
+
+                    // Xử lý chuẩn hóa URL hiển thị ảnh
+                    let previewUrl = img.duongDanAnh || '';
+                    if (previewUrl && !previewUrl.startsWith('http')) {
+                        previewUrl = `https://localhost:7016${previewUrl}`;
+                    }
+
+                    return {
+                        id: imageId,
+                        previewUrl: previewUrl,
+                        anhChinh: img.anhChinh || false,
+                        soThuTu: img.soThuTu || 1,
+                        isExisting: true,
+                    };
+                })
             );
+
             setAmenitiesSelected(
                 Array.isArray(initialData.tienIch) ? initialData.tienIch : []
             );
         } else {
-
             setFormData({ tenKhachSan: '', soDienThoai: '', diaChi: '', soSao: '', moTa: '', trangThai: true });
             setImages([]);
             setAmenitiesSelected([]);
@@ -116,14 +123,12 @@ export default function HotelFormModal({
         }
     }, [mode, initialData, isOpen]);
 
-
     const handleInput = (e) => {
         if (isView) return;
         const { name, value, type, checked } = e.target;
         setFormData((p) => ({ ...p, [name]: type === 'checkbox' ? checked : value }));
         if (errors[name]) setErrors((p) => ({ ...p, [name]: '' }));
     };
-
 
     const handleImageAdd = (e) => {
         if (isView) return;
@@ -148,12 +153,14 @@ export default function HotelFormModal({
         e.target.value = null;
     };
 
-
     const handleSetMain = async (clicked) => {
         if (isView) return;
 
         if (clicked.isExisting) {
-
+            if (!clicked.id) {
+                toastError("Không tìm thấy mã định danh của ảnh để đặt làm ảnh chính!");
+                return;
+            }
             setConfirmConfig({
                 title: 'Đặt ảnh chính',
                 message: 'Bạn có chắc muốn đặt ảnh này làm ảnh chính không?',
@@ -161,8 +168,14 @@ export default function HotelFormModal({
                 confirmText: 'Xác nhận',
                 action: async () => {
                     try {
-                        await setMainHotelImageApi(hotelId, clicked.id);
-                        setImages((p) => p.map((img) => ({ ...img, anhChinh: img.id === clicked.id })));
+                        await setMainHotelImageApi(clicked.id);
+
+                        setImages(prev =>
+                            prev.map(img => ({
+                                ...img,
+                                anhChinh: img.id === clicked.id
+                            }))
+                        );
                         toastSuccess('Đã đặt ảnh chính!');
                     } catch (err) {
                         toastError(getErrorMessage(err));
@@ -171,7 +184,6 @@ export default function HotelFormModal({
             });
             setConfirmOpen(true);
         } else {
-            // Ảnh local — chỉ update state
             setImages((p) => p.map((img) => ({ ...img, anhChinh: img.id === clicked.id })));
         }
     };
@@ -185,6 +197,10 @@ export default function HotelFormModal({
         }
 
         if (img.isExisting) {
+            if (!img.id) {
+                toastError("Không tìm thấy mã định danh của ảnh để thực hiện xóa!");
+                return;
+            }
             setConfirmConfig({
                 title: 'Xóa ảnh',
                 message: 'Bạn có chắc chắn muốn xóa ảnh này không?',
@@ -192,16 +208,20 @@ export default function HotelFormModal({
                 confirmText: 'Xóa',
                 action: async () => {
                     try {
-                        await deleteHotelImageApi(hotelId, img.id);
+                        await deleteHotelImageApi(img.id);
                         setImages((p) => {
-                            const updated = p.filter((x) => x.id !== img.id);
-                            // Nếu không còn ảnh chính, tự set ảnh đầu tiên
-                            if (updated.length > 0 && !updated.some((x) => x.anhChinh)) {
+                            let updated = p.filter(x => x.id !== img.id);
+
+                            if (updated.length > 0 && !updated.some(x => x.anhChinh)) {
                                 updated[0].anhChinh = true;
                             }
-                            return updated.map((x, i) => ({ ...x, soThuTu: i + 1 }));
+
+                            return updated.map((x, i) => ({
+                                ...x,
+                                soThuTu: i + 1
+                            }));
                         });
-                        toastSuccess('Đã xóa ảnh!');
+                        toastSuccess('Đã xóa ảnh thành công!');
                     } catch (err) {
                         toastError(getErrorMessage(err));
                     }
@@ -209,7 +229,6 @@ export default function HotelFormModal({
             });
             setConfirmOpen(true);
         } else {
-
             setImages((p) => {
                 const updated = p.filter((x) => x.id !== img.id);
                 if (updated.length > 0 && !updated.some((x) => x.anhChinh)) {
@@ -219,7 +238,6 @@ export default function HotelFormModal({
             });
         }
     };
-
 
     const availableAmenities = allAmenities.filter(
         (a) => !amenitiesSelected.some((s) => String(s.maTienIch) === String(a.maTienIch))
@@ -256,7 +274,6 @@ export default function HotelFormModal({
         return Object.keys(e).length === 0;
     };
 
-
     const buildFormData = (data, imgs) => {
         const fd = new FormData();
         fd.append('TenKhachSan', data.tenKhachSan.trim());
@@ -266,7 +283,7 @@ export default function HotelFormModal({
         fd.append('MoTa', data.moTa?.trim() || '');
         fd.append('TrangThai', data.trangThai);
         amenitiesSelected.forEach((a) => fd.append('MaTienIch', a.maTienIch));
-        // Ảnh mới (local), ảnh chính lên đầu
+
         const newImgs = imgs.filter((i) => !i.isExisting);
         const sorted = [...newImgs].sort((a, b) => (b.anhChinh ? 1 : 0) - (a.anhChinh ? 1 : 0));
         sorted.forEach((img) => { if (img.file) fd.append('images', img.file); });
@@ -287,7 +304,6 @@ export default function HotelFormModal({
         }
     };
 
-
     const executeUpdate = async () => {
         try {
             setLoading(true);
@@ -301,7 +317,6 @@ export default function HotelFormModal({
             setLoading(false);
         }
     };
-
 
     const handleSubmit = () => {
         if (isView || !validate()) return;
@@ -320,13 +335,11 @@ export default function HotelFormModal({
         }
     };
 
-
     const content = (
         <div
             className="bg-white w-full max-w-6xl rounded-3xl shadow-2xl flex flex-col overflow-hidden"
             style={isOverlay ? { maxHeight: '95vh' } : {}}
         >
-
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200 bg-slate-50 rounded-t-3xl">
                 <h2 className="text-xl font-semibold text-slate-800">
                     {isAdd ? 'Thêm Khách Sạn Mới'
@@ -344,7 +357,6 @@ export default function HotelFormModal({
             </div>
 
             <div className="overflow-y-auto flex-1 p-6 lg:p-8 space-y-10">
-
                 {/* ── Hình ảnh ── */}
                 <section>
                     <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">
@@ -524,7 +536,6 @@ export default function HotelFormModal({
         </div>
     );
 
-
     const subModals = (
         <>
             <CreateAmenityModal
@@ -555,7 +566,6 @@ export default function HotelFormModal({
         );
     }
 
-    // Dùng như page (không cần backdrop)
     return (
         <>
             <div className="p-4">{content}</div>

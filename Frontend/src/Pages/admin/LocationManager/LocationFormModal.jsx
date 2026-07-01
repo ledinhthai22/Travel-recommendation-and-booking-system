@@ -308,7 +308,7 @@ export default function LocationFormModal({
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex gap-3 items-end">
+                                <div className="flex gap-3 items-start">
                                     <div className="flex-1">
                                         <Dropdown
                                             label="Loại địa điểm"
@@ -323,13 +323,14 @@ export default function LocationFormModal({
                                             }))}
                                             fullWidth
                                             searchable
+                                            error={errors.loaiDiaDiem}
                                         />
                                     </div>
 
                                     <button
                                         type="button"
                                         onClick={() => setShowCreateTypeModal(true)}
-                                        className="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-sm text-white rounded-2xl cursor-pointer"
+                                        className="mt-6 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-sm text-white rounded-2xl cursor-pointer"
                                     >
                                         Thêm mới
                                     </button>

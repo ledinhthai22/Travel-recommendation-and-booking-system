@@ -134,6 +134,7 @@ export default function NewsletterManager() {
                 showAddButton={false}
                 showCategoryFilter={false}
                 showImportExcel={false}
+                showExcel = {false}
             />
 
             <CustomDataTable

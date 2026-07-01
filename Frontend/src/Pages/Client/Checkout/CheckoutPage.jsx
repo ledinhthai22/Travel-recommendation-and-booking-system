@@ -23,16 +23,20 @@ function formatDate(dateString) {
     return new Date(dateString).toLocaleDateString("vi-VN");
 }
 
-// Tính số ngày còn lại đến ngày khởi hành (so sánh theo ngày, bỏ giờ phút)
 function calcDaysUntilDeparture(ngayKhoiHanh) {
-    if (!ngayKhoiHanh) return 999;
+    if (!ngayKhoiHanh) return 0; // Không có ngày thì coi như sát giờ/không hợp lệ
+    
     const departure = new Date(ngayKhoiHanh);
-    departure.setHours(0, 0, 0, 0);
     const today = new Date();
+    
+    // Đưa cả 2 về cùng mốc 0h00 để tính số ngày trọn vẹn
+    departure.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
-    return Math.round((departure - today) / (1000 * 60 * 60 * 24));
+    
+    const diffTime = departure.getTime() - today.getTime();
+    // Dùng Math.ceil để đảm bảo nếu còn 3.1 ngày thì vẫn tính là sang ngày thứ 4
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
-
 export default function CheckoutPage() {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -545,7 +549,7 @@ function PaymentModal({ paymentMethod, setPaymentMethod, vnpayLoading, totalPric
     );
 
     // Chỉ hiện tiền mặt nếu còn hơn 3 ngày
-    const canPayCash = daysUntilDeparture > 3;
+    const canPayCash = bookingData?.ngayKhoiHanh && daysUntilDeparture > 3;
 
     const options = [
         {

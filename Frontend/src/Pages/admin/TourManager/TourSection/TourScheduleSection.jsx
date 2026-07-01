@@ -107,14 +107,15 @@ const validateDeparture = (item) => {
         errs.gioDenNoiDi = "Giờ đến nơi đi phải sau giờ khởi hành";
     }
 
-    // 3. Ngày kết thúc → chỉ cần sau ngayKD theo ngày (không cần sau gioDi)
     if (!ngayKT) {
         errs.ngayKetThuc = "Vui lòng chọn ngày giờ kết thúc";
+    } else if (gioDi && ngayKT < gioDi) {
+        errs.ngayKetThuc = "Ngày giờ kết thúc phải sau thời điểm đến nơi đi";
     } else if (ngayKD) {
         const ngayKDOnly = new Date(ngayKD); ngayKDOnly.setHours(0, 0, 0, 0);
         const ngayKTOnly = new Date(ngayKT); ngayKTOnly.setHours(0, 0, 0, 0);
-        if (ngayKTOnly <= ngayKDOnly) {
-            errs.ngayKetThuc = "Ngày kết thúc phải sau ngày khởi hành";
+        if (ngayKTOnly < ngayKDOnly) {
+            errs.ngayKetThuc = "Ngày kết thúc không được trước ngày khởi hành";
         }
     }
 
@@ -274,15 +275,15 @@ const TourScheduleSection = forwardRef(({ value = [], onChange, isViewMode = fal
                 const start = new Date(val);
 
                 if (Number(soNgay) > 0) {
-                    const end = new Date(start);
-                    end.setDate(end.getDate() + Number(soNgay) - 1);
+                    if (Number(soNgay) > 1) {
+                        const end = new Date(start);
+                        end.setDate(end.getDate() + Number(soNgay) - 1);
+                        end.setHours(0, 0, 0, 0);
+                        updated.ngayKetThuc = end;
+                    } else {
+                        updated.ngayKetThuc = null;
+                    }
 
-                    // Chỉ set ngày, reset giờ về 00:00 để user tự chọn giờ kết thúc
-                    end.setHours(0, 0, 0, 0);
-
-                    updated.ngayKetThuc = end;
-
-                    // Reset luôn gioDenNoiDi và gioDenNoiVe khi đổi ngày khởi hành
                     updated.gioDenNoiDi = null;
                     updated.gioDenNoiVe = null;
                 } else {

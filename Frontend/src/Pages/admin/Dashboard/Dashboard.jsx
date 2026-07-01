@@ -4,20 +4,14 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
-
+import { Link } from "react-router-dom";
 import StatisticService from "~/Services/StatisticService";
 import SelectField from "~/components/UI/Form/SelectField";
 import { toastError } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
 
-// Bảng màu dùng chung cho các Pie Chart — backend không trả màu nên FE tự gán
-// theo thứ tự phần tử trả về (lặp vòng nếu nhiều hơn 6 phần tử).
 const PIE_PALETTE = ["#0EA5E9", "#8B5CF6", "#F59E0B", "#10B981", "#F43F5E", "#64748B"];
 const colorAt = (i) => PIE_PALETTE[i % PIE_PALETTE.length];
-
-// Format số tiền VNĐ rút gọn theo độ lớn: tỷ / triệu / nghìn.
-// Giữ tối đa 1 chữ số thập phân, tự bỏ ".0" nếu là số tròn.
-// Dùng cho trục Y (cần gọn) — tooltip vẫn giữ số đầy đủ để chính xác khi hover.
 const formatVND = (value) => {
     const num = Number(value) || 0;
     const abs = Math.abs(num);
@@ -129,8 +123,7 @@ const PieLegend = ({ data }) => (
     </div>
 );
 
-// Hiển thị badge tăng trưởng: null/undefined (không tính được % vì kỳ trước
-// bằng 0) -> hiện "Mới" thay vì số % gây hiểu lầm. Ngược lại hiện đúng dấu +/-.
+
 const renderDelta = (growth) => {
     if (growth === null || growth === undefined) return "Mới";
     return `${growth >= 0 ? "+" : ""}${growth}%`;
@@ -486,9 +479,9 @@ export default function Dashboard() {
                             <h3 className="font-semibold text-slate-800 text-base">Giao dịch gần đây</h3>
                             <p className="text-xs text-slate-400 mt-0.5">6 giao dịch mới nhất</p>
                         </div>
-                        <button className="text-sm text-sky-600 hover:text-sky-700 font-medium">
-                            Xem tất cả →
-                        </button>
+                        <Link  to="/Quan-ly/Don-dat-cac-chuyen-di"className="text-sm text-sky-600 hover:text-sky-700 font-medium">
+                            Xem tất cả 
+                        </Link>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">

@@ -13,12 +13,12 @@ import useAuth from "~/Hooks/useAuth";
 import TourFilter from "./TourFilter";
 import { useBestTours } from "~/Hooks/useBestTours";
 import { getMyWishlistIdsApi } from '~/Services/TourService';
-import { mockTours, PAGE_SIZE } from "~/constants/Tours.constants";
+import { mapApiTourToCard } from "~/utils/mapTourCard";
 import { getToursByLocationSlugApi } from "~/Services/TourService";
-import { getTourDesignJustForYouApi,getRecommendedToursApi,searchToursApi,getLatestToursApi } from "~/Services/HomeService";
+import { getTourDesignJustForYouApi, getRecommendedToursApi, searchToursApi, getLatestToursApi } from "~/Services/HomeService";
 
 export default function Tours() {
-    
+    const PAGE_SIZE = 99999
     const [tours, setTours] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -35,7 +35,7 @@ export default function Tours() {
     const [locationName, setLocationName] = useState("");
     const diaDiemSlug = searchParams.get("diaDiem");
     const [tenDiaDiem, setTenDiaDiem] = useState("");
-     const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated } = useAuth();
     const isLoggedIn = !!user;
     const { tours: bestTours, loading: bestToursLoading } = useBestTours(12, "next-trip");
     const [wishlistIds, setWishlistIds] = useState([]);
@@ -55,7 +55,7 @@ export default function Tours() {
     const fetchTours = async () => {
         setLoading(true);
         try {
-            const response = await searchToursApi(filterParams); 
+            const response = await searchToursApi(filterParams);
             setToursData(response);
         } catch (error) {
             console.error(error);
@@ -67,79 +67,44 @@ export default function Tours() {
     useEffect(() => {
         fetchTours();
     }, [filterParams]);
-    
+
     useEffect(() => {
         if (isAuthenticated) {
             getMyWishlistIdsApi().then(ids => setWishlistIds(ids));
         }
     }, [isAuthenticated]);
 
-    const mapApiTourToCard = useCallback((tour) => ({
-       
-        id: tour.maTour,
-        maTour: tour.maTour,
-        slug: tour.slug,
-
-        name: tour.tenTour,
-
-        image: tour.hinhAnhChinh
-            ? `https://localhost:7016${tour.hinhAnhChinh}`
-            : "/images/no-image.jpg",
-
-        destination: Array.isArray(tour.diemDens)
-            ? tour.diemDens.join(", ")
-            : "",
-
-        duration: `${tour.ngay} ngày ${tour.dem} đêm`,
-
-        ngay: tour.ngay,
-        dem: tour.dem,
-
-        price: tour.giaTu ?? 0,
-
-        rating: 5,
-        reviewCount: 0,
-
-        featured: false,
-        category: "Tất cả"
-    }), []);
 
     const loadTours = useCallback(async () => {
-    try {
-        setLoading(true);
+        try {
+            setLoading(true);
 
-        // Nếu người dùng muốn xem "Tour dành riêng cho bạn"
-        if (isLoggedIn && searchParams.get("view") === "personalized") {
-            const data = await getTourDesignJustForYouApi(20); // Gọi API không giới hạn limit
-            const mappedTours = (data || []).map(mapApiTourToCard);
-            setTours(mappedTours);
-            setTenDiaDiem("Tour dành riêng cho bạn");
-        } 
-        // Có thể bạn quan tâm
-        else if (isLoggedIn && searchParams.get("view") === "recommended") {
-            const data = await getRecommendedToursApi(20); 
-            setTours(data.map(mapApiTourToCard));
-            setTenDiaDiem("Có thể bạn quan tâm");
+            if (isLoggedIn && searchParams.get("view") === "personalized") {
+                const data = await getTourDesignJustForYouApi(20);
+                setTours((data || []).map(mapApiTourToCard));
+                setTenDiaDiem("Tour dành riêng cho bạn");
+            }
+            else if (isLoggedIn && searchParams.get("view") === "recommended") {
+                const data = await getRecommendedToursApi(20);
+                setTours((data || []).map(mapApiTourToCard));
+                setTenDiaDiem("Có thể bạn quan tâm");
+            }
+            else if (diaDiemSlug) {
+                const response = await getToursByLocationSlugApi(diaDiemSlug);
+                setTenDiaDiem(response?.tenDiaDiem || "");
+                setTours((response?.tours || []).map(mapApiTourToCard));
+            }
+            else {
+                const response = await getLatestToursApi();
+                setTours((response || []).map(mapApiTourToCard));
+            }
+        } catch (error) {
+            console.error("Lỗi loadTours:", error);
+            setTours([]);
+        } finally {
+            setLoading(false);
         }
-        //  Nếu người dùng chọn lọc theo địa điểm
-        else if (diaDiemSlug) {
-            const response = await getToursByLocationSlugApi(diaDiemSlug);
-            setTenDiaDiem(response?.tenDiaDiem || "");
-            const mappedTours = (response?.tours || []).map(mapApiTourToCard);
-            setTours(mappedTours);
-        } 
-        // 3. Mặc định
-        else {
-            const response = await getLatestToursApi();
-            setTours(response.map(mapApiTourToCard));
-        }
-    } catch (error) {
-        console.error("Lỗi loadTours:", error);
-        setTours([]);
-    } finally {
-        setLoading(false);
-    }
-}, [diaDiemSlug, isLoggedIn,filterParams, searchParams, mapApiTourToCard]);
+    }, [diaDiemSlug, isLoggedIn, searchParams]); // bỏ mapApiTourToCard khỏi deps vì giờ nó là import ổn định, không phải useCallback nội bộ nữa
 
     useEffect(() => {
         loadTours();
@@ -290,25 +255,27 @@ export default function Tours() {
                                     ))}
                                 </div>
                             ) : bestTours && bestTours.length > 0 ? (
-                            <FeaturedCarousel
-                                items={bestTours.slice(0, 6)}
-                                renderItem={(tour) => <TourCard 
-                                id={tour.maTour}
-                                slug={tour.slug || tour.maTour}
-                                name={tour.tenTour}
-                                image={`https://localhost:7016${tour.duongDanAnh}`}
-                                duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
-                                destination={tour.diemDen || "Đang cập nhật"}
-                                price={tour.giaChuyen}
-                                rating={tour.diemDanhGia}
-                                reviewCount={tour.soLuongDanhGia} 
-                                initialWishlist={wishlistIds.includes(tour.maTour)}
+                                <FeaturedCarousel
+                                    items={bestTours.map(mapApiTourToCard)}
+                                    renderItem={(tour) => (
+                                        <TourCard
+                                            id={tour.id}
+                                            slug={tour.slug || tour.id}
+                                            name={tour.name}
+                                            image={tour.image}              // đã là full URL sẵn, không ghép domain nữa
+                                            duration={tour.duration}         // util đã build sẵn chuỗi "X ngày Y đêm"
+                                            destination={tour.destination}
+                                            price={tour.price}
+                                            rating={tour.rating}
+                                            reviewCount={tour.reviewCount}
+                                            tourType={tour.tourType}
+                                            initialWishlist={wishlistIds.includes(tour.id)}
+                                        />
+                                    )}
+                                    itemsPerPage={5}
+                                    gap={30}
+                                    autoPlayMs={4000}
                                 />
-                            }
-                                itemsPerPage={5}
-                                gap={30}
-                                autoPlayMs={4000}
-                            />
                             ) : (
                                 <p className="text-center text-slate-400 py-6">Không tìm thấy tour nào.</p>
                             )}
@@ -394,9 +361,11 @@ export default function Tours() {
                                                     initialWishlist={wishlistIds.includes(tour.id)}
                                                     showWishlist={true}
                                                     disableLink={true}
+                                                    tourType={tour.tourType}
                                                 />
                                             )
                                         )}
+                                        {console.log("paginated =", paginated)}
                                     </div>
 
                                     {totalPages > 1 && (

@@ -1,153 +1,167 @@
 import { createContext, useCallback, useEffect, useState } from "react";
+import axios from "axios";
 import {
-    logoutApi,
     getMeApi,
-    getStaffMeApi
+    getStaffMeApi,
+    refreshTokenApi,
+    logoutApi
 } from "~/Services/AuthService";
 
 export const AuthContext = createContext();
 
-const decodeToken = (token) => {
-    try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
 
-        const jsonPayload = decodeURIComponent(
-            atob(base64)
-                .split('')
-                .map(function (c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                })
-                .join('')
-        );
+export const apiClient = axios.create({
+    baseURL: "YOUR_API_URL",
+    withCredentials: true
+});
 
-        return JSON.parse(jsonPayload);
-    } catch (e) {
-        return null;
-    }
+
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+        if (error) prom.reject(error);
+        else prom.resolve(token);
+    });
+    failedQueue = [];
 };
 
 export default function AuthProvider({ children }) {
-    const [user, setUserState] = useState(null);
+    const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [showLoginModal, setShowLoginModal] = useState(false);
     const [isStaff, setIsStaff] = useState(false);
 
+
     useEffect(() => {
-        loadCurrentUser();
+        initAuth();
     }, []);
 
-    const loadCurrentUser = async () => {
+    const initAuth = async () => {
         try {
             const token = localStorage.getItem("token");
+            if (!token) return;
 
-            if (!token) {
-                setLoading(false);
-                return;
-            }
-
-            const decoded = decodeToken(token);
-            const accountTypeFromToken = decoded?.account_type;
-
-            let profile = null;
-
-            if (accountTypeFromToken === "NhanVien") {
-                setIsStaff(true);
-                profile = await getStaffMeApi();
-            } else {
-                setIsStaff(false);
-                profile = await getMeApi();
-            }
-
-            setUser(profile);
-
-            localStorage.setItem(
-                "user",
-                JSON.stringify(profile)
-            );
-
-            localStorage.setItem(
-                "account_type",
-                accountTypeFromToken || "KhachHang"
-            );
-
-        } catch (error) {
-            console.error("Lỗi tự động đăng nhập:", error);
-            handleForceLogout();
+            await loadProfile();
+        } catch (err) {
+            console.log("Init auth error:", err);
         } finally {
             setLoading(false);
         }
     };
 
+
+    const loadProfile = async () => {
+        const accountType = localStorage.getItem("account_type");
+
+        let profile;
+
+        if (accountType === "NhanVien") {
+            setIsStaff(true);
+            profile = await getStaffMeApi();
+        } else {
+            setIsStaff(false);
+            profile = await getMeApi();
+        }
+
+        setUser(profile);
+        localStorage.setItem("user", JSON.stringify(profile));
+        return profile
+    };
+
+
+    const refreshToken = async () => {
+        const accessToken = localStorage.getItem("token");
+        const refresh = localStorage.getItem("refreshToken");
+        if (!refresh) throw new Error("No refresh token");
+
+        // Backend TokenModelDTO yêu cầu cả accessToken (kể cả đã hết hạn) lẫn refreshToken
+        const res = await refreshTokenApi(accessToken, refresh);
+
+        localStorage.setItem("token", res.token);
+        localStorage.setItem("refreshToken", res.refreshToken);
+
+        return res.token;
+    };
+
+
+    const forceLogout = useCallback(async () => {
+        const refresh = localStorage.getItem("refreshToken");
+
+        try {
+            if (refresh) await logoutApi(refresh);
+        } catch { }
+
+        localStorage.clear();
+        setUser(null);
+        setIsStaff(false);
+
+        window.location.reload(); // tạm thời
+    }, []);
+
+
     const login = async (res, isStaffLogin = false) => {
         localStorage.setItem("token", res.token);
         localStorage.setItem("refreshToken", res.refreshToken);
 
-        const decoded = decodeToken(res.token);
+        const decoded = JSON.parse(atob(res.token.split(".")[1]));
 
-        const actualType =
+        const type =
             decoded?.account_type ||
             (isStaffLogin ? "NhanVien" : "KhachHang");
 
-        localStorage.setItem("account_type", actualType);
+        localStorage.setItem("account_type", type);
 
-        setIsStaff(actualType === "NhanVien");
+        return await loadProfile();
+    };
 
-        let profile = null;
 
-        if (actualType === "NhanVien") {
-            profile = await getStaffMeApi();
-        } else {
-            profile = await getMeApi();
-        }
+    useEffect(() => {
+        const interceptor = apiClient.interceptors.response.use(
+            res => res,
+            async error => {
+                const originalRequest = error.config;
 
-        localStorage.setItem(
-            "user",
-            JSON.stringify(profile)
+                if (error.response?.status === 401 && !originalRequest._retry) {
+                    if (isRefreshing) {
+                        return new Promise((resolve, reject) => {
+                            failedQueue.push({ resolve, reject });
+                        }).then(token => {
+                            originalRequest.headers.Authorization = `Bearer ${token}`;
+                            return apiClient(originalRequest);
+                        });
+                    }
+
+                    originalRequest._retry = true;
+                    isRefreshing = true;
+
+                    try {
+                        const newToken = await refreshToken();
+
+                        apiClient.defaults.headers.common.Authorization =
+                            `Bearer ${newToken}`;
+
+                        processQueue(null, newToken);
+
+                        return apiClient(originalRequest);
+                    } catch (err) {
+                        processQueue(err, null);
+                        await forceLogout();
+                        return Promise.reject(err);
+                    } finally {
+                        isRefreshing = false;
+                    }
+                }
+
+                return Promise.reject(error);
+            }
         );
 
-        setUser(profile);
+        return () => {
+            apiClient.interceptors.response.eject(interceptor);
+        };
+    }, [forceLogout]);
 
-        return profile;
-    };
-
-    const handleForceLogout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
-        localStorage.removeItem("account_type");
-
-        setUser(null);
-        setIsStaff(false);
-    };
-
-    const logout = useCallback(async () => {
-        const refreshToken = localStorage.getItem("refreshToken");
-
-        handleForceLogout();
-
-        try {
-            if (refreshToken) {
-                await logoutApi(refreshToken);
-            }
-        } catch (err) {
-            console.log(err);
-        }
-    }, []);
-
-    const refreshUser = async () => {
-        const updatedData = await getProfileApi();
-        setUser(updatedData);
-    };
-
-    const setUser = (newUser) => {
-        if (newUser) {
-            localStorage.setItem("user", JSON.stringify(newUser));
-        } else {
-            localStorage.removeItem("user");
-        }
-        setUserState(newUser); // Kích hoạt render lại
-    };
 
     return (
         <AuthContext.Provider
@@ -155,13 +169,11 @@ export default function AuthProvider({ children }) {
                 user,
                 setUser,
                 login,
-                logout,
+                forceLogout,
                 loading,
                 isAuthenticated: !!user,
-                refreshUser,
-                showLoginModal,
-                setShowLoginModal,
-                isStaff
+                isStaff,
+                apiClient
             }}
         >
             {children}

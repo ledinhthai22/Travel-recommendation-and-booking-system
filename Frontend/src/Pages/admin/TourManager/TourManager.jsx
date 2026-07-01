@@ -169,37 +169,30 @@ export default function TourManager() {
         return statusOptions.filter(opt => opt.value !== currentStatus);
     };
 
-    return (
+   return (
         <div className="p-4 space-y-6">
-            {/* Sử dụng cấu trúc linh hoạt cho Toolbar, truyền component SelectField tùy chỉnh của bạn vào phần filters */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                <div className="flex-1 max-w-md">
-                    <ManagerToolbar
-                        searchPlaceholder="Tìm kiếm tour..."
-                        onSearchChange={(value) => setKeyword(value)}
-                        addButtonText="Thêm tour"
-                        onAddClick={handleAddTour}
-                        showExcel={false}
-                        filters={[]} // Bỏ trống mảng filters mặc định của toolbar cũ để tự custom bằng SelectField của bạn dưới đây
-                    />
-                </div>
-                
-                <div className="flex items-center gap-3 min-w-[200px]">
-                    {/* Tích hợp SelectField tùy chỉnh của bạn làm bộ lọc trạng thái */}
-                    <SelectField
-                        label="Trạng thái"
-                        value={statusFilter}
-                        onChange={(value) => {
+            {/* Sửa lại Toolbar sử dụng trực tiếp prop filters đồng bộ giống HotelManager */}
+            <ManagerToolbar
+                searchPlaceholder="Tìm kiếm tour..."
+                onSearchChange={(value) => setKeyword(value)}
+                addButtonText="Thêm tour"
+                onAddClick={handleAddTour}
+                showExcel={false}
+                filters={[
+                    {
+                        placeholder: 'Trạng thái',
+                        value: statusFilter,
+                        onChange: (value) => {
                             setStatusFilter(value);
                             setCurrentPage(1);
-                        }}
-                        options={[{ value: "", label: "Tất cả" }, ...statusOptions]}
-                        placeholder="Tất cả"
-                        valueKey="value"
-                        labelKey="label"
-                    />
-                </div>
-            </div>
+                        },
+                        options: [
+                            { value: "", label: "Tất cả" },
+                            ...statusOptions
+                        ]
+                    }
+                ]}
+            />
 
             {isFetching && (
                 <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
@@ -301,7 +294,6 @@ export default function TourManager() {
                 </div>
             )}
 
-            {/* Custom Modal sử dụng SelectField của bạn để lựa chọn trạng thái mới */}
             <ConfirmModal
                 isOpen={statusModalOpen}
                 title="Thay đổi trạng thái kinh doanh Tour"
@@ -316,7 +308,6 @@ export default function TourManager() {
                             </p>
                             
                             <div className="mt-4">
-                                {/* Tích hợp component SelectField của bạn vào đây */}
                                 <SelectField
                                     label="Chọn trạng thái mới"
                                     value={nextStatus}

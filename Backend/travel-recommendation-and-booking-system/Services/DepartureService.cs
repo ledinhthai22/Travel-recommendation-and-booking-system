@@ -204,7 +204,7 @@ namespace Services
                 {
                     LoaiTaiKhoan = currentAccount,
 
-                    MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                    MaTaiKhoan = _currentUserService.GetUserId(),
                     Email = _currentUserService.GetEmail(),
                     TenHanhDong = ActionLogDTO.Tao,
 
@@ -327,7 +327,7 @@ namespace Services
                 {
                     LoaiTaiKhoan = currentAccount,
 
-                    MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                    MaTaiKhoan = _currentUserService.GetUserId(),
                     Email = _currentUserService.GetEmail(),
                     TenHanhDong = ActionLogDTO.CapNhat,
 
@@ -450,7 +450,7 @@ namespace Services
             {
                 LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                MaTaiKhoan = _currentUserService.GetUserId(),
                 TenHanhDong = ActionLogDTO.Xoa,
                 TenBangTacDong = TableNameDTO.ChuyenKhoiHanh,
                 MaDoiTuong = chuyen.MaChuyen,

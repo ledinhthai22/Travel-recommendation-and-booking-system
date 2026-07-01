@@ -212,18 +212,18 @@ export default function HomePage() {
                         </div>
                     ) : latestTours && latestTours.length > 0 ? (
                         <FeaturedCarousel
-                        items={latestTours.slice(0, 6)}
-                        renderItem={(tour) => <TourCard 
-                        id={tour.maTour}
-                        slug={tour.slug || tour.maTour}
-                        name={tour.tenTour}
-                        image={`https://localhost:7016${tour.duongDanAnh}`}
-                        duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
-                        destination={tour.diemDen || "Đang cập nhật"}
-                        price={tour.giaChuyen}
-                        rating={tour.diemDanhGia}
-                        reviewCount={tour.soLuongDanhGia} 
-                        initialWishlist={wishlistIds.includes(tour.maTour)}
+                            items={latestTours.slice(0, 6)}
+                            renderItem={(tour) => <TourCard 
+                            id={tour.maTour}
+                            slug={tour.slug || tour.maTour}
+                            name={tour.tenTour}
+                            image={`https://localhost:7016${tour.duongDanAnh}`}
+                            duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
+                            destination={tour.diemDen || "Đang cập nhật"}
+                            price={tour.giaChuyen}
+                            rating={tour.diemDanhGia}
+                            reviewCount={tour.soLuongDanhGia} 
+                            initialWishlist={wishlistIds.includes(tour.maTour)}
                         />
                     }
                         itemsPerPage={4}

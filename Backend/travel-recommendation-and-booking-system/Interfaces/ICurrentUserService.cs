@@ -2,8 +2,10 @@
 {
     public interface ICurrentUserService
     {
-        int? GetUserId();
-        int? GetRoleId();
-        string? GetEmail();
+        int GetUserId();
+
+        int GetRoleId();
+
+        string GetEmail();
     }
 }

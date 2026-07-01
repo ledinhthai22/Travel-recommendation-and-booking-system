@@ -1,11 +1,9 @@
 import axiosClient from './axiosClient';
 
-
 export const getHotelListApi = async () => {
     const response = await axiosClient.get(
         "/admin/hotel"
     );
-
     return response.data;
 };
 
@@ -32,7 +30,6 @@ export const getHotelApi = async (
             }
         }
     );
-
     return response.data;
 };
 
@@ -40,14 +37,13 @@ export const getHotelByIdApi = async (id) => {
     const response = await axiosClient.get(
         `/admin/Hotel/${id}`
     );
-
     return response.data;
 };
+
 export const getHotelBySlugApi = async (slug) => {
     const response = await axiosClient.get(
         `/PublicHotel/${slug}`
     );
-
     return response.data;
 };
 
@@ -73,7 +69,6 @@ export const updateHotelApi = async (
             }
         }
     );
-
     return response.data;
 };
 
@@ -87,7 +82,6 @@ export const changeHotelStatusApi = async (
             trangThai
         }
     );
-
     return response.data;
 };
 
@@ -95,26 +89,22 @@ export const deleteHotelApi = async (id) => {
     const response = await axiosClient.delete(
         `/admin/Hotel/${id}`
     );
-
     return response.data;
 };
 
-export const setMainHotelImageApi = async (
-    imageId
-) => {
+// ĐÃ CHUẨN HÓA: Chỉ nhận một tham số imageId duy nhất khớp chính xác với URL [HttpPatch("images/{imageId}/set-main")]
+export const setMainHotelImageApi = async (imageId) => {
     const response = await axiosClient.patch(
-        `/admin/Hotel/images/${imageId}/set-main`
+        `/admin/Hotel/images/${imageId}/set-main`,
+        {} // Gửi kèm body rỗng để tránh các lỗi bắt bẻ HTTP Body từ phía client/server
     );
-
     return response.data;
 };
 
-export const deleteHotelImageApi = async (
-    imageId
-) => {
+// ĐÃ CHUẨN HÓA: Chỉ nhận một tham số imageId duy nhất khớp chính xác với URL [HttpDelete("images/{imageId}")]
+export const deleteHotelImageApi = async (imageId) => {
     const response = await axiosClient.delete(
         `/admin/Hotel/images/${imageId}`
     );
-
     return response.data;
 };

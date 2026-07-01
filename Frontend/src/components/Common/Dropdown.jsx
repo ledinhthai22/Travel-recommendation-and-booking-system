@@ -232,7 +232,7 @@ export default function Dropdown({
                     </div>
                 )}
                  {error && (
-                    <p className="absolute -bottom-5 left-0 text-red-600 text-xs font-medium whitespace-nowrap">
+                    <p className="-bottom-5 left-0 text-red-600 text-xs font-medium whitespace-nowrap">
                         {error}
                     </p>
                 )}

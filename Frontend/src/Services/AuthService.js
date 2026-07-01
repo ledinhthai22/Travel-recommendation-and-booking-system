@@ -79,3 +79,14 @@ export const getStaffMeApi = async () => {
     const res = await axiosClient.get("/auth/staff-me");
     return res.data;
 };
+
+// Backend TokenModelDTO yêu cầu cả accessToken (đã hết hạn) lẫn refreshToken,
+// thiếu 1 trong 2 sẽ bị BadRequest do [Required].
+export const refreshTokenApi = async (accessToken, refreshToken) => {
+    const res = await axiosClient.post("/auth/refresh-token", {
+        accessToken,
+        refreshToken,
+    });
+
+    return res.data;
+};

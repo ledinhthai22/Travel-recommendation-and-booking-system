@@ -15,5 +15,6 @@
         public bool IsFavorite { get; set; }
         public int LuotDat {  get; set; }
         public int MaLoaiTour { get; set; }
+        public string TenLoaiTour { get; set; }
     }
 }

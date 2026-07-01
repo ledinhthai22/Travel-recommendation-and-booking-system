@@ -42,6 +42,9 @@ namespace travel_recommendation_and_booking_system.Data
         public DbSet<PaymentPayload> PaymentPayloads { get; set; }
         public DbSet<GiuCho> GiuChos { get; set; }
 
+        public DbSet<ThongBao> ThongBaos { get; set; }
+        public DbSet<ThongBaoNguoiNhan> ThongBaoNguoiNhans { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -63,6 +66,25 @@ namespace travel_recommendation_and_booking_system.Data
 
                 entity.HasIndex(x => x.MaTienIch)
                       .HasDatabaseName("IX_KS_TN_MaTienIch");
+            });
+            modelBuilder.Entity<ThongBaoNguoiNhan>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+
+                entity.HasOne(x => x.ThongBao)
+                      .WithMany(x => x.NguoiNhans)
+                      .HasForeignKey(x => x.MaThongBao)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(x => x.NguoiDung)
+                      .WithMany(x => x.ThongBaoNguoiNhans)
+                      .HasForeignKey(x => x.MaNguoiDung)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(x => x.NhanVien)
+                      .WithMany(x => x.ThongBaoNguoiNhans)
+                      .HasForeignKey(x => x.MaNhanVien)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<Tour_KhachSan>(entity =>

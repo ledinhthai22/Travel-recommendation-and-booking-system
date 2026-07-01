@@ -5,7 +5,8 @@
         public int MaTour { get; set; }
 
         public string TenTour { get; set; }
-
+        public string TenLoaiTour { get; set; }
+        public int MaLoaiTour { get; set; }
         public string Slug { get; set; }
 
         public string? MoTa { get; set; }

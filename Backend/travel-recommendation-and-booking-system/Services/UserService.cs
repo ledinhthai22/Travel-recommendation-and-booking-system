@@ -73,7 +73,7 @@ namespace travel_recommendation_and_booking_system.Services
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan =currentAccount,
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                MaTaiKhoan = _currentUserService.GetUserId(),
                 Email = _currentUserService.GetEmail(),
                 TenHanhDong = ActionLogDTO.Tao,
 
@@ -157,7 +157,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = currentAccount,
 
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                MaTaiKhoan = _currentUserService.GetUserId() ,
                 Email = _currentUserService.GetEmail(),
                 TenHanhDong = ActionLogDTO.CapNhat,
 
@@ -269,7 +269,7 @@ namespace travel_recommendation_and_booking_system.Services
                 {
                     LoaiTaiKhoan = currentAccount,
 
-                    MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                    MaTaiKhoan = _currentUserService.GetUserId(),
                     Email = _currentUserService.GetEmail(),
                     TenHanhDong = ActionLogDTO.CapNhatTrangThai,
 
@@ -311,7 +311,7 @@ namespace travel_recommendation_and_booking_system.Services
                 {
                     LoaiTaiKhoan = currentAccount,
                     Email = _currentUserService.GetEmail(),
-                    MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                    MaTaiKhoan = _currentUserService.GetUserId(),
 
                     TenHanhDong = ActionLogDTO.CapNhatTrangThai,
 

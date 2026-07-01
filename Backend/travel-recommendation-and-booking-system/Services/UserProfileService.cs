@@ -110,7 +110,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = currentUserId ?? 0,
+                MaTaiKhoan = currentUserId ,
                 TenHanhDong = ActionLogDTO.CapNhat,
                 TenBangTacDong = TableNameDTO.NguoiDung,
                 MaDoiTuong = user.MaNguoiDung,

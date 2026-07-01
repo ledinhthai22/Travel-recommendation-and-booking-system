@@ -12,35 +12,49 @@ namespace travel_recommendation_and_booking_system.Services
             _httpContextAccessor = httpContextAccessor;
         }
 
-        public int? GetUserId()
+        public int GetUserId()
         {
-            var userId = _httpContextAccessor.HttpContext?
+            var value = _httpContextAccessor.HttpContext?
                 .User?
                 .FindFirst(ClaimTypes.NameIdentifier)?
                 .Value;
 
-            return int.TryParse(userId, out int id)
-                ? id
-                : null;
+            if (!int.TryParse(value, out int id))
+            {
+                throw new UnauthorizedAccessException("Không tìm thấy UserId trong token.");
+            }
+
+            return id;
         }
 
-        public int? GetRoleId()
+        public int GetRoleId()
         {
-            var roleId = _httpContextAccessor.HttpContext?
+            var value = _httpContextAccessor.HttpContext?
                 .User?
                 .FindFirst(ClaimTypes.Role)?
                 .Value;
 
-            return int.TryParse(roleId, out int id)
-                ? id
-                : null;
+            if (!int.TryParse(value, out int id))
+            {
+                throw new UnauthorizedAccessException("Không tìm thấy RoleId trong token.");
+            }
+
+            return id;
         }
-        public string? GetEmail()
+
+        public string GetEmail()
         {
-            return _httpContextAccessor.HttpContext?
+            var email = _httpContextAccessor.HttpContext?
                 .User?
                 .FindFirst(ClaimTypes.Email)?
                 .Value;
+
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                throw new UnauthorizedAccessException("Không tìm thấy Email trong token.");
+            }
+
+            return email;
         }
     }
 }

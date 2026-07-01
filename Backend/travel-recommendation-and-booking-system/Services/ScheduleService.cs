@@ -182,7 +182,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                MaTaiKhoan = _currentUserService.GetUserId(),
                 TenHanhDong = ActionLogDTO.Tao,
                 TenBangTacDong = TableNameDTO.LichTrinh,
                 MaDoiTuong = lichTrinh.MaLichTrinh,
@@ -344,7 +344,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                MaTaiKhoan = _currentUserService.GetUserId(),
                 TenHanhDong = ActionLogDTO.CapNhat,
                 TenBangTacDong = TableNameDTO.LichTrinh,
                 MaDoiTuong = lt.MaLichTrinh,
@@ -395,7 +395,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                MaTaiKhoan = _currentUserService.GetUserId(),
                 TenHanhDong = ActionLogDTO.Xoa,
                 TenBangTacDong = TableNameDTO.LichTrinh,
                 MaDoiTuong = lt.MaLichTrinh,
@@ -426,8 +426,8 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = AccountTypeDTO.NhanVien,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
-                TenHanhDong = ActionLogDTO.Tao,
+                MaTaiKhoan = _currentUserService.GetUserId(),
+                TenHanhDong = ActionLogDTO.Tao, 
                 TenBangTacDong = TableNameDTO.CTLichTrinh,
                 MaDoiTuong = ctlt.MaCTLT,
                 GiaTriSau = new
@@ -487,7 +487,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = AccountTypeDTO.NhanVien,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                MaTaiKhoan = _currentUserService.GetUserId(),
                 TenHanhDong = ActionLogDTO.CapNhat,
                 TenBangTacDong = TableNameDTO.CTLichTrinh,
                 MaDoiTuong = ctlt.MaCTLT,
@@ -524,7 +524,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = AccountTypeDTO.NhanVien,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                MaTaiKhoan = _currentUserService.GetUserId(),
                 TenHanhDong = ActionLogDTO.Xoa,
                 TenBangTacDong = TableNameDTO.CTLichTrinh,
                 MaDoiTuong = ctlt.MaCTLT,

@@ -156,7 +156,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                MaTaiKhoan = _currentUserService.GetUserId(),
 
                 TenHanhDong = ActionLogDTO.Tao,
 
@@ -218,7 +218,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                MaTaiKhoan = _currentUserService.GetUserId(),
 
                 TenHanhDong = ActionLogDTO.Xoa,
 
@@ -318,7 +318,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                MaTaiKhoan = _currentUserService.GetUserId(),
 
                 TenHanhDong = ActionLogDTO.CapNhat,
 
@@ -412,7 +412,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = currentAccount,
 
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                MaTaiKhoan = _currentUserService.GetUserId(),
                 Email = _currentUserService.GetEmail(),
                 TenHanhDong = ActionLogDTO.CapNhat,
 

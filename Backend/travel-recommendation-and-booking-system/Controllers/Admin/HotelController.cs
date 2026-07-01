@@ -16,12 +16,14 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         {
             _hotelService = hotelService;
         }
+
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             var result = await _hotelService.GetAllAsync();
             return Ok(result);
         }
+
         [HttpGet("Paged")]
         public async Task<IActionResult> GetPaged([FromQuery] HotelDTO hotel, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
@@ -98,8 +100,9 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             });
         }
 
+        // ĐÃ SỬA: Thêm [FromRoute] để .NET không bắt bẻ việc trống Body của lệnh PATCH
         [HttpPatch("images/{imageId}/set-main")]
-        public async Task<IActionResult> SetMainImage(int imageId)
+        public async Task<IActionResult> SetMainImage([FromRoute] int imageId)
         {
             var result = await _hotelService.SetMainImageAsync(imageId);
 
@@ -110,8 +113,9 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             });
         }
 
+        // ĐÃ SỬA: Thêm [FromRoute] để đồng bộ và tường minh dữ liệu từ Route
         [HttpDelete("images/{imageId}")]
-        public async Task<IActionResult> DeleteImage(int imageId)
+        public async Task<IActionResult> DeleteImage([FromRoute] int imageId)
         {
             var result = await _hotelService.DeleteImageAsync(imageId);
 

@@ -311,7 +311,7 @@ namespace travel_recommendation_and_booking_system.Services
                 {
                     LoaiTaiKhoan = currentAccount,
                     Email = _currentUserService.GetEmail(),
-                    MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                    MaTaiKhoan = _currentUserService.GetUserId(),
                     TenHanhDong = ActionLogDTO.Tao,
                     TenBangTacDong = TableNameDTO.NhanVien,
                     MaDoiTuong = entity.MaNhanVien,
@@ -432,7 +432,7 @@ namespace travel_recommendation_and_booking_system.Services
                 {
                     LoaiTaiKhoan = currentAccount,
                     Email = _currentUserService.GetEmail(),
-                    MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                    MaTaiKhoan = _currentUserService.GetUserId(),
                     TenHanhDong = ActionLogDTO.CapNhat,
                     TenBangTacDong = TableNameDTO.NhanVien,
                     MaDoiTuong = entity.MaNhanVien,
@@ -508,7 +508,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                MaTaiKhoan = _currentUserService.GetUserId(),
                 TenHanhDong = ActionLogDTO.Xoa,
                 TenBangTacDong = TableNameDTO.NhanVien,
                 MaDoiTuong = entity.MaNhanVien,
@@ -535,7 +535,7 @@ namespace travel_recommendation_and_booking_system.Services
             staff.TrangThai = trangThai;
             staff.NgayCapNhat = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            var maTaiKhoan = _currentUserService.GetUserId() ?? 0;
+            var maTaiKhoan = _currentUserService.GetUserId();
             var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
@@ -574,7 +574,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
+                MaTaiKhoan = _currentUserService.GetUserId(),
                 TenHanhDong = "Đặt lại mật khẩu",
                 TenBangTacDong = TableNameDTO.NhanVien,
                 MaDoiTuong = staff.MaNhanVien,

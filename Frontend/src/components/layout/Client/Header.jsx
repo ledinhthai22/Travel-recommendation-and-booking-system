@@ -21,7 +21,7 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const { pathname } = useLocation();
-  const { user, logout } = useContext(AuthContext);
+  const { user, forceLogout  } = useContext(AuthContext);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30);
@@ -59,7 +59,7 @@ export default function Header() {
               <UserAction
                 user={user}
                 onLoginClick={handleOpenAuth}
-                onLogout={logout}
+                onLogout={forceLogout}
               />
               <button
                 type="button"

@@ -1,25 +1,21 @@
-import React, { useState, useContext, useEffect, useRef } from 'react';
-import { LogOut, User, Bell } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { LogOut } from 'lucide-react';
 import useAuth from "~/Hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "~/Context/AuthContext";
-
+import NotificationPanel from "~/components/UI/Notification/NotificationPanel";
 export default function Header() {
-    const [isNotifyOpen, setIsNotifyOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     const { user } = useAuth();
-    const { logout } = useContext(AuthContext);
+    const { forceLogout  } = React.useContext(AuthContext);
     const navigate = useNavigate();
 
-    const notifyRef = useRef(null);
     const profileRef = useRef(null);
 
+    // Click outside để đóng profile dropdown
     useEffect(() => {
         const handleClickOutside = (e) => {
-            if (notifyRef.current && !notifyRef.current.contains(e.target)) {
-                setIsNotifyOpen(false);
-            }
             if (profileRef.current && !profileRef.current.contains(e.target)) {
                 setIsProfileOpen(false);
             }
@@ -29,7 +25,7 @@ export default function Header() {
     }, []);
 
     const handleLogout = async () => {
-        await logout();
+        await forceLogout();
         navigate("/");
     };
 
@@ -40,95 +36,58 @@ export default function Header() {
     const roleName = user?.tenVaiTro || (user?.maVaiTro === 1 ? 'Admin' : 'Nhân viên');
 
     return (
-        <header className="fixed top-0 right-0 left-85 h-15 bg-white border border-slate-200 z-40">
+        <header className="fixed top-0 right-0 left-80 h-15 bg-white border-b border-slate-200 z-40">
             <div className="flex justify-between items-center h-full px-6">
-                <div className="flex items-center ml-auto rounded-2xl">
+                <div className="flex items-center ml-auto gap-3">
 
-                    {/* Notification */}
-                    <div className="relative" ref={notifyRef}>
-                        <button
-                            onClick={() => {
-                                setIsNotifyOpen((prev) => !prev);
-                                setIsProfileOpen(false);
-                            }}
-                            className={`w-11 h-11 flex items-center justify-center transition-all active:scale-95 ${isNotifyOpen ? 'text-[#0EA5E5]' : 'text-slate-500'}`}
-                        >
-                            <Bell size={16} />
-                        </button>
+                    {/* Notification Panel - Đã tách riêng */}
+                    <NotificationPanel role="admin" />
 
-                        {isNotifyOpen && (
-                            <div className="absolute right-0 mt-[15px] w-90 bg-white border border-slate-200 shadow-sm rounded-2xl overflow-hidden z-50">
-                                <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-                                    <h3 className="font-semibold text-slate-900">Thông báo</h3>
-                                    <button className="text-[10px] text-[#0EA5E5] bg-blue-50/70 border border-blue-100 rounded-xl px-2.5 py-0.5">
-                                        Đánh dấu đã đọc tất cả
-                                    </button>
-                                </div>
-
-                                <div className="max-h-[340px] overflow-y-auto">
-                                    <div className="p-4 hover:bg-slate-50 border-b border-slate-50">
-                                        <p className="text-sm text-slate-700">
-                                            <span className="font-semibold">Hệ thống:</span> Lịch trình Tour Đà Lạt đã được cập nhật.
-                                        </p>
-                                        <p className="text-xs text-slate-400 mt-1">2 phút trước</p>
-                                    </div>
-                                </div>
-
-                                <button className="w-full py-4 text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-[#0EA5E5] border-t border-slate-100">
-                                    Xem tất cả thông báo
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Profile */}
+                    {/* Profile Dropdown */}
                     <div className="relative pl-4 border-l border-slate-200" ref={profileRef}>
                         <button
-                            onClick={() => {
-                                setIsProfileOpen((prev) => !prev);
-                                setIsNotifyOpen(false);
-                            }}
-                            className="flex items-center gap-3 p-3 pr-2 transition-all active:scale-[0.97]"
+                            onClick={() => setIsProfileOpen(prev => !prev)}
+                            className="flex items-center gap-3 p-2 pr-1 rounded-2xl hover:bg-slate-50 transition-all active:scale-[0.97]"
                         >
                             <div className="text-right">
-                                <p className={`text-[12px] font-semibold ${isProfileOpen ? 'text-[#0EA5E5]' : 'text-slate-900'}`}>
+                                <p className={`text-[13px] font-semibold ${isProfileOpen ? 'text-[#0EA5E5]' : 'text-slate-900'}`}>
                                     {user?.hoTen || "Chưa có tên"}
                                 </p>
-                                <p className={`text-[10px] ${isProfileOpen ? 'text-[#0EA5E5]' : 'text-slate-500'}`}>
+                                <p className={`text-[11px] ${isProfileOpen ? 'text-[#0EA5E5]' : 'text-slate-500'}`}>
                                     {roleName}
                                 </p>
                             </div>
 
                             <img
-                                alt={user?.hoTen || "Staff Avatar"}
-                                className="w-10 h-10 rounded-xl object-cover ring-2 ring-white shadow"
+                                alt="Avatar"
                                 src={avatarUrl}
                                 onError={(e) => {
                                     e.target.src = "https://ui-avatars.com/api/?name=Staff&background=1e40af&color=fff";
                                 }}
+                                className="w-10 h-10 rounded-2xl object-cover ring-2 ring-white shadow"
                             />
                         </button>
 
+                        {/* Profile Menu */}
                         {isProfileOpen && (
-                            <div className="absolute right-0 mt-[5px] w-72 bg-white border border-slate-200 shadow-2xl rounded-2xl py-2 z-50">
+                            <div className="absolute right-0 mt-3 w-72 bg-white border border-slate-200 shadow-2xl rounded-2xl py-2 z-50">
                                 <div className="px-5 py-4 border-b border-slate-100">
                                     <div className="flex items-center gap-3">
                                         <img
-                                            alt={user?.hoTen || "Staff"}
-                                            className="w-11 rounded-2xl object-cover"
                                             src={avatarUrl}
+                                            alt="Avatar"
+                                            className="w-11 h-11 rounded-2xl object-cover"
                                         />
                                         <div>
-                                            <p className="font-semibold text-slate-900">{user?.hoTen || "Chưa có tên"}</p>
+                                            <p className="font-semibold">{user?.hoTen || "Chưa có tên"}</p>
                                             <p className="text-sm text-slate-500">{user?.email || "Chưa cập nhật email"}</p>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="border-t border-slate-100 my-1 mx-2" />
 
                                 <button
                                     onClick={handleLogout}
-                                    className="w-full px-5 py-3 text-[12px] text-left flex items-center gap-3 hover:bg-red-50 text-red-600 transition-colors rounded-b-2xl"
+                                    className="w-full px-5 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 rounded-b-2xl transition"
                                 >
                                     <LogOut size={16} />
                                     Đăng xuất
@@ -136,7 +95,6 @@ export default function Header() {
                             </div>
                         )}
                     </div>
-
                 </div>
             </div>
         </header>
