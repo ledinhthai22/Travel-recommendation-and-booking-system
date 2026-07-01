@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getApprovedReviewsApi } from "~/Services/ReviewService";
 
 export const useReviews = () => {
@@ -6,26 +6,31 @@ export const useReviews = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        const loadReviews = async () => {
-            try {
-                setLoading(true);
-                const data = await getApprovedReviewsApi();
-                setReviews(data);
-            } catch (err) {
-                console.error("Lỗi khi load đánh giá:", err);
-                setError(err);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const loadReviews = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);                    // Reset lỗi trước khi fetch
 
-        loadReviews();
+            const data = await getApprovedReviewsApi();
+            
+            setReviews(data || []);            // Đảm bảo là mảng
+        } catch (err) {
+            console.error("Lỗi khi load đánh giá:", err);
+            setError(err);
+            setReviews([]);                    // Reset data khi lỗi
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        loadReviews();
+    }, [loadReviews]);
 
     return {
         reviews,
         loading,
-        error
+        error,
+        refetch: loadReviews
     };
 };

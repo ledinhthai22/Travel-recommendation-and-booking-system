@@ -28,8 +28,8 @@ namespace travel_recommendation_and_booking_system.Extensions
             RecurringJob.AddOrUpdate<IReviewService>(
                 "auto-process-reviews-batch",
                 service => service.ProcessReviewsBatchAsync(),
-                "0 23 * * *"
-            //Cron.Minutely()
+            //"0 23 * * *"
+            Cron.Minutely()
             );
         }
 

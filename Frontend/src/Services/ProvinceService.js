@@ -6,3 +6,10 @@ export const getProvincesApi = async () => {
     const response = await axios.get(`${API_URL}/`);
     return response.data;
 };
+
+// Lấy danh sách phường/xã theo mã tỉnh
+export const getWardsByProvinceCodeApi = async (provinceCode) => {
+    if (!provinceCode) return [];
+    const response = await axios.get(`${API_URL}/p/${provinceCode}?depth=2`);
+    return response.data?.wards ?? [];
+};

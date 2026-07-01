@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getTopDestinationsApi } from "~/Services/HomeService";
 
 export const useDestinations = () => {
@@ -6,26 +6,31 @@ export const useDestinations = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        const loadDestinations = async () => {
-            try {
-                setLoading(true);
-                const data = await getTopDestinationsApi();
-                setDestinations(data);
-            } catch (err) {
-                console.error("Lỗi khi load địa điểm:", err);
-                setError(err);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const loadDestinations = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);                    // Reset lỗi cũ
 
-        loadDestinations();
+            const data = await getTopDestinationsApi();
+            
+            setDestinations(data || []);       // Đảm bảo luôn là mảng
+        } catch (err) {
+            console.error("Lỗi khi load địa điểm:", err);
+            setError(err);
+            setDestinations([]);               // Reset data khi lỗi
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        loadDestinations();
+    }, [loadDestinations]);
 
     return {
         destinations,
         loading,
-        error
+        error,
+        refetch: loadDestinations   // Thêm refetch cho nhất quán
     };
 };

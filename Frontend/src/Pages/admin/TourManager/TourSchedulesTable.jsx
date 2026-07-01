@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import CustomDataTable from "~/components/UI/Table/CustomDataTable";
 import RowActionsButton from "~/components/UI/Table/Button/RowActionsButton";
 
@@ -6,6 +6,7 @@ export default function TourSchedulesTable({
     data = [],
     onView,
     onEdit,
+    onDelete, 
     loading = false,
     showStatus = true,
     showCodeChuyen = true,
@@ -38,7 +39,7 @@ export default function TourSchedulesTable({
         },
     };
 
-    const columns = [
+    const columns = useMemo(() => [
         {
             name: "STT",
             cell: (_, index) => (
@@ -98,7 +99,6 @@ export default function TourSchedulesTable({
             minWidth: "220px",
         },
 
-        // Chỉ hiện ở trang quản lý
         ...(!isCreateMode && showStatus ? [statusColumn] : []),
 
         {
@@ -130,25 +130,28 @@ export default function TourSchedulesTable({
 
         {
             name: "Hành động",
-            width: "120px",
+            width: "140px", 
             center: true,
             cell: (row) => {
-                const isLocked =
-                    row.trangThai === 2 ||
-                    row.trangThai === 3 ||
-                    row.trangThai === 4 ||
-                    row.soChoDaDat > 0;
+                // CHÍNH SÁCH BẢO MẬT: 
+                // Chỉ cho sửa/xóa khi: chưa khởi hành (trangThai === 1 hoặc khi đang tạo mới chưa có trangThai)
+                // VÀ đồng thời chưa có bất kì ai đặt chỗ (soChoDaDat == 0 hoặc undefined)
+                const hasBookings = (row.soChoDaDat ?? 0) > 0;
+                const isStartedOrCanceled = row.trangThai !== undefined && row.trangThai !== 1;
+                
+                const isLocked = isStartedOrCanceled || hasBookings;
 
                 return (
                     <RowActionsButton
                         row={row}
                         onView={!isCreateMode ? onView : null}
                         onEdit={isLocked ? null : onEdit}
+                        onDelete={isLocked ? null : onDelete} // <--- Sẽ bị ẩn hoàn toàn nếu đã khởi hành hoặc đã có người đặt chỗ
                     />
                 );
             },
         },
-    ];
+    ], [isCreateMode, showCodeChuyen, showStatus, onView, onEdit, onDelete]);
 
     return (
         <CustomDataTable

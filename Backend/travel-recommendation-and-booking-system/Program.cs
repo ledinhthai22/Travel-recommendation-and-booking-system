@@ -23,7 +23,7 @@ namespace travel_recommendation_and_booking_system
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-
+            QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
             // Add services to the container.
 
             builder.Services.AddControllers();
@@ -91,6 +91,7 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<IRequestInfoService, RequestInfoService>();
             builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
             builder.Services.AddScoped<ITourBookingService, TourBookingService>();
+            builder.Services.AddScoped<IStatisticService, StatisticService>();
             builder.Services.AddScoped<PromotionStatusJob>();
             builder.Services.AddScoped<BookingEmailJob>();
             builder.Services.AddScoped<PaymentWarningJob>();
@@ -142,7 +143,8 @@ namespace travel_recommendation_and_booking_system
                         policy.WithOrigins("http://localhost:5173")
                               .AllowAnyHeader()
                               .AllowAnyMethod()
-                              .AllowCredentials();
+                              .AllowCredentials()
+                              .WithExposedHeaders("Content-Disposition");
                     });
             });
             builder.Services.AddAuthorization();

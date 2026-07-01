@@ -7,6 +7,7 @@ using travel_recommendation_and_booking_system.DTOs.LogSystem;
 using travel_recommendation_and_booking_system.DTOs.TourBooking;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
+using travel_recommendation_and_booking_system.Services.PdfBuilders;
 using travel_recommendation_and_booking_system.SignalR;
 
 namespace travel_recommendation_and_booking_system.Services
@@ -427,6 +428,10 @@ namespace travel_recommendation_and_booking_system.Services
                 NgayThanhToan = DateTime.Now,
                 TrangThaiThanhToan = trangThai,
             });
+            _context.DonDatTours.Add(new DonDatTour
+
+            { }
+                );
 
             order.NgayCapNhat = DateTime.Now;
             await _context.SaveChangesAsync();
@@ -714,7 +719,7 @@ namespace travel_recommendation_and_booking_system.Services
 
                 if (delta != 0)
                 {
-                    order.ChuyenKhoiHanh.SoChoDaDat += delta;
+                    order.ChuyenKhoiHanh!.SoChoDaDat += delta;
                     order.ChuyenKhoiHanh.NgayCapNhat = DateTime.Now;
                 }
 
@@ -1126,6 +1131,52 @@ namespace travel_recommendation_and_booking_system.Services
             });
 
             return true;
+        }
+        private static string BuildFileName(ChuyenInfoDTO chuyen, int tongSoKhach)
+        {
+            // Format: MãChuyến_NgàyKhởiHành_SốLượngKhách.pdf
+            var ngay = chuyen.NgayKhoiHanh.ToString("ddMMyyyy");
+            var maChuyen = chuyen.MaChuyenCode.Replace(" ", "").Replace("/", "-");
+            return $"{maChuyen}_{ngay}_{tongSoKhach}_khach.pdf";
+        }
+
+        public async Task<(byte[] Pdf, string FileName)> GenerateContractsPdfWithNameAsync(List<int> maDonDatTours)
+        {
+            var details = new List<TourBookingDetailDTO>();
+
+            foreach (var id in maDonDatTours)
+            {
+                var detail = await GetDetailAsync(id);
+                if (detail == null) continue;
+
+                if (detail.TrangThaiDon < 2 || detail.TrangThaiDon == 4)
+                    throw new InvalidOperationException($"Đơn {detail.MaDatCho} chưa được duyệt hoặc đã hủy, không thể in hợp đồng.");
+
+                details.Add(detail);
+            }
+
+            if (!details.Any())
+                throw new InvalidOperationException("Không có đơn hợp lệ để in.");
+
+            var pdf = ContractPdfBuilder.GenerateContractsPdf(details);
+
+            int tongKhach = details.Sum(d => d.SoNguoiLon + d.SoTreEm + d.SoEmBe);
+            var fileName = BuildFileName(details[0].Chuyen, tongKhach);
+
+            return (pdf, fileName);
+        }
+
+        public async Task<(byte[] Pdf, string FileName)> GenerateContractsPdfByChuyenWithNameAsync(int maChuyen)
+        {
+            var ids = await _context.DonDatTours
+                .Where(x => x.MaChuyen == maChuyen && x.TrangThaiDon >= 2 && x.TrangThaiDon != 4)
+                .Select(x => x.MaDonDatTour)
+                .ToListAsync();
+
+            if (!ids.Any())
+                throw new InvalidOperationException("Chuyến này chưa có đơn nào được duyệt.");
+
+            return await GenerateContractsPdfWithNameAsync(ids);
         }
     }
 }

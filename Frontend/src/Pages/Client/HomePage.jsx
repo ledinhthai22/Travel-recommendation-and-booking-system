@@ -11,24 +11,41 @@ import useHomeLocations from '~/Hooks/useHomeLocations';
 import { useReviews } from '~/Hooks/useReview';
 import { useBestTours } from "~/Hooks/useBestTours";
 import { useLasterTours } from '~/Hooks/useLatestTour';
-import { useState,useEffect } from 'react';
 import { getMyWishlistIdsApi } from '~/Services/TourService';
+import useRefetchOnBack from '~/Hooks/useRefetchOnBack';
+import { useState, useEffect, useCallback } from 'react';
 export default function HomePage() {
-    const { reviews, reviewsLoading } = useReviews();
-    const { tours: bestTours, loading: bestToursLoading } = useBestTours(12);
+     const { reviews, reviewsLoading, refetch: refetchReviews } = useReviews();
+    const { tours: bestTours, loading: bestToursLoading, refetch: refetchBestTours } = useBestTours(12);
     const { user, isAuthenticated } = useAuth();
-    const { banners } = useBanner();
-    const { location, loading : locationLoading } = useHomeLocations(12);
-    const { tours:latestTours, loading: latestToursLoading } = useLasterTours(12);
+    const { banners, refresh: refetchBanner } = useBanner();
+    const { location, loading: locationLoading, refetch: refetchLocations } = useHomeLocations(12);
+    const { tours: latestTours, loading: latestToursLoading, refetch: refetchLatestTours } = useLasterTours(12);
     const activeBanner = banners;
-    const isLoggedIn = !!user
+    const isLoggedIn = !!user;
     const [wishlistIds, setWishlistIds] = useState([]);
 
-    useEffect(() => {
+    const fetchWishlist = useCallback(() => {
         if (isAuthenticated) {
             getMyWishlistIdsApi().then(ids => setWishlistIds(ids));
         }
     }, [isAuthenticated]);
+
+    useEffect(() => {
+        fetchWishlist();
+    }, [fetchWishlist]);
+
+    const refetchAll = useCallback(() => {
+        refetchReviews();
+        refetchBestTours();
+        refetchBanner();
+        refetchLocations();
+        refetchLatestTours();
+        fetchWishlist();
+    }, [refetchReviews, refetchBestTours, refetchBanner, refetchLocations, refetchLatestTours, fetchWishlist]);
+
+    useRefetchOnBack(refetchAll);
+    
     return (
         <div className="min-h-screen bg-white">
             <HeroSection

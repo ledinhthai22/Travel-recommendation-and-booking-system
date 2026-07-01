@@ -400,10 +400,23 @@ namespace Services
         {
             var chuyen = await _context.ChuyenKhoiHanhs.FindAsync(maChuyen);
 
-            if (chuyen == null || chuyen.NgayXoa != null)
+            // Kiểm tra nếu không tìm thấy trong Database
+            if (chuyen == null)
+            {
+                // Log ra để kiểm tra xem ID gửi lên có tồn tại trong DB thật không
+                Console.WriteLine($"[DELETE ERROR] Không tìm thấy chuyenKhoiHanh nào có MaChuyen = {maChuyen}");
                 return false;
+            }
+
+            // Nếu đã xóa mềm trước đó rồi thì báo thành công luôn thay vì trả về 404 gây hiểu lầm cho Frontend
+            if (chuyen.NgayXoa != null)
+            {
+                return true;
+            }
+
             if (chuyen.TrangThai == 2) throw new Exception("Chuyến đã khởi hành, không thể xóa.");
             if (chuyen.TrangThai == 3) throw new Exception("Chuyến đã kết thúc, không thể xóa.");
+
             var oldData = new
             {
                 chuyen.MaChuyen,
@@ -412,29 +425,37 @@ namespace Services
                 chuyen.TrangThai
             };
 
+            // Thực hiện xóa mềm
             chuyen.NgayXoa = DateTime.Now;
 
-            await UpdateTourGiaTuAsync(chuyen.MaTour);
+            // Bọc Try-Catch để tránh việc MaTour = 0 làm crash cả hàm xóa
+            try
+            {
+                if (chuyen.MaTour > 0)
+                {
+                    await UpdateTourGiaTuAsync(chuyen.MaTour);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WARN] Lỗi cập nhật giá tour: {ex.Message}");
+                // Vẫn tiếp tục cho phép xóa chuyến dù tính toán giá tour gặp lỗi dữ liệu liên kết
+            }
+
             await _context.SaveChangesAsync();
-            var currentAccount = _currentUserService.GetUserId() == 1? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
+
+            // Ghi Log hệ thống
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan = currentAccount,
                 Email = _currentUserService.GetEmail(),
                 MaTaiKhoan = _currentUserService.GetUserId() ?? 0,
-
                 TenHanhDong = ActionLogDTO.Xoa,
-
                 TenBangTacDong = TableNameDTO.ChuyenKhoiHanh,
-
                 MaDoiTuong = chuyen.MaChuyen,
-
                 GiaTriTruoc = oldData,
-
-                GiaTriSau = new
-                {
-                    chuyen.NgayXoa
-                }
+                GiaTriSau = new { chuyen.NgayXoa }
             });
 
             return true;

@@ -5,5 +5,6 @@
         public int MaTour { get; set; }
         public int DiemDanhGia { get; set; }
         public string NoiDung { get; set; }
+        public DateTime NgayTao { get; set; }
     }
 }

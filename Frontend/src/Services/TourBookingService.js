@@ -132,3 +132,15 @@ export const completeBookingAdminApi = async (maDonDatTour) => {
     );
     return response.data;
 };
+export const printContractsByIdsApi = (maDonDatTours) =>
+    axiosClient.post(
+        '/admin/tour-bookings/print-contract',
+        { maDonDatTours },
+        { responseType: 'blob' }
+    );
+
+export const printContractsByChuyenApi = (maChuyen) =>
+    axiosClient.get(
+        `/admin/tour-bookings/print-contract/by-chuyen/${maChuyen}`,
+        { responseType: 'blob' }
+    );

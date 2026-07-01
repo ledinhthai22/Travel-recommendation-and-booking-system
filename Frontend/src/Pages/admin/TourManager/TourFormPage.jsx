@@ -281,7 +281,6 @@ export default function TourFormPage({ mode }) {
     const originalDataRef = useRef(null);
     const scheduleSnapshotRef = useRef({});
     const departureSnapshotRef = useRef({});
-    // Theo dõi người dùng có tự nhập đêm chưa hay để auto-tính
     const demManualRef = useRef(false);
 
     const [loading, setLoading] = useState(false);
@@ -297,13 +296,12 @@ export default function TourFormPage({ mode }) {
     const infoSaving = useSectionSaving();
     const imgSaving = useSectionSaving();
     const scheduleSaving = useSectionSaving();
-    const departureSaving = useSectionSaving();
+    const deleteSaving = useSectionSaving();
 
     const isScheduleLocked = chuyenKhoiHanhs.some(
         x => x.trangThai === 2 || x.trangThai === 3 || x.soChoDaDat > 0
     );
 
-    // Realtime validation: số ngày vs số lịch trình
     useEffect(() => {
         if (isEdit && formData.ngay && lichTrinhs.length > 0) {
             if (Number(formData.ngay) !== lichTrinhs.length) {
@@ -350,7 +348,6 @@ export default function TourFormPage({ mode }) {
 
     const applyTourData = (tourData, hotelRes) => {
         originalDataRef.current = tourData;
-        // Dữ liệu từ API → coi đêm đã được set, không auto-override
         demManualRef.current = true;
 
         const info = tourData.tourInfo;
@@ -400,15 +397,10 @@ export default function TourFormPage({ mode }) {
         }
     };
 
-    // ── Số ngày / số đêm ────────────────────────────────────────────────────
-    // Quy tắc: 1 ngày = 0 đêm (dem = ngay - 1).
-    // Khi người dùng nhập ngay → tự tính dem TRỪ KHI họ đã tự sửa dem trước.
-    // Khi người dùng tự nhập dem → đánh dấu demManual và giữ nguyên giá trị.
     const handleNumberChange = (field, value) => {
         if (value === "") {
             if (field === "dem") demManualRef.current = true;
             setFormData(prev => ({ ...prev, [field]: "" }));
-            // Xóa lỗi tương ứng khi người dùng xóa trắng
             setErrors(prev => { const { [field]: _, ...rest } = prev; return rest; });
             return;
         }
@@ -422,7 +414,6 @@ export default function TourFormPage({ mode }) {
                 const newDem = demManualRef.current ? prev.dem : autoDem;
                 return { ...prev, ngay: number, dem: newDem };
             });
-            // Xóa lỗi ngay khi nhập lại
             setErrors(prev => { const { ngay: _, dem: __, ...rest } = prev; return rest; });
         } else if (field === "dem") {
             demManualRef.current = true;
@@ -433,7 +424,6 @@ export default function TourFormPage({ mode }) {
         }
     };
 
-    // ── Validate chung cho số ngày & đêm ────────────────────────────────────
     const validateNgayDem = (errs, ngayVal, demVal, checkScheduleMatch = false) => {
         const ngayNum = Number(ngayVal);
         const demNum = Number(demVal);
@@ -453,7 +443,6 @@ export default function TourFormPage({ mode }) {
         }
     };
 
-    // ── Image handlers ───────────────────────────────────────────────────────
     const handleImageChange = async (e) => {
         if (isViewMode) return;
         const files = Array.from(e.target.files || []);
@@ -539,7 +528,6 @@ export default function TourFormPage({ mode }) {
         }
     };
 
-    // ── Schedule handlers ────────────────────────────────────────────────────
     const handleLichTrinhsChange = async (newLichTrinhs) => {
         if (!isEdit || !id) {
             setLichTrinhs(newLichTrinhs);
@@ -586,34 +574,75 @@ export default function TourFormPage({ mode }) {
         if (failed.length > 0) throw new Error(`Có ${failed.length} thao tác lịch trình thất bại.`);
     };
 
-    // ── Departure handlers ───────────────────────────────────────────────────
     const handleChuyenKhoiHanhsChange = async (newChuyen) => {
         setChuyenKhoiHanhs(newChuyen);
         if (!isEdit || !id) return;
         try {
-            departureSaving.markSaving();
+            deleteSaving.markSaving();
             await syncDeparturesImmediate(newChuyen);
             const tourData = await getTourDetailApi(id);
             originalDataRef.current = { ...originalDataRef.current, chuyenKhoiHanhs: tourData.chuyenKhoiHanhs };
             setChuyenKhoiHanhs((tourData.chuyenKhoiHanhs || []).map(mapDepartureFromApi));
-            departureSaving.markSaved();
+            deleteSaving.markSaved();
         } catch (err) {
-            departureSaving.markIdle();
+            deleteSaving.markIdle();
             toastError("Lỗi lưu chuyến khởi hành", getErrorMessage(err));
         }
     };
 
+    const handleDeleteDeparture = async (row) => {
+        // 1. Kiểm tra nếu đang ở chế độ thêm mới Tour (Chưa có ID tour trên server)
+        if (!isEdit) {
+            const updated = chuyenKhoiHanhs.filter(ch => ch.tempId !== row.tempId);
+            setChuyenKhoiHanhs(updated);
+            toastSuccess("Thành công", "Đã gỡ chuyến khởi hành tạm thời.");
+            return;
+        }
+
+        // 2. LẤY ID AN TOÀN TUYỆT ĐỐI (Kiểm tra mọi ngóc ngách cấu trúc có thể có)
+        let rawId = null;
+
+        if (row) {
+            if (typeof row.maChuyen !== 'undefined' && row.maChuyen !== null) {
+                rawId = row.maChuyen; // Trường hợp row đã được làm phẳng
+            } else if (row.chuyenKhoiHanh && row.chuyenKhoiHanh.maChuyen) {
+                rawId = row.chuyenKhoiHanh.maChuyen; // Trường hợp row là cấu trúc gốc từ Server
+            } else if (row.id) {
+                rawId = row.id; // Phòng hờ cấu trúc bảng đặt tên trường định danh là id
+            }
+        }
+
+        const targetMaChuyen = Number(rawId);
+
+        // 3. Nếu kiểm tra ID vẫn ra bằng 0 hoặc không hợp lệ, không cho gọi API để tránh 404
+        if (!rawId || isNaN(targetMaChuyen) || targetMaChuyen <= 0) {
+            console.error("Dữ liệu dòng chọn xóa bị lỗi định danh. Đối tượng row nhận được thực tế là:", row);
+            toastError("Lỗi dữ liệu", `Không xác định được mã chuyến khởi hành hợp lệ trên hệ thống (Mã nhận được: ${rawId}).`);
+            return;
+        }
+
+        // 4. Thực hiện gọi API xóa khi ID đã hợp lệ
+        try {
+            deleteSaving.markSaving();
+
+            // Gọi API xóa trực tiếp xuống Backend
+            await deleteDepartureApi(targetMaChuyen);
+
+            // Tải lại toàn bộ dữ liệu Tour mới nhất từ Server để đồng bộ lại danh sách sạch sẽ
+            const tourData = await getTourDetailApi(id);
+            originalDataRef.current = { ...originalDataRef.current, chuyenKhoiHanhs: tourData.chuyenKhoiHanhs };
+            setChuyenKhoiHanhs((tourData.chuyenKhoiHanhs || []).map(mapDepartureFromApi));
+
+            deleteSaving.markSaved();
+            toastSuccess("Thành công", "Đã xóa chuyến khởi hành khỏi hệ thống.");
+        } catch (err) {
+            deleteSaving.markIdle();
+            console.error("Chi tiết lỗi từ Server khi xóa chuyến:", err);
+            toastError("Lỗi xóa chuyến", getErrorMessage(err, "Không thể xóa chuyến đi này."));
+        }
+    };
+
     const syncDeparturesImmediate = async (snapshotChuyenKhoiHanhs) => {
-        const originalDepartures = originalDataRef.current?.chuyenKhoiHanhs || [];
-        const deletedDepartures = originalDepartures.filter(oc => {
-            const maChuyen = toNumber(oc.chuyenKhoiHanh?.maChuyen);
-            return isExistingId(maChuyen) && !snapshotChuyenKhoiHanhs.some(sc => toNumber(sc.maChuyen) === maChuyen);
-        });
-
-        const deleteResults = await Promise.allSettled(
-            deletedDepartures.map(oc => deleteDepartureApi(toNumber(oc.chuyenKhoiHanh.maChuyen)))
-        );
-
         const toUpsert = snapshotChuyenKhoiHanhs.filter(ch => {
             const maChuyen = toNumber(ch.maChuyen);
             if (!isExistingId(maChuyen)) return true;
@@ -629,11 +658,10 @@ export default function TourFormPage({ mode }) {
             })
         );
 
-        const failed = [...deleteResults, ...upsertResults].filter(r => r.status === "rejected");
-        if (failed.length > 0) throw new Error(`Có ${failed.length} thao tác chuyến khởi hành thất bại.`);
+        const failed = upsertResults.filter(r => r.status === "rejected");
+        if (failed.length > 0) throw new Error(`Có ${failed.length} thao tác cập nhật chuyến thất bại.`);
     };
 
-    // ── Build payload ────────────────────────────────────────────────────────
     const buildTourInfoJson = () => ({
         TourInfo: {
             TenTour: formData.tenTour,
@@ -650,7 +678,6 @@ export default function TourFormPage({ mode }) {
         ChuyenKhoiHanhs: []
     });
 
-    // ── Validate ─────────────────────────────────────────────────────────────
     const validateBasicInfo = () => {
         const errs = {};
         if (!formData.tenTour?.trim()) errs.tenTour = "Tên tour không được để trống.";
@@ -680,7 +707,6 @@ export default function TourFormPage({ mode }) {
         return Object.keys(errs).length === 0 && isDeparturesValid;
     };
 
-    // ── Save handlers ────────────────────────────────────────────────────────
     const handleSaveBasicInfo = async () => {
         if (isViewMode || !validateBasicInfo()) return;
 
@@ -723,7 +749,6 @@ export default function TourFormPage({ mode }) {
         }
     };
 
-    // ── Derived state ────────────────────────────────────────────────────────
     const isBasicInfoCompleted =
         formData.tenTour?.trim() &&
         formData.maLoaiTour &&
@@ -735,13 +760,6 @@ export default function TourFormPage({ mode }) {
     const canAddDay = isBasicInfoCompleted && lichTrinhs.length < Number(formData.ngay || 0);
     const canSaveBasicInfo = isEdit && !isScheduleLocked && Number(formData.ngay) === lichTrinhs.length;
 
-    // Hint tự động tính đêm chỉ hiện khi người dùng chưa tự nhập và đã có ngày
-    // const demAutoHint =
-    //     !demManualRef.current && formData.ngay
-    //         ? `Tự động: ${formData.ngay} ngày → ${Math.max(0, Number(formData.ngay) - 1)} đêm`
-    //         : null;
-
-    // ── Render ───────────────────────────────────────────────────────────────
     return (
         <div className="bg-white border border-slate-200 rounded-2xl shadow">
             <div className="p-6 flex justify-between items-center border-b border-slate-200 bg-slate-50 rounded-t-2xl">
@@ -752,7 +770,6 @@ export default function TourFormPage({ mode }) {
                     <ArrowLeft size={20} />
                     <span className="font-medium">Quay lại</span>
                 </button>
-                {/* ── Create button (add mode only) ── */}
                 {!isEdit && !isViewMode && (
                     <div className="flex justify-end">
                         <button
@@ -875,7 +892,6 @@ export default function TourFormPage({ mode }) {
                             />
                         </div>
 
-                        {/* Số ngày */}
                         <InputField
                             type="number"
                             label="Số ngày"
@@ -886,7 +902,6 @@ export default function TourFormPage({ mode }) {
                             error={errors.ngay}
                         />
 
-                        {/* Số đêm — có hint khi đang auto-tính */}
                         <div className="flex flex-col gap-1">
                             <InputField
                                 type="number"
@@ -939,7 +954,7 @@ export default function TourFormPage({ mode }) {
                             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">
                                 Danh sách chuyến đi thuộc Tour
                             </h3>
-                            {isEdit && <SaveStatusBadge state={departureSaving.state} />}
+                            {isEdit && <SaveStatusBadge state={deleteSaving.state} />}
                         </div>
                         {!isViewMode && (
                             <button
@@ -963,6 +978,7 @@ export default function TourFormPage({ mode }) {
                             data={chuyenKhoiHanhs}
                             onView={(item) => tourScheduleRef.current?.openEditModal(item)}
                             onEdit={!isViewMode ? (item) => tourScheduleRef.current?.openEditModal(item) : null}
+                            onDelete={!isViewMode ? handleDeleteDeparture : null}
                             loading={loading}
                             showStatus={isEdit || isViewMode}
                             showCodeChuyen={isEdit || isViewMode}
@@ -970,8 +986,6 @@ export default function TourFormPage({ mode }) {
                         />
                     )}
                 </section>
-
-
             </div>
 
             <TourScheduleSection

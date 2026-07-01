@@ -20,6 +20,9 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<TourBookingDetailDTO?> GetUserBookingDetailAsync(int maDonDatTour, int maNguoiDung);
         Task<bool> CancelByUserAsync(int maDonDatTour, int maNguoiDung);
         Task<bool> UpdatePassengerAsync(int maKhachHang, UpdatePassengerDTO dto);
+        //in hợp đồng
+        Task<(byte[] Pdf, string FileName)> GenerateContractsPdfWithNameAsync(List<int> maDonDatTours);
+        Task<(byte[] Pdf, string FileName)> GenerateContractsPdfByChuyenWithNameAsync(int maChuyen);
 
     }
 }

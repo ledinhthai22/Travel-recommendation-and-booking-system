@@ -75,12 +75,12 @@ function App() {
                         <Route path="/Cac-Chuyen-Di/:slug" element={<TourDetail />} />
                         <Route path="Khach-san/:slug" element={<HotelDetail />} />
                         <Route path="Lien-He" element={<ContactPage />} />
-                        <Route path="Thanh-Toan" element={<CheckoutPage />} />
-                        <Route path="/payment-return" element={<PaymentReturnPage />} />
-                        <Route path="dat-tour-thanh-cong" element={<BookingSuccessPage />} />
                         <Route element={<ProtectedRoute />}>
                             <Route path="Thong-Tin-Ca-Nhan" element={<Profile />} />
                             <Route path="Danh-Sach-Yeu-Thich" element={<Wishlist />} />
+                            <Route path="Thanh-Toan" element={<CheckoutPage />} />
+                            <Route path="/payment-return" element={<PaymentReturnPage />} />
+                            <Route path="dat-tour-thanh-cong" element={<BookingSuccessPage />} />
                         </Route>
                     </Route>
 
