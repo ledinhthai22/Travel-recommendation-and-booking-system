@@ -170,9 +170,34 @@ namespace travel_recommendation_and_booking_system.Services
 
                 if (!allowedExtensions.Contains(fileExtension) || !location.DuongDanAnh.ContentType.StartsWith("image/"))
                 {
-                    throw new Exception("File tải lên không phải là định dạng ảnh hợp lệ.");
+                    throw new Exception(
+                        "Chỉ nhận các file .jpg, .jpeg, .png, .gif, .webp"
+                    );
                 }
+                bool existedName = await _context.DiaDiems
+                    .AnyAsync(x =>
+                        x.NgayXoa == null &&
+                        x.TenDiaDiem.Trim().ToLower() ==
+                        location.TenDiaDiem.Trim().ToLower());
 
+                if (existedName)
+                {
+                    throw new Exception("Tên địa điểm đã tồn tại.");
+                }
+                bool existedLocation = await _context.DiaDiems
+                .AnyAsync(x =>
+                    x.NgayXoa == null &&
+                    x.TenDiaDiem.Trim().ToLower() ==
+                        location.TenDiaDiem.Trim().ToLower() &&
+                    x.TinhThanh.Trim().ToLower() ==
+                        location.TinhThanh.Trim().ToLower());
+
+                if (existedLocation)
+                {
+                    throw new Exception(
+                        "Địa điểm này đã tồn tại trong tỉnh thành được chọn"
+                    );
+                }
                 string originalFileName = Path.GetFileName(location.DuongDanAnh.FileName);
                 originalFileName = originalFileName.Replace(" ", "_");
                 string timeStamp = DateTime.Now.ToString("yyyyMMddHHmmssfff");
@@ -224,6 +249,32 @@ namespace travel_recommendation_and_booking_system.Services
 
                 if (location == null) return false;
 
+                bool existedName = await _context.DiaDiems
+                .AnyAsync(x =>
+                    x.MaDiaDiem != id &&
+                    x.NgayXoa == null &&
+                    x.TenDiaDiem.Trim().ToLower() ==
+                    request.TenDiaDiem.Trim().ToLower());
+
+                if (existedName)
+                {
+                    throw new Exception("Tên địa điểm đã tồn tại.");
+                }
+                bool existedLocation = await _context.DiaDiems
+                .AnyAsync(x =>
+                    x.MaDiaDiem != id &&
+                    x.NgayXoa == null &&
+                    x.TenDiaDiem.Trim().ToLower() ==
+                        request.TenDiaDiem.Trim().ToLower() &&
+                    x.TinhThanh.Trim().ToLower() ==
+                        request.TinhThanh.Trim().ToLower());
+
+                if (existedLocation)
+                {
+                    throw new Exception(
+                        "Địa điểm này đã tồn tại trong tỉnh thành được chọn"
+                    );
+                }
                 if (request.DuongDanAnh != null && request.DuongDanAnh.Length > 0)
                 {
                     var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
@@ -231,7 +282,8 @@ namespace travel_recommendation_and_booking_system.Services
 
                     if (!allowedExtensions.Contains(fileExtension) || !request.DuongDanAnh.ContentType.StartsWith("image/"))
                     {
-                        throw new Exception("File tải lên không phải là định dạng ảnh hợp lệ.");
+                        throw new Exception( "Chỉ nhận các file .jpg, .jpeg, .png, .gif, .webp"
+                        );
                     }
 
                     if (!string.IsNullOrEmpty(location.DuongDanAnh))
@@ -281,24 +333,58 @@ namespace travel_recommendation_and_booking_system.Services
         }
         public async Task<bool> SoftDeleteLocationAsync(int id)
         {
-            var location = await _context.DiaDiems.FindAsync(id);
+            var location = await _context.DiaDiems
+                .FirstOrDefaultAsync(x => x.MaDiaDiem == id);
+
+            if (location == null)
+            {
+                throw new Exception("Không tìm thấy địa điểm.");
+            }
+
+            if (location.NgayXoa != null)
+            {
+                throw new Exception("Địa điểm đã được xóa trước đó.");
+            }
+
             bool isUsed = await _context.CTLichTrinhs
-            .AnyAsync(x => x.MaDiaDiem == id);
+                .AnyAsync(x => x.MaDiaDiem == id);
 
             if (isUsed)
             {
                 throw new Exception(
-                    "Địa điểm đang được sử dụng trong lịch trình tour");
+                    "Địa điểm đang được sử dụng trong lịch trình tour."
+                );
             }
-            if (location == null || location.NgayXoa != null || location.TrangThai == true)
+
+            if (location.TrangThai)
             {
-                return false;
+                throw new Exception(
+                    "Vui lòng ngưng khai thác địa điểm trước khi xóa."
+                );
             }
 
             location.NgayXoa = DateTime.Now;
+            location.NgayCapNhat = DateTime.Now;
 
-            _context.DiaDiems.Update(location);
             await _context.SaveChangesAsync();
+
+            return true;
+        }
+        public async Task<bool> UpdateStatusAsync(int id, bool status)
+        {
+            var location = await _context.DiaDiems
+                .FirstOrDefaultAsync(x =>
+                    x.MaDiaDiem == id &&
+                    x.NgayXoa == null);
+
+            if (location == null)
+                return false;
+
+            location.TrangThai = status;
+            location.NgayCapNhat = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+
             return true;
         }
     }

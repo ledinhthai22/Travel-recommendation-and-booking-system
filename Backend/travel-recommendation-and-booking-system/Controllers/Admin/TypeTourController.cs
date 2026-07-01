@@ -42,7 +42,14 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             {
                 return BadRequest(ModelState);
             }
+
             var istypetour = await _tour.CreateTypeTourAsync(typeTour);
+
+            if (!istypetour)
+            {
+                return BadRequest("Loại tour đã tồn tại trong danh sách");
+            }
+
             return Ok(new
             {
                 success = true,
@@ -50,19 +57,25 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             });
         }
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateTypeTour(int id, [FromForm] TypeTourDTO typeTour)
+        public async Task<IActionResult> UpdateTypeTour(int id,[FromForm] TypeTourDTO typeTour)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
+
             var istype = await _tour.UpdateTypeTourAsync(id, typeTour);
+
+            if (!istype)
+            {
+                return BadRequest("Loại tour đã tồn tại trong danh sách");
+            }
+
             return Ok(new
             {
                 success = true,
                 message = "Cập nhật loại hình tour thành công!"
             });
-
         }
         [HttpDelete("{id}")]
         public async Task<IActionResult> SoftDeleteTypeTour(int id)

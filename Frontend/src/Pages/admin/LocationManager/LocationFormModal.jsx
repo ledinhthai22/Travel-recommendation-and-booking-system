@@ -140,10 +140,57 @@ export default function LocationFormModal({
         if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
     };
 
+
     const handleImageChange = (e) => {
         if (isViewMode) return;
         const file = e.target.files[0];
         if (!file) return;
+        const handleImageChange = (e) => {
+            if (isViewMode) return;
+
+            const file = e.target.files[0];
+
+            if (!file) return;
+
+            const allowedExtensions = [
+                "jpg",
+                "jpeg",
+                "png",
+                "gif",
+                "webp"
+            ];
+
+            const extension = file.name
+                .split(".")
+                .pop()
+                .toLowerCase();
+
+            if (!allowedExtensions.includes(extension)) {
+                toastError(
+                    "Chỉ nhận các file .jpg, .jpeg, .png, .gif, .webp"
+                );
+
+                e.target.value = "";
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                toastError("Ảnh không được vượt quá 10MB!");
+                return;
+            }
+
+            setImage({
+                file,
+                previewUrl: URL.createObjectURL(file)
+            });
+
+            setErrors(prev => ({
+                ...prev,
+                image: ''
+            }));
+
+            e.target.value = '';
+        };
 
         if (file.size > 10 * 1024 * 1024) {
             toastError("Ảnh không được vượt quá 10MB!");
@@ -315,7 +362,15 @@ export default function LocationFormModal({
                                             placeholder="Chọn loại địa điểm..."
                                             value={formData.loaiDiaDiem?.toString() || ""}
                                             onChange={(value) => {
-                                                setFormData(prev => ({ ...prev, loaiDiaDiem: value }));
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    loaiDiaDiem: value
+                                                }));
+
+                                                setErrors(prev => ({
+                                                    ...prev,
+                                                    loaiDiaDiem: ""
+                                                }));
                                             }}
                                             options={typeData.map(item => ({
                                                 value: item.maLoaiDD.toString(),
@@ -340,12 +395,17 @@ export default function LocationFormModal({
                             <SelectField
                                 label="Tỉnh / Thành phố"
                                 value={formData.tinhThanh}
-                                onChange={(value) =>
+                                onChange={(value) => {
                                     setFormData(prev => ({
                                         ...prev,
                                         tinhThanh: value
-                                    }))
-                                }
+                                    }));
+
+                                    setErrors(prev => ({
+                                        ...prev,
+                                        tinhThanh: ""
+                                    }));
+                                }}
                                 options={provinceData}
                                 valueKey="name"
                                 labelKey="name"

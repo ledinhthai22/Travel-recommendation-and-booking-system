@@ -12,5 +12,6 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<bool> CreateLocationAsync(LocationDTO location);
         Task<bool> UpdateLocationAsync(int id, LocationDTO location);
         Task<bool> SoftDeleteLocationAsync(int id);
+        Task<bool> UpdateStatusAsync(int id, bool status);
     }
 }

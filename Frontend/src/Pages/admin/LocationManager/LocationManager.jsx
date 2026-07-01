@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import ManagerCard from '~/components/UI/Card/ManagerCard';
 import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
 import LocationFormModal from './LocationFormModal';
-import { getLocationApi, deleteLocationApi } from '~/Services/LocationService';
+import { getLocationApi, deleteLocationApi, updateLocationStatusApi } from '~/Services/LocationService';
 import { getAllTypeLocationApi } from '~/Services/TypeLocationService';
 import { toastError, toastSuccess, toastWarning } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
 import ConfirmModal from '~/components/UI/Modal/ConfirmModal';
+
 
 export default function LocationManager() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -84,31 +85,58 @@ export default function LocationManager() {
         fetchLocations();
     };
 
-    const handleDelete = (item) => {
-        if (item.trangThai === true) {
-            toastWarning("Không thể xóa địa điểm đang hoạt động. Vui lòng chuyển sang trạng thái ẩn trước!");
-            return;
-        }
+    action: async () => {
+        try {
+            setLoading(true);
 
-        setConfirmConfig({
-            title: "Xóa địa điểm",
-            message: `Bạn có chắc chắn muốn xóa địa điểm "${item.tenDiaDiem}" không?`,
-            type: "danger",
-            confirmText: "Xóa",
-            action: async () => {
-                try {
-                    setLoading(true);
-                    await deleteLocationApi(item.maDiaDiem);
-                    toastSuccess("Đã xóa địa điểm thành công!");
-                    fetchLocations();
-                } catch (error) {
-                    toastError(getErrorMessage(error));
-                } finally {
-                    setLoading(false);
-                }
+            const result = await deleteLocationApi(
+                item.maDiaDiem
+            );
+
+            toastSuccess(
+                result?.message ||
+                "Đã xóa địa điểm thành công!"
+            );
+
+            if (
+                locations.length === 1 &&
+                currentPage > 1
+            ) {
+                setCurrentPage(prev => prev - 1);
+            } else {
+                fetchLocations();
             }
-        });
-        setConfirmOpen(true);
+        }
+        catch (error) {
+            toastError(
+                "Xóa địa điểm thất bại!",
+                getErrorMessage(error)
+            );
+        }
+        finally {
+            setLoading(false);
+        }
+    }
+    const handleToggleStatus = async (item) => {
+        try {
+            const result =
+                await updateLocationStatusApi(
+                    item.maDiaDiem,
+                    !item.trangThai
+                );
+
+            toastSuccess(
+                result.message
+            );
+
+            fetchLocations();
+        }
+        catch (error) {
+            toastError(
+                "Cập nhật trạng thái thất bại",
+                getErrorMessage(error)
+            );
+        }
     };
     const generatePaginationPages = (current, total) => {
         if (total <= 7) {
@@ -149,6 +177,77 @@ export default function LocationManager() {
         // Remove duplicates
         return [...new Set(pages)];
     };
+    const handleChangeStatus = (item) => {
+        setConfirmConfig({
+            title: "Cập nhật trạng thái",
+            message: item.trangThai
+                ? `Ngưng khai thác "${item.tenDiaDiem}" ?`
+                : `Khai thác lại "${item.tenDiaDiem}" ?`,
+            type: "warning",
+            confirmText: "Xác nhận",
+            action: async () => {
+                try {
+                    const result =
+                        await updateLocationStatusApi(
+                            item.maDiaDiem,
+                            !item.trangThai
+                        );
+
+                    toastSuccess(
+                        result.message ||
+                        "Cập nhật trạng thái thành công!"
+                    );
+
+                    fetchLocations();
+                }
+                catch (error) {
+                    toastError(
+                        "Cập nhật trạng thái thất bại",
+                        getErrorMessage(error)
+                    );
+                }
+            }
+        });
+
+        setConfirmOpen(true);
+    };
+    const handleDelete = (item) => {
+        setConfirmConfig({
+            title: "Xóa địa điểm",
+            message: `Bạn có chắc muốn xóa "${item.tenDiaDiem}" không?`,
+            type: "danger",
+            confirmText: "Xóa",
+            action: async () => {
+                try {
+                    setLoading(true);
+
+                    const result = await deleteLocationApi(item.maDiaDiem);
+
+                    toastSuccess(
+                        result?.message ||
+                        "Đã xóa địa điểm thành công!"
+                    );
+
+                    if (locations.length === 1 && currentPage > 1) {
+                        setCurrentPage(prev => prev - 1);
+                    } else {
+                        fetchLocations();
+                    }
+                }
+                catch (error) {
+                    toastError(
+                        "Xóa địa điểm thất bại!",
+                        getErrorMessage(error)
+                    );
+                }
+                finally {
+                    setLoading(false);
+                }
+            }
+        });
+
+        setConfirmOpen(true);
+    };
     return (
         <div className="p-4 space-y-6">
             <ManagerToolbar
@@ -187,12 +286,22 @@ export default function LocationManager() {
                             key={item.maDiaDiem}
                             item={{
                                 ...item,
-                                tenLoai: allTypes.find(t => t.maLoaiDD === item.loaiDiaDiem)?.tenLoaiDD || item.loaiDiaDiem
+                                tenLoai:
+                                    allTypes.find(
+                                        t => t.maLoaiDD === item.loaiDiaDiem
+                                    )?.tenLoaiDD || item.loaiDiaDiem
                             }}
                             type="location"
                             onView={() => handleOpenModal('view', item)}
                             onEdit={() => handleOpenModal('edit', item)}
-                            onDelete={item.trangThai === false ? () => handleDelete(item) : null}
+                            onDelete={
+                                item.trangThai === false
+                                    ? () => handleDelete(item)
+                                    : null
+                            }
+                            onChangeStatus={() =>
+                                handleChangeStatus(item)
+                            }
                         />
                     ))}
                 </div>

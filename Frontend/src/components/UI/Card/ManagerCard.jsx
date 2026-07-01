@@ -225,6 +225,7 @@ export default function ManagerCard({
                         <span className="material-symbols-outlined text-amber-500" style={{ fontSize: '15px' }}>edit_square</span>
                         <span className="text-[10px] font-medium text-gray-700">Cập nhật</span>
                     </button>
+                    {/* TOUR */}
                     {type === "tour" &&
                         onChangeStatus &&
                         item.trangThai !== 3 && (
@@ -233,7 +234,7 @@ export default function ManagerCard({
 
                                 <button
                                     onClick={() => {
-                                        onChangeStatus?.(item);
+                                        onChangeStatus(item);
                                         setIsOpen(false);
                                     }}
                                     className="w-full px-4 py-2 flex items-center gap-2.5 hover:bg-yellow-50 transition-colors"
@@ -249,15 +250,40 @@ export default function ManagerCard({
                                         {
                                             item.trangThai === 1
                                                 ? "Tạm ngưng"
-                                                : item.trangThai === 2
-                                                    ? "Mở bán"
-                                                    : "Ngừng kinh doanh"
+                                                : "Mở bán"
                                         }
                                     </span>
                                 </button>
                             </>
                         )}
+                    {/* LOCATION */}
+                    {type === "location" &&
+                        onChangeStatus && (
+                            <>
+                                <div className="h-px bg-gray-100 mx-3 my-1" />
 
+                                <button
+                                    onClick={() => {
+                                        onChangeStatus(item);
+                                        setIsOpen(false);
+                                    }}
+                                    className="w-full px-4 py-2 flex items-center gap-2.5 hover:bg-yellow-50 transition-colors"
+                                >
+                                    <span
+                                        className="material-symbols-outlined text-yellow-500"
+                                        style={{ fontSize: '15px' }}
+                                    >
+                                        sync
+                                    </span>
+
+                                    <span className="text-[10px] font-medium text-yellow-700">
+                                        {item.trangThai
+                                            ? "Ngưng khai thác"
+                                            : "Khai thác lại"}
+                                    </span>
+                                </button>
+                            </>
+                        )}
                     {onDelete && (
                         <div>
                             <div className="h-px bg-gray-100 mx-3 my-1" />

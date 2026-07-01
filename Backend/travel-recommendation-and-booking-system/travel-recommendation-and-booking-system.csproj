@@ -33,6 +33,9 @@
 		<Folder Include="wwwroot\" />
 		<Folder Include="wwwroot\" />
 		<Folder Include="wwwroot\" />
+		<Folder Include="wwwroot\img\hotel\" />
+		<Folder Include="wwwroot\img\location\" />
+		<Folder Include="wwwroot\img\tour\" />
 	</ItemGroup>
 
 </Project>

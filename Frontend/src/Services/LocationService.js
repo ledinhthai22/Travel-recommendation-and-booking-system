@@ -46,3 +46,14 @@ export const getHomeLocationCardsApi = async (limit = 4) => {
     return response.data;
 };
 
+export const updateLocationStatusApi = async (
+    id,
+    status
+) => {
+    const response = await axiosClient.patch(
+        `/admin/Location/${id}/status`,
+        status
+    );
+
+    return response.data;
+};

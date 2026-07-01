@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs.Location;
 using travel_recommendation_and_booking_system.Interfaces;
+using travel_recommendation_and_booking_system.Services;
 
 namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
@@ -85,7 +86,28 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 
             return Ok(new { success = true, message = "Cập nhật thành công" });
         }
+        [HttpPatch("{id}/status")]
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] bool trangThai)
+        {
+            var result = await _location.UpdateStatusAsync(id, trangThai);
 
+            if (!result)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Không tìm thấy địa điểm!"
+                });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = trangThai
+                    ? "Đã bật trạng thái địa điểm"
+                    : "Đã tắt trạng thái địa điểm"
+            });
+        }
         [HttpDelete("{id}")]
         public async Task<IActionResult> SoftDelelteLocation(int id)
         {
@@ -100,7 +122,10 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Lỗi hệ thống: " + ex.Message });
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
             }
         }
     }

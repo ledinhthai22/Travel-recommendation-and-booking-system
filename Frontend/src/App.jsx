@@ -62,7 +62,21 @@ function App() {
                     </div>
                 }
             >
-                <Toaster position="top-right" reverseOrder={false} gutter={12} />
+                <Toaster
+                    position="top-right"
+                    reverseOrder={false}
+                    gutter={12}
+                    containerStyle={{
+                        top: 20,
+                        right: 20,
+                        zIndex: 2147483647,
+                    }}
+                    toastOptions={{
+                        style: {
+                            zIndex: 2147483647,
+                        }
+                    }}
+                />
                 <AuthModal
                     open={showLoginModal}
                     onClose={() => setShowLoginModal(false)}

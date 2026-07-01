@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import InputField from '~/components/UI/Form/InputField';
-import { createTypeTourApi } from '~/Services/TypeTourService'; 
+import { createTypeTourApi } from '~/Services/TypeTourService';
 import { toastError, toastSuccess } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
 
@@ -26,13 +26,17 @@ export default function AddTypeTourModal({ isOpen, onClose, onSuccess }) {
             formData.append('TenLoaiTour', tenLoaiTour.trim());
 
             await createTypeTourApi(formData);
-            
+
             toastSuccess("Thêm loại tour thành công!");
             setTenLoaiTour('');
             onSuccess?.();
             onClose();
         } catch (error) {
-            toastError("Thêm loại tour thất bại", getErrorMessage(error));
+            const message = getErrorMessage(error);
+
+            setError(message);
+
+            toastError("Thêm loại tour thất bại", message);
         } finally {
             setLoading(false);
         }
@@ -41,7 +45,7 @@ export default function AddTypeTourModal({ isOpen, onClose, onSuccess }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/10 flex items-center justify-center z-[999] p-4">
             <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden">
                 <div className="flex items-center justify-between m-4 ">
                     <h3 className="text-xl font-semibold text-slate-800">Thêm Loại Tour Mới</h3>
@@ -55,7 +59,13 @@ export default function AddTypeTourModal({ isOpen, onClose, onSuccess }) {
                         label="Tên loại hình tour"
                         placeholder="Ví dụ: Tour sinh thái, Tour nghỉ dưỡng..."
                         value={tenLoaiTour}
-                        onChange={(e) => setTenLoaiTour(e.target.value)}
+                        onChange={(e) => {
+                            setTenLoaiTour(e.target.value);
+
+                            if (error) {
+                                setError('');
+                            }
+                        }}
                         required
                         disabled={loading}
                         error={error}

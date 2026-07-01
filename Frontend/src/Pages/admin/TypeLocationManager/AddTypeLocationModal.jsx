@@ -41,7 +41,7 @@ export default function AddTypeLocationModal({ isOpen, onClose, onSuccess }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/20  p-4 fade-in duration-200">
             <div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between m-4 bg-slate-50/50">
                     <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">

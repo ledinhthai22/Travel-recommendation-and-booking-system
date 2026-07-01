@@ -116,7 +116,10 @@ namespace Services
         {
             var istypetour = await _context.LoaiHinhTours.FindAsync(id);
 
-            if (istypetour == null || istypetour.NgayXoa != null) return false;
+            if (istypetour == null || istypetour.NgayXoa != null)
+            {
+                throw new Exception("Không tìm thấy loại tour");
+            }
 
             bool isnametypetour = await _context.LoaiHinhTours
             .AnyAsync(x =>
@@ -124,7 +127,10 @@ namespace Services
                 typetour.TenLoaiTour.Trim().ToLower()
                 && x.MaLoaiTour != id
                 && x.NgayXoa == null);
-            if (isnametypetour) return false;
+            if (isnametypetour)
+            {
+                throw new Exception("Loại tour đã tồn tại trong danh sách");
+            }
             var oldData = new
             {
                 istypetour.TenLoaiTour,

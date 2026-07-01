@@ -13,6 +13,14 @@ export const getErrorMessage = (error) => {
         return data.message;
     }
 
+    if (data.title) {
+        return data.title;
+    }
+
+    if (Array.isArray(data)) {
+        return data[0];
+    }
+
     if (data.errors) {
         const firstKey = Object.keys(data.errors)[0];
 
