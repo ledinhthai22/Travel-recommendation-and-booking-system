@@ -67,7 +67,7 @@ function TourCard({
     return (
         <article
             className="
-            group flex h-[260px] w-full flex-col overflow-hidden rounded-2xl
+            group flex h-[280px] w-full flex-col overflow-hidden rounded-2xl
             border border-slate-100 bg-white shadow-sm
             transition-all duration-300
             hover:-translate-y-1 hover:border-[#0EA5E5]/30

@@ -1,5 +1,4 @@
-﻿using Interfaces;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -70,10 +69,6 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
                 if (isSuccess)
                 {
                     var tour = await _tour.GetTourByIdAsync(tourId);
-                    if (tour != null)
-                    {
-                        await _recommen.UpdatePreference(maNguoiDung, tourId, RecommendationWeights.WishlistTour,true);
-                    }
                     return Ok(new { message = "Đã thêm vào danh sách yêu thích thành công!" });
                 }
 
@@ -101,10 +96,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
 
                 if (isSuccess)
                 {
-                    foreach (var tourId in tourIds)
-                    {
-                        await _recommen.UpdatePreference(maNguoiDung, tourId, RecommendationWeights.WishlistTour, false);
-                    }
+
 
                     return Ok(new { message = "Đã xóa khỏi danh sách yêu thích thành công!" });
                 }
@@ -125,10 +117,6 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
 
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out int maNguoiDung))
-            {
-                await _recommen.UpdatePreference(maNguoiDung, tour.MaLoaiTour, RecommendationWeights.ConfirmInterest,true);
-            }
             return Ok();
         }
 

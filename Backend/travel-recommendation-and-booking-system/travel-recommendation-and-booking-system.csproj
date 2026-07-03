@@ -23,12 +23,16 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
+		<PackageReference Include="Microsoft.Extensions.ML" Version="5.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
+		<PackageReference Include="Microsoft.ML" Version="5.0.0" />
+		<PackageReference Include="Microsoft.ML.Recommender" Version="0.23.0" />
 		<PackageReference Include="QuestPDF" Version="2026.6.1" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
 	</ItemGroup>
 
 	<ItemGroup>
+		<Folder Include="Controllers\TourRecommendation\" />
 		<Folder Include="Migrations\" />
 		<Folder Include="wwwroot\" />
 		<Folder Include="wwwroot\" />

@@ -21,12 +21,24 @@ namespace travel_recommendation_and_booking_system.Job
                 var now = DateTime.Now;
 
                 var expiredReservations = await _context.GiuChos
-                    .Where(x => x.ThoiGianHetHan <= now)
+                    .Where(x =>
+                        x.ThoiGianHetHan.AddMinutes(10) <= now
+                    )
                     .ToListAsync();
 
                 if (expiredReservations.Any())
                 {
+                    var maGiuChoIds = expiredReservations
+                    .Select(x => x.MaGiuCho)
+                    .ToList();
+
+                    var payloads = await _context.PaymentPayloads
+                        .Where(x => maGiuChoIds.Contains(x.MaGiuCho))
+                        .ToListAsync();
+
+                    _context.PaymentPayloads.RemoveRange(payloads);
                     _context.GiuChos.RemoveRange(expiredReservations);
+
                     await _context.SaveChangesAsync();
 
                     Console.WriteLine($"[CleanExpiredReservationsJob] Đã xóa {expiredReservations.Count} giữ chỗ hết hạn.");

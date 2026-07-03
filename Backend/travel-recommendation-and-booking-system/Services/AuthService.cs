@@ -1,4 +1,5 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
+using System.Reflection.PortableExecutable;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -21,7 +22,7 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly ICurrentUserService _currentUserService;
 
 
-        public AuthService(AppDbContext context, IConfiguration configuration, IEmailService emailService, ILogService logService,ICurrentUserService currentUserService)
+        public AuthService(AppDbContext context, IConfiguration configuration, IEmailService emailService, ILogService logService, ICurrentUserService currentUserService)
         {
             _context = context;
             _configuration = configuration;
@@ -125,9 +126,6 @@ namespace travel_recommendation_and_booking_system.Services
                     };
                 }
 
-
-                var accessToken = GenerateUserToken(user);
-
                 var refreshToken = GenerateRefreshToken();
 
 
@@ -138,11 +136,12 @@ namespace travel_recommendation_and_booking_system.Services
                     NgayHetHan = DateTime.Now.AddDays(7),
                     DiaChiIp = ipAddress
                 };
+                string accessToken;
                 try
                 {
                     _context.PhienDangNhaps.Add(phienMoi);
-
                     await _context.SaveChangesAsync();
+                    accessToken = GenerateUserToken(user, phienMoi.MaPhien);
                 }
                 catch (Exception ex)
                 {
@@ -230,9 +229,6 @@ namespace travel_recommendation_and_booking_system.Services
                     };
                 }
 
-
-                var accessToken = GenerateStaffToken(staff);
-
                 var refreshToken = GenerateRefreshToken();
 
                 var phien = new PhienDangNhap
@@ -248,6 +244,8 @@ namespace travel_recommendation_and_booking_system.Services
 
                 _context.PhienDangNhaps.Add(phien);
                 await _context.SaveChangesAsync();
+                var accessToken = GenerateStaffToken(staff, phien.MaPhien);
+
                 await _logService.LoggingAsync(new LogDTO
                 {
                     LoaiTaiKhoan = AccountTypeDTO.NhanVien,
@@ -318,11 +316,11 @@ namespace travel_recommendation_and_booking_system.Services
 
             if (phien.NguoiDung != null)
             {
-                accessToken = GenerateUserToken(phien.NguoiDung);
+                accessToken = GenerateUserToken(phien.NguoiDung, phien.MaPhien);
             }
             else if (phien.NhanVien != null)
             {
-                accessToken = GenerateStaffToken(phien.NhanVien);
+                accessToken = GenerateStaffToken(phien.NhanVien, phien.MaPhien);
             }
             else
             {
@@ -402,11 +400,19 @@ namespace travel_recommendation_and_booking_system.Services
                 return true;
             }
 
+            if (user.LanGuiOtpGanNhat != null && user.LanGuiOtpGanNhat > DateTime.Now.AddMinutes(-1))
+            {
+                // Có thể ném ra một exception hoặc trả về false
+                return false;
+            }
+
             var random = new Random();
             string otp = random.Next(100000, 999999).ToString();
 
             user.MaOtp = otp;
             user.ThoiGianHetHanOtp = DateTime.Now.AddMinutes(5);
+            user.LanGuiOtpGanNhat = DateTime.Now;
+            user.SoLanNhapSaiOtp = 0;
             await _context.SaveChangesAsync();
 
             string subject = "Mã OTP Khôi Phục Mật Khẩu";
@@ -453,7 +459,7 @@ namespace travel_recommendation_and_booking_system.Services
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
-                 Email = user.Email,
+                Email = user.Email,
                 MaTaiKhoan = user.MaNguoiDung,
 
                 TenHanhDong = ActionLogDTO.DoiMatKhau,
@@ -464,37 +470,46 @@ namespace travel_recommendation_and_booking_system.Services
             });
             return true;
         }
-        public async Task<bool> VerifyOtpAsync(VerifyOtpDTO model)
+        public async Task<(bool IsValid, string Message)> VerifyOtpAsync(VerifyOtpDTO model)
         {
             var user = await _context.NguoiDungs
-                .FirstOrDefaultAsync(u =>
-                    u.Email == model.Email &&
-                    u.NgayXoa == null);
+                .FirstOrDefaultAsync(u => u.Email == model.Email && u.NgayXoa == null);
 
-            if (user == null)
+            if (user == null || string.IsNullOrEmpty(user.MaOtp))
+                return (false, "Mã OTP không hợp lệ.");
+
+            // 1. [CHỈNH SỬA] Đưa kiểm tra hết hạn lên đầu tiên!
+            if (user.ThoiGianHetHanOtp < DateTime.Now)
+                return (false, "Mã OTP đã hết hạn. Vui lòng gửi lại mã mới.");
+
+            // 2. Sau đó mới kiểm tra khóa
+            if (user.SoLanNhapSaiOtp >= 5 && user.LanNhapSaiOtpGanNhat > DateTime.Now.AddMinutes(-1))
             {
-                return false;
+                return (false, "Bạn đã nhập sai quá nhiều lần. Vui lòng thử lại sau 1 phút.");
             }
 
-            if (string.IsNullOrEmpty(user.MaOtp))
+            if (user.SoLanNhapSaiOtp >= 5 && user.LanNhapSaiOtpGanNhat <= DateTime.Now.AddMinutes(-1))
             {
-                return false;
+                user.SoLanNhapSaiOtp = 0;
+                await _context.SaveChangesAsync();
             }
 
+            // 3. Cuối cùng mới kiểm tra mã đúng/sai
             if (user.MaOtp != model.Otp)
             {
-                return false;
+                user.SoLanNhapSaiOtp = (user.SoLanNhapSaiOtp ?? 0) + 1;
+                user.LanNhapSaiOtpGanNhat = DateTime.Now;
+                await _context.SaveChangesAsync();
+
+                int conLai = 5 - user.SoLanNhapSaiOtp.Value;
+                return (false, conLai > 0 ? $"Mã OTP không chính xác. Bạn còn {conLai} lần nhập." : "Bạn đã bị tạm khóa do nhập sai quá nhiều.");
             }
 
-            if (user.ThoiGianHetHanOtp == null ||
-                user.ThoiGianHetHanOtp < DateTime.Now)
-            {
-                return false;
-            }
-
-            return true;
+            user.SoLanNhapSaiOtp = 0;
+            await _context.SaveChangesAsync();
+            return (true, "Mã OTP hợp lệ.");
         }
-        private string GenerateStaffToken(NhanVien staff)
+        private string GenerateStaffToken(NhanVien staff, int maPhien)
         {
             var jwtSettings = _configuration.GetSection("Jwt");
 
@@ -508,6 +523,7 @@ namespace travel_recommendation_and_booking_system.Services
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, staff.MaNhanVien.ToString()),
+                new Claim("MaPhien", maPhien.ToString()),
                 new Claim(ClaimTypes.Role, staff.MaVaiTro.ToString()),
                 new Claim(ClaimTypes.Email, staff.Email),
                 new Claim("account_type", "NhanVien")
@@ -534,7 +550,7 @@ namespace travel_recommendation_and_booking_system.Services
         }
 
 
-        private string GenerateUserToken(NguoiDung user)
+        private string GenerateUserToken(NguoiDung user, int maPhien)
         {
             var jwtSettings = _configuration.GetSection("Jwt");
 
@@ -548,6 +564,7 @@ namespace travel_recommendation_and_booking_system.Services
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.MaNguoiDung.ToString()),
+                new Claim("MaPhien", maPhien.ToString()),
                 new Claim(ClaimTypes.Role, user.MaVaiTro.ToString()),
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim("account_type", "NguoiDung")

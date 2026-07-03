@@ -6,6 +6,7 @@ namespace travel_recommendation_and_booking_system.Interfaces
     public interface IHotelService
     {
         Task<List<HotelDTO>> GetAllAsync();
+        Task<List<HotelDTO>> GetHotelsByAddressAsync(string diaChi);
         Task<PageDTO<HotelResponseDTO>> GetPagedHotelAsync(int pageNumber, int pageSize, HotelDTO hotel);
         Task<HotelResponseDTO?> GetHotelByIdAsync(int id);
         Task<HotelResponseDTO?> GetHotelBySlugAsync(string slug);

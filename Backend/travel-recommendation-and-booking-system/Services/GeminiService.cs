@@ -20,8 +20,8 @@ namespace travel_recommendation_and_booking_system.Services
             try
             {
                 string prompt = $@"Nhiệm vụ: Phân tích cảm xúc bình luận du lịch.
-Bình luận: '{noiDung}'
-Quy tắc: Trả về duy nhất 1 trong 2 từ sau: 'Positive' hoặc 'Negative'. Không thêm bất kỳ từ ngữ nào khác.";
+                Bình luận: '{noiDung}'
+                Quy tắc: Trả về duy nhất 1 trong 2 từ sau: 'Positive' hoặc 'Negative'. Không thêm bất kỳ từ ngữ nào khác.";
 
                 string url = _modelUrl + _apiKey;
 

@@ -101,10 +101,22 @@ export const setMainHotelImageApi = async (imageId) => {
     return response.data;
 };
 
-// ĐÃ CHUẨN HÓA: Chỉ nhận một tham số imageId duy nhất khớp chính xác với URL [HttpDelete("images/{imageId}")]
+
 export const deleteHotelImageApi = async (imageId) => {
     const response = await axiosClient.delete(
         `/admin/Hotel/images/${imageId}`
     );
+    return response.data;
+};
+export const getHotelsByAddressApi = async (diaChi) => {
+    const response = await axiosClient.get(
+        "/admin/hotel/dropdown-by-address",
+        {
+            params: {
+                diaChi
+            }
+        }
+    );
+
     return response.data;
 };

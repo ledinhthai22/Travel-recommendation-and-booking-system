@@ -1,7 +1,6 @@
 ﻿
 using System.Text;
 using Hangfire;
-using Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -85,7 +84,9 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<IPromotionService, PromotionService>();
             builder.Services.AddScoped<IHotelService, HotelService>();
             builder.Services.AddScoped<IAmenitiesService, AmenitiesService>();
-            builder.Services.AddScoped<IRecommendationService,RecommendationService>();
+            builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+            builder.Services.AddScoped<ITourRecommendationService, TourRecommendationService>();
+            builder.Services.AddScoped<ITourRecommendationTrainer, TourRecommendationTrainer>();
             builder.Services.AddTransient<IReviewService, ReviewService>();
             builder.Services.AddScoped<ILogService, LogService>();
             builder.Services.AddScoped<IRequestInfoService, RequestInfoService>();
@@ -97,6 +98,7 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<BookingEmailJob>();
             builder.Services.AddScoped<PaymentWarningJob>();
             builder.Services.AddTransient<GeminiService>();
+            builder.Services.AddScoped<TrainRecommendationModelJob>();
             builder.Services.AddHttpContextAccessor();
 
             builder.Services.Configure<VnPayConfig>(builder.Configuration.GetSection("VNPay"));
@@ -123,6 +125,31 @@ namespace travel_recommendation_and_booking_system
                     ValidAudience = jwtSettings["Audience"],
                     IssuerSigningKey = new SymmetricSecurityKey(key),
                     ClockSkew = TimeSpan.Zero
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+
+                        // Lấy MaPhien từ claims trong token
+                        var maPhienClaim = context.Principal?.FindFirst("MaPhien")?.Value;
+
+                        if (string.IsNullOrEmpty(maPhienClaim) || !int.TryParse(maPhienClaim, out int maPhien))
+                        {
+                            context.Fail("Token thiếu mã phiên.");
+                            return;
+                        }
+
+                        // Kiểm tra xem phiên còn tồn tại trong DB không
+                        // Nếu phiên bị xóa (do người dùng Logout), AnyAsync sẽ trả về false
+                        var sessionExists = await dbContext.PhienDangNhaps.AnyAsync(p => p.MaPhien == maPhien);
+
+                        if (!sessionExists)
+                        {
+                            context.Fail("Phiên đã bị thu hồi.");
+                        }
+                    }
                 };
             });
             builder.Services.AddAuthorization(options =>
@@ -157,7 +184,7 @@ namespace travel_recommendation_and_booking_system
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-
+            app.UseHangfireDashboard("/hangfire");
             app.UseCors("ReactPolicy");
             app.UseStaticFiles();
             app.UseHttpsRedirection();
@@ -171,8 +198,8 @@ namespace travel_recommendation_and_booking_system
             app.UseCleanExpriedReservationsJob();
             app.UseDepartureChangeStatusJoc();
             app.UsePaymentWarningJobs();
+            app.UseTrainRecommendationModelJob();
             app.MapHub<TravelRecommendationHub>("/TravelRecommendationHub");
-            app.UseHangfireDashboard("/hangfire");
             app.Run();
         }
     }

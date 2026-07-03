@@ -18,11 +18,20 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAllHotels()
         {
             var result = await _hotelService.GetAllAsync();
             return Ok(result);
         }
+        [HttpGet("dropdown-by-address")]
+        public async Task<IActionResult> GetHotelsByAddress([FromQuery] string diaChi)
+        {
+            var result = await _hotelService
+                .GetHotelsByAddressAsync(diaChi);
+
+            return Ok(result);
+        }
+
 
         [HttpGet("Paged")]
         public async Task<IActionResult> GetPaged([FromQuery] HotelDTO hotel, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)

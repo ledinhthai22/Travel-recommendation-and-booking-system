@@ -120,26 +120,16 @@ namespace Controllers.Auth
         [HttpPost("verify-otp")]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDTO model)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var isValid =
-                await _authService.VerifyOtpAsync(model);
+            var (isValid, message) = await _authService.VerifyOtpAsync(model);
 
             if (!isValid)
             {
-                return BadRequest(new
-                {
-                    message = "Mã OTP không hợp lệ hoặc đã hết hạn"
-                });
+                return BadRequest(new { message = message });
             }
 
-            return Ok(new
-            {
-                message = "Mã OTP hợp lệ"
-            });
+            return Ok(new { message = message });
         }
 
         [Authorize]

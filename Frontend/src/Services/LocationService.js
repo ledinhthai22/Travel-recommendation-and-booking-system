@@ -57,3 +57,15 @@ export const updateLocationStatusApi = async (
 
     return response.data;
 };
+export const getLocationsByProvinceApi = async (
+    tinhThanh
+) => {
+    const response = await axiosClient.get(
+        "/admin/Location/dropdown-by-province",
+        {
+            params: { tinhThanh }
+        }
+    );
+
+    return response.data;
+};

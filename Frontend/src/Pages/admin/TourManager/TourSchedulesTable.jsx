@@ -158,6 +158,7 @@ export default function TourSchedulesTable({
             columns={columns}
             data={safeData}
             progressPending={loading}
+            paginationPerPage={5}
             paginationComponentOptions={{
                 rowsPerPageText: "Số dòng:",
                 rangeSeparatorText: "trên",

@@ -21,7 +21,24 @@ namespace travel_recommendation_and_booking_system.Services
         public async Task<List<LocationDTO>> GetAllAsync()
         {
             return await _context.DiaDiems
-                .Where(x => x.NgayXoa == null)
+                .Where(x =>
+                    x.NgayXoa == null &&
+                    x.TrangThai)
+                .OrderBy(x => x.TenDiaDiem)
+                .Select(x => new LocationDTO
+                {
+                    MaDiaDiem = x.MaDiaDiem,
+                    TenDiaDiem = x.TenDiaDiem
+                })
+                .ToListAsync();
+        }
+        public async Task<List<LocationDTO>> GetLocationsByProvinceAsync(string tinhThanh)
+        {
+            return await _context.DiaDiems
+                .Where(x =>
+                    x.NgayXoa == null &&
+                    x.TrangThai &&
+                    x.TinhThanh == tinhThanh)
                 .OrderBy(x => x.TenDiaDiem)
                 .Select(x => new LocationDTO
                 {
@@ -379,6 +396,21 @@ namespace travel_recommendation_and_booking_system.Services
 
             if (location == null)
                 return false;
+
+            // Chỉ kiểm tra khi chuyển sang ngưng hoạt động
+            if (status == false)
+            {
+                bool isUsed = await _context.CTLichTrinhs
+                    .AnyAsync(x =>
+                        x.MaDiaDiem == id &&
+                        x.LichTrinh.NgayXoa == null);
+
+                if (isUsed)
+                {
+                    throw new Exception(
+                        "Địa điểm đang được sử dụng trong lịch trình tour, không thể ngưng hoạt động.");
+                }
+            }
 
             location.TrangThai = status;
             location.NgayCapNhat = DateTime.Now;

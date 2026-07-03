@@ -43,7 +43,17 @@ namespace travel_recommendation_and_booking_system.Services
                 .Include(x => x.ChuyenKhoiHanh).ThenInclude(x => x.GiaChuyens)
                 .FirstOrDefaultAsync(x => x.MaGiuCho == request.MaGiuCho && x.MaChuyen == request.MaChuyen)
                 ?? throw new KeyNotFoundException("Phiên giữ chỗ không tồn tại.");
+            var payload = await _context.PaymentPayloads
+                .FirstOrDefaultAsync(x => x.MaGiuCho == giuCho.MaGiuCho);
 
+            if (payload == null)
+            {
+                throw new Exception("Không tìm thấy PaymentPayload.");
+            }
+
+            payload.NgayBatDauThanhToan = DateTime.Now;
+
+            await _context.SaveChangesAsync();
             if (giuCho.ThoiGianHetHan <= DateTime.Now)
                 throw new InvalidOperationException("Phiên giữ chỗ đã hết hạn. Vui lòng chọn lại.");
 
@@ -84,7 +94,7 @@ namespace travel_recommendation_and_booking_system.Services
             var localTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
 
           
-            string secureTxnRef = $"{request.MaCodeChuyen}_{giuCho.MaGiuCho}_{txnRef}";
+            string secureTxnRef = $"{txnRef}";
 
             var vnpay = new VnPayLibrary();
             vnpay.AddRequestData("vnp_Version", _vnpayConfig.Version);
@@ -176,7 +186,22 @@ namespace travel_recommendation_and_booking_system.Services
                     .FirstOrDefaultAsync(x => x.MaGiuCho == maGiuChoId);
 
                 if (payload == null)
+                {
                     return ("01", "PaymentPayload not found");
+                }
+
+                if (payload.NgayBatDauThanhToan == null)
+                {
+                    return ("01", "Payment not started");
+                }
+                if (payload.NgayBatDauThanhToan > giuCho.ThoiGianHetHan)
+                {
+                    Console.WriteLine(
+                        $"[IPN] Payment started after reservation expired."
+                    );
+
+                    return ("00", "Hold expired");
+                }
 
                 DonDatTour order;
 

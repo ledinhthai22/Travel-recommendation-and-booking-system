@@ -21,6 +21,7 @@ namespace travel_recommendation_and_booking_system.Models
         public decimal TongTienGoc { get; set; }
         public string? GhiChu { get; set; }
         public DateTime NgayTao { get; set; } = DateTime.Now;
+        public DateTime? NgayBatDauThanhToan { get; set; }
 
         // Lưu danh sách hành khách dạng JSON
         public string DanhSachHanhKhachJson { get; set; } = "[]";

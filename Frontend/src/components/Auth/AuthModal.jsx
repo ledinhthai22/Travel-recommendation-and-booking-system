@@ -120,6 +120,8 @@ export default function AuthModal({ open, onClose,redirectAfterLogin = null }) {
     const [otpSent, setOtpSent] = useState(false);
     const [otpVerified, setOtpVerified] = useState(false);
     const [form, setForm] = useState(EMPTY_FORM);
+    const [isLocked, setIsLocked] = useState(false);
+    const [resendKey, setResendKey] = useState(0);
 
     const { login } = useAuth();
     const navigate = useNavigate();
@@ -134,6 +136,7 @@ export default function AuthModal({ open, onClose,redirectAfterLogin = null }) {
         setOtpVerified(false);
         setShowPassword(false);
         setShowConfirmPassword(false);
+        setIsLocked(false);
         setLoading(false);
         setSubmitted(false);
         setForgotSent(false);
@@ -147,6 +150,7 @@ export default function AuthModal({ open, onClose,redirectAfterLogin = null }) {
         setShowPassword(false);
         setShowConfirmPassword(false);
         setLoading(false);
+        setIsLocked(false);
         setForm(EMPTY_FORM);
         setOtpSent(false);
         setOtpVerified(false);
@@ -244,12 +248,24 @@ export default function AuthModal({ open, onClose,redirectAfterLogin = null }) {
             toastError('Thiếu OTP', 'Vui lòng nhập mã OTP');
             return;
         }
+        setLoading(true);
         try {
             await verifyOtpApi({ email: form.email, otp: form.otp });
             setOtpVerified(true);
             toastSuccess('OTP hợp lệ', 'Bạn có thể đổi mật khẩu');
-        } catch {
-            toastError('OTP không hợp lệ', 'Vui lòng kiểm tra lại');
+        } catch (error)
+        {
+           const errorMessage = getErrorMessage(error) || 'Vui lòng kiểm tra lại';
+            toastError('Xác thực thất bại', errorMessage);
+            if (errorMessage.toLowerCase().includes('1 phút')) {
+                setIsLocked(true);
+                setTimeout(() => {
+                    setIsLocked(false);
+                }, 60000);
+            }
+        }
+        finally {
+            setLoading(false);
         }
     }, [form.otp, form.email]);
 
@@ -257,6 +273,8 @@ export default function AuthModal({ open, onClose,redirectAfterLogin = null }) {
         try {
             await forgotPasswordApi(form.email);
             toastSuccess('Đã gửi lại OTP', 'Vui lòng kiểm tra email');
+            setIsLocked(false);
+            setResendKey(prev => prev + 1);
         } catch {
             toastError('Lỗi', 'Không thể gửi OTP');
         }
@@ -518,17 +536,23 @@ export default function AuthModal({ open, onClose,redirectAfterLogin = null }) {
                                     value={form.otp}
                                     onChange={handleChange}
                                     placeholder="Nhập mã OTP"
+                                    disabled={isLocked || loading}
                                 />
 
 
-                                <OtpCountdown onResend={handleResendOtp} />
+                                <OtpCountdown onResend={handleResendOtp}  key={resendKey}/>
 
                                 <button
                                     type="button"
                                     onClick={handleVerifyOtp}
-                                    className="w-full rounded-2xl bg-[#0EA5E5] py-3 text-sm font-bold text-white"
+                                    disabled={isLocked || loading}
+                                    className={`w-full rounded-2xl py-3 text-sm font-bold text-white transition ${
+                                        isLocked 
+                                        ? 'bg-slate-400 cursor-not-allowed opacity-70' 
+                                        : 'bg-[#0EA5E5] hover:bg-[#0c8bbf]'
+                                    }`}
                                 >
-                                    Xác nhận OTP
+                                    {isLocked ? 'Đang bị khóa (Thử lại sau 1 phút)' : loading ? 'Đang kiểm tra...' : 'Xác nhận OTP'}
                                 </button>
                             </>
                         )}

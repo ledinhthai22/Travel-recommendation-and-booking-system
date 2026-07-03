@@ -45,6 +45,16 @@ const PAYMENT_STATUS = {
         color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
         icon: <CheckCircle size={13} className="text-emerald-500" />,
     },
+    2: {
+        text: 'Thanh toán thất bại',
+        color: 'bg-red-50 text-red-700 border-red-200',
+        icon: <AlertTriangle size={13} className="text-red-500" />,
+    },
+    3: {
+        text: 'Đã hoàn tiền',
+        color: 'bg-slate-100 text-slate-600 border-slate-200',
+        icon: <Banknote size={13} className="text-slate-500" />,
+    },
 };
 
 const canApprove = (trangThaiDon) => trangThaiDon === 1;
@@ -52,7 +62,7 @@ const canCancel = (trangThaiDon) => trangThaiDon === 1 || trangThaiDon === 2;
 const canComplete = (trangThaiDon, ngayKetThuc) =>
     trangThaiDon === 2 && ngayKetThuc && new Date(ngayKetThuc) <= new Date();
 const canTogglePayment = (trangThaiDon, trangThaiThanhToan) =>
-    trangThaiThanhToan !== 1 && trangThaiDon !== 3 && trangThaiDon !== 4;
+    trangThaiThanhToan !== 1 && trangThaiThanhToan !== 3 && trangThaiDon !== 3 && trangThaiDon !== 4;
 
 const getCancelWarning = (trangThaiThanhToan, phuongThucThanhToan) => {
     if (trangThaiThanhToan === 1 && phuongThucThanhToan === 2)
@@ -581,6 +591,18 @@ function PaymentSummaryCard({ trangThaiThanhToan, tongTien, thongTinThanhToan })
             title: 'Đã thanh toán',
             desc: 'Đơn đã được xác nhận thanh toán.',
         },
+        2: {
+            cls: 'border-red-200 bg-red-50',
+            Icon: <AlertTriangle size={18} className="text-red-500 shrink-0" />,
+            title: 'Thanh toán thất bại',
+            desc: 'Giao dịch thanh toán không thành công.',
+        },
+        3: {
+            cls: 'border-slate-200 bg-slate-50',
+            Icon: < Banknote size={18} className="text-slate-500 shrink-0" />,
+            title: 'Đã hoàn tiền',
+            desc: 'Đơn đã bị hủy và tiền đã được hoàn lại cho khách.',
+        },
     };
     const config = CONFIGS[trangThaiThanhToan] || CONFIGS[0];
 
@@ -591,7 +613,7 @@ function PaymentSummaryCard({ trangThaiThanhToan, tongTien, thongTinThanhToan })
                 <div>
                     <p className="font-semibold">{config.title}</p>
                     <p className="text-sm text-slate-600 mt-1">{config.desc}</p>
-                    {trangThaiThanhToan === 1 && thongTinThanhToan && (
+                    {(trangThaiThanhToan === 1 || trangThaiThanhToan === 3) && thongTinThanhToan && (
                         <p className="text-xs text-slate-500 mt-1">
                             Phương thức: <span className="font-medium">{thongTinThanhToan.tenPhuongThuc}</span>
                             {' • '}

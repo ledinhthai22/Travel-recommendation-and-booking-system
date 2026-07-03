@@ -273,7 +273,7 @@ export default function LocationFormModal({
     return (
         <>
             {/* Modal Backdrop */}
-            <div className="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/20 z-[999] flex items-center justify-center p-4">
                 <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl max-h-[95vh] flex flex-col overflow-hidden">
                     {/* Header */}
                     <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-slate-50 rounded-t-3xl">

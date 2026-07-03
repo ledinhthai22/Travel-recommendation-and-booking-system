@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using System.Text.Json;
-using Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -228,12 +227,12 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
                     return NotFound(new { message = "Không tìm thấy thông tin tour." });
                 }
 
-                // 3. Nếu người dùng đã đăng nhập, ghi nhận hành vi "Xem tour" vào hệ thống gợi ý
-                if (isLogged)
-                {
-                    // Sử dụng một trọng số nhỏ hơn "Yêu thích" (ví dụ: RecommendationWeights.ViewTour = 1.0f)
-                    await _recommendation.UpdatePreference(maNguoiDung, id, RecommendationWeights.ViewTour, true);
-                }
+                //// 3. Nếu người dùng đã đăng nhập, ghi nhận hành vi "Xem tour" vào hệ thống gợi ý
+                //if (isLogged)
+                //{
+                //    // Sử dụng một trọng số nhỏ hơn "Yêu thích" (ví dụ: RecommendationWeights.ViewTour = 1.0f)
+                //    await _recommendation.UpdatePreference(maNguoiDung, id, RecommendationWeights.ViewTour, true);
+                //}
 
                 return Ok(tourDetail);
             }

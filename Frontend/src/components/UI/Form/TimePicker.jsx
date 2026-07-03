@@ -1,5 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { Clock } from "lucide-react";
+
+const ITEM_HEIGHT = 34;
+const DROPDOWN_HEIGHT = 260; // ~ max-h-64 (256px) + padding
 
 const Picker = ({
     value,
@@ -10,47 +14,81 @@ const Picker = ({
     onBlur
 }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [dropdownStyle, setDropdownStyle] = useState(null);
     const containerRef = useRef(null);
-    const activeItemRef = useRef(null); 
-    const scrollContainerRef = useRef(null); 
+    const dropdownRef = useRef(null);
+    const activeItemRef = useRef(null);
+    const scrollContainerRef = useRef(null);
+
+    // Đóng khi click ra ngoài (kể cả dropdown đã được portal ra <body>)
     useEffect(() => {
         const handleClickOutside = (e) => {
-            if (containerRef.current && !containerRef.current.contains(e.target)) {
-                if (isOpen) {
-                    setIsOpen(false);
-                    onBlur?.();
-                }
+            const clickedInsideInput = containerRef.current?.contains(e.target);
+            const clickedInsideDropdown = dropdownRef.current?.contains(e.target);
+            if (!clickedInsideInput && !clickedInsideDropdown && isOpen) {
+                setIsOpen(false);
+                onBlur?.();
             }
         };
-
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [onBlur, isOpen]);
 
+    // Tính vị trí dropdown theo input thật, dùng position: fixed
+    // để KHÔNG bị cắt bởi các container cha có overflow-x-auto/overflow-hidden (bảng, modal...)
+    const updatePosition = () => {
+        if (!containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - rect.bottom;
+        const openUpward = spaceBelow < DROPDOWN_HEIGHT && rect.top > spaceBelow;
+
+        setDropdownStyle({
+            position: "fixed",
+            left: rect.left,
+            width: Math.max(rect.width, 140),
+            ...(openUpward
+                ? { bottom: viewportHeight - rect.top + 6 }
+                : { top: rect.bottom + 6 }),
+        });
+    };
+
+    useLayoutEffect(() => {
+        if (!isOpen) return;
+        updatePosition();
+
+        // capture: true để bắt được cả sự kiện scroll của các container cha
+        // (div.overflow-x-auto của bảng, div.overflow-y-auto của modal, ...)
+        const handle = () => updatePosition();
+        window.addEventListener("scroll", handle, true);
+        window.addEventListener("resize", handle);
+        return () => {
+            window.removeEventListener("scroll", handle, true);
+            window.removeEventListener("resize", handle);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]);
 
     useEffect(() => {
         if (isOpen && value) {
             const timer = setTimeout(() => {
                 if (activeItemRef.current) {
                     activeItemRef.current.scrollIntoView({
-                        behavior: "auto", 
+                        behavior: "auto",
                         block: "nearest"
                     });
                 } else if (scrollContainerRef.current) {
-
                     const [hStr, mStr] = value.split(":");
                     const h = parseInt(hStr, 10) || 0;
                     const m = parseInt(mStr, 10) || 0;
                     const index = h * 4 + Math.floor(m / 15);
-                    const itemHeight = 34; 
-                    scrollContainerRef.current.scrollTop = index * itemHeight;
+                    scrollContainerRef.current.scrollTop = index * ITEM_HEIGHT;
                 }
             }, 50);
-            
+
             return () => clearTimeout(timer);
         }
     }, [isOpen, value]);
-
 
     const times = [];
     for (let h = 0; h < 24; h++) {
@@ -74,7 +112,7 @@ const Picker = ({
                                 const now = new Date();
                                 const currentHour = String(now.getHours()).padStart(2, "0");
                                 const roundedMinutes = String(Math.floor(now.getMinutes() / 15) * 15).padStart(2, "0");
-                                
+
                                 const defaultTime = `${currentHour}:${roundedMinutes}`;
                                 onChange?.(defaultTime);
                             }
@@ -95,9 +133,13 @@ const Picker = ({
                 />
             </div>
 
-            {isOpen && (
-                <div className="absolute top-full left-0 mt-2 w-full min-w-[200px] bg-white border border-slate-200 shadow-xl rounded-2xl p-3 z-[10000] animate-in fade-in zoom-in-95 duration-200">
-                    <div 
+            {isOpen && dropdownStyle && createPortal(
+                <div
+                    ref={dropdownRef}
+                    style={dropdownStyle}
+                    className="min-w-[140px] bg-white border border-slate-200 shadow-xl rounded-2xl p-3 z-[10000] animate-in fade-in zoom-in-95 duration-200"
+                >
+                    <div
                         ref={scrollContainerRef}
                         className="overflow-y-auto max-h-64 pr-1 grid grid-cols-1 gap-1.5 scrollbar-thin"
                     >
@@ -106,7 +148,7 @@ const Picker = ({
                             return (
                                 <button
                                     key={timeLabel}
-                                    ref={isSelected ? activeItemRef : null} 
+                                    ref={isSelected ? activeItemRef : null}
                                     type="button"
                                     onClick={() => {
                                         onChange(timeLabel);
@@ -124,7 +166,8 @@ const Picker = ({
                             );
                         })}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

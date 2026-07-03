@@ -20,8 +20,35 @@ namespace travel_recommendation_and_booking_system.Services
         }
         public async Task<List<HotelDTO>> GetAllAsync()
         {
-            return await _context.KhachSans
-                .Where(x => x.NgayXoa == null)
+            var query = _context.KhachSans
+                .Where(x =>
+                    x.NgayXoa == null &&
+                    x.TrangThai);
+
+            return await query
+                .OrderBy(x => x.TenKhachSan)
+                .Select(x => new HotelDTO
+                {
+                    MaKhachSan = x.MaKhachSan,
+                    TenKhachSan = x.TenKhachSan,
+                    DiaChi = x.DiaChi
+                })
+                .ToListAsync();
+        }
+        public async Task<List<HotelDTO>> GetHotelsByAddressAsync(string diaChi)
+        {
+            var query = _context.KhachSans
+                .Where(x =>
+                    x.NgayXoa == null &&
+                    x.TrangThai);
+
+            if (!string.IsNullOrWhiteSpace(diaChi))
+            {
+                query = query.Where(x =>
+                    x.DiaChi.Contains(diaChi));
+            }
+
+            return await query
                 .OrderBy(x => x.TenKhachSan)
                 .Select(x => new HotelDTO
                 {
@@ -219,11 +246,26 @@ namespace travel_recommendation_and_booking_system.Services
         public async Task<bool> UpdateStatusAsync(int id, bool status)
         {
             var entity = await _context.KhachSans
-                .FirstOrDefaultAsync(x => x.MaKhachSan == id && x.NgayXoa == null);
+                .FirstOrDefaultAsync(x =>
+                    x.MaKhachSan == id &&
+                    x.NgayXoa == null);
 
             if (entity == null)
-            {
                 throw new Exception("Không tìm thấy khách sạn");
+
+            // Chuyển sang ngưng hoạt động
+            if (status == false)
+            {
+                var dangDuocSuDung = await _context.LichTrinhs
+                    .AnyAsync(x =>
+                        x.MaKhachSan == id &&
+                        x.NgayXoa == null);
+
+                if (dangDuocSuDung)
+                {
+                    throw new Exception(
+                        "Khách sạn đang được sử dụng trong lịch trình tour, không thể ngưng hoạt động.");
+                }
             }
 
             entity.TrangThai = status;
@@ -236,16 +278,36 @@ namespace travel_recommendation_and_booking_system.Services
         public async Task<bool> DeleteAsync(int id)
         {
             var entity = await _context.KhachSans
-                .FirstOrDefaultAsync(x => x.MaKhachSan == id && x.NgayXoa == null);
+                .FirstOrDefaultAsync(x =>
+                    x.MaKhachSan == id &&
+                    x.NgayXoa == null);
+
             if (entity == null)
             {
                 throw new Exception("Không tìm thấy khách sạn");
             }
+
+            // Chỉ cho phép xóa khách sạn đã ngưng hoạt động
             if (entity.TrangThai)
             {
-                throw new Exception("Chỉ được phép xóa các khách sạn ngưng hợp tác");
+                throw new Exception(
+                    "Chỉ được phép xóa khách sạn đã ngưng hoạt động.");
             }
+
+            // Khách sạn đang được sử dụng trong lịch trình
+            var dangDuocSuDung = await _context.LichTrinhs
+                .AnyAsync(x =>
+                    x.MaKhachSan == id &&
+                    x.NgayXoa == null);
+
+            if (dangDuocSuDung)
+            {
+                throw new Exception(
+                    "Không thể xóa khách sạn đang được sử dụng trong lịch trình tour.");
+            }
+
             entity.NgayXoa = DateTime.Now;
+            entity.NgayCapNhat = DateTime.Now;
 
             await _context.SaveChangesAsync();
 

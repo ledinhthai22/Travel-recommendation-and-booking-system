@@ -15,7 +15,7 @@ import { getMyWishlistIdsApi } from '~/Services/TourService';
 import useRefetchOnBack from '~/Hooks/useRefetchOnBack';
 import { useState, useEffect, useCallback } from 'react';
 export default function HomePage() {
-     const { reviews, reviewsLoading, refetch: refetchReviews } = useReviews();
+    const { reviews, reviewsLoading, refetch: refetchReviews } = useReviews();
     const { tours: bestTours, loading: bestToursLoading, refetch: refetchBestTours } = useBestTours(12);
     const { user, isAuthenticated } = useAuth();
     const { banners, refresh: refetchBanner } = useBanner();
@@ -45,7 +45,7 @@ export default function HomePage() {
     }, [refetchReviews, refetchBestTours, refetchBanner, refetchLocations, refetchLatestTours, fetchWishlist]);
 
     useRefetchOnBack(refetchAll);
-    
+
     return (
         <div className="min-h-screen bg-white">
             <HeroSection
@@ -116,6 +116,7 @@ export default function HomePage() {
                                     description={dest.moTa || 'Khám phá điểm đến nổi bật với nhiều tour hấp dẫn.'}
                                     toursCount={dest.soLuongTour}
                                     province={dest.tinhThanh}
+
                                     rating={'5.0'}
                                 />
                             )}
@@ -156,25 +157,26 @@ export default function HomePage() {
                             ))}
                         </div>
                     ) : bestTours && bestTours.length > 0 ? (
-                    <FeaturedCarousel
-                        items={bestTours.slice(0, 6)}
-                        renderItem={(tour) => <TourCard 
-                        id={tour.maTour}
-                        slug={tour.slug || tour.maTour}
-                        name={tour.tenTour}
-                        image={`https://localhost:7016${tour.duongDanAnh}`}
-                        duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
-                        destination={tour.diemDen || "Đang cập nhật"}
-                        price={tour.giaChuyen}
-                        rating={tour.diemDanhGia}
-                        reviewCount={tour.soLuongDanhGia} 
-                        initialWishlist={wishlistIds.includes(tour.maTour)}
+                        <FeaturedCarousel
+                            items={bestTours.slice(0, 6)}
+                            renderItem={(tour) => <TourCard
+                                id={tour.maTour}
+                                slug={tour.slug || tour.maTour}
+                                name={tour.tenTour}
+                                image={`https://localhost:7016${tour.duongDanAnh}`}
+                                duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
+                                destination={tour.diemDen || "Đang cập nhật"}
+                                price={tour.giaChuyen}
+                                rating={tour.diemDanhGia}
+                                reviewCount={tour.soLuongDanhGia}
+                                initialWishlist={wishlistIds.includes(tour.maTour)}
+                                tourType={tour.tourType}
+                            />
+                            }
+                            itemsPerPage={4}
+                            gap={30}
+                            autoPlayMs={5000}
                         />
-                    }
-                        itemsPerPage={4}
-                        gap={30}
-                        autoPlayMs={5000}
-                    />
                     ) : (
                         <p className="text-center text-slate-400 py-6">Không tìm thấy tour nào.</p>
                     )}
@@ -203,7 +205,7 @@ export default function HomePage() {
                             </Link>
                         }
                     />
-                    
+
                     {latestToursLoading ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-[30px]">
                             {[...Array(4)].map((_, i) => (
@@ -213,23 +215,25 @@ export default function HomePage() {
                     ) : latestTours && latestTours.length > 0 ? (
                         <FeaturedCarousel
                             items={latestTours.slice(0, 6)}
-                            renderItem={(tour) => <TourCard 
-                            id={tour.maTour}
-                            slug={tour.slug || tour.maTour}
-                            name={tour.tenTour}
-                            image={`https://localhost:7016${tour.duongDanAnh}`}
-                            duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
-                            destination={tour.diemDen || "Đang cập nhật"}
-                            price={tour.giaChuyen}
-                            rating={tour.diemDanhGia}
-                            reviewCount={tour.soLuongDanhGia} 
-                            initialWishlist={wishlistIds.includes(tour.maTour)}
+                            renderItem={(tour) =>
+                                <TourCard
+                                    id={tour.maTour}
+                                    slug={tour.slug || tour.maTour}
+                                    name={tour.tenTour}
+                                    image={`https://localhost:7016${tour.duongDanAnh}`}
+                                    duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
+                                    destination={tour.diemDen || "Đang cập nhật"}
+                                    price={tour.giaChuyen}
+                                    rating={tour.diemDanhGia}
+                                    reviewCount={tour.soLuongDanhGia}
+                                    initialWishlist={wishlistIds.includes(tour.maTour)}
+                                    tourType={tour.tourType}
+                                />
+                            }
+                            itemsPerPage={4}
+                            gap={30}
+                            autoPlayMs={5000}
                         />
-                    }
-                        itemsPerPage={4}
-                        gap={30}
-                        autoPlayMs={5000}
-                    />
                     ) : (
                         <p className="text-center text-slate-400 py-6">Không tìm thấy tour nào.</p>
                     )}
@@ -238,39 +242,39 @@ export default function HomePage() {
 
             {/*Top 3 đánh giá tốt nhất*/}
             <section className="border-t border-slate-100 py-20">
-            <div className="mx-auto max-w-[1440px] px-4 md:px-8">
-                <div className="mb-12 text-center">
-                    <h2 className="text-4xl font-bold text-slate-900">Khách hàng nói gì về chúng tôi</h2>
-                    <p className="mt-3 text-slate-500">Những đánh giá chân thực từ khách hàng đã trải nghiệm dịch vụ</p>
-                </div>
-                {reviewsLoading ? (
-                    <div className="text-center">Đang tải đánh giá...</div>
-                ) : (
-                    <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
-                        {reviews.map((review, index) => (
-                            <div key={index} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div className="mx-auto max-w-[1440px] px-4 md:px-8">
+                    <div className="mb-12 text-center">
+                        <h2 className="text-4xl font-bold text-slate-900">Khách hàng nói gì về chúng tôi</h2>
+                        <p className="mt-3 text-slate-500">Những đánh giá chân thực từ khách hàng đã trải nghiệm dịch vụ</p>
+                    </div>
+                    {reviewsLoading ? (
+                        <div className="text-center">Đang tải đánh giá...</div>
+                    ) : (
+                        <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+                            {reviews.map((review, index) => (
+                                <div key={index} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
 
-                                <div className="mb-4 flex items-center gap-4">
-                                    <img
-                                        src={`https://localhost:7016${review.duongDanAnh}`} 
-                                        alt={review.tenNguoiDung}
-                                        className="h-14 w-14 rounded-full object-cover"
-                                    />
-                                    <div>
-                                        <h3 className="font-semibold text-slate-900">{review.tenNguoiDung}</h3>
-                                        <div className="flex items-center gap-1">
-                                            {[...Array(review.diemDanhGia || 5)].map((_, i) => (
-                                                <Star key={i} size={12} className="fill-amber-400 text-amber-400" />
-                                            ))}
+                                    <div className="mb-4 flex items-center gap-4">
+                                        <img
+                                            src={`https://localhost:7016${review.duongDanAnh}`}
+                                            alt={review.tenNguoiDung}
+                                            className="h-14 w-14 rounded-full object-cover"
+                                        />
+                                        <div>
+                                            <h3 className="font-semibold text-slate-900">{review.tenNguoiDung}</h3>
+                                            <div className="flex items-center gap-1">
+                                                {[...Array(review.diemDanhGia || 5)].map((_, i) => (
+                                                    <Star key={i} size={12} className="fill-amber-400 text-amber-400" />
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
+                                    <p className="leading-7 text-slate-600">"{review.noiDung}"</p>
                                 </div>
-                                <p className="leading-7 text-slate-600">"{review.noiDung}"</p>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </section>
         </div>
     );

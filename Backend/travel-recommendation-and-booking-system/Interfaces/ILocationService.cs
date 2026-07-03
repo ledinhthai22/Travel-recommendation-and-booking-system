@@ -6,8 +6,9 @@ namespace travel_recommendation_and_booking_system.Interfaces
     public interface ILocationService
     {
         Task<List<LocationDTO>> GetAllAsync();
+        Task<List<LocationDTO>> GetLocationsByProvinceAsync(string tinhThanh);
         Task<List<LocationCardResponseDTO>> GetLocationCardsAsync(int? limit = null);
-        Task<List<LocationCardResponseDTO>> GetRecommendedLocationsAsync(int userId, int? limit = null);// địa điểm dành cho bạn
+        //Task<List<LocationCardResponseDTO>> GetRecommendedLocationsAsync(int userId, int? limit = null);// địa điểm dành cho bạn
         Task<PageDTO<LocationReponseDTO>> GetLocationAsync(int pageNumber, int pageSize, string? key, bool? status);
         Task<bool> CreateLocationAsync(LocationDTO location);
         Task<bool> UpdateLocationAsync(int id, LocationDTO location);

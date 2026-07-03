@@ -30,6 +30,9 @@ namespace travel_recommendation_and_booking_system.Models
         public DateTime? NgaySinh { get; set; }
         public string? MaOtp { get; set; }
         public DateTime? ThoiGianHetHanOtp { get; set; }
+        public int? SoLanNhapSaiOtp { get; set; }
+        public DateTime? LanNhapSaiOtpGanNhat { get; set; }
+        public DateTime? LanGuiOtpGanNhat { get; set; }
         public DateTime NgayTao { get; set; } = DateTime.Now;
         public DateTime NgayCapNhat { get; set; } = DateTime.Now;
         public DateTime? NgayXoa { get; set; }

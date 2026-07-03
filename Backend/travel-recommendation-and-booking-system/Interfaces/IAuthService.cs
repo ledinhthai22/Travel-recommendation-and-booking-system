@@ -10,6 +10,6 @@ public interface IAuthService
     Task<bool> LogoutAsync(string refreshToken); // đăng xuất
     Task<bool> ForgotPasswordAsync(ForgotPasswordDTO forgot); // quên mật khẩu
     Task<bool> ResetPasswordAsync(ResetPasswordDTO reset); // reset mật khẩu
-    Task<bool> VerifyOtpAsync(VerifyOtpDTO otp); // xác thực otp
+    Task<(bool IsValid, string Message)> VerifyOtpAsync(VerifyOtpDTO model); // xác thực otp
 
 }

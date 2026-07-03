@@ -27,21 +27,5 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<bool> DeleteFavoriteToursAsync(int userId, List<int> tourIds);
         Task<bool> AddFavoriteTourAsync(int userId, int tourId);
         Task<Tour> GetTourByIdAsync(int id);
-        //Home
-        //chưa đăng nhập
-        Task<List<TourCardDTO>> GetBestToursCardAsync(int? limit = null); // tour nổi bật
-        Task<List<TourCardDTO>> GetLatestToursAsync(int? limit = null); // tour mới
-        //đăng nhập
-        Task<List<TourCardDTO>> GetTourDesignJustForYouAsync(int userId, int? limit = null); // tour dành riêng cho bạn
-
-        Task<List<TourCardDTO>> GetRecommendedToursAsync(int userId, int? limit = null); // Có thể bạn quan tâm
-
-        Task<List<TourCardDTO>> GetNextTripSuggestionsAsync(int userId, int? limit =null); // gợi ý cho chuyến tiếp theo
-
-        Task<PageDTO<TourCardDTO>> GetFilteredToursAsync(TourFilterParamsDTO p); // tìm kiếm tour
-
-        //tính điểm xem chi tiết
-        Task TrackViewTourAsync(int userId, int tourId); // xem lướt
-        Task TrackDeepInterestAsync(int userId, int tourId); // xem lâu
     }
 }

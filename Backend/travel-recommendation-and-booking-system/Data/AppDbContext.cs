@@ -44,7 +44,7 @@ namespace travel_recommendation_and_booking_system.Data
 
         public DbSet<ThongBao> ThongBaos { get; set; }
         public DbSet<ThongBaoNguoiNhan> ThongBaoNguoiNhans { get; set; }
-
+        public DbSet<TourRecommendationScore> TourRecommendationScores { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -148,6 +148,21 @@ namespace travel_recommendation_and_booking_system.Data
 
                 entity.HasIndex(yt => yt.MaTour)
                       .HasDatabaseName("IX_DanhSachYeuThich_MaTour");
+            });
+            modelBuilder.Entity<TourRecommendationScore>(entity =>
+            {
+                entity.HasKey(x => new { x.MaNguoiDung, x.MaTour });
+                entity.HasIndex(x => x.MaNguoiDung);
+
+                entity.HasOne(x => x.NguoiDung)
+                      .WithMany()
+                      .HasForeignKey(x => x.MaNguoiDung)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(x => x.Tour)
+                      .WithMany()
+                      .HasForeignKey(x => x.MaTour)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<DonDatTour>()

@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo } from "react";
-import { Utensils, Camera, X, Trash2, Plus, Loader2, Pencil, Bed } from "lucide-react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
+import { Utensils, Camera, X, Trash2, Plus, Loader2, Pencil, Bed, MapPin } from "lucide-react";
 import TourItinerariesTable from "../TourItinerariesTable";
 import InputField from "~/components/UI/Form/InputField";
 import Dropdown from "~/components/Common/Dropdown";
@@ -7,6 +7,14 @@ import SelectField from "~/components/UI/Form/SelectField";
 import TimePicker from "~/components/UI/Form/TimePicker";
 import { toastSuccess, toastWarning } from "~/utils/Toast";
 import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
+
+// ⚠️ Kiểm tra lại đường dẫn import cho đúng với cấu trúc thư mục thực tế của bạn.
+// getProvincesApi lấy danh sách tỉnh/thành (provinces.open-api.vn)
+import { getProvincesApi } from "~/Services/ProvinceService";
+// getLocationsByProvinceApi lọc điểm tham quan theo tỉnh
+import { getLocationsByProvinceApi } from "~/Services/LocationService";
+// getHotelsByAddressApi lọc khách sạn theo tỉnh/địa chỉ
+import { getHotelsByAddressApi } from "~/Services/HotelService";
 
 const BUA_AN_OPTIONS = [
     { value: "", label: "Không có" },
@@ -84,7 +92,19 @@ export default function TourItinerariesSection({
     const [editingSubKey, setEditingSubKey] = useState(null);
     const [editingSubRow, setEditingSubRow] = useState(null);
 
+    // ── Lọc điểm tham quan & khách sạn theo tỉnh/thành ──
+    const [provinces, setProvinces] = useState([]);
+    const [selectedProvince, setSelectedProvince] = useState("");
+    const [diaDiemsByProvince, setDiaDiemsByProvince] = useState([]);
+    const [khachSansByProvince, setKhachSansByProvince] = useState([]);
+    const [loadingProvinceData, setLoadingProvinceData] = useState(false);
+
     const safeData = Array.isArray(value) ? value : [];
+
+    // Danh sách điểm tham quan/khách sạn "đang hiệu lực" để đổ vào các ô chọn:
+    // nếu người dùng đã chọn tỉnh -> chỉ lấy theo tỉnh đó, ngược lại lấy toàn bộ (props)
+    const effectiveDiaDiems = selectedProvince ? diaDiemsByProvince : diaDiems;
+    const effectiveKhachSans = selectedProvince ? khachSansByProvince : khachSans;
 
     const selectedLocationIds = useMemo(
         () => currentItinerary?.chiTietLichTrinhs?.map((item) => String(item.maDiaDiem)).filter(Boolean) ?? [],
@@ -92,19 +112,69 @@ export default function TourItinerariesSection({
     );
 
     const availableLocations = useMemo(
-        () => diaDiems.filter((item) => !selectedLocationIds.includes(String(item.maDiaDiem))),
-        [diaDiems, selectedLocationIds]
+        () => effectiveDiaDiems.filter((item) => !selectedLocationIds.includes(String(item.maDiaDiem))),
+        [effectiveDiaDiems, selectedLocationIds]
     );
 
     const getAvailableLocationsForEdit = useCallback(
         (currentLocationId) =>
-            diaDiems.filter(
+            effectiveDiaDiems.filter(
                 (item) =>
                     String(item.maDiaDiem) === String(currentLocationId) ||
                     !selectedLocationIds.includes(String(item.maDiaDiem))
             ),
-        [diaDiems, selectedLocationIds]
+        [effectiveDiaDiems, selectedLocationIds]
     );
+
+    // Lấy danh sách tỉnh/thành 1 lần khi mount
+    useEffect(() => {
+        const fetchProvinces = async () => {
+            try {
+                const data = await getProvincesApi();
+                setProvinces(Array.isArray(data) ? data : []);
+            } catch (error) {
+                console.error(error);
+            }
+        };
+        fetchProvinces();
+    }, []);
+
+    // Khi chọn tỉnh/thành -> tải điểm tham quan + khách sạn tương ứng
+    useEffect(() => {
+        if (!selectedProvince) {
+            setDiaDiemsByProvince([]);
+            setKhachSansByProvince([]);
+            return;
+        }
+
+        let cancelled = false;
+        const fetchByProvince = async () => {
+            try {
+                setLoadingProvinceData(true);
+                const [locs, hotels] = await Promise.all([
+                    getLocationsByProvinceApi(selectedProvince),
+                    getHotelsByAddressApi(selectedProvince),
+                ]);
+                if (cancelled) return;
+                setDiaDiemsByProvince(Array.isArray(locs) ? locs : []);
+                setKhachSansByProvince(Array.isArray(hotels) ? hotels : []);
+            } catch (error) {
+                if (cancelled) return;
+                console.error(error);
+                toastWarning(
+                    "Lỗi tải dữ liệu",
+                    "Không thể tải điểm tham quan/khách sạn theo tỉnh thành đã chọn."
+                );
+                setDiaDiemsByProvince([]);
+                setKhachSansByProvince([]);
+            } finally {
+                if (!cancelled) setLoadingProvinceData(false);
+            }
+        };
+
+        fetchByProvince();
+        return () => { cancelled = true; };
+    }, [selectedProvince]);
 
     // Modal handlers
     const openAddModal = () => {
@@ -113,6 +183,9 @@ export default function TourItinerariesSection({
         setModalErrors({});
         setTimelineError("");
         setModalMode("ADD");
+        setSelectedProvince("");
+        setDiaDiemsByProvince([]);
+        setKhachSansByProvince([]);
         setShowItineraryModal(true);
     };
 
@@ -137,6 +210,9 @@ export default function TourItinerariesSection({
         setEditingSubKey(null);
         setEditingSubRow(null);
         setModalMode("EDIT");
+        setSelectedProvince("");
+        setDiaDiemsByProvince([]);
+        setKhachSansByProvince([]);
         setShowItineraryModal(true);
     }, []);
 
@@ -156,6 +232,10 @@ export default function TourItinerariesSection({
         const file = e.target.files?.[0];
         if (!file) return;
         setCurrentItinerary((prev) => ({ ...prev, file, preview: URL.createObjectURL(file) }));
+    };
+
+    const handleProvinceChange = (val) => {
+        setSelectedProvince(val);
     };
 
     // Sub-row handlers
@@ -326,7 +406,7 @@ export default function TourItinerariesSection({
 
             {/* Modal */}
             {showItineraryModal && currentItinerary && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-sm">
                     <div className="bg-white w-full max-w-6xl rounded-2xl shadow-2xl flex flex-col overflow-hidden max-h-[95vh]">
                         {/* Header */}
                         <div className="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
@@ -374,6 +454,27 @@ export default function TourItinerariesSection({
                                         required
                                     />
 
+                                    <div>
+                                        <label className="text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1.5">
+                                            <MapPin size={14} className="text-slate-400" /> Tỉnh/Thành phố
+                                            {loadingProvinceData && <Loader2 size={12} className="animate-spin text-sky-500" />}
+                                        </label>
+                                        <SelectField
+                                            searchable
+                                            value={selectedProvince}
+                                            options={provinces}
+                                            valueKey="name"
+                                            labelKey="name"
+                                            placeholder="Chọn tỉnh/thành để lọc điểm tham quan & khách sạn"
+                                            onChange={handleProvinceChange}
+                                            disabled={disabled}
+                                        />
+                                        <p className="text-[11px] text-slate-400 mt-1">
+                                            Chọn tỉnh/thành để danh sách điểm tham quan và khách sạn bên dưới chỉ hiển thị theo khu vực này.
+                                            Bỏ chọn để xem lại toàn bộ danh sách.
+                                        </p>
+                                    </div>
+
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                         <div>
                                             <label className="text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1.5">
@@ -395,13 +496,18 @@ export default function TourItinerariesSection({
                                             <SelectField
                                                 searchable
                                                 value={currentItinerary.maKhachSan || ""}
-                                                options={khachSans}
+                                                options={effectiveKhachSans}
                                                 valueKey="maKhachSan"
                                                 labelKey="tenKhachSan"
-                                                placeholder="Chọn khách sạn"
+                                                placeholder={selectedProvince ? "Chọn khách sạn trong tỉnh/thành" : "Chọn khách sạn"}
                                                 onChange={(val) => handleFieldChange("maKhachSan", val)}
-                                                disabled={disabled}
+                                                disabled={disabled || loadingProvinceData}
                                             />
+                                            {selectedProvince && effectiveKhachSans.length === 0 && !loadingProvinceData && (
+                                                <p className="text-[11px] text-amber-500 mt-1">
+                                                    Không tìm thấy khách sạn nào thuộc tỉnh/thành đã chọn.
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
 
@@ -419,7 +525,7 @@ export default function TourItinerariesSection({
                             />
 
                             {/* Khung thêm & hiển thị danh sách hoạt động chi tiết (Timeline Table) */}
-                            <div className={`bg-white border rounded-2xl shadow-sm ${modalErrors.chiTietLichTrinhs ? "border-red-400" : "border-slate-200"}`}> 
+                            <div className={`bg-white border rounded-2xl shadow-sm ${modalErrors.chiTietLichTrinhs ? "border-red-400" : "border-slate-200"}`}>
                                 {/* Header bảng và Form thêm mốc */}
                                 {!isViewMode && !isLocked && (
                                     <div className="p-5 bg-slate-50/70 border-b border-slate-100 space-y-4">
@@ -428,7 +534,7 @@ export default function TourItinerariesSection({
                                             <div className="md:col-span-3">
                                                 <label className="text-[11px] font-semibold text-slate-500 mb-1 block">Giờ bắt đầu *</label>
                                                 <TimePicker
-                                                
+
                                                     value={newSubRow.gioBatDau}
                                                     onChange={(timeStr) => setNewSubRow((p) => ({ ...p, gioBatDau: timeStr }))}
                                                 />
@@ -441,17 +547,25 @@ export default function TourItinerariesSection({
                                                 />
                                             </div>
                                             <div className="md:col-span-5">
-                                                <label className="text-[11px] font-semibold text-slate-500 mb-1 block">Địa điểm tham quan</label>
+                                                <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
+                                                    Địa điểm tham quan
+                                                    {selectedProvince && <span className="text-sky-500 normal-case font-medium"> (theo {selectedProvince})</span>}
+                                                </label>
                                                 <SelectField
                                                     searchable
                                                     value={newSubRow.maDiaDiem}
                                                     options={availableLocations}
                                                     valueKey="maDiaDiem"
                                                     labelKey="tenDiaDiem"
-                                                    placeholder="Chọn địa điểm"
+                                                    placeholder={selectedProvince ? "Chọn địa điểm trong tỉnh/thành" : "Chọn địa điểm"}
                                                     onChange={(val) => setNewSubRow((p) => ({ ...p, maDiaDiem: val }))}
-                                                    disabled={isSaving}
+                                                    disabled={isSaving || loadingProvinceData}
                                                 />
+                                                {selectedProvince && availableLocations.length === 0 && !loadingProvinceData && (
+                                                    <p className="text-[11px] text-amber-500 mt-1">
+                                                        Không còn địa điểm nào thuộc tỉnh/thành đã chọn.
+                                                    </p>
+                                                )}
                                             </div>
                                             <div className="md:col-span-1 pt-6">
                                                 <button
@@ -483,7 +597,7 @@ export default function TourItinerariesSection({
                                     <table className="w-full text-left text-sm border-collapse">
                                         <thead>
                                             <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-100 text-xs uppercase tracking-wider">
-                                                <th className="py-3 px-5 w-44">Thời gian</th>
+                                                <th className="py-3 px-5 w-64">Thời gian</th>
                                                 <th className="py-3 px-5 w-64">Địa điểm</th>
                                                 <th className="py-3 px-5">Chi tiết hoạt động</th>
                                                 {!isViewMode && !isLocked && <th className="py-3 px-5 w-28 text-center">Thao tác</th>}
@@ -506,9 +620,9 @@ export default function TourItinerariesSection({
                                                         <tr key={subKey} className="hover:bg-slate-50/60 transition-colors">
                                                             <td className="py-4 px-5 vertical-align-top font-medium text-slate-700">
                                                                 {isEditing ? (
-                                                                    <div className="flex items-center gap-1.5 max-w-[160px]">
+                                                                    <div className="flex items-center gap-2 min-w-[260px]">
                                                                         <TimePicker value={editingSubRow.gioBatDau} onChange={(t) => setEditingSubRow((p) => ({ ...p, gioBatDau: t }))} />
-                                                                        <span className="text-slate-400">-</span>
+                                                                        <span className="text-slate-400 shrink-0">-</span>
                                                                         <TimePicker value={editingSubRow.gioKetThuc} onChange={(t) => setEditingSubRow((p) => ({ ...p, gioKetThuc: t }))} />
                                                                     </div>
                                                                 ) : (
@@ -520,6 +634,7 @@ export default function TourItinerariesSection({
                                                             <td className="py-4 px-5 text-slate-700">
                                                                 {isEditing ? (
                                                                     <SelectField
+                                                                        searchable
                                                                         value={editingSubRow.maDiaDiem}
                                                                         options={getAvailableLocationsForEdit(editingSubRow.maDiaDiem)}
                                                                         valueKey="maDiaDiem"

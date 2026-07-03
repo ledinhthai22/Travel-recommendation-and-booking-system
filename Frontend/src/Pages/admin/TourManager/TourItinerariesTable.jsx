@@ -143,6 +143,7 @@ export default function TourItinerariesTable({
             columns={columns}
             data={safeData}
             loading={loading}
+            paginationPerPage={5}
             paginationComponentOptions={{
                 rowsPerPageText: 'Số dòng:',
                 rangeSeparatorText: 'trên',

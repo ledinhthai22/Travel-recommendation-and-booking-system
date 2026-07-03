@@ -60,7 +60,7 @@ export default function StaffManager() {
             setLoading(true);
 
             const res = await getStaffApi(
-                1, 10,
+                1, 10000,
                 hoTen, email, soDienThoai, trangThai
             );
 

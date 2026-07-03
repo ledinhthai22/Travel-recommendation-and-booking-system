@@ -74,5 +74,18 @@ namespace travel_recommendation_and_booking_system.Extensions
                "* * * * *" 
             );
         }
+        public static void UseTrainRecommendationModelJob(this WebApplication app)
+        {
+            using var scope = app.Services.CreateScope();
+
+            var recurringJobManager =
+                scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+
+            RecurringJob.AddOrUpdate<TrainRecommendationModelJob>(
+                "train-recommendation-model",
+                job => job.TrainRecommendationModel(),
+                Cron.Daily(2)
+            );
+        }
     }
 }
