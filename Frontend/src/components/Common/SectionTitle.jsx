@@ -7,7 +7,7 @@ export default function SectionTitle({ title, description, action }) {
         {title && (
           <h2 
             style={{ fontFamily: "'Poppins', sans-serif" }}
-            className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
+            className="text-[16px] font-bold tracking-tight text-slate-900 sm:text-3xl"
           >
             {title}
           </h2>
@@ -16,7 +16,7 @@ export default function SectionTitle({ title, description, action }) {
         {description && (
           <p 
             style={{ fontFamily: "'Inter', sans-serif" }}
-            className="mt-1.5 text-xs text-slate-500 sm:text-sm"
+            className="mt-1.5 text-[13px] text-slate-500 sm:text-sm"
           >
             {description}
           </p>

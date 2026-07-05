@@ -16,7 +16,7 @@ export const getReviewApi = async (
     return reponse.data;
 };
 
-//API cập nhật trạng thái của 1 bình luận
+
 export const updateReviewStatusApi = async (id, trangThai) => {
     const response = await axiosClient.patch(`/admin/Review/${id}/status`, {
         trangThai: trangThai
@@ -24,7 +24,7 @@ export const updateReviewStatusApi = async (id, trangThai) => {
     return response.data;
 };
 
-//API cập nhật trạng thái N bình luận
+
 export const batchUpdateReviewStatusApi = async (maDanhGiaList, trangThai) => {
     const response = await axiosClient.patch("/admin/Review/batch-update-status", {
         MaDanhGiaList: maDanhGiaList,
@@ -38,7 +38,7 @@ export const getApprovedReviewsApi = async () => {
     return response.data;
 };
 
-// thêm đánh giá
+
 export const createReviewApi = async (reviewData) => {
     const response = await axiosClient.post("/customer/Review", {
         maNguoiDung: reviewData.maNguoiDung,

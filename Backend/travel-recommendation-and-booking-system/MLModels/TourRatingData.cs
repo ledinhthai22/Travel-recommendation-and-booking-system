@@ -20,7 +20,7 @@ namespace travel_recommendation_and_booking_system.Services.MLModels
 
     public static class TrainingConstants
     {
-        // Đặt lớn hơn MaNguoiDung/MaTour lớn nhất trong DB một khoảng an toàn
+      
         public const uint MAX_USER_KEY = 100_000;
         public const uint MAX_TOUR_KEY = 10_000;
     }

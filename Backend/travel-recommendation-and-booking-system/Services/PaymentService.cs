@@ -37,12 +37,13 @@ namespace travel_recommendation_and_booking_system.Services
             _notificationService = notificationService;
         }
 
-        public async Task<string> CreatePaymentUrlAsync(PaymentRequestDTO request, string remoteIpAddress, string txnRef)
+        public async Task<(string PaymentUrl, string TxnRef)> CreatePaymentUrlAsync(PaymentRequestDTO request, string remoteIpAddress)
         {
             var giuCho = await _context.GiuChos
                 .Include(x => x.ChuyenKhoiHanh).ThenInclude(x => x.GiaChuyens)
                 .FirstOrDefaultAsync(x => x.MaGiuCho == request.MaGiuCho && x.MaChuyen == request.MaChuyen)
                 ?? throw new KeyNotFoundException("Phiên giữ chỗ không tồn tại.");
+
             var payload = await _context.PaymentPayloads
                 .FirstOrDefaultAsync(x => x.MaGiuCho == giuCho.MaGiuCho);
 
@@ -51,15 +52,25 @@ namespace travel_recommendation_and_booking_system.Services
                 throw new Exception("Không tìm thấy PaymentPayload.");
             }
 
+            if (giuCho.ThoiGianHetHan <= DateTime.Now)
+            {
+                throw new InvalidOperationException("Phiên giữ chỗ đã hết hạn. Vui lòng chọn lại.");
+            }
+
             payload.NgayBatDauThanhToan = DateTime.Now;
 
-            await _context.SaveChangesAsync();
-            if (giuCho.ThoiGianHetHan <= DateTime.Now)
-                throw new InvalidOperationException("Phiên giữ chỗ đã hết hạn. Vui lòng chọn lại.");
+            // Gia hạn thời gian giữ chỗ khi bắt đầu thanh toán qua VNPay
+            var thoiGianToiThieu = DateTime.Now.AddMinutes(10);
+            if (giuCho.ThoiGianHetHan < thoiGianToiThieu)
+            {
+                giuCho.ThoiGianHetHan = thoiGianToiThieu;
+            }
 
             int tongKhach = request.SoNguoiLon + request.SoTreEm + request.SoEmBe;
             if (giuCho.SoChoGiu < tongKhach)
+            {
                 throw new InvalidOperationException("Số chỗ giữ không khớp với số khách.");
+            }
 
             var gia = giuCho.ChuyenKhoiHanh.GiaChuyens.FirstOrDefault()
                 ?? throw new InvalidOperationException("Chuyến chưa có bảng giá.");
@@ -93,8 +104,10 @@ namespace travel_recommendation_and_booking_system.Services
             var tz = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
             var localTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
 
-          
-            string secureTxnRef = $"{txnRef}";
+            string secureTxnRef = DateTime.Now.Ticks.ToString();
+            payload.TxnRef = secureTxnRef;
+
+            await _context.SaveChangesAsync();
 
             var vnpay = new VnPayLibrary();
             vnpay.AddRequestData("vnp_Version", _vnpayConfig.Version);
@@ -108,9 +121,11 @@ namespace travel_recommendation_and_booking_system.Services
             vnpay.AddRequestData("vnp_OrderInfo", $"Thanh toan Chuyến đi - {request.MaCodeChuyen}");
             vnpay.AddRequestData("vnp_OrderType", "other");
             vnpay.AddRequestData("vnp_ReturnUrl", _vnpayConfig.ReturnUrl);
-            vnpay.AddRequestData("vnp_TxnRef", secureTxnRef); // Sử dụng secureTxnRef mới
+            vnpay.AddRequestData("vnp_TxnRef", secureTxnRef);
 
-            return vnpay.CreateRequestUrl(_vnpayConfig.BaseUrl, _vnpayConfig.HashSecret);
+            string url = vnpay.CreateRequestUrl(_vnpayConfig.BaseUrl, _vnpayConfig.HashSecret);
+
+            return (url, secureTxnRef);
         }
 
         public async Task<(string RspCode, string Message)> ProcessVnPayIpnAsync(Dictionary<string, string> queryData)
@@ -129,21 +144,17 @@ namespace travel_recommendation_and_booking_system.Services
                         vnpay.AddResponseData(kv.Key, kv.Value);
                 }
 
-                if (!vnpay.ValidateSignature(vnp_SecureHash, _vnpayConfig.HashSecret))
+                bool isValidSignature = vnpay.ValidateSignature(vnp_SecureHash, _vnpayConfig.HashSecret);
+                if (!isValidSignature)
                 {
-                    Console.WriteLine("[IPN] ERROR: Invalid signature");
                     return ("97", "Invalid signature");
                 }
 
                 string txnRef = vnpay.GetResponseData("vnp_TxnRef");
                 string responseCode = vnpay.GetResponseData("vnp_ResponseCode");
                 string noiDung = vnpay.GetResponseData("vnp_OrderInfo");
-
-                // Giữ nguyên chuỗi gốc dạng số nguyên (chuỗi xu) từ VNPay để đối chiếu chính xác
                 string vnpAmountRaw = vnpay.GetResponseData("vnp_Amount");
                 decimal vnpayAmount = Convert.ToDecimal(vnpAmountRaw) / 100;
-
-                Console.WriteLine($"[IPN] TxnRef: {txnRef} | ResponseCode: {responseCode} | Amount: {vnpayAmount}");
 
                 // Kiểm tra trùng lặp giao dịch (Idempotency)
                 var existingThanhToan = await _context.ThanhToans
@@ -151,58 +162,37 @@ namespace travel_recommendation_and_booking_system.Services
 
                 if (existingThanhToan != null)
                 {
-                    Console.WriteLine($"[IPN] Duplicate call detected for TxnRef {txnRef}, skip re-processing.");
                     return ("02", "Order already confirmed");
                 }
 
                 if (responseCode != "00")
                 {
-                    Console.WriteLine($"[IPN] Payment failed with code: {responseCode}");
                     return ("00", "Confirm success");
                 }
 
-            
-                string[] parts = txnRef.Split('_');
-                if (parts.Length < 2 || !int.TryParse(parts[1], out int maGiuCho))
-                {
-                    Console.WriteLine("[IPN] ERROR: TxnRef format is invalid.");
-                    return ("01", "Order not found (Invalid TxnRef)");
-                }
-
-                // Tìm đích danh phiên giữ chỗ bằng Khóa Chính MaGiuCho thay vì tìm bằng MaChuyenCode chung chung
-                var giuCho = await _context.GiuChos
-                    .Include(x => x.ChuyenKhoiHanh).ThenInclude(x => x.GiaChuyens)
-                    .FirstOrDefaultAsync(x => x.MaGiuCho == maGiuCho);
-
-                if (giuCho == null)
-                {
-                    Console.WriteLine($"[IPN] ERROR: GiuCho with ID {maGiuCho} not found.");
-                    return ("01", "GiuCho not found");
-                }
-
-                int maGiuChoId = giuCho.MaGiuCho;
-
                 var payload = await _context.PaymentPayloads
-                    .FirstOrDefaultAsync(x => x.MaGiuCho == maGiuChoId);
+                    .FirstOrDefaultAsync(x => x.TxnRef == txnRef);
 
                 if (payload == null)
                 {
                     return ("01", "PaymentPayload not found");
                 }
 
+                var giuCho = await _context.GiuChos
+                    .Include(x => x.ChuyenKhoiHanh).ThenInclude(x => x.GiaChuyens)
+                    .FirstOrDefaultAsync(x => x.MaGiuCho == payload.MaGiuCho);
+
+                if (giuCho == null)
+                {
+                    return ("01", "GiuCho not found");
+                }
+
                 if (payload.NgayBatDauThanhToan == null)
                 {
                     return ("01", "Payment not started");
                 }
-                if (payload.NgayBatDauThanhToan > giuCho.ThoiGianHetHan)
-                {
-                    Console.WriteLine(
-                        $"[IPN] Payment started after reservation expired."
-                    );
 
-                    return ("00", "Hold expired");
-                }
-
+                bool canhBaoTreHan = payload.NgayBatDauThanhToan > giuCho.ThoiGianHetHan;
                 DonDatTour order;
 
                 await using (var transaction = await _context.Database.BeginTransactionAsync())
@@ -210,6 +200,11 @@ namespace travel_recommendation_and_booking_system.Services
                     try
                     {
                         var chuyen = giuCho.ChuyenKhoiHanh;
+                        if (chuyen == null)
+                        {
+                            throw new Exception("ChuyenKhoiHanh is null.");
+                        }
+
                         var gia = chuyen.GiaChuyens.FirstOrDefault()
                             ?? throw new Exception("Không có bảng giá.");
 
@@ -222,7 +217,6 @@ namespace travel_recommendation_and_booking_system.Services
                             payload.SoEmBe * gia.GiaEmBe;
 
                         decimal phuThuPhongDon = soPhongDon * gia.PhuThuPhongDon;
-
                         decimal giaTriGiam = 0;
                         UuDai? uuDai = null;
 
@@ -230,31 +224,39 @@ namespace travel_recommendation_and_booking_system.Services
                         {
                             uuDai = await _context.UuDais
                                 .FirstOrDefaultAsync(x => x.MaUuDai == payload.MaUuDai.Value);
+
                             if (uuDai != null && tongTienGoc >= uuDai.DieuKienApDung)
                                 giaTriGiam = Math.Round(tongTienGoc * uuDai.PhanTramGiam / 100, 0);
                         }
 
                         decimal tongTien = tongTienGoc + phuThuPhongDon - giaTriGiam;
-
-
                         long expectedAmountRaw = Convert.ToInt64(tongTien * 100);
                         long actualAmountRaw = Convert.ToInt64(vnpAmountRaw);
 
                         if (expectedAmountRaw != actualAmountRaw)
                         {
-                            Console.WriteLine($"[IPN] ERROR: Amount mismatch. Expected: {expectedAmountRaw}, Actual: {actualAmountRaw}");
                             await transaction.RollbackAsync();
                             return ("04", "Invalid amount");
                         }
 
                         var maDatCho = $"BK{DateTime.Now:yyyyMMddHHmmssfff}{Random.Shared.Next(100, 999)}";
 
+                        string ghiChuCanhBao = "";
+                        if (canhBaoTreHan)
+                        {
+                            int tongKhachDuKien = payload.SoNguoiLon + payload.SoTreEm + payload.SoEmBe;
+                            bool coTheVuotQuaCho = (chuyen.SoChoDaDat + tongKhachDuKien) > chuyen.SoChoToiDa;
+                            ghiChuCanhBao = coTheVuotQuaCho
+                                ? "[CẢNH BÁO] Thanh toán hoàn tất trễ, có thể VƯỢT QUÁ số chỗ tối đa. Cần nhân viên kiểm tra và liên hệ khách hàng."
+                                : "[LƯU Ý] Thanh toán hoàn tất trễ hơn dự kiến giữ chỗ, nhưng vẫn còn đủ chỗ.";
+                        }
+
                         order = new DonDatTour
                         {
                             MaNguoiDung = giuCho.MaNguoiDung,
                             MaChuyen = giuCho.MaChuyen,
                             MaDatCho = maDatCho,
-                            GhiChu = payload.GhiChu ?? "",
+                            GhiChu = string.IsNullOrEmpty(ghiChuCanhBao) ? (payload.GhiChu ?? "") : $"{ghiChuCanhBao} {payload.GhiChu}".Trim(),
                             MaUuDai = payload.MaUuDai,
                             SoNguoiLon = payload.SoNguoiLon,
                             SoTreEm = payload.SoTreEm,
@@ -291,7 +293,7 @@ namespace travel_recommendation_and_booking_system.Services
                             _context.KhachHangs.AddRange(khachHangs);
                         }
 
-                        _context.ThanhToans.Add(new ThanhToan
+                        var thanhToan = new ThanhToan
                         {
                             MaDonDatTour = order.MaDonDatTour,
                             PhuongThucThanhToan = 1,
@@ -300,14 +302,17 @@ namespace travel_recommendation_and_booking_system.Services
                             NgayThanhToan = DateTime.Now,
                             TongTienThanhToan = vnpayAmount,
                             TrangThaiThanhToan = 1,
-                        });
+                        };
+                        _context.ThanhToans.Add(thanhToan);
 
                         int tongKhach = payload.SoNguoiLon + payload.SoTreEm + payload.SoEmBe;
                         chuyen.SoChoDaDat += tongKhach;
                         chuyen.NgayCapNhat = DateTime.Now;
 
                         if (uuDai != null)
+                        {
                             uuDai.SoLuongDaDung++;
+                        }
 
                         _context.GiuChos.Remove(giuCho);
                         _context.PaymentPayloads.Remove(payload);
@@ -315,29 +320,31 @@ namespace travel_recommendation_and_booking_system.Services
                         await _context.SaveChangesAsync();
                         await transaction.CommitAsync();
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        Console.WriteLine($"[IPN] Transaction Error: {ex.Message}");
                         throw;
                     }
                 }
 
+
+                // Gửi thông báo đến người dùng và nhân viên 
                 try
                 {
+                
 
-                    // Thông báo khi khách hàng thanh toán thành công
+
                     await _notificationService.CreateForUserAsync(
-                            order.MaNguoiDung,
-                            new CreateNotificationDTO
-                            {
-                                TieuDe = "Thanh toán thành công",
-                                NoiDung = $"Đơn đặt tour {order.MaDatCho} đã thanh toán thành công.",
-                                LoaiThongBao = (int)NotificationType.Payment,
-                                LinkChiTiet = $"/tai-khoan/don-dat-tour/{order.MaDonDatTour}"
-                            });
+                        order.MaNguoiDung,
+                        new CreateNotificationDTO
+                        {
+                            TieuDe = "Thanh toán thành công",
+                            NoiDung = $"Đơn đặt tour {order.MaDatCho} đã thanh toán thành công.",
+                            LoaiThongBao = (int)NotificationType.Payment,
+                            LinkChiTiet = $"/Thong-Tin-Ca-Nhan"
+                        });
 
+                    Console.WriteLine("User notification success.");
 
-                    // Thông báo cho tất cả nhân viên (Admin + Staff) về đơn đặt tour mới
                     var staffIds = await _context.NhanViens
                         .Where(x => x.NgayXoa == null &&
                                    (x.MaVaiTro == RoleIds.Admin ||
@@ -345,24 +352,39 @@ namespace travel_recommendation_and_booking_system.Services
                         .Select(x => x.MaNhanVien)
                         .ToListAsync();
 
+                   
+
+                    bool coCanhBaoCanKiemTra = order.GhiChu?.Contains("[CẢNH BÁO]") == true;
+
+                  
+
                     await _notificationService.CreateForStaffsAsync(
                         staffIds,
                         new CreateNotificationDTO
                         {
-                            TieuDe = "Có đơn đặt tour mới",
-                            NoiDung = $"Khách hàng vừa thanh toán thành công đơn {order.MaDatCho}.",
+                            TieuDe = coCanhBaoCanKiemTra
+                                ? "Đơn tour mới CẦN KIỂM TRA GẤP"
+                                : "Có đơn đặt tour mới",
+
+                            NoiDung = coCanhBaoCanKiemTra
+                                ? $"Đơn {order.MaDatCho} thanh toán trễ, có thể vượt quá số chỗ tối đa. Vui lòng kiểm tra ngay."
+                                : $"Khách hàng vừa thanh toán thành công đơn {order.MaDatCho}.",
+
                             LoaiThongBao = (int)NotificationType.Booking,
-                            LinkChiTiet = $"/Quan-ly/don-dat-tour/{order.MaDonDatTour}"
+
+                            LinkChiTiet = $"/Quan-ly/Don-dat-cac-chuyen-di"
                         });
+
+                 
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[Notification] {ex.Message}");
+                    
+                    Console.WriteLine(ex.ToString());
                 }
 
                 try
                 {
-                    BackgroundJob.Enqueue<BookingEmailJob>(job => job.SendBookingConfirmation(order.MaDonDatTour));
                     await _hubContext.Clients.Group("ADMIN_GROUP").SendAsync("BookingCreated", new
                     {
                         MaDonDatTour = order.MaDonDatTour,
@@ -371,16 +393,15 @@ namespace travel_recommendation_and_booking_system.Services
                         NgayDat = order.NgayDat
                     });
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    Console.WriteLine($"[IPN] Warning: Failed to enqueue email or signalR: {ex.Message}");
+                    // Catch lỗi realtime sự kiện
                 }
 
                 return ("00", "Confirm success");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine($"[IPN] CRITICAL ERROR: {ex.Message}");
                 return ("99", "System error");
             }
         }

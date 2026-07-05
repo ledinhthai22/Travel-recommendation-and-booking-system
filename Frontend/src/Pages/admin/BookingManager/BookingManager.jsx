@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Calendar, RefreshCw,
     Banknote, SlidersHorizontal,
     CreditCard, ArrowRightLeft,
-    Printer
+    Printer, Wallet
 } from 'lucide-react';
 import CustomDataTable from '~/components/UI/Table/CustomDataTable';
 import ManagerToolbar from '~/components/UI/ToolBar/ToolBar';
@@ -17,6 +18,7 @@ import { connection } from '~/Services/signalRService';
 import { toastSuccess, toastError } from '~/utils/Toast';
 import { printContractsByIdsApi } from '~/Services/TourBookingService';
 import Checkbox from '~/components/UI/Table/Checkbox';
+import { formatCurrency } from '~/Helper/FormatCurrency';
 
 export const ORDER_STATUS = {
     1: { text: 'Chờ duyệt', color: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-amber-400' },
@@ -29,7 +31,8 @@ export const PAYMENT_STATUS = {
     0: { text: 'Chờ thanh toán', color: 'bg-amber-50 text-amber-700 border-amber-200' },
     1: { text: 'Thành công', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
     2: { text: 'Thất bại', color: 'bg-red-50 text-red-700 border-red-200' },
-    3: { text: 'Hoàn tiền', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+    3: { text: 'Đã hoàn tiền', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+    4: { text: 'Chờ hoàn tiền', color: 'bg-orange-50 text-orange-700 border-orange-200' },
 };
 
 export const PAYMENT_METHOD = {
@@ -51,13 +54,15 @@ const PAYMENT_OPTIONS = [
     { value: '0', label: 'Chờ thanh toán' },
     { value: '1', label: 'Thành công' },
     { value: '2', label: 'Thất bại' },
-    { value: '3', label: 'Hoàn tiền' },
+    { value: '3', label: 'Đã hoàn tiền' },
+    { value: '4', label: 'Chờ hoàn tiền' },
 ];
 
 
 const canPrintContract = (row) => row.trangThaiDon === 2 && row.trangThaiThanhToan === 1;
 
 export default function BookingManager() {
+    const navigate = useNavigate();
     const [bookings, setBookings] = useState([]);
     const [totalRows, setTotalRows] = useState(0);
     const [loading, setLoading] = useState(false);
@@ -113,9 +118,10 @@ export default function BookingManager() {
                 connection.off("BookingCreated");
 
                 connection.on("BookingCreated", (booking) => {
-                    console.log("Có booking mới:", booking);
+
                     toastSuccess(
-                        `Có đơn đặt tour mới #${booking.maDonDatTour}`
+                        "Có đơn đặt tour mới",
+                        `Mã đặt chỗ: ${booking.maDatCho} — Tổng tiền: ${booking.tongTien?.toLocaleString('vi-VN')}₫`
                     );
 
                     fetchBookings();
@@ -339,7 +345,7 @@ export default function BookingManager() {
             selector: r => r.tongTien,
             cell: r => (
                 <span className="text-sm font-bold text-slate-800 tabular-nums pr-1 whitespace-nowrap">
-                    {r.tongTien.toLocaleString('vi-VN')}
+                    {formatCurrency(r.tongTien)}
                 </span>
             ),
         },
@@ -366,7 +372,10 @@ export default function BookingManager() {
             center: true,
             selector: r => r.trangThaiThanhToan,
             cell: r => {
-                const p = PAYMENT_STATUS[r.trangThaiThanhToan ?? 0];
+                const p = PAYMENT_STATUS[r.trangThaiThanhToan] ?? {
+                    text: 'Không xác định',
+                    color: 'bg-slate-100 text-slate-500 border-slate-200',
+                };
                 return (
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border whitespace-nowrap ${p.color}`}>
                         {p.text}
@@ -424,6 +433,10 @@ export default function BookingManager() {
                         showExcel={false}
                         addButtonText="Thêm đơn đặt tour"
                         onAddClick={() => setIsCreateModalOpen(true)}
+                        showExtraButton={true}
+                        extraButtonText="Xử lý đơn hoàn tiền"
+                        extraButtonIcon={Wallet}
+                        onExtraClick={() => navigate('/Quan-ly/Xu-Ly-Hoan-Tien')}
                     />
                 </div>
 

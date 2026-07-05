@@ -85,7 +85,6 @@ namespace travel_recommendation_and_booking_system.Services
             await _context.SaveChangesAsync();
         }
 
-        // ===== Đọc điểm ML từ DB, fallback heuristic nếu chưa có =====
         public async Task<float> GetPersonalizedScoreAsync(int userId, int tourId)
         {
             var cached = await _context.TourRecommendationScores

@@ -21,6 +21,7 @@ import useAuth from '~/Hooks/useAuth';
 import { toastSuccess, toastError } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
 import ConfirmModal from '~/components/UI/Modal/ConfirmModal';
+import CancelReasonModal from '../UserProfileManager/CancelReasonModal';
 
 const ORDER_STATUS = {
     1: { text: 'Chờ duyệt', color: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-amber-400' },
@@ -90,6 +91,9 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
     });
     const closeConfirm = () => setConfirmModal(p => ({ ...p, isOpen: false, onConfirm: null }));
 
+    // Modal chọn lý do hủy (thay cho ConfirmModal khi hủy đơn)
+    const [isCancelReasonOpen, setIsCancelReasonOpen] = useState(false);
+
     const handleApprove = () => {
         setConfirmModal({
             isOpen: true,
@@ -119,35 +123,27 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
         });
     };
 
+    // Bấm nút "Hủy đơn" -> mở modal chọn lý do (không mở ConfirmModal nữa)
     const handleCancel = () => {
-        const phuongThuc = bk.thongTinThanhToan?.phuongThucThanhToan;
-        const warning = getCancelWarning(bk.trangThaiThanhToan, phuongThuc);
-
-        setConfirmModal({
-            isOpen: true,
-            title: 'Xác nhận hủy đơn',
-            message: warning
-                ? `${warning}\n\nBạn vẫn muốn hủy đơn #${bk.maDatCho}?`
-                : `Bạn có chắc muốn hủy đơn #${bk.maDatCho}? Hành động này không thể hoàn tác.`,
-            type: 'danger',
-            onConfirm: async () => {
-                closeConfirm();
-                setLoadingAction('cancel');
-                try {
-                    await cancelBookingAdminApi(bk.maDonDatTour);
-                    setBk(p => ({ ...p, trangThaiDon: 4 }));
-                    toastSuccess('Hủy đơn thành công', `Đơn #${bk.maDatCho} đã được hủy.`);
-                    onRefresh?.();
-                    onClose?.();
-                } catch (e) {
-                    toastError('Hủy đơn thất bại', getErrorMessage(e));
-                } finally {
-                    setLoadingAction(null);
-                }
-            },
-        });
+        setIsCancelReasonOpen(true);
     };
 
+    // Sau khi chọn lý do và bấm xác nhận trong CancelReasonModal
+    const handleConfirmCancelWithReason = async (lyDoHuy) => {
+        setIsCancelReasonOpen(false);
+        setLoadingAction('cancel');
+        try {
+            await cancelBookingAdminApi(bk.maDonDatTour, lyDoHuy);
+            setBk(p => ({ ...p, trangThaiDon: 4, lyDoHuy }));
+            toastSuccess('Hủy đơn thành công', `Đơn #${bk.maDatCho} đã được hủy.`);
+            onRefresh?.();
+            onClose?.();
+        } catch (e) {
+            toastError('Hủy đơn thất bại', getErrorMessage(e));
+        } finally {
+            setLoadingAction(null);
+        }
+    };
 
     const handleComplete = () => {
         setConfirmModal({
@@ -267,7 +263,7 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
 
     return (
         <>
-            <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[999] flex justify-center items-center p-4">
+            <div className="fixed inset-0 bg-slate-600/30 z-[999] flex justify-center items-center p-4">
                 <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden border border-slate-100">
                     <div className="flex items-start justify-between px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white shrink-0">
                         <div className="space-y-2">
@@ -539,11 +535,17 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                 onConfirm={confirmModal.onConfirm}
                 onCancel={closeConfirm}
             />
+
+            <CancelReasonModal
+                isOpen={isCancelReasonOpen}
+                onClose={() => setIsCancelReasonOpen(false)}
+                onConfirm={handleConfirmCancelWithReason}
+                isLoading={loadingAction === 'cancel'}
+                warningMessage={getCancelWarning(bk.trangThaiThanhToan, bk.thongTinThanhToan?.phuongThucThanhToan)}
+            />
         </>
     );
 }
-
-
 
 function SectionCard({ title, icon, children }) {
     return (
@@ -599,7 +601,7 @@ function PaymentSummaryCard({ trangThaiThanhToan, tongTien, thongTinThanhToan })
         },
         3: {
             cls: 'border-slate-200 bg-slate-50',
-            Icon: < Banknote size={18} className="text-slate-500 shrink-0" />,
+            Icon: <Banknote size={18} className="text-slate-500 shrink-0" />,
             title: 'Đã hoàn tiền',
             desc: 'Đơn đã bị hủy và tiền đã được hoàn lại cho khách.',
         },

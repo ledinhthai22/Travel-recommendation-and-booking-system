@@ -115,12 +115,6 @@ export function ImageGallery({ images = [] }) {
                                         onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/200x120?text=Error"; }}
                                     />
 
-                                    {image.anhChinh && !isLastVisible && (
-                                        <span className="absolute left-1.5 top-1.5 rounded-md bg-sky-500 px-1.5 py-0.5 text-[9px] font-bold text-white uppercase tracking-wide">
-                                            Chính
-                                        </span>
-                                    )}
-
                                     {isLastVisible && (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/55 text-white font-bold backdrop-blur-[1px] hover:bg-black/45 transition-colors">
                                             <span className="text-xl">+{totalImages - MAX_THUMBNAILS + 1}</span>

@@ -4,6 +4,7 @@ using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Log;
 using travel_recommendation_and_booking_system.DTOs.LogSystem;
 using travel_recommendation_and_booking_system.DTOs.UserProfile;
+using travel_recommendation_and_booking_system.Helpers;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
 
@@ -14,11 +15,13 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly AppDbContext _context;
         private readonly ILogService _logService;
         private readonly ICurrentUserService _currentUserService;
-        public UserProfileService(AppDbContext context, ILogService logService, ICurrentUserService currentUserService)
+        private readonly IEmailService _emailService;
+        public UserProfileService(AppDbContext context, ILogService logService, ICurrentUserService currentUserService, IEmailService emailService)
         {
             _context = context;
             _logService = logService;
             _currentUserService = currentUserService;
+            _emailService = emailService;
         }
         public async Task<UserProfileReponseDTO?> GetMyProfileAsync(int maNguoiDung)
         {
@@ -39,7 +42,7 @@ namespace travel_recommendation_and_booking_system.Services
 
             return userProfile;
         }
-        
+
         public async Task<bool> UpdateMyProfileAsync(int maNguoiDung, UserProfileDTO dto)
         {
             var user = await _context.NguoiDungs
@@ -110,7 +113,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = currentUserId ,
+                MaTaiKhoan = currentUserId,
                 TenHanhDong = ActionLogDTO.CapNhat,
                 TenBangTacDong = TableNameDTO.NguoiDung,
                 MaDoiTuong = user.MaNguoiDung,
@@ -144,10 +147,10 @@ namespace travel_recommendation_and_booking_system.Services
             string newPasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
 
             user.MatKhau = newPasswordHash;
-            user.NgayCapNhat= DateTime.Now;
+            user.NgayCapNhat = DateTime.Now;
 
             _context.NguoiDungs.Update(user);
-             await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
             return true;
         }
@@ -229,7 +232,7 @@ namespace travel_recommendation_and_booking_system.Services
                 .Select(d => new HistoryTourDTO
                 {
                     MaDonDatTour = d.MaDonDatTour,
-                    MaDatCho = d.MaDatCho, 
+                    MaDatCho = d.MaDatCho,
                     DuongDanAnh = d.ChuyenKhoiHanh.Tour.HinhAnhTours
                                     .OrderByDescending(a => a.AnhChinh)
                                     .Select(a => a.DuongDanAnh)
@@ -258,7 +261,7 @@ namespace travel_recommendation_and_booking_system.Services
                 .Select(d => new HistoryTourDetailDTO
                 {
                     MaTour = d.ChuyenKhoiHanh.MaTour,
-                    MaNguoiDung= d.MaNguoiDung,
+                    MaNguoiDung = d.MaNguoiDung,
                     MaDonDatTour = d.MaDonDatTour,
                     MaDatCho = d.MaDatCho,
                     TrangThai = d.TrangThaiDon,
@@ -278,26 +281,148 @@ namespace travel_recommendation_and_booking_system.Services
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<bool> CancelBookingAsync(int userId, int maDonDatTour)
+        public async Task<bool> CancelBookingAsync(int userId, int maDonDatTour, string lyDoHuy)
         {
+            if (string.IsNullOrWhiteSpace(lyDoHuy))
+                throw new Exception("Vui lòng nhập lý do hủy tour.");
+
             var booking = await _context.DonDatTours
-        .Include(d => d.ChuyenKhoiHanh)
-        .FirstOrDefaultAsync(d => d.MaDonDatTour == maDonDatTour && d.MaNguoiDung == userId);
+                .Include(d => d.ChuyenKhoiHanh)
+                .Include(d => d.ThanhToans)
+                .FirstOrDefaultAsync(d => d.MaDonDatTour == maDonDatTour && d.MaNguoiDung == userId);
 
-            if (booking == null) throw new Exception("Không tìm thấy đơn đặt tour.");
+            if (booking == null)
+                throw new Exception("Không tìm thấy đơn đặt tour.");
 
+            if (booking.TrangThaiDon == 3)
+                throw new Exception("Đơn đã hoàn tất, không thể hủy.");
+            if (booking.TrangThaiDon == 4)
+                throw new Exception("Đơn đã được hủy trước đó.");
             if (booking.TrangThaiDon != 1 && booking.TrangThaiDon != 2)
                 throw new Exception("Đơn hàng không thể hủy ở trạng thái hiện tại.");
 
-            if (booking.ChuyenKhoiHanh.NgayKhoiHanh <= DateTime.Now.AddDays(3))
+            var chuyen = booking.ChuyenKhoiHanh;
+            var now = DateTime.Now;
+
+            if (chuyen.NgayKhoiHanh <= now && now <= chuyen.NgayKetThuc)
+                throw new Exception("Tour đang diễn ra, không thể hủy.");
+            if (chuyen.NgayKetThuc < now)
+                throw new Exception("Tour đã kết thúc, không thể hủy.");
+            if (chuyen.NgayKhoiHanh <= now.AddDays(3))
                 throw new Exception("Không thể hủy tour trong vòng 3 ngày trước khởi hành.");
 
-            booking.TrangThaiDon = 4;
-            booking.NgayCapNhat = DateTime.Now;
+            var thanhToanThanhCong = booking.ThanhToans
+                .Where(t => t.TrangThaiThanhToan == 1)
+                .OrderByDescending(t => t.NgayThanhToan)
+                .FirstOrDefault();
 
-            _context.DonDatTours.Update(booking);
-            await _context.SaveChangesAsync();
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                booking.TrangThaiDon = 4;
+                booking.LyDoHuy = lyDoHuy.Trim();
+                booking.NgayCapNhat = now;
+                _context.DonDatTours.Update(booking);
+
+                // Trả lại chỗ đã đặt — trước đây bị thiếu ở luồng khách tự hủy
+                var soKhach = booking.SoNguoiLon + booking.SoTreEm + booking.SoEmBe;
+                chuyen.SoChoDaDat -= soKhach;
+
+                if (thanhToanThanhCong != null)
+                {
+                    decimal tyLeHoan = RefundHelper.TinhTyLeHoanTien(chuyen.NgayKhoiHanh, now);
+                    decimal soTienHoan = Math.Round(thanhToanThanhCong.TongTienThanhToan * tyLeHoan, 0);
+
+                    if (soTienHoan > 0)
+                    {
+                        thanhToanThanhCong.SoTienHoan = soTienHoan;
+                        thanhToanThanhCong.TrangThaiThanhToan = 4; // Chờ hoàn tiền — admin xử lý thủ công
+                        _context.ThanhToans.Update(thanhToanThanhCong);
+                    }
+                    // Nếu tỷ lệ hoàn = 0% (hủy sát ngày trong khoảng cho phép), không cần đánh dấu gì thêm
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+            if (thanhToanThanhCong != null)
+            {
+                await _emailService.SendRefundPendingAsync(booking, thanhToanThanhCong);
+            }
             return true;
         }
+
+        public async Task<bool> XacNhanHoanTienAsync(int maThanhToan, int maNhanVien)
+        {
+            var thanhToan = await _context.ThanhToans.FindAsync(maThanhToan);
+
+            if (thanhToan == null)
+                throw new Exception("Không tìm thấy giao dịch thanh toán.");
+
+            if (thanhToan.TrangThaiThanhToan != 4)
+                throw new Exception("Giao dịch không ở trạng thái chờ hoàn tiền.");
+
+            thanhToan.TrangThaiThanhToan = 3; // Đã hoàn tiền
+            thanhToan.NgayHoanTien = DateTime.Now;
+            thanhToan.MaNhanVienXuLyHoan = maNhanVien.ToString();
+
+            _context.ThanhToans.Update(thanhToan);
+            var order = await _context.DonDatTours
+            .Include(d => d.NguoiDung)
+            .Include(d => d.KhachHangs)
+            .Include(d => d.ChuyenKhoiHanh).ThenInclude(c => c.Tour)
+            .FirstOrDefaultAsync(d => d.MaDonDatTour == thanhToan.MaDonDatTour);
+            await _context.SaveChangesAsync();
+            if (order != null)
+            {
+                await _emailService.SendRefundCompletedAsync(order, thanhToan);
+            }
+            return true;
+        }
+        public async Task<PageDTO<PendingRefundDTO>> GetPendingRefundsAsync(int page, int pageSize)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            var query = _context.ThanhToans
+                .Include(t => t.DonDatTour).ThenInclude(d => d.NguoiDung)
+                .Include(t => t.DonDatTour).ThenInclude(d => d.ChuyenKhoiHanh).ThenInclude(c => c.Tour)
+                .Where(t => t.TrangThaiThanhToan == 4)
+                .OrderByDescending(t => t.NgayThanhToan)
+                .AsQueryable();
+
+            var totalItems = await query.CountAsync();
+
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(t => new PendingRefundDTO
+                {
+                    MaThanhToan = t.MaThanhToan,
+                    MaDonDatTour = t.MaDonDatTour,
+                    MaDatCho = t.DonDatTour.MaDatCho,
+                    TenTour = t.DonDatTour.ChuyenKhoiHanh.Tour.TenTour,
+                    HoTenKhachHang = t.DonDatTour.NguoiDung.HoTen,
+                    SoDienThoai = t.DonDatTour.NguoiDung.SoDienThoai,
+                    TongTienThanhToan = t.TongTienThanhToan,
+                    SoTienHoan = t.SoTienHoan,
+                    LyDoHuy = t.DonDatTour.LyDoHuy,
+                    NgayThanhToan = t.NgayThanhToan
+                })
+                .ToListAsync();
+
+            return new PageDTO<PendingRefundDTO>
+            {
+                Items = items,
+                PageNumber = page,
+                TotalItems = totalItems,
+                PageSize = pageSize
+            };
+        }
     }
-}
+}   

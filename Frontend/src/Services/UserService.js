@@ -1,4 +1,3 @@
-// Services/UserService.js
 import axiosClient from "./axiosClient";
 
 export const getUserApi = async (

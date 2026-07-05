@@ -1,4 +1,3 @@
-// Services/TourService.js
 import axiosClient from "./axiosClient";
 
 export const getPagedToursApi = async (
@@ -100,11 +99,12 @@ export const deleteTourImageApi = async (imageId) => {
     return response.data;
 };
 
-//tour yêu thích
-
 export const getMyWishlistIdsApi = async () => {
     try {
-        const response = await axiosClient.get(`/customer/Tour/wishlist-ids`);
+        const response = await axiosClient.get(
+            "/customer/WishList/wishlist-ids"
+        );
+
         return response.data;
     } catch (error) {
         console.error("Lỗi lấy danh sách ID yêu thích:", error);
@@ -112,24 +112,40 @@ export const getMyWishlistIdsApi = async () => {
     }
 };
 
-export const getWishlistApi = async (pageNumber = 1, pageSize = 10) => {
-    return await axiosClient.get(`/customer/Tour/wishlist`, {
-        params: {
-            pageNumber,
-            pageSize
+export const getWishlistApi = async (
+    pageNumber = 1,
+    pageSize = 10
+) => {
+    const response = await axiosClient.get(
+        "/customer/WishList",
+        {
+            params: {
+                pageNumber,
+                pageSize
+            }
         }
-    });
+    );
+
+    return response.data;
 };
 
 export const deleteWishlistApi = async (tourIds) => {
-    return await axiosClient.delete(`/customer/Tour/wishlist`, {
-        data: tourIds 
-    });
-};
+    const response = await axiosClient.delete(
+        "/customer/WishList",
+        {
+            data: tourIds
+        }
+    );
 
+    return response.data;
+};
 export const addToWishlistApi = async (tourId) => {
-    return await axiosClient.post(`/customer/Tour/wishlist/${tourId}`);
-}
+    const response = await axiosClient.post(
+        `/customer/WishList/${tourId}`
+    );
+
+    return response.data;
+};
     
 
 export const getTourBySlugApi = async (slug) => {
@@ -143,6 +159,47 @@ export const getTourBySlugApi = async (slug) => {
 export const getToursByLocationSlugApi = async (locationSlug) => {
     const response = await axiosClient.get(
         `/PublicTour/location/${locationSlug}`
+    );
+
+    return response.data;
+};
+export const filterTourApi = async ({
+    keyword,
+    maLoaiTour,
+    minPrice,
+    maxPrice,
+    ngayTu,
+    ngayDen,
+    diemDen,
+    pageNumber = 1,
+    pageSize = 12,
+}) => {
+    const response = await axiosClient.get("/client/Search/filter", {
+        params: {
+            keyword: keyword || undefined,
+            maLoaiTour: maLoaiTour || undefined,
+            minPrice: minPrice || undefined,
+            maxPrice: maxPrice || undefined,
+            ngayTu: ngayTu ?? undefined,
+            ngayDen: ngayDen ?? undefined,
+            diemDen: diemDen || undefined,
+            pageNumber,
+            pageSize,
+        },
+    });
+
+    return response.data;
+};
+export const getRelatedToursApi = async (maTour) => {
+    const response = await axiosClient.get(
+        `/PublicTour/${maTour}/related`
+    );
+
+    return response.data;
+};
+export const getRelatedToursByHotelApi = async (hotelId) => {
+    const response = await axiosClient.get(
+        `/PublicTour/${hotelId}/related-tours-hotel`
     );
 
     return response.data;

@@ -8,5 +8,7 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task SendBookingConfirmationAsync(DonDatTour order);
         Task SendPaymentReminderAsync(DonDatTour order);
         Task SendBookingCancelledAsync(DonDatTour order);
+        Task SendRefundPendingAsync(DonDatTour order, ThanhToan thanhToan);
+        Task SendRefundCompletedAsync(DonDatTour order, ThanhToan thanhToan);
     }
 }

@@ -16,5 +16,7 @@
         public int LuotDat {  get; set; }
         public int MaLoaiTour { get; set; }
         public string TenLoaiTour { get; set; }
+        public int? SoDanhGia { get; set; }
+        public int? LuotXem { get; set; }
     }
 }

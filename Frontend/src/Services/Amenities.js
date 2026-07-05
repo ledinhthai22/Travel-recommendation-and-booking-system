@@ -5,7 +5,7 @@ export const getAmenitiesPageApi = async (pageNumber = 1, pageSize = 10, tenTien
         params: {
             pageNumber,
             pageSize,
-            // Sửa tên param trùng khớp với class AmenitiesDTO ở Backend (TenTienIch)
+         
             "TenTienIch": tenTienIch || undefined 
         }
     });

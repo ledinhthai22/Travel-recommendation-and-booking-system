@@ -54,6 +54,11 @@ namespace travel_recommendation_and_booking_system.Models
         public DateTime NgayDat { get; set; }
         public DateTime? NgayDuyet { get; set; }
         public DateTime NgayCapNhat { get; set; }
+        [MaxLength(500)]
+        public string? LyDoHuy { get; set; }
+
+        [MaxLength(500)]
+        public string? HinhAnhHuy { get; set; }
 
         [Timestamp]
         public byte[] RowVersion { get; set; }

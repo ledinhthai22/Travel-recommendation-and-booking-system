@@ -8,7 +8,7 @@ export default function AvatarDropdown({ user, onLogout }) {
     const { isStaff } = useAuth();
     const dropdownRef = useRef(null);
     
-    const timestamp = new Date().getTime(); // Hoặc dùng 1 giá trị cố định nếu không muốn ảnh load lại mỗi lần mở dropdown
+    const timestamp = new Date().getTime(); 
     const path = user?.duongDanAnh || user?.avatar;
     
     let avatarUrl;
@@ -37,7 +37,7 @@ export default function AvatarDropdown({ user, onLogout }) {
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setOpen((prev) => !prev)}
-                className="flex items-center gap-3 rounded-2xl transition hover:bg-slate-50"
+                className="flex items-center gap-3 rounded-2xl transition hover:bg-slate-50 cursor-pointer"
             >
                 <div className="hidden text-right md:block">
                     <p className={`text-[11px] font-semibold ${open ? "text-[#0EA5E5]" : "text-slate-900"}`}>

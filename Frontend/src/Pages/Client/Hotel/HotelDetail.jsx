@@ -14,28 +14,41 @@ import SectionTitle from "~/components/Common/SectionTitle";
 import FeaturedCarousel from "~/components/Common/FeaturedCarousel";
 import TourCard from "~/components/Tours/TourCard";
 import useAuth from "~/Hooks/useAuth";
+import { getRelatedToursByHotelApi } from "~/Services/TourService";
 export default function HotelDetail() {
     const [selectedImage, setSelectedImage] = useState(0);
     const { slug } = useParams();
     const [hotel, setHotel] = useState(null);
     const [loading, setLoading] = useState(true);
     const location = useLocation();
-
+    const [relatedTours, setRelatedTours] = useState([]);
     const tourSlug = location.state?.tourSlug;
     const tourName = location.state?.tourName;
     const { user } = useAuth();
     const isLoggedIn = !!user;
+
     useEffect(() => {
         const fetchHotel = async () => {
             try {
                 const res = await getHotelBySlugApi(slug);
+
                 setHotel(res);
+
+                if (res?.maKhachSan) {
+                    const tours =
+                        await getRelatedToursByHotelApi(
+                            res.maKhachSan
+                        );
+
+                    setRelatedTours(tours);
+                }
             } catch (error) {
                 console.error(error);
             } finally {
                 setLoading(false);
             }
         };
+
         fetchHotel();
     }, [slug]);
 
@@ -243,7 +256,7 @@ export default function HotelDetail() {
                     </div>
                 </div>
 
-                {/* <div className="mb-8 grid grid-cols-12 gap-6 pb-8 border-b border-slate-100">
+                <div className="mb-8 grid grid-cols-12 gap-6 pb-8 border-b border-slate-100">
                     <div className="col-span-2">
                         <h3 className="font-bold text-slate-900">Quy định hủy phòng</h3>
                     </div>
@@ -266,7 +279,7 @@ export default function HotelDetail() {
                             <li>Khi đặt trên 5 phòng, chính sách và điều khoản bổ sung có thể được áp dụng.</li>
                         </ul>
                     </div>
-                </div> */}
+                </div>
             </div>
 
             {related.length > 0 && (
@@ -295,7 +308,20 @@ export default function HotelDetail() {
                         />
                         <FeaturedCarousel
                             items={related}
-                            renderItem={(tour) => <TourCard {...tour} />}
+                            renderItem={(tour) => (
+                                <TourCard
+                                    id={tour.maTour}
+                                    slug={tour.slug}
+                                    name={tour.tenTour}
+                                    image={`https://localhost:7016${tour.hinhAnhChinh}`}
+                                    duration={`${tour.ngay} Ngày ${tour.dem} Đêm`}
+                                    destination={tour.diemDens?.[0]}
+                                    price={tour.giaTu}
+                                    rating={tour.diemDanhGia}
+                                    reviewCount={tour.soDanhGia}
+                                    tourType={tour.tenLoaiTour}
+                                />
+                            )}
                             itemsPerPage={4}
                             gap={30}
                             autoPlayMs={5000}

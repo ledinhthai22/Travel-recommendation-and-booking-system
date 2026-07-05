@@ -9,13 +9,15 @@ namespace travel_recommendation_and_booking_system.Controllers.User
     public class UserTourBookingsController : ControllerBase
     {
         private readonly ITourBookingService _service;
-
-        public UserTourBookingsController(ITourBookingService service)
+        private readonly ICurrentUserService _currentUserService;
+        private readonly ITourRecommendationService _tourRecommendationService;
+        public UserTourBookingsController(ITourBookingService service, ICurrentUserService currentUserService, ITourRecommendationService tourRecommendationService)
         {
             _service = service;
+            _currentUserService = currentUserService;
+            _tourRecommendationService = tourRecommendationService;
         }
 
-        // GET: danh sách booking của user
         [HttpGet("{userId}")]
         public async Task<IActionResult> GetUserBookings(int userId)
         {
@@ -23,7 +25,6 @@ namespace travel_recommendation_and_booking_system.Controllers.User
             return Ok(result);
         }
 
-        // GET: chi tiết booking của user
         [HttpGet("{userId}/{bookingId}")]
         public async Task<IActionResult> GetDetail(int userId, int bookingId)
         {
@@ -33,7 +34,7 @@ namespace travel_recommendation_and_booking_system.Controllers.User
             return Ok(result);
         }
 
-        // CREATE booking
+
         [HttpPost("{userId}")]
         public async Task<IActionResult> CreateBooking(
             int userId,
@@ -44,7 +45,6 @@ namespace travel_recommendation_and_booking_system.Controllers.User
             return Ok(new { id });
         }
 
-        // CANCEL by user
         [HttpPut("{userId}/{bookingId}/cancel")]
         public async Task<IActionResult> Cancel(int userId, int bookingId)
         {
@@ -54,7 +54,7 @@ namespace travel_recommendation_and_booking_system.Controllers.User
             return Ok(new { message = "Cancelled" });
         }
 
-        // RESERVE seats
+
         [HttpPost("{userId}/reserve")]
         public async Task<IActionResult> Reserve(int userId, [FromBody] ReserveSeatsDTO dto)
         {
@@ -62,7 +62,6 @@ namespace travel_recommendation_and_booking_system.Controllers.User
             return Ok(result);
         }
 
-        // RELEASE reservation
         [HttpDelete("{userId}/reserve/{holdId}")]
         public async Task<IActionResult> Release(int userId, int holdId)
         {

@@ -154,21 +154,27 @@ const buildPricePayload = (ch) => ({
     GiaEmBe: toNumber(ch.gia?.giaEmBe),
     PhuThuPhongDon: toNumber(ch.gia?.phuThuPhongDon)
 });
+const toLocalISO = (d) => {
+    if (!d) return null;
+    const date = d instanceof Date ? d : new Date(d);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
 
 const buildDeparturePayload = (ch, tourId) => ({
     ChuyenKhoiHanh: {
         MaChuyen: toNumber(ch.maChuyen),
-        MaTour: toNumber(tourId || 0),
+        MaTour: toNumber(tourId || ch.maTour || 0),
         MaHDV: toNumber(ch.maHDV),
         MaPhuongTien: toNumber(ch.maPhuongTien),
-        DiemKhoiHanh: ch.diemKhoiHanh,
-        DiemDen: ch.diemDen,
-        NgayKhoiHanh: ch.ngayKhoiHanh,
-        NgayKetThuc: ch.ngayKetThuc,
-        GioDenNoiDi: ch.gioDenNoiDi,
-        GioDenNoiVe: ch.gioDenNoiVe,
+        DiemKhoiHanh: ch.diemKhoiHanh?.trim() || "",
+        DiemDen: ch.diemDen?.trim() || "",
+        NgayKhoiHanh: toLocalISO(ch.ngayKhoiHanh),
+        NgayKetThuc: toLocalISO(ch.ngayKetThuc),
+        GioDenNoiDi: toLocalISO(ch.gioDenNoiDi),
+        GioDenNoiVe: toLocalISO(ch.gioDenNoiVe),
         SoChoToiDa: toNumber(ch.soChoToiDa),
-        GhiChu: ch.ghiChu
+        GhiChu: ch.ghiChu || ""
     },
     DanhSachGia: [buildPricePayload(ch)]
 });
@@ -218,16 +224,21 @@ const serializeSchedule = (lt) => JSON.stringify({
     }))
 });
 
+const toISO = (d) => d ? new Date(d).toISOString() : null;
+
 const serializeDeparture = (ch) => JSON.stringify({
     maChuyen: ch.maChuyen,
     maHDV: ch.maHDV,
     maPhuongTien: ch.maPhuongTien,
     maChuyenCode: ch.maChuyenCode,
-    ngayKhoiHanh: ch.ngayKhoiHanh,
-    ngayKetThuc: ch.ngayKetThuc,
     diemKhoiHanh: ch.diemKhoiHanh,
     diemDen: ch.diemDen,
+    ngayKhoiHanh: toISO(ch.ngayKhoiHanh),
+    gioDenNoiDi: toISO(ch.gioDenNoiDi),
+    ngayKetThuc: toISO(ch.ngayKetThuc),
+    gioDenNoiVe: toISO(ch.gioDenNoiVe),
     soChoToiDa: ch.soChoToiDa,
+    ghiChu: ch.ghiChu,
     gia: ch.gia
 });
 
@@ -379,6 +390,11 @@ export default function TourFormPage({ mode }) {
         departureSnapshotRef.current = Object.fromEntries(
             mappedDepartures.map(ch => [ch.maChuyen, serializeDeparture(ch)])
         );
+
+        // DEBUG: xem snapshot ban đầu khi load tour
+        console.log("[DEBUG] departureSnapshotRef sau khi load:", departureSnapshotRef.current);
+        console.log("[DEBUG] mappedDepartures:", mappedDepartures);
+
         setChuyenKhoiHanhs(mappedDepartures);
     };
 
@@ -576,20 +592,40 @@ export default function TourFormPage({ mode }) {
 
     const handleChuyenKhoiHanhsChange = async (newChuyen) => {
         setChuyenKhoiHanhs(newChuyen);
+
         if (!isEdit || !id) return;
+
         try {
             deleteSaving.markSaving();
-            await syncDeparturesImmediate(newChuyen);
+
+            const upsertCount = await syncDeparturesImmediate(newChuyen);
+
             const tourData = await getTourDetailApi(id);
-            originalDataRef.current = { ...originalDataRef.current, chuyenKhoiHanhs: tourData.chuyenKhoiHanhs };
-            setChuyenKhoiHanhs((tourData.chuyenKhoiHanhs || []).map(mapDepartureFromApi));
+            originalDataRef.current = {
+                ...originalDataRef.current,
+                chuyenKhoiHanhs: tourData.chuyenKhoiHanhs
+            };
+
+            const refreshed = (tourData.chuyenKhoiHanhs || []).map(mapDepartureFromApi);
+            setChuyenKhoiHanhs(refreshed);
+
+            departureSnapshotRef.current = Object.fromEntries(
+                refreshed.map(ch => [toNumber(ch.maChuyen), serializeDeparture(ch)])
+            );
+
             deleteSaving.markSaved();
+
+            if (upsertCount > 0) {
+                toastSuccess("Thành công", "Đã cập nhật chuyến khởi hành.");
+            } else {
+                toastWarning("Không có gì thay đổi", "Dữ liệu chuyến khởi hành không có gì khác so với trước, không cần lưu.");
+            }
         } catch (err) {
             deleteSaving.markIdle();
-            toastError("Lỗi lưu chuyến khởi hành", getErrorMessage(err));
+            toastError("Lỗi cập nhật chuyến", getErrorMessage(err));
+            console.error(err);
         }
     };
-
     const handleDeleteDeparture = async (row) => {
         // 1. Kiểm tra nếu đang ở chế độ thêm mới Tour (Chưa có ID tour trên server)
         if (!isEdit) {
@@ -599,7 +635,7 @@ export default function TourFormPage({ mode }) {
             return;
         }
 
-        // 2. LẤY ID AN TOÀN TUYỆT ĐỐI (Kiểm tra mọi ngóc ngách cấu trúc có thể có)
+
         let rawId = null;
 
         if (row) {
@@ -643,23 +679,36 @@ export default function TourFormPage({ mode }) {
     };
 
     const syncDeparturesImmediate = async (snapshotChuyenKhoiHanhs) => {
-        const toUpsert = snapshotChuyenKhoiHanhs.filter(ch => {
-            const maChuyen = toNumber(ch.maChuyen);
-            if (!isExistingId(maChuyen)) return true;
-            const prev = departureSnapshotRef.current[maChuyen];
-            return prev !== serializeDeparture(ch);
-        });
+        console.log("[TEST MODE] Đang force update tất cả chuyến:", snapshotChuyenKhoiHanhs.length);
 
         const upsertResults = await Promise.allSettled(
-            toUpsert.map(ch => {
+            snapshotChuyenKhoiHanhs.map(async (ch) => {
                 const maChuyen = toNumber(ch.maChuyen);
                 const payload = buildDeparturePayload(ch, id);
-                return isExistingId(maChuyen) ? updateDepartureApi(maChuyen, payload) : createDepartureApi(payload);
+
+                console.log(`[API CALL] Gọi ${isExistingId(maChuyen) ? 'UPDATE' : 'CREATE'} cho maChuyen=${maChuyen}`, payload);
+
+                try {
+                    const result = isExistingId(maChuyen)
+                        ? await updateDepartureApi(maChuyen, payload)
+                        : await createDepartureApi(payload);
+
+                    console.log(`[API SUCCESS] maChuyen=${maChuyen} →`, result);
+                    return result;
+                } catch (err) {
+                    console.error(`[API ERROR] maChuyen=${maChuyen} →`, err?.response?.data || err);
+                    throw err;
+                }
             })
         );
 
         const failed = upsertResults.filter(r => r.status === "rejected");
-        if (failed.length > 0) throw new Error(`Có ${failed.length} thao tác cập nhật chuyến thất bại.`);
+        if (failed.length > 0) {
+            console.error("Failed updates:", failed);
+            throw new Error(`Có ${failed.length} thao tác thất bại.`);
+        }
+
+        return snapshotChuyenKhoiHanhs.length;
     };
 
     const buildTourInfoJson = () => ({
@@ -849,7 +898,7 @@ export default function TourFormPage({ mode }) {
                     />
                 </section>
 
-                {/* ── Basic Info ── */}
+
                 <section className="border-t border-slate-200 pt-8 space-y-6">
                     <div className="flex items-center justify-between">
                         <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Thông tin cơ bản</p>

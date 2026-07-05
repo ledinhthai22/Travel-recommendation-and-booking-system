@@ -71,5 +71,19 @@ namespace travel_recommendation_and_booking_system.SignalR
                 "ADMIN_GROUP"
             );
         }
+        public async Task JoinStaffGroup(string staffId)
+        {
+            Console.WriteLine($"JoinStaffGroup({staffId})");
+            if (string.IsNullOrWhiteSpace(staffId)) return;
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"STAFF_{staffId}");
+            await Clients.Caller.SendAsync("JoinedGroup", $"STAFF_{staffId}");
+        }
+
+        public async Task LeaveStaffGroup(string staffId)
+        {
+            if (string.IsNullOrWhiteSpace(staffId)) return;
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"STAFF_{staffId}");
+        }
     }
 }

@@ -9,3 +9,4 @@ export {default as Profile} from './ProfilePage'
 export {default as Wishlist} from './Wishlist/Wishlist'
 export {default as PaymentReturnPage} from "./Checkout/PaymentReturnPage"
 export {default as BookingSuccessPage} from "./Checkout/BookingSuccessPage"
+export {default as SearchPage} from "./Search/SearchPage"

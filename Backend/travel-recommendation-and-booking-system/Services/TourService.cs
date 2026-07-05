@@ -2,8 +2,8 @@ using System.Globalization;
 using System.Text;
 using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
-using travel_recommendation_and_booking_system.Constants;
 using travel_recommendation_and_booking_system.Data;
+using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.DTOs.Departure;
 using travel_recommendation_and_booking_system.DTOs.FavoriteTour;
 using travel_recommendation_and_booking_system.DTOs.ImageTour;
@@ -1145,7 +1145,7 @@ namespace travel_recommendation_and_booking_system.Services
         {
             if (pageNumber <= 0) pageNumber = 1;
             if (pageSize <= 0) pageSize = 10;
-            var query = _context.DanhSachYeuThichs.AsNoTracking().Where(y => y.MaNguoiDung == userId);
+            var query = _context.DanhSachYeuThichs.Include(y => y.Tour).ThenInclude(y => y.LoaiHinhTour).AsNoTracking().Where(y => y.MaNguoiDung == userId);
 
             var totalCount = await query.CountAsync();
 
@@ -1161,9 +1161,10 @@ namespace travel_recommendation_and_booking_system.Services
                     DiemDen = y.Tour.ChuyenKhoiHanhs.Select(y => y.DiemDen).FirstOrDefault() ?? null,
                     DuongDanAnh = y.Tour.HinhAnhTours.Where(a => a.AnhChinh == true).Select(a => a.DuongDanAnh).FirstOrDefault(),
                     DanhSachGia = y.Tour.ChuyenKhoiHanhs.SelectMany(c => c.GiaChuyens).Select(g => g.GiaNguoiLon).ToList(),
-
                     ReviewCount = y.Tour.DanhGias.Count(),
-                    CacDiemDanhGia = y.Tour.DanhGias.Select(d => d.DiemDanhGia).ToList()
+                    CacDiemDanhGia = y.Tour.DanhGias.Select(d => d.DiemDanhGia).ToList(),
+                    // Thêm loại hình tour
+                    LoaiHinhTour = y.Tour.LoaiHinhTour != null ? y.Tour.LoaiHinhTour.TenLoaiTour : null
                 })
                 .ToListAsync();
 
@@ -1173,15 +1174,14 @@ namespace travel_recommendation_and_booking_system.Services
                 TenTour = x.TenTour,
                 ThoiGianTour = x.Dem > 0 ? $"{x.Ngay} ngày {x.Dem} đêm" : $"{x.Ngay} ngày",
                 DiemDen = x.DiemDen,
-
                 DuongDanAnh = x.DuongDanAnh ?? "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200",
-
                 GiaTour = x.DanhSachGia.Any() ? (decimal)x.DanhSachGia.Min() : 0,
-
                 ReviewCount = x.ReviewCount,
                 DiemDanhGia = x.CacDiemDanhGia.Any()
                          ? Math.Round(x.CacDiemDanhGia.Average(d => (double)d), 1)
-                         : 0
+                         : 0,
+                // Thêm loại hình tour
+                TenLoaiTour = x.LoaiHinhTour ?? "Đang cập nhật"
             }).ToList();
 
             return new PageDTO<FavoriteTourRepnoseDTO>
@@ -1318,6 +1318,548 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 throw new Exception("Tour phải có ít nhất 1 chuyến khởi hành còn chỗ trong tương lai.");
             }
+        }
+        //Lấy danh sách các tour
+        public async Task<List<TourCardResponseDTO>> GetFeaturedToursAsync(int take = 12)
+        {
+            var now = DateTime.Now;
+
+            // 1. Lấy dữ liệu trước
+            var data = await _context.Tours
+                .Include(t => t.HinhAnhTours)
+                .Include(t => t.ChuyenKhoiHanhs)
+                .Include(t => t.LoaiHinhTour)
+                .Include(t => t.DanhGias)
+                .Where(t => t.TrangThai == 1 && t.NgayXoa == null)
+                .Select(t => new
+                {
+                    Tour = t,
+                    AvgRating = t.DanhGias.Any() ? t.DanhGias.Average(d => d.DiemDanhGia) : 0,
+                    RatingCount = t.DanhGias.Count()
+                })
+                .ToListAsync();   // ← Chuyển sang client evaluation
+
+            // 2. Sắp xếp ở memory (nhanh và ổn định)
+            var result = data
+                .OrderByDescending(x =>
+                    x.Tour.LuotDat * 0.45 +
+                    x.AvgRating * 25 +
+                    x.RatingCount * 0.8 +
+                    (x.Tour.LuotXem) * 0.05 +
+                    ((DateTime.Now - (x.Tour.NgayTao)).TotalDays * -0.12))
+                .Select(x => new TourCardResponseDTO
+                {
+                    MaTour = x.Tour.MaTour,
+                    TenTour = x.Tour.TenTour,
+                    Slug = x.Tour.Slug,
+                    MoTa = x.Tour.MoTa?.Length > 120 ? x.Tour.MoTa.Substring(0, 120) + "..." : x.Tour.MoTa,
+                    Ngay = x.Tour.Ngay,
+                    Dem = x.Tour.Dem,
+                    GiaTu = x.Tour.GiaTu,
+                    TenLoaiTour = x.Tour.LoaiHinhTour?.TenLoaiTour,
+
+                    HinhAnhChinh = x.Tour.HinhAnhTours
+                        .Where(i => i.NgayXoa == null)
+                        .OrderByDescending(i => i.AnhChinh)
+                        .Select(i => i.DuongDanAnh)
+                        .FirstOrDefault(),
+
+                    DiemDens = x.Tour.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null && c.NgayKhoiHanh >= now)
+                        .Select(c => c.DiemDen)
+                        .Distinct()
+                        .ToList(),
+
+                    SoDanhGia = x.RatingCount,
+                    DiemDanhGia = Math.Round(x.AvgRating, 1),
+                    LuotDat = x.Tour.LuotDat,
+                    LuotXem = x.Tour.LuotXem
+                })
+                .Take(take)
+                .ToList();
+
+            return result;
+        }
+        public async Task<List<TourCardResponseDTO>> GetNewlyUpdatedToursAsync(int take = 8)
+        {
+            var now = DateTime.Now;
+
+            return await _context.Tours
+                .Include(t => t.HinhAnhTours)
+                .Include(t => t.ChuyenKhoiHanhs)
+                .Include(t => t.LoaiHinhTour)
+                .Include(t => t.DanhGias) // 1. Include thêm bảng DanhGias
+                .Where(t => t.TrangThai == 1 && t.NgayXoa == null)
+                .OrderByDescending(t => t.NgayTao)
+                .Select(t => new TourCardResponseDTO
+                {
+                    MaTour = t.MaTour,
+                    TenTour = t.TenTour,
+                    Slug = t.Slug,
+                    MoTa = t.MoTa,
+                    Ngay = t.Ngay,
+                    Dem = t.Dem,
+                    GiaTu = t.GiaTu,
+                    TenLoaiTour = t.LoaiHinhTour.TenLoaiTour,
+
+                    HinhAnhChinh = t.HinhAnhTours
+                        .Where(i => i.NgayXoa == null)
+                        .OrderByDescending(i => i.AnhChinh)
+                        .Select(i => i.DuongDanAnh)
+                        .FirstOrDefault(),
+
+                    DiemDens = t.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null && c.NgayKhoiHanh >= now)
+                        .Select(c => c.DiemDen)
+                        .Distinct()
+                        .ToList(),
+
+                    // 2. Điền thêm thông tin đánh giá, lượt đặt, lượt xem
+                    SoDanhGia = t.DanhGias.Count(),
+                    DiemDanhGia = t.DanhGias.Any() ? Math.Round(t.DanhGias.Average(d => d.DiemDanhGia), 1) : 0,
+                    LuotDat = t.LuotDat,
+                    LuotXem = t.LuotXem
+                })
+                .Take(take)
+                .ToListAsync();
+        }
+        public async Task<List<TourCardResponseDTO>> GetToursByFeaturedDestinationAsync(string diemDen, int take = 6)
+        {
+            if (string.IsNullOrWhiteSpace(diemDen))
+                return new List<TourCardResponseDTO>();
+
+            var now = DateTime.Now;
+
+            return await _context.Tours
+                .Include(t => t.HinhAnhTours)
+                .Include(t => t.ChuyenKhoiHanhs)
+                .Include(t => t.LoaiHinhTour)
+                .Where(t => t.TrangThai == 1
+                         && t.NgayXoa == null
+                         && t.ChuyenKhoiHanhs.Any(c =>
+                             c.NgayXoa == null
+                             && c.DiemDen.ToLower().Contains(diemDen.ToLower().Trim())
+                             && c.NgayKhoiHanh >= now))
+                .Select(t => new
+                {
+                    Tour = t,
+                    AvgRating = t.DanhGias.Any() ? t.DanhGias.Average(d => d.DiemDanhGia) : 0,
+                    RatingCount = t.DanhGias.Count()
+                })
+                .OrderByDescending(x =>
+                    x.Tour.LuotDat * 0.4 +
+                    x.AvgRating * 25 +
+                    x.RatingCount * 0.8)
+                .Select(x => new TourCardResponseDTO
+                {
+                    MaTour = x.Tour.MaTour,
+                    TenTour = x.Tour.TenTour,
+                    Slug = x.Tour.Slug,
+                    MoTa = x.Tour.MoTa,
+                    Ngay = x.Tour.Ngay,
+                    Dem = x.Tour.Dem,
+                    GiaTu = x.Tour.GiaTu,
+                    TenLoaiTour = x.Tour.LoaiHinhTour.TenLoaiTour,
+
+                    HinhAnhChinh = x.Tour.HinhAnhTours
+                        .Where(i => i.NgayXoa == null)
+                        .OrderByDescending(i => i.AnhChinh)
+                        .Select(i => i.DuongDanAnh)
+                        .FirstOrDefault(),
+
+                    DiemDens = x.Tour.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null && c.NgayKhoiHanh >= now)
+                        .Select(c => c.DiemDen)
+                        .Distinct()
+                        .ToList(),
+
+                    SoDanhGia = x.RatingCount,
+                    DiemDanhGia = Math.Round(x.AvgRating, 1),
+                    LuotDat = x.Tour.LuotDat
+                })
+                .Take(take)
+                .ToListAsync();
+        }
+        public async Task<List<TourCardResponseDTO>> GetMostBookedToursAsync(int take = 8)
+        {
+            var now = DateTime.Now;
+
+            return await _context.Tours
+                .Include(t => t.HinhAnhTours)
+                .Include(t => t.ChuyenKhoiHanhs)
+                .Include(t => t.LoaiHinhTour)
+                .Include(t => t.DanhGias) // 1. Include thêm bảng đánh giá để tính toán
+                .Where(t => t.TrangThai == 1 && t.NgayXoa == null)
+                .OrderByDescending(t =>
+                    t.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null)
+                        .Sum(c => (int?)c.SoChoDaDat) ?? 0)
+                .Select(t => new TourCardResponseDTO
+                {
+                    MaTour = t.MaTour,
+                    TenTour = t.TenTour,
+                    Slug = t.Slug,
+                    MoTa = t.MoTa,
+                    Ngay = t.Ngay,
+                    Dem = t.Dem,
+                    GiaTu = t.GiaTu,
+                    TenLoaiTour = t.LoaiHinhTour.TenLoaiTour,
+
+                    HinhAnhChinh = t.HinhAnhTours
+                        .Where(i => i.NgayXoa == null)
+                        .OrderByDescending(i => i.AnhChinh)
+                        .Select(i => i.DuongDanAnh)
+                        .FirstOrDefault(),
+
+                    DiemDens = t.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null && c.NgayKhoiHanh >= now)
+                        .Select(c => c.DiemDen)
+                        .Distinct()
+                        .ToList(),
+
+                    SoDanhGia = t.DanhGias.Count(),
+                    DiemDanhGia = t.DanhGias.Any() ? Math.Round(t.DanhGias.Average(d => d.DiemDanhGia), 1) : 0,
+                    LuotXem = t.LuotXem,
+                    LuotDat = t.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null)
+                        .Sum(c => (int?)c.SoChoDaDat) ?? 0
+                })
+                .Take(take)
+                .ToListAsync();
+        }
+        public async Task<List<TourCardDTO>> GetRelatedToursAsync(int maTour, int take = 6)
+        {
+            var currentTour = await _context.Tours
+                .Include(t => t.ChuyenKhoiHanhs)
+                .FirstOrDefaultAsync(t => t.MaTour == maTour);
+
+            if (currentTour == null)
+                return new List<TourCardDTO>();
+
+            var diemDenChinh = currentTour.ChuyenKhoiHanhs
+                .Where(x => x.NgayXoa == null)
+                .Select(x => x.DiemDen)
+                .FirstOrDefault();
+
+            var relatedTours = await _context.Tours
+                .Include(t => t.LoaiHinhTour)
+                .Include(t => t.HinhAnhTours)
+                .Include(t => t.DanhGias) // 1. Include thêm bảng DanhGias để tính toán
+                .Include(t => t.ChuyenKhoiHanhs)
+                    .ThenInclude(c => c.GiaChuyens)
+                .Where(t =>
+                    t.MaTour != maTour &&
+                    t.TrangThai == 1 &&
+                    t.NgayXoa == null)
+                .OrderByDescending(t =>
+                    t.MaLoaiTour == currentTour.MaLoaiTour ? 100 : 0)
+                .ThenByDescending(t =>
+                    t.ChuyenKhoiHanhs.Any(c =>
+                        c.DiemDen == diemDenChinh) ? 50 : 0)
+                .ThenByDescending(t => t.LuotDat)
+                .Select(t => new TourCardDTO
+                {
+                    MaTour = t.MaTour,
+                    TenTour = t.TenTour,
+                    slug = t.Slug,
+
+                    MaLoaiTour = t.MaLoaiTour,
+                    TenLoaiTour = t.LoaiHinhTour.TenLoaiTour,
+
+                    Ngay = t.Ngay,
+                    Dem = t.Dem,
+
+                    GiaChuyen = t.ChuyenKhoiHanhs
+                        .SelectMany(c => c.GiaChuyens)
+                        .Min(g => (decimal?)g.GiaNguoiLon) ?? 0,
+
+                    DuongDanAnh = t.HinhAnhTours
+                        .Where(x => x.AnhChinh)
+                        .Select(x => x.DuongDanAnh)
+                        .FirstOrDefault(),
+
+                    DiemDen = t.ChuyenKhoiHanhs
+                        .Select(c => c.DiemDen)
+                        .FirstOrDefault(),
+
+                    SoDanhGia = t.DanhGias.Count(),
+                    DiemDanhGia = t.DanhGias.Any() ? Math.Round(t.DanhGias.Average(d => d.DiemDanhGia), 1) : 0,
+                    LuotXem = t.LuotXem,
+                    LuotDat = t.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null)
+                        .Sum(c => (int?)c.SoChoDaDat) ?? 0
+                })
+                .Take(take)
+                .ToListAsync();
+
+            return relatedTours;
+        }
+        public async Task<List<TourCardResponseDTO>> GetRelatedToursByHotelAsync(int maKhachSan)
+        {
+            var diaChiKhachSan = await _context.KhachSans
+                .Where(x => x.MaKhachSan == maKhachSan)
+                .Select(x => x.DiaChi)
+                .FirstOrDefaultAsync();
+
+            if (string.IsNullOrEmpty(diaChiKhachSan))
+                return new();
+
+            return await _context.Tours
+                .Include(x => x.LoaiHinhTour)
+                .Include(x => x.HinhAnhTours)
+                .Include(x => x.ChuyenKhoiHanhs)
+                .Include(x => x.DanhGias) // 1. Include thêm bảng DanhGias để tính toán
+                .Where(x =>
+                    x.TrangThai == 1 &&
+                    x.NgayXoa == null &&
+                    x.ChuyenKhoiHanhs.Any(c =>
+                        c.DiemDen.Contains(diaChiKhachSan)))
+                .Take(8)
+                .Select(t => new TourCardResponseDTO
+                {
+                    MaTour = t.MaTour,
+                    TenTour = t.TenTour,
+                    Slug = t.Slug,
+                    Ngay = t.Ngay,
+                    Dem = t.Dem,
+                    GiaTu = t.GiaTu,
+                    TenLoaiTour = t.LoaiHinhTour.TenLoaiTour,
+
+                    HinhAnhChinh = t.HinhAnhTours
+                        .Where(i => i.NgayXoa == null)
+                        .OrderByDescending(i => i.AnhChinh)
+                        .Select(i => i.DuongDanAnh)
+                        .FirstOrDefault(),
+
+                    DiemDens = t.ChuyenKhoiHanhs
+                        .Select(c => c.DiemDen)
+                        .Distinct()
+                        .ToList(),
+
+                    // 2. Điền thêm thông tin đánh giá, lượt xem, lượt đặt
+                    SoDanhGia = t.DanhGias.Count(),
+                    DiemDanhGia = t.DanhGias.Any() ? Math.Round(t.DanhGias.Average(d => d.DiemDanhGia), 1) : 0,
+                    LuotDat = t.LuotDat,
+                    LuotXem = t.LuotXem
+                })
+                .ToListAsync();
+        }
+        public async Task<PageDTO<TourCardDTO>> FilterToursAsync(FilterTourDTO request)
+        {
+            var query = _context.Tours
+                .Include(t => t.LoaiHinhTour)
+                .Include(t => t.HinhAnhTours)
+                .Include(t => t.DanhGias) // 1. Include thêm bảng DanhGias để tính toán
+                .Include(t => t.ChuyenKhoiHanhs)
+                    .ThenInclude(c => c.GiaChuyens)
+                .AsQueryable();
+
+            query = query.Where(t => t.TrangThai == 1 && t.NgayXoa == null);
+
+            if (!string.IsNullOrWhiteSpace(request.Keyword))
+            {
+                query = query.Where(t => t.TenTour.Contains(request.Keyword));
+            }
+
+            if (request.MaLoaiTour.HasValue)
+            {
+                query = query.Where(t => t.MaLoaiTour == request.MaLoaiTour.Value);
+            }
+
+            // Khoảng số ngày (thay cho so khớp chính xác)
+            if (request.NgayTu.HasValue && request.NgayDen.HasValue)
+            {
+                query = query.Where(t => t.Ngay >= request.NgayTu.Value && t.Ngay <= request.NgayDen.Value);
+            }
+            else if (request.NgayTu.HasValue) // trường hợp "trên 1 tuần": chỉ có cận dưới
+            {
+                query = query.Where(t => t.Ngay >= request.NgayTu.Value);
+            }
+
+            if (!string.IsNullOrEmpty(request.DiemDen))
+            {
+                query = query.Where(t =>
+                    t.ChuyenKhoiHanhs.Any(c => c.DiemDen.Contains(request.DiemDen)));
+            }
+
+            if (request.MinPrice.HasValue)
+            {
+                query = query.Where(t =>
+                    t.ChuyenKhoiHanhs.SelectMany(c => c.GiaChuyens)
+                     .Any(g => g.GiaNguoiLon >= request.MinPrice));
+            }
+
+            if (request.MaxPrice.HasValue)
+            {
+                query = query.Where(t =>
+                    t.ChuyenKhoiHanhs.SelectMany(c => c.GiaChuyens)
+                     .Any(g => g.GiaNguoiLon <= request.MaxPrice));
+            }
+
+            var totalRecords = await query.CountAsync();
+            var data = await query
+                .OrderByDescending(t => t.LuotDat)
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .Select(t => new TourCardDTO
+                {
+                    MaTour = t.MaTour,
+                    TenTour = t.TenTour,
+                    MaLoaiTour = t.MaLoaiTour,
+                    TenLoaiTour = t.LoaiHinhTour.TenLoaiTour,
+                    Ngay = t.Ngay,
+                    Dem = t.Dem,
+                    slug = t.Slug,
+                    LuotDat = t.LuotDat,
+                    LuotXem = t.LuotXem, // Gán thêm lượt xem nếu FE cần hiển thị
+
+                    GiaChuyen = t.ChuyenKhoiHanhs
+                        .SelectMany(c => c.GiaChuyens)
+                        .Min(g => (decimal?)g.GiaNguoiLon) ?? 0,
+
+                    DuongDanAnh = t.HinhAnhTours
+                        .Where(x => x.AnhChinh)
+                        .Select(x => x.DuongDanAnh)
+                        .FirstOrDefault(),
+
+                    DiemDen = t.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null)
+                        .Select(c => c.DiemDen)
+                        .FirstOrDefault(),
+
+                    // 2. Điền thông tin số lượng và điểm đánh giá
+                    SoDanhGia = t.DanhGias.Count(),
+                    DiemDanhGia = t.DanhGias.Any() ? Math.Round(t.DanhGias.Average(d => d.DiemDanhGia), 1) : 0
+                })
+                .ToListAsync();
+
+            return new PageDTO<TourCardDTO>
+            {
+                Items = data,
+                TotalItems = totalRecords,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+        }
+        public async Task<PageDTO<SearchResponse>> SearchToursAsync(SearchDTO request)
+        {
+            var query = _context.Tours
+                .AsNoTracking()
+                .Where(t => t.TrangThai == 1 && t.NgayXoa == null)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(request.Keyword))
+            {
+                var keyword = request.Keyword.Trim();
+                query = query.Where(t => t.TenTour.Contains(keyword));
+            }
+
+            if (request.MaLoaiTour.HasValue)
+            {
+                query = query.Where(t => t.MaLoaiTour == request.MaLoaiTour.Value);
+            }
+
+            if (request.NgayTu.HasValue)
+            {
+                query = query.Where(t => t.Ngay >= request.NgayTu.Value);
+            }
+
+            if (request.NgayDen.HasValue)
+            {
+                query = query.Where(t => t.Ngay <= request.NgayDen.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.DiemDen))
+            {
+                var diemDen = request.DiemDen.Trim().ToLower();
+
+                query = query.Where(t =>
+                    t.ChuyenKhoiHanhs.Any(c =>
+                        c.NgayXoa == null &&
+                        c.TrangThai == 1 &&
+                        c.DiemDen.ToLower().Contains(diemDen))
+                    ||
+                    t.LichTrinhs.Any(l =>
+                        l.NgayXoa == null &&
+                        l.CTLichTrinhs.Any(ct =>
+                            ct.DiaDiem.NgayXoa == null &&
+                            ct.DiaDiem.TinhThanh.ToLower().Contains(diemDen)
+                        ))
+                );
+            }
+
+            // FIX: Gộp NgayDi + NgayVe vào CÙNG 1 Any() để đảm bảo cùng 1 chuyến khởi hành
+            // thỏa mãn cả 2 điều kiện, thay vì cho phép match 2 chuyến khác nhau.
+            if (request.NgayDi.HasValue || request.NgayVe.HasValue)
+            {
+                var ngayDi = request.NgayDi?.Date;
+                var ngayVe = request.NgayVe?.Date;
+
+                query = query.Where(t =>
+                    t.ChuyenKhoiHanhs.Any(c =>
+                        c.NgayXoa == null &&
+                        c.TrangThai == 1 &&
+                        (!ngayDi.HasValue || c.NgayKhoiHanh.Date >= ngayDi.Value) &&
+                        (!ngayVe.HasValue || c.NgayKetThuc.Date <= ngayVe.Value)));
+            }
+
+            // FIX: Gộp MinPrice + MaxPrice vào cùng 1 Any() trên cùng 1 GiaChuyen
+            if (request.MinPrice.HasValue || request.MaxPrice.HasValue)
+            {
+                query = query.Where(t =>
+                    t.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null && c.TrangThai == 1)
+                        .SelectMany(c => c.GiaChuyens)
+                        .Any(g => g.NgayXoa == null &&
+                                  (!request.MinPrice.HasValue || g.GiaNguoiLon >= request.MinPrice.Value) &&
+                                  (!request.MaxPrice.HasValue || g.GiaNguoiLon <= request.MaxPrice.Value)));
+            }
+
+            var totalItems = await query.CountAsync();
+            var items = await query
+                .OrderByDescending(t => t.LuotDat)
+                .ThenBy(t => t.TenTour)
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .Select(t => new SearchResponse
+                {
+                    MaTour = t.MaTour,
+                    TenTour = t.TenTour,
+                    Slug = t.Slug,
+                    Ngay = t.Ngay,
+                    Dem = t.Dem,
+                    LoaiHinhTour = t.LoaiHinhTour != null ? t.LoaiHinhTour.TenLoaiTour : "",
+                    GiaTu = t.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null && c.TrangThai == 1)
+                        .SelectMany(c => c.GiaChuyens)
+                        .Where(g => g.NgayXoa == null)
+                        .Select(g => (decimal?)g.GiaNguoiLon)
+                        .Min() ?? 0,
+                    DuongDanAnh = t.HinhAnhTours
+                        .Where(a => a.NgayXoa == null)
+                        .OrderByDescending(a => a.AnhChinh)
+                        .ThenBy(a => a.SoThuTu)
+                        .Select(a => a.DuongDanAnh)
+                        .FirstOrDefault() ?? "",
+                    DiemDen = t.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null && c.TrangThai == 1)
+                        .OrderBy(c => c.NgayKhoiHanh)
+                        .Select(c => c.DiemDen)
+                        .FirstOrDefault() ?? "",
+                    SoDanhGia = t.DanhGias.Count(),
+                    DiemDanhGia = t.DanhGias.Any() ? Math.Round(t.DanhGias.Average(d => d.DiemDanhGia), 1) : 0,
+                    LuotDat = t.LuotDat,
+                    LuotXem = t.LuotXem
+                })
+                .ToListAsync();
+
+            return new PageDTO<SearchResponse>
+            {
+                Items = items,
+                TotalItems = totalItems,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
         }
 
     }

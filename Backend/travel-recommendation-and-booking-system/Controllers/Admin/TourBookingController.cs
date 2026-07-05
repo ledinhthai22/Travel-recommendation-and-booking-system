@@ -50,11 +50,19 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             return result ? Ok(new { message = "Đã duyệt đơn" }) : NotFound();
         }
 
-        [HttpPut("{id}/cancel")]
-        public async Task<IActionResult> Cancel(int id)
+        [HttpPost("cancel/{id}")]
+        public async Task<IActionResult> CancelBooking(int id, [FromQuery] string lyDoHuy)
         {
-            var result = await _service.CancelOrderAsync(id);
-            return result ? Ok(new { message = "Đã hủy đơn" }) : NotFound();
+            try
+            {
+                var result = await _service.CancelOrderAsync(id, lyDoHuy);
+                if (!result) return NotFound(new { message = "Không tìm thấy đơn đặt tour." });
+                return Ok(new { message = "Hủy đơn thành công." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpPut("{id}/payment-status")]

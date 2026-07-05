@@ -19,7 +19,7 @@ namespace travel_recommendation_and_booking_system.Services
             _hubContext = hubContext;
         }
 
-        #region Create Notification
+     
 
         public async Task CreateForUserAsync(int userId, CreateNotificationDTO dto)
         {
@@ -134,9 +134,6 @@ namespace travel_recommendation_and_booking_system.Services
             await Task.WhenAll(tasks);
         }
 
-        #endregion
-
-        #region Get Notification
 
         public async Task<List<NotificationDTO>> GetNotificationsForUserAsync(int userId, int page = 1, int pageSize = 20)
         {
@@ -178,9 +175,7 @@ namespace travel_recommendation_and_booking_system.Services
                 .ToListAsync();
         }
 
-        #endregion
 
-        #region Read Notification
 
         public async Task MarkAsReadAsync(int notificationId, int? userId = null, int? staffId = null)
         {
@@ -191,7 +186,7 @@ namespace travel_recommendation_and_booking_system.Services
             else if (staffId.HasValue)
                 query = query.Where(tn => tn.MaNhanVien == staffId);
             else
-                return; // Phải cung cấp ít nhất userId hoặc staffId để xác định người đọc
+                return; 
 
             var receiver = await query.FirstOrDefaultAsync();
             if (receiver == null || receiver.DaDoc) return;
@@ -213,7 +208,7 @@ namespace travel_recommendation_and_booking_system.Services
             else
                 return;
 
-            // Sử dụng ExecuteUpdateAsync (EF Core 7+) để update nhanh trực tiếp xuống DB không cần kéo data về RAM
+           
             await query.ExecuteUpdateAsync(setters => setters
                 .SetProperty(tn => tn.DaDoc, true)
                 .SetProperty(tn => tn.NgayDoc, DateTime.Now));
@@ -233,19 +228,10 @@ namespace travel_recommendation_and_booking_system.Services
             return await query.CountAsync();
         }
 
-        #endregion
-
-        #region Helpers
+  
 
         private async Task PushRealtime(ThongBao notification, int? userId, int? staffId)
         {
-            Console.WriteLine("=========== PUSH REALTIME ===========");
-
-            Console.WriteLine($"Notification: {notification.MaThongBao}");
-
-            Console.WriteLine($"UserId : {userId}");
-
-            Console.WriteLine($"StaffId : {staffId}");
 
             var dto = new NotificationDTO
             {
@@ -260,7 +246,7 @@ namespace travel_recommendation_and_booking_system.Services
 
             if (userId.HasValue)
             {
-                Console.WriteLine($"Send USER_{userId}");
+              
 
                 await _hubContext.Clients
                     .Group($"USER_{userId}")
@@ -269,16 +255,14 @@ namespace travel_recommendation_and_booking_system.Services
 
             if (staffId.HasValue)
             {
-                Console.WriteLine($"Send STAFF_{staffId}");
+                
 
                 await _hubContext.Clients
                     .Group($"STAFF_{staffId}")
                     .SendAsync("ReceiveNotification", dto);
             }
 
-            Console.WriteLine("=========== END PUSH ===========");
         }
 
-        #endregion
     }
 }

@@ -2,10 +2,10 @@ import { memo, useState, useContext, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Heart, Calendar, ArrowRight, MapPin } from 'lucide-react';
 import { formatCurrency } from '~/Helper/FormatCurrency';
-
+import { Tag } from 'lucide-react';
 import { AuthContext } from '~/Context/AuthContext';
 import { addToWishlistApi, deleteWishlistApi } from '~/Services/TourService';
-import { toastError, toastSuccess } from '~/utils/Toast'; // Thêm toast để báo lỗi nếu cần
+import { toastError, toastSuccess } from '~/utils/Toast'; 
 
 function TourCard({
     id,
@@ -32,49 +32,47 @@ function TourCard({
     }, [initialWishlist]);
 
     const handleWishlistClick = async (e) => {
-        e.preventDefault(); // Ngăn chặn sự kiện click kích hoạt thẻ <Link> bao ngoài
+        e.preventDefault();
         console.log("Delete tour:", id);
-        // Kiểm tra đăng nhập
+
         if (!isAuthenticated) {
-            // Giả sử context của bạn có hàm mở modal đăng nhập
+
             if (setShowLoginModal) {
                 setShowLoginModal(true);
             }
             return;
         }
 
-        // Kỹ thuật Optimistic Update: Cập nhật giao diện ngay lập tức để người dùng thấy phản hồi mượt mà
+
         const previousState = wishlisted;
         setWishlisted(!previousState);
 
         try {
             if (!previousState) {
-                // Chưa yêu thích -> Gọi API thêm
+             
                 await addToWishlistApi(id);
                 toastSuccess("Tour đã được thêm vào danh sách yêu thích của bạn")
             } else {
-                // Đã yêu thích -> Gọi API xóa
                 await deleteWishlistApi([id]);
             }
         } catch (error) {
-            // Nếu API thất bại, hoàn tác lại trạng thái cũ
+          
             setWishlisted(previousState);
             toastError?.("Có lỗi xảy ra khi cập nhật danh sách yêu thích.");
-            // console.error("Wishlist error:", error);
+           
         }
     };
 
     return (
         <article
             className="
-            group flex h-[280px] w-full flex-col overflow-hidden rounded-2xl
+            group flex h-[320px] w-full flex-col overflow-hidden rounded-2xl
             border border-slate-100 bg-white shadow-sm
             transition-all duration-300
             hover:-translate-y-1 hover:border-[#0EA5E5]/30
             "
         >
-            {/* Vùng hình ảnh */}
-            <div className="relative h-40 sm:h-44 w-full flex-shrink-0 overflow-hidden block">
+            <div className="relative h-50 sm:h-50 w-full flex-shrink-0 overflow-hidden block">
                 {disableLink ?
                     (
                         <div className="relative h-40 sm:h-44 w-full flex-shrink-0 overflow-hidden block cursor-default">
@@ -124,7 +122,8 @@ function TourCard({
                     >
                         <Heart
                             size={15}
-                            // Đổi màu đỏ nếu đã yêu thích, ngược lại là màu xám nhạt
+                         
+                            
                             className={`transition-colors duration-200 ${wishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-400'
                                 }`}
                         />
@@ -133,7 +132,7 @@ function TourCard({
 
                 {/* Địa điểm trên hình */}
                 {destination && (
-                    <div className="absolute left-3 bottom-3 flex items-center gap-1.5 rounded-lg bg-slate-900/50 px-2 py-1 text-[11px] font-medium text-white backdrop-blur-sm max-w-[calc(100%-24px)]">
+                    <div className="absolute left-4 bottom-4 flex items-center gap-1.5 rounded-lg bg-slate-900/50 px-2 py-1 text-[11px] font-medium text-white backdrop-blur-sm max-w-[calc(100%-24px)]">
                         <MapPin size={12} className="shrink-0 text-white" />
                         <span className="truncate">{destination}</span>
                     </div>
@@ -157,7 +156,8 @@ function TourCard({
                     </Link>
                     {tourType && (
                         <div className="mt-1">
-                            <span className="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-medium text-sky-700">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-700 uppercase tracking-wider border border-sky-200/60">
+                                <Tag className="size-3 stroke-[2.5]" />
                                 {tourType}
                             </span>
                         </div>

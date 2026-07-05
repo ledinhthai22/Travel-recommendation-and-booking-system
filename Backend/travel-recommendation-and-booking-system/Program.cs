@@ -94,6 +94,7 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<ITourBookingService, TourBookingService>();
             builder.Services.AddScoped<IStatisticService, StatisticService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
+            builder.Services.AddScoped<IRecommendationService, RecommendationService>();
             builder.Services.AddScoped<PromotionStatusJob>();
             builder.Services.AddScoped<BookingEmailJob>();
             builder.Services.AddScoped<PaymentWarningJob>();

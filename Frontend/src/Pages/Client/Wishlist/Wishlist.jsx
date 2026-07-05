@@ -40,6 +40,7 @@ export default function WishlistPage() {
                 rating: t.diemDanhGia,
                 reviewCount: t.reviewCount,
                 price: t.giaTour,
+                tourType: t.tenLoaiTour,
             }));
 
             setWishlist(formattedTours);

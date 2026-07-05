@@ -9,6 +9,7 @@ import StatisticService from "~/Services/StatisticService";
 import SelectField from "~/components/UI/Form/SelectField";
 import { toastError } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
+import { formatCurrency } from "~/Helper/FormatCurrency";
 
 const PIE_PALETTE = ["#0EA5E9", "#8B5CF6", "#F59E0B", "#10B981", "#F43F5E", "#64748B"];
 const colorAt = (i) => PIE_PALETTE[i % PIE_PALETTE.length];
@@ -310,7 +311,6 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* KPI CARDS */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
               
                 <KpiCard icon={Ticket} color="bg-sky-500" label="Tổng đặt tour"
@@ -318,7 +318,7 @@ export default function Dashboard() {
                     delta={renderDelta(overview?.bookingGrowthPercent)}
                     deltaType={deltaTypeOf(overview?.bookingGrowthPercent)} />
                 <KpiCard icon={DollarSign} color="bg-emerald-500" label="Doanh thu"
-                    value={(overview?.totalRevenue ?? 0).toLocaleString("vi-VN")}
+                    value={formatCurrency(overview?.totalRevenue)}
                     delta={renderDelta(overview?.revenueGrowthPercent)}
                     deltaType={deltaTypeOf(overview?.revenueGrowthPercent)} />
                 <KpiCard icon={Users} color="bg-purple-500" label="Khách hàng mới"
@@ -385,7 +385,7 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* ROW 3: Line Khách hàng mới + Horizontal Bar Top tour */}
+
             <div className="grid grid-cols-12 gap-5">
                 <div className="col-span-12 lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 min-w-0">
                     <div className="flex items-center justify-between mb-5">

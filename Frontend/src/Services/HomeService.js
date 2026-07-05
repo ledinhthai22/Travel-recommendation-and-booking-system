@@ -1,53 +1,33 @@
 import axiosClient from "./axiosClient";
 
-export const getBestToursApi = async (limit = 4) => {
-    const response = await axiosClient.get('/Home/get-best-tours', {
-        params: { limit }
+
+export const getFeaturedToursApi = async (take = 12) => {
+    const response = await axiosClient.get('/customer/home/featured', {
+        params: { take }
     });
     return response.data;
 };
 
-export const getLatestToursApi = async (limit = 4) => {
-    const response = await axiosClient.get("/Home/tours-latest", {
-        params: { limit }
+
+export const getNewlyUpdatedToursApi = async (take = 12) => {
+    const response = await axiosClient.get('/customer/home/new-updated', {
+        params: { take }
     });
     return response.data;
 };
 
-export const getRecommendedLocationsApi = async (limit = 4) => {
-    const response = await axiosClient.get("/customer/Home/get-recommended", {
-        params: { limit }
+
+export const getToursByDestinationApi = async (diemDen, take = 6) => {
+    const response = await axiosClient.get(`/customer/home/destination/${encodeURIComponent(diemDen)}`, {
+        params: { take }
     });
     return response.data;
 };
+export const getMostBookedToursApi = async (take = 8) => {
+    const response = await axiosClient.get(
+        "/customer/home/most-booked",
+        { params: { take } }
+    );
 
-export const getTourDesignJustForYouApi = async (limit = 4) => {
-    const response = await axiosClient.get("/customer/Home/get-tour-design", {
-        params: { limit }
-    });
-    return response.data;
-};
-
-export const getRecommendedToursApi = async (limit = 4) => {
-    const response = await axiosClient.get("/customer/Home/get-recommended-tours", {
-        params: { limit }
-    });
-    return response.data;
-};
-
-export const getNextTripSuggestionsApi = async (limit = 4) => {
-    const response = await axiosClient.get("/customer/Home/get-next-trip-suggestions", {
-        params: { limit }
-    });
-    return response.data;
-};
-
-export const searchToursApi = async (params) => {
-    const response = await axiosClient.get('/Home/search', { params });
-    return response.data;
-};
-
-export const getCategoriesApi = async () => {
-    const response = await axiosClient.get("/Home/get-categories");
     return response.data;
 };

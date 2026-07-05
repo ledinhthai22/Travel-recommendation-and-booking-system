@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Log;
 using travel_recommendation_and_booking_system.DTOs.LogSystem;
-using travel_recommendation_and_booking_system.DTOs.Notifications;   // ← Thêm dòng này
+using travel_recommendation_and_booking_system.DTOs.Notifications;   
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
 
@@ -59,7 +59,7 @@ namespace travel_recommendation_and_booking_system.Services
                     TieuDe = "Đăng ký Newsletter",
                     NoiDung = $"Email {newsletter.Email} vừa đăng ký nhận bản tin.",
                     LoaiThongBao = 2, // Newsletter
-                    LinkChiTiet = "/Quan-ly/newsletter"
+                    LinkChiTiet = "/Quan-ly/Newletter"
                 });
 
             return true;

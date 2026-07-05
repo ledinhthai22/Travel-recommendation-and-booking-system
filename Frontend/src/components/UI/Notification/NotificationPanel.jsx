@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { 
-    Bell, Check, Calendar, Mail, Newspaper, 
-    CreditCard, Tag, MessageSquare, ShieldAlert, CheckCircle2 
+import {
+    Bell, Check, Calendar, Mail, Newspaper,
+    CreditCard, Tag, MessageSquare, ShieldAlert, CheckCircle2
 } from "lucide-react";
 import NotificationService from "~/Services/NotificationService";
 import { connection, ensureConnectionStarted } from "~/Services/signalRService";
 import useAuth from "~/Hooks/useAuth";
-
+import { show } from "~/utils/Toast";
 const NotificationType = {
     Booking: 1,
     Contact: 2,
@@ -27,7 +27,8 @@ const NotificationPanel = () => {
     const panelRef = useRef(null);
     const isFirstLoad = useRef(true);
 
-    // Dynamic UI styling based on NotificationType enum
+  
+
     const getNotificationStyle = (type) => {
         switch (type) {
             case NotificationType.Booking:
@@ -49,7 +50,8 @@ const NotificationPanel = () => {
         }
     };
 
-    // Mapping dữ liệu trả về từ DTO của Backend (NotificationDTO)
+   
+    
     const mapNotification = useCallback((n) => ({
         id: n.maThongBao,
         title: n.tieuDe,
@@ -77,7 +79,7 @@ const NotificationPanel = () => {
         });
     };
 
-    // API Load dữ liệu ban đầu
+ 
     const loadNotifications = useCallback(async () => {
         try {
             setLoading(true);
@@ -110,9 +112,6 @@ const NotificationPanel = () => {
         });
     }, [loadNotifications, loadUnreadCount]);
 
-    // ==========================================
-    // FIX: LOGIC SIGNALR ĐÃ ĐƯỢC ĐỒNG BỘ THEO HUB BACKEND
-    // ==========================================
     useEffect(() => {
         let mounted = true;
         const userId = isStaff ? user?.maNhanVien : user?.maNguoiDung;
@@ -123,13 +122,14 @@ const NotificationPanel = () => {
                 if (!mounted) return;
 
                 if (isStaff) {
-                    // Gọi đúng hàm JoinAdminGroup() của Hub backend
+
                     await connection.invoke("JoinAdminGroup");
-                    console.log("👉 Đã gửi yêu cầu tham gia ADMIN_GROUP");
+                    await connection.invoke("JoinStaffGroup", String(userId));
+
                 } else if (userId) {
-                    // Gọi đúng hàm JoinUserGroup(userId) của Hub backend
+
                     await connection.invoke("JoinUserGroup", String(userId));
-                    console.log(`👉 Đã gửi yêu cầu tham gia USER_${userId}`);
+
                 }
             } catch (err) {
                 console.error("SignalR invoke error:", err);
@@ -146,17 +146,20 @@ const NotificationPanel = () => {
 
         connection.onreconnected(handleReconnect);
 
-        // Lắng nghe sự kiện xác nhận từ backend khi join group thành công (Tùy chọn debug)
+
         connection.on("JoinedGroup", (groupName) => {
-            console.log(`✅ Kết nối realtime thành công tới group: ${groupName}`);
+            console.log(` Kết nối realtime thành công tới group: ${groupName}`);
         });
 
         return () => {
             mounted = false;
             connection.off("JoinedGroup");
-            // Tắt group cũ khi user logout hoặc đổi trạng thái
+
             if (connection.state === "Connected") {
                 if (isStaff) {
+                    if (userId) {
+                        connection.invoke("LeaveStaffGroup", String(userId)).catch(console.error);
+                    }
                     connection.invoke("LeaveAdminGroup").catch(console.error);
                 } else if (userId) {
                     connection.invoke("LeaveUserGroup", String(userId)).catch(console.error);
@@ -165,12 +168,9 @@ const NotificationPanel = () => {
         };
     }, [user, isStaff]);
 
-    // Lắng nghe sự kiện đẩy thông báo từ Backend
+
     useEffect(() => {
         const handleReceive = (payload) => {
-            if (isFirstLoad.current) return;
-
-            console.log("🔔 Nhận thông báo realtime mới:", payload);
             const newNoti = mapNotification(payload);
 
             setNotifications(prev => {
@@ -178,9 +178,17 @@ const NotificationPanel = () => {
                 setUnreadCount(count => count + 1);
                 return [newNoti, ...prev];
             });
+
+      
+            const style = getNotificationStyle(newNoti.type);
+            show({
+                icon: style.icon,
+                title: newNoti.title,
+                message: newNoti.message,
+                borderClass: "border-sky-100",
+            });
         };
 
-        // Khớp 100% với tên event "ReceiveNotification" từ Backend Service
         connection.on("ReceiveNotification", handleReceive);
 
         return () => {
@@ -188,7 +196,8 @@ const NotificationPanel = () => {
         };
     }, [mapNotification]);
 
-    // Các hàm tương tác API dịch vụ
+   
+    
     const handleMarkAllAsRead = async () => {
         if (unreadCount === 0) return;
         try {
@@ -206,7 +215,7 @@ const NotificationPanel = () => {
             return;
         }
         try {
-            // Khớp với tham số maThongBao từ controller/service
+           
             await NotificationService.markAsRead(noti.id);
             setNotifications(prev =>
                 prev.map(n => n.id === noti.id ? { ...n, read: true } : n)
@@ -230,12 +239,12 @@ const NotificationPanel = () => {
         <div className="relative inline-block text-left" ref={panelRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`relative flex h-10 w-10 items-center justify-center rounded-xl border transition-all duration-200 focus:outline-none
-                ${isOpen ? "bg-sky-50 text-sky-600 border-sky-200 shadow-sm" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm"}`}
+                className={`relative flex h-10 w-10 items-center justify-center rounded-xl  transition-all duration-200 focus:outline-none cursor-pointer
+                ${isOpen ? " text-sky-600 " : " text-slate-600 hover:bg-slate-50 "}`}
             >
-                <Bell size={19} className={unreadCount > 0 ? "animate-bounce" : ""} />
+                <Bell size={16} className={unreadCount > 0 ? "animate-bounce" : ""} />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white shadow-sm ring-2 ring-white">
                         {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
                 )}

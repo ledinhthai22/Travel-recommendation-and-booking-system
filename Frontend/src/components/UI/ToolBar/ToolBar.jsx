@@ -4,6 +4,7 @@ import {
     BetweenHorizontalEnd,
     FileUp,
     FileDown,
+    Wallet,
 } from "lucide-react";
 
 import { useRef, useState } from "react";
@@ -25,6 +26,12 @@ export default function ManagerToolbar({
 
     onImportExcel,
     onExportExcel,
+
+    // Nút phụ tuỳ chọn (ví dụ: "Xử lý đơn hoàn tiền")
+    showExtraButton = false,
+    extraButtonText = "",
+    extraButtonIcon: ExtraIcon = Wallet,
+    onExtraClick,
 
     className = "",
 }) {
@@ -67,6 +74,16 @@ export default function ManagerToolbar({
 
                 {/* Actions */}
                 <div className="flex items-center gap-3">
+                    {showExtraButton && (
+                        <button
+                            onClick={onExtraClick}
+                            className="flex items-center gap-2 px-5 py-2 border border-amber-500 text-amber-600 rounded-xl text-sm font-semibold hover:bg-amber-50 transition"
+                        >
+                            <ExtraIcon size={16} />
+                            {extraButtonText}
+                        </button>
+                    )}
+
                     {showExcel && (
                         <div ref={excelRef} className="relative">
                             <button

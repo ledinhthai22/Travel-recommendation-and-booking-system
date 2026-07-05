@@ -158,12 +158,12 @@ namespace Controllers.Customer
         }
 
         [HttpPost("cancel/{id}")]
-        public async Task<IActionResult> CancelBooking(int id)
+        public async Task<IActionResult> CancelBooking(int id,string LyDoHuy)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
             try
             {
-                await _user.CancelBookingAsync(userId, id);
+                await _user.CancelBookingAsync(userId, id, LyDoHuy);
                 return Ok(new { message = "Hủy tour thành công." });
             }
             catch (Exception ex)

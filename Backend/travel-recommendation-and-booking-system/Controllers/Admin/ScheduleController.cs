@@ -25,7 +25,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 
             try
             {
-                // ĐỒNG BỘ: Chỉ truyền duy nhất tham số dto vì bên trong dto đã gom sẵn List ChiTietLichTrinh
+                
                 var result = await _service.AddScheduleAsync(dto);
                 return result ? Ok(new { message = "Thêm lịch trình thành công!" }) : BadRequest("Không thể thêm lịch trình.");
             }
@@ -49,7 +49,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 
             try
             {
-                // ĐỒNG BỘ: Đổi tên phương thức gọi từ UpdateSchdeduleAsync thành UpdateScheduleAsync (bỏ chữ d thừa)
+            
                 var result = await _service.UpdateScheduleAsync(maLichTrinh, dto);
                 return result ? Ok(new { message = "Cập nhật thành công!" }) : NotFound("Không tìm thấy lịch trình.");
             }

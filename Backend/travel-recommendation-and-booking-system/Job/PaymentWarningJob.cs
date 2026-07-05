@@ -1,6 +1,9 @@
 ﻿using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
+using travel_recommendation_and_booking_system.DTOs.Log;
+using travel_recommendation_and_booking_system.DTOs.LogSystem;
+using travel_recommendation_and_booking_system.DTOs.Notifications;
 using travel_recommendation_and_booking_system.Interfaces;
 
 namespace travel_recommendation_and_booking_system.Job
@@ -9,11 +12,17 @@ namespace travel_recommendation_and_booking_system.Job
     {
         private readonly AppDbContext _context;
         private readonly IEmailService _emailService;
+        private readonly ILogService _logService;
+        private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
 
-        public PaymentWarningJob(AppDbContext context, IEmailService emailService)
+        public PaymentWarningJob(AppDbContext context, IEmailService emailService, ILogService logService, ICurrentUserService currentUserService, INotificationService notificationService)
         {
             _context = context;
             _emailService = emailService;
+            _logService = logService;
+            _currentUserService = currentUserService;
+            _notificationService = notificationService;
         }
 
         public async Task SendPaymentReminders()
@@ -61,7 +70,7 @@ namespace travel_recommendation_and_booking_system.Job
             var deadlineDate = DateTime.Now.Date.AddDays(3);
 
             var bookingsToCancel = await _context.DonDatTours
-                .Include(d => d.ChuyenKhoiHanh)  // ← bắt buộc phải có
+                .Include(d => d.ChuyenKhoiHanh)
                 .Include(d => d.ThanhToans)
                 .Include(d => d.NguoiDung)
                 .Where(d =>
@@ -72,12 +81,17 @@ namespace travel_recommendation_and_booking_system.Job
 
             Console.WriteLine($"[Hủy đơn] Tìm thấy {bookingsToCancel.Count} đơn cần hủy.");
 
+            const string lyDoHuyTuDong = "Hệ thống tự động hủy do quá hạn thanh toán tiền mặt (3 ngày trước khởi hành)";
+
             foreach (var order in bookingsToCancel)
             {
                 try
                 {
+                    var oldStatusDon = order.TrangThaiDon;
+
                     // Hủy đơn
                     order.TrangThaiDon = 4;
+                    order.LyDoHuy = lyDoHuyTuDong;
                     order.NgayCapNhat = DateTime.Now;
 
                     // Cộng lại số chỗ
@@ -88,10 +102,23 @@ namespace travel_recommendation_and_booking_system.Job
 
                     Console.WriteLine($"[Hủy đơn] Đã hủy {order.MaDatCho}, hoàn {tongKhach} chỗ cho chuyến {order.ChuyenKhoiHanh.MaChuyenCode}. SoChoDaDat còn: {order.ChuyenKhoiHanh.SoChoDaDat}");
 
+                    // Thông báo real-time trong hệ thống
+                    await _notificationService.CreateForUserAsync(
+                        order.MaNguoiDung,
+                        new CreateNotificationDTO
+                        {
+                            TieuDe = "Đơn đặt tour đã bị hủy",
+                            NoiDung = $"Đơn {order.MaDatCho} đã bị hủy tự động do quá hạn thanh toán tiền mặt.",
+                            LoaiThongBao = (int)NotificationType.Booking,
+                            LinkChiTiet = $"/Thong-Tin-Ca-Nhan"
+                        });
+
+                    // Email
                     if (!string.IsNullOrWhiteSpace(order.NguoiDung?.Email))
                     {
                         await _emailService.SendBookingCancelledAsync(order);
                     }
+
                 }
                 catch (Exception ex)
                 {

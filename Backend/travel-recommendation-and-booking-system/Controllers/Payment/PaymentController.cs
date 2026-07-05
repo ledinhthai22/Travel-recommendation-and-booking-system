@@ -30,7 +30,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
         [HttpPost("create-payment")]
         public async Task<IActionResult> CreatePayment([FromBody] PaymentRequestDTO request)
         {
-            Console.WriteLine($"[CreatePayment] Received request for MaGiuCho: {request.MaGiuCho}");
+          
 
             var giuCho = await _context.GiuChos
                 .Include(x => x.ChuyenKhoiHanh)
@@ -39,14 +39,14 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
 
             if (giuCho == null || giuCho.ThoiGianHetHan <= DateTime.Now)
             {
-                Console.WriteLine("[CreatePayment] Error: GiuCho invalid or expired");
+                
                 return BadRequest(new { message = "Phiên giữ chỗ không hợp lệ hoặc đã hết hạn." });
             }
 
             var gia = giuCho.ChuyenKhoiHanh.GiaChuyens.FirstOrDefault();
             if (gia == null)
             {
-                Console.WriteLine("[CreatePayment] Error: No price table");
+               
                 return BadRequest(new { message = "Chuyến chưa có bảng giá." });
             }
 
@@ -88,13 +88,10 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
             await _context.SaveChangesAsync();
 
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
-            var txnRef = $"{request.MaCodeChuyen}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
 
-            Console.WriteLine($"[CreatePayment] Created TxnRef: {txnRef}");
+            var (paymentUrl, txnRef) = await _paymentService.CreatePaymentUrlAsync(request, ip);
 
-            var paymentUrl = await _paymentService.CreatePaymentUrlAsync(request, ip, txnRef);
-
-            Console.WriteLine($"[CreatePayment] Payment URL generated successfully");
+           
 
             return Ok(new { paymentUrl, txnRef });
         }
@@ -102,17 +99,16 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
         [HttpGet("status/{txnRef}")]
         public async Task<IActionResult> GetPaymentStatus(string txnRef)
         {
-            Console.WriteLine($"[GetPaymentStatus] Checking for TxnRef: {txnRef}");
+            
 
-            // Tìm theo MaGiaoDich (số giao dịch VNPay) HOẶC TxnRef
             var thanhToan = await _context.ThanhToans
-                .Where(x => x.MaGiaoDich == txnRef || x.MaGiaoDich.Contains(txnRef))
+                .Where(x => x.MaGiaoDich == txnRef)
                 .Select(x => new { x.TrangThaiThanhToan, x.MaDonDatTour })
                 .FirstOrDefaultAsync();
 
             if (thanhToan == null)
             {
-                Console.WriteLine("[GetPaymentStatus] → PENDING (no record)");
+                
                 return Ok(new { status = "PENDING" });
             }
 
@@ -123,7 +119,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
                 _ => "PENDING"
             };
 
-            Console.WriteLine($"[GetPaymentStatus] → {status}");
+        
             return Ok(new { status, maDonDatTour = thanhToan.MaDonDatTour });
         }
 
@@ -131,7 +127,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
         public async Task<IActionResult> VnPayReturn()
         {
             var queryData = Request.Query.ToDictionary(q => q.Key, q => q.Value.ToString());
-            Console.WriteLine("[VnPayReturn] Received redirect from VNPay");
+         
 
             var vnpay = new VnPayLibrary();
             string secureHash = string.Empty;
@@ -149,10 +145,10 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
             string responseCode = vnpay.GetResponseData("vnp_ResponseCode");
             string txnRef = vnpay.GetResponseData("vnp_TxnRef");
 
-            Console.WriteLine($"[VnPayReturn] ResponseCode: {responseCode} | Valid: {isValid}");
+         
             if (responseCode == "00" && isValid)
             {
-                Console.WriteLine("[VnPayReturn] Waiting for IPN to commit...");
+               
                 for (int i = 0; i < 10; i++)
                 {
                     var exists = await _context.ThanhToans
@@ -160,7 +156,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
 
                     if (exists)
                     {
-                        Console.WriteLine($"[VnPayReturn] IPN committed after {(i + 1) * 500}ms");
+                      
                         break;
                     }
 
@@ -177,11 +173,10 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
         public async Task<IActionResult> VnPayIpn()
         {
             var queryData = Request.Query.ToDictionary(q => q.Key, q => q.Value.ToString());
-            Console.WriteLine($"[VnPayIpn] IPN called from VNPay - {DateTime.Now}");
-
+      
             var (rspCode, message) = await _paymentService.ProcessVnPayIpnAsync(queryData);
 
-            Console.WriteLine($"[VnPayIpn] Response to VNPay: RspCode={rspCode}, Message={message}");
+
             return Ok(new { RspCode = rspCode, Message = message });
         }
     }

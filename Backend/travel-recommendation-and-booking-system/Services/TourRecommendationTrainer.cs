@@ -14,8 +14,8 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly AppDbContext _context;
         private readonly MLContext _mlContext = new MLContext(seed: 42);
 
-        private const int MIN_ROWS_TO_TRAIN = 50;
-        private const int MIN_INTERACTIONS_PER_USER = 3;
+        private const int MIN_ROWS_TO_TRAIN = 3;
+        private const int MIN_INTERACTIONS_PER_USER = 1;
         private const int TOP_N_PER_USER = 50;
 
         public TourRecommendationTrainer(AppDbContext context)
@@ -25,7 +25,7 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<TrainResult> TrainAndSaveAsync(string outputPath = "Models/tour-recommender.zip")
         {
-            // 1. Gom dữ liệu tương tác thô
+            //  Gom dữ liệu tương tác thô
             var views = await _context.TrangThaiTuongTacs
                 .Where(t => t.DaXemChiTiet)
                 .Select(t => new { t.MaNguoiDung, t.MaTour, Label = RecommendationWeights.ViewTour })
@@ -41,7 +41,7 @@ namespace travel_recommendation_and_booking_system.Services
                 .ToListAsync();
 
             var bookings = await _context.DonDatTours
-                .Select(d => new { d.MaNguoiDung, MaTour = d.ChuyenKhoiHanh.MaTour, Label = RecommendationWeights.BookTour })
+                .Select(d => new { d.MaNguoiDung, MaTour = d.ChuyenKhoiHanh!.MaTour, Label = RecommendationWeights.BookTour })
                 .ToListAsync();
 
             var merged = views.Concat(deepInterest).Concat(wishlist).Concat(bookings)
@@ -60,7 +60,7 @@ namespace travel_recommendation_and_booking_system.Services
                     Message: $"Chưa đủ dữ liệu để train (hiện có {merged.Count} dòng, cần tối thiểu {MIN_ROWS_TO_TRAIN}). Hệ thống dùng heuristic cho tới khi đủ dữ liệu.");
             }
 
-            // 2. Train Matrix Factorization
+            // Train Matrix Factorization
             var trainData = _mlContext.Data.LoadFromEnumerable(merged);
 
             var options = new MatrixFactorizationTrainer.Options
@@ -82,7 +82,7 @@ namespace travel_recommendation_and_booking_system.Services
                 Directory.CreateDirectory(dir);
             _mlContext.Model.Save(model, trainData.Schema, outputPath);
 
-            // 3. Batch scoring
+            //  Batch scoring
             var predictionEngine = _mlContext.Model.CreatePredictionEngine<TourRatingData, TourRatingPrediction>(model);
 
             var eligibleUserIds = merged
@@ -121,7 +121,7 @@ namespace travel_recommendation_and_booking_system.Services
                 }
             }
 
-            // 4. Ghi đè điểm cũ trong DB bằng điểm mới
+            //  Ghi đè điểm cũ trong DB bằng điểm mới
             var affectedUserIds = eligibleUserIds.Select(u => (int)u).ToList();
             var oldScores = await _context.TourRecommendationScores
                 .Where(s => affectedUserIds.Contains(s.MaNguoiDung))

@@ -6,9 +6,9 @@ import MainLayout from '~/components/layout/UserLayout';
 import AdminLayout from '~/components/layout/AdminLayout';
 import RouteReset from '~/components/Common/RouteReset';
 import ProtectedRoute from './Routes/ProtectedRoute';
-import { useContext } from 'react'; // them moi 
-import { AuthContext } from '~/Context/AuthContext'; // them moi 
-import AuthModal from './components/Auth/AuthModal'; // them moi 
+import { useContext } from 'react';
+import { AuthContext } from '~/Context/AuthContext';
+import AuthModal from './components/Auth/AuthModal';
 
 import {
     ContactPage,
@@ -22,6 +22,7 @@ import {
     Wishlist,
     PaymentReturnPage,
     BookingSuccessPage,
+    SearchPage
 } from './Pages/Client';
 
 
@@ -41,9 +42,10 @@ import {
     TypeLocationManager,
     AmenitiesManager,
     LocationManager,
-    ReviewManager, // them moi
+    ReviewManager,
     TourFormPage,
     TypeTourManager,
+    RefundManager
 } from './Pages/admin';
 
 function App() {
@@ -88,6 +90,7 @@ function App() {
                         <Route path="Cac-Chuyen-Di" element={<ToursPage />} />
                         <Route path="/Cac-Chuyen-Di/:slug" element={<TourDetail />} />
                         <Route path="Khach-san/:slug" element={<HotelDetail />} />
+                        <Route path="/Tim-kiem" element={<SearchPage />} />
                         <Route path="Lien-He" element={<ContactPage />} />
                         <Route element={<ProtectedRoute />}>
                             <Route path="Thong-Tin-Ca-Nhan" element={<Profile />} />
@@ -115,6 +118,7 @@ function App() {
                             <Route path="Khach-san" element={<HotelManager />} />
                             <Route path="Tien-ich" element={<AmenitiesManager />} />
                             <Route path="Don-dat-cac-chuyen-di" element={<BookingManager />} />
+                            <Route path="Xu-Ly-Hoan-Tien" element={<RefundManager />} />
                             <Route path="Lien-he" element={<ContactManager />} />
                         </Route>
                     </Route>

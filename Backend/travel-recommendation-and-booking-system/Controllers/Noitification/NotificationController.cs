@@ -21,9 +21,6 @@ namespace travel_recommendation_and_booking_system.Controllers
             _currentUserService = currentUserService;
         }
 
-        /// <summary>
-        /// Lấy thông báo của User
-        /// </summary>
         [HttpGet("me")]
         public async Task<IActionResult> GetMyNotifications(
             int page = 1,
@@ -37,9 +34,7 @@ namespace travel_recommendation_and_booking_system.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Lấy thông báo của Staff/Admin
-        /// </summary>
+
         [HttpGet("staff")]
         public async Task<IActionResult> GetStaffNotifications(
             int page = 1,
@@ -53,9 +48,7 @@ namespace travel_recommendation_and_booking_system.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Đánh dấu đã đọc
-        /// </summary>
+
         [HttpPost("mark-read")]
         public async Task<IActionResult> MarkAsRead(
             [FromBody] MarkAsReadDTO dto)
@@ -75,9 +68,6 @@ namespace travel_recommendation_and_booking_system.Controllers
             return Ok(new { success = true });
         }
 
-        /// <summary>
-        /// Đánh dấu tất cả đã đọc
-        /// </summary>
         [HttpPost("mark-all-read")]
         public async Task<IActionResult> MarkAllRead()
         {
@@ -96,9 +86,7 @@ namespace travel_recommendation_and_booking_system.Controllers
             return Ok(new { success = true });
         }
 
-        /// <summary>
-        /// Đếm thông báo chưa đọc
-        /// </summary>
+
         [HttpGet("unread-count")]
         public async Task<IActionResult> GetUnreadCount()
         {

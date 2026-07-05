@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 using travel_recommendation_and_booking_system.Constants;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.Interfaces;
@@ -12,14 +12,18 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
     [Route("api/customer/[controller]")]
     [ApiController]
     [Authorize(Policy = "UserOnly")]
-    public class TourController : ControllerBase
+    public class WishListController : ControllerBase
     {
         private readonly ITourService _tour;
-        private readonly IRecommendationService _recommen;
-        public TourController(ITourService tour, IRecommendationService recommendationService)
+        private readonly IRecommendationService _recommendation;
+        private readonly ITourRecommendationService _tourRecommendation;
+        private readonly ICurrentUserService _currentUserService;
+        public WishListController(ITourService tour, IRecommendationService recommendation, ITourRecommendationService tourRecommendation,ICurrentUserService currentUserService)
         {
             _tour = tour;
-            _recommen = recommendationService;
+            _recommendation = recommendation;
+            _tourRecommendation = tourRecommendation;
+            _currentUserService = currentUserService;
         }
 
         [HttpGet("wishlist-ids")]
@@ -33,7 +37,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
             return Ok(ids);
         }
 
-        [HttpGet("wishlist")]
+        [HttpGet]
         public async Task<IActionResult> GetWishlist([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -53,7 +57,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
             }
         }
 
-        [HttpPost("wishlist/{tourId}")]
+        [HttpPost("{tourId}")]
         public async Task<IActionResult> AddToWishlist(int tourId)
         {
             // 1. Xác thực người dùng
@@ -65,7 +69,12 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
             try
             {
                 var isSuccess = await _tour.AddFavoriteTourAsync(maNguoiDung, tourId);
-
+                await _recommendation.UpdatePreference(
+                    maNguoiDung,
+                    tourId,
+                    RecommendationWeights.WishlistTour,
+                    true
+                );
                 if (isSuccess)
                 {
                     var tour = await _tour.GetTourByIdAsync(tourId);
@@ -81,7 +90,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
 
         }
 
-        [HttpDelete("wishlist")]
+        [HttpDelete]
         public async Task<IActionResult> DeleteWishlist([FromBody] List<int> tourIds)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -93,7 +102,23 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
             try
             {
                 var isSuccess = await _tour.DeleteFavoriteToursAsync(maNguoiDung, tourIds);
+                if (isSuccess)
+                {
+                    foreach (var tourId in tourIds)
+                    {
+                        await _recommendation.UpdatePreference(
+                            maNguoiDung,
+                            tourId,
+                            RecommendationWeights.WishlistTour,
+                            false
+                        );
+                    }
 
+                    return Ok(new
+                    {
+                        message = "Đã xóa khỏi danh sách yêu thích thành công!"
+                    });
+                }
                 if (isSuccess)
                 {
 
@@ -115,8 +140,11 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
             var tour = await _tour.GetTourByIdAsync(id);
             if (tour == null) return NotFound();
 
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
+            var currentUser = _currentUserService.GetUserId();
+            await _tourRecommendation.TrackDeepInterestAsync(
+               currentUser,
+               id
+           );
             return Ok();
         }
 

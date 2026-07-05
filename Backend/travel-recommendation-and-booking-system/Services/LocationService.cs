@@ -47,35 +47,7 @@ namespace travel_recommendation_and_booking_system.Services
                 })
                 .ToListAsync();
         }
-        public async Task<List<LocationCardResponseDTO>> GetLocationCardsAsync(int? limit = null)
-        {
-            var query = _context.DiaDiems
-                .AsNoTracking()
-                .Where(d => d.TrangThai == true && d.NgayXoa == null)
-                .Select(d => new LocationCardResponseDTO
-                {
-                    MaDiaDiem = d.MaDiaDiem,
-                    TenDiaDiem = d.TenDiaDiem,
-                    Slug = d.Slug,
-                    DuongDanAnh = d.DuongDanAnh,
-                    TinhThanh = d.TinhThanh,
-                    MoTa = d.MoTa,
-                    SoLuongTour = _context.CTLichTrinhs
-                        .Where(ct => ct.MaDiaDiem == d.MaDiaDiem && ct.LichTrinh.NgayXoa == null && ct.LichTrinh.Tour.NgayXoa == null && ct.LichTrinh.Tour.TrangThai == 1)
-                        .Select(ct => ct.LichTrinh.MaTour)
-                        .Distinct()
-                        .Count()
-                })
-                .OrderByDescending(x => x.SoLuongTour);
-
-            if (limit.HasValue && limit.Value > 0)
-            {
-                return await query.Take(limit.Value).ToListAsync();
-            }
-
-            return await query.ToListAsync();
-        }
-
+        
 
         public async Task<List<LocationCardResponseDTO>> GetRecommendedLocationsAsync(int userId, int? limit = null)
         {
@@ -128,7 +100,7 @@ namespace travel_recommendation_and_booking_system.Services
         public async Task<PageDTO<LocationReponseDTO>> GetLocationAsync(int pageNumber, int pageSize, string? key, bool? status)
         {
             if (pageNumber < 1) pageNumber = 1;
-            if (pageSize < 1 || pageSize > 100) pageSize = 10; // Giới hạn pageSize
+            if (pageSize < 1 || pageSize > 100) pageSize = 10; 
 
             var query = _context.DiaDiems
                 .AsNoTracking()
@@ -418,6 +390,38 @@ namespace travel_recommendation_and_booking_system.Services
             await _context.SaveChangesAsync();
 
             return true;
+        }
+
+
+
+        public async Task<List<LocationCardResponseDTO>> GetFeaturedDestinationsAsync(int limit = 8)
+        {
+            var now = DateTime.Now;
+
+            return await _context.DiaDiems
+                .AsNoTracking()
+                .Where(d => d.TrangThai == true && d.NgayXoa == null)
+                .Select(d => new LocationCardResponseDTO
+                {
+                    MaDiaDiem = d.MaDiaDiem,
+                    TenDiaDiem = d.TenDiaDiem,
+                    Slug = d.Slug,
+                    DuongDanAnh = d.DuongDanAnh,
+                    TinhThanh = d.TinhThanh,
+                    MoTa = d.MoTa,
+                    SoLuongTour = _context.CTLichTrinhs
+                        .Where(ct => ct.MaDiaDiem == d.MaDiaDiem
+                                  && ct.LichTrinh.NgayXoa == null
+                                  && ct.LichTrinh.Tour.NgayXoa == null
+                                  && ct.LichTrinh.Tour.TrangThai == 1)
+                        .Select(ct => ct.LichTrinh.MaTour)
+                        .Distinct()
+                        .Count()
+                })
+                .OrderByDescending(d => d.SoLuongTour) 
+                .ThenByDescending(d => d.TenDiaDiem)   
+                .Take(limit)
+                .ToListAsync();
         }
     }
 }

@@ -3,11 +3,13 @@ import { formatCurrency } from "~/Helper/FormatCurrency";
 import { formatDate } from "~/Helper/FormatDate";
 import { Clock, Calendar, MapPin, Users, Phone, Ticket } from "lucide-react";
 import useAuth from "~/Hooks/useAuth";
+import ContactModal from "~/components/UI/Modal/ContactModal";
+import { useState } from "react";
 export function BookingCard({ tour, departure, hotel, onOpenAuthModal }) {
     const navigate = useNavigate();
     const { user } = useAuth();
     if (!tour || !departure) return null;
-
+    const [showContactModal, setShowContactModal] = useState(false);
     const ckh = departure.chuyenKhoiHanh;
     const giaHienTai = departure.danhSachGia?.[0] || {};
 
@@ -146,25 +148,30 @@ export function BookingCard({ tour, departure, hotel, onOpenAuthModal }) {
             </div>
 
             <div className="mt-5 flex gap-2">
-                <a
-                    href="tel:1900xxxx"
+                <button
+                    onClick={() => setShowContactModal(true)}
                     className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors shrink-0"
-                    title="Gọi tư vấn"
+                    title="Liên hệ tư vấn"
                 >
                     <Phone size={18} />
-                </a>
+                </button>
 
                 <button
                     onClick={handleBooking}
                     disabled={soLuongCho === 0}
                     className={`flex-1 rounded-full py-2.5 font-semibold text-white transition-colors text-center ${soLuongCho === 0
                         ? "bg-slate-300 cursor-not-allowed"
-                        : "bg-sky-500 hover:bg-sky-600 shadow-md shadow-sky-100"
+                        : "bg-sky-500 hover:bg-sky-600 shadow-md shadow-sky-100 cursor-pointer"
                         }`}
                 >
                     {soLuongCho === 0 ? "Hết chỗ" : "Đặt ngay"}
                 </button>
             </div>
+            <ContactModal
+                open={showContactModal}
+                onClose={() => setShowContactModal(false)}
+                tourName={tour.tenTour}
+            />
         </div>
     );
 }

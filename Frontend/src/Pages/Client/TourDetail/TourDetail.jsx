@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Heart, MapPin, Clock } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 
@@ -15,9 +15,15 @@ import { HotelInfo } from "~/components/TourDetail/HotelInfo";
 import { Notes } from "~/components/TourDetail/Notes";
 import { Reviews } from "~/components/TourDetail/Reviews";
 
-import { getTourBySlugApi } from "~/Services/TourService";
+import {
+    getTourBySlugApi
+} from "~/Services/TourService";
+
+import { trackDeepInterestApi, trackViewTourApi } from "~/Services/TourRecommendationService"
 import Breadcrumb from "~/components/UI/Breadcrumbs/Breadcrumbs";
 import useAuth from "~/Hooks/useAuth";
+import { getRelatedToursApi } from "~/Services/TourService";
+const DEEP_INTEREST_DELAY_MS = 30000; // 30s ở lại trang mới tính là "quan tâm sâu"
 
 export default function TourDetail() {
     const { slug } = useParams();
@@ -25,10 +31,36 @@ export default function TourDetail() {
     const [tour, setTour] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selectedDeparture, setSelectedDeparture] = useState(null);
-
+    const [relatedTours, setRelatedTours] = useState([]);
+    const [loadingRelated, setLoadingRelated] = useState(false);
     const { user } = useAuth();
     const isLoggedIn = !!user;
 
+    const deepInterestTimerRef = useRef(null);
+    const trackedTourIdRef = useRef(null); // tránh track trùng nếu effect chạy lại
+    useEffect(() => {
+        if (!tour?.tourInfo?.maTour) return;
+
+        const loadRelatedTours = async () => {
+            try {
+                setLoadingRelated(true);
+
+                const data = await getRelatedToursApi(
+                    tour.tourInfo.maTour
+                );
+
+                setRelatedTours(data || []);
+            }
+            catch (error) {
+                console.error("Lỗi load related tours:", error);
+            }
+            finally {
+                setLoadingRelated(false);
+            }
+        };
+
+        loadRelatedTours();
+    }, [tour?.tourInfo?.maTour]);
     useEffect(() => {
         if (!slug || slug === "undefined") {
             setLoading(false);
@@ -51,6 +83,22 @@ export default function TourDetail() {
 
                     setSelectedDeparture(validDeparture);
                 }
+
+                // Track hành vi xem tour — chỉ khi đã đăng nhập và xác định được maTour
+                const tourId = res?.tourInfo?.maTour;
+                if (isLoggedIn && tourId && trackedTourIdRef.current !== tourId) {
+                    trackedTourIdRef.current = tourId;
+
+                    trackViewTourApi(tourId).catch((err) =>
+                        console.error("Track view failed:", err)
+                    );
+
+                    deepInterestTimerRef.current = setTimeout(() => {
+                        trackDeepInterestApi(tourId).catch((err) =>
+                            console.error("Track deep interest failed:", err)
+                        );
+                    }, DEEP_INTEREST_DELAY_MS);
+                }
             } catch (err) {
                 console.error(err);
                 setTour(null);
@@ -60,7 +108,15 @@ export default function TourDetail() {
         };
 
         fetchTour();
-    }, [slug]);
+
+        // Cleanup: huỷ timer nếu user rời trang / đổi tour trước khi đủ 30s
+        return () => {
+            if (deepInterestTimerRef.current) {
+                clearTimeout(deepInterestTimerRef.current);
+                deepInterestTimerRef.current = null;
+            }
+        };
+    }, [slug, isLoggedIn]);
 
     if (loading) return <div className="p-10 text-center text-slate-500 font-medium animate-pulse">Đang tải thông tin tour...</div>;
     if (!tour) return <div className="p-10 text-center text-slate-500 font-medium">Không tìm thấy tour này.</div>;
@@ -151,8 +207,60 @@ export default function TourDetail() {
                         />
                     </aside>
                 </div>
+                <section className="py-16 md:py-20">
+                    <div className="mx-auto max-w-[1440px] px-4 md:px-8">
 
-                <AuthModal open={isAuthOpen} onClose={() => setIsAuthOpen(false)} redirectAfterLogin={window.location.pathname + window.location.search}/>
+                        <SectionTitle
+                            title="Các tour liên quan"
+                            description="Những hành trình tương tự mà bạn có thể quan tâm."
+                        />
+
+                        {loadingRelated ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-[30px]">
+                                {[...Array(4)].map((_, i) => (
+                                    <div
+                                        key={i}
+                                        className="h-72 w-full animate-pulse rounded-3xl bg-slate-200"
+                                    />
+                                ))}
+                            </div>
+                        ) : relatedTours.length > 0 ? (
+                            <FeaturedCarousel
+                                items={relatedTours}
+                                renderItem={(tour) => (
+                                    <TourCard
+                                        id={tour.maTour}
+                                        slug={tour.slug}
+                                        name={tour.tenTour}
+                                        image={`https://localhost:7016${tour.duongDanAnh}`}
+                                        duration={
+                                            tour.dem > 0
+                                                ? `${tour.ngay} Ngày ${tour.dem} Đêm`
+                                                : `${tour.ngay} Ngày`
+                                        }
+                                        destination={
+                                            Array.isArray(tour.diemDen)
+                                                ? tour.diemDen[0]
+                                                : tour.diemDen
+                                        }
+                                        price={tour.giaChuyen}
+                                        rating={tour.diemDanhGia}
+                                        reviewCount={tour.soLuongDanhGia}
+                                        tourType={tour.tenLoaiTour}
+                                    />
+                                )}
+                                itemsPerPage={4}
+                                gap={30}
+                                autoPlayMs={5000}
+                            />
+                        ) : (
+                            <p className="text-center text-slate-400 py-6">
+                                Không có tour liên quan.
+                            </p>
+                        )}
+                    </div>
+                </section>
+                <AuthModal open={isAuthOpen} onClose={() => setIsAuthOpen(false)} redirectAfterLogin={window.location.pathname + window.location.search} />
             </div>
         </div>
     );

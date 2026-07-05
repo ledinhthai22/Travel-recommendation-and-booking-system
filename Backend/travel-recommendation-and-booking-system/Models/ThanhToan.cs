@@ -25,9 +25,13 @@ namespace travel_recommendation_and_booking_system.Models
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal TongTienThanhToan { get; set; }
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? SoTienHoan { get; set; }
 
+        public DateTime? NgayHoanTien { get; set; }
         public DateTime NgayThanhToan { get; set; }
-
+        [MaxLength(50)]
+        public string? MaNhanVienXuLyHoan { get; set; }
         public int TrangThaiThanhToan { get; set; }
         // 0 = Chờ thanh toán
         // 1 = Thành công

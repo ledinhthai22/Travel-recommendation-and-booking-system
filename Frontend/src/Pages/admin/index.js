@@ -17,3 +17,4 @@ export {default as TypeLocationManager} from "./TypeLocationManager/TypeLocation
 export {default as AmenitiesManager} from "./AmenitiesManager/AmenitiesManager"
 export {default as ReviewManager} from './ReviewManager/ReviewManager' // theem moi
 export {default as TypeTourManager } from "./TypeTour/TypeTourManager"
+export {default as RefundManager} from "./BookingManager/RefundManager"

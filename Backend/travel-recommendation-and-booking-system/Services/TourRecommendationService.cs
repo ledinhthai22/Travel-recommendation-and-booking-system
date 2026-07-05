@@ -1,8 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DTOs.Destination;
+using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Common;
 using travel_recommendation_and_booking_system.Constants;
 using travel_recommendation_and_booking_system.Data;
+using travel_recommendation_and_booking_system.DTOs.Destination;
 using travel_recommendation_and_booking_system.DTOs.Tour;
+using travel_recommendation_and_booking_system.DTOs.TypeTour;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
 
@@ -19,7 +22,7 @@ namespace travel_recommendation_and_booking_system.Services
             _recommendation = recommendation;
         }
 
-        public async Task<List<TourCardDTO>> GetBestToursCardAsync(int? limit = null)
+        public async Task<List<TourCardResponseDTO>> GetBestToursCardAsync(int? limit = null)
         {
             var now = DateTime.Now;
             var query = _context.Tours
@@ -27,12 +30,12 @@ namespace travel_recommendation_and_booking_system.Services
                 .AsNoTracking()
                 .WhereVisible(now)
                 .OrderByDescending(t => t.LuotDat)
-                .Select(TourQueryExtensions.ToCardDTO);
+                .Select(TourQueryExtensions.ToCardResponseDTO);
 
             return limit is > 0 ? await query.Take(limit.Value).ToListAsync() : await query.ToListAsync();
         }
 
-        public async Task<List<TourCardDTO>> GetLatestToursAsync(int? limit = null)
+        public async Task<List<TourCardResponseDTO>> GetLatestToursAsync(int? limit = null)
         {
             var now = DateTime.Now;
             var query = _context.Tours
@@ -40,15 +43,21 @@ namespace travel_recommendation_and_booking_system.Services
                 .AsNoTracking()
                 .WhereVisible(now)
                 .OrderByDescending(t => t.NgayTao)
-                .Select(TourQueryExtensions.ToCardDTO);
+                .Select(TourQueryExtensions.ToCardResponseDTO);
 
             return limit is > 0 ? await query.Take(limit.Value).ToListAsync() : await query.ToListAsync();
         }
 
-        private async Task<List<TourCardDTO>> ScorePersonalizedToursAsync(
-            int userId, IReadOnlyCollection<int>? excludeTourIds, int? limit)
+    
+
+        private record UserPreferenceContext(
+            Dictionary<int, float> MlScores,
+            Dictionary<int, float> TypeScoreMap,
+            Dictionary<int, float> LocationScoreMap,
+            HashSet<int> FavoriteTourIds);
+
+        private async Task<UserPreferenceContext> LoadUserPreferenceContextAsync(int userId)
         {
-            // THÊM: đọc điểm ML đã cache 1 lần duy nhất
             var mlScores = await _recommendation.GetCachedScoresForUserAsync(userId);
 
             var topPreferences = await _context.SoThichNguoiDungs
@@ -60,77 +69,255 @@ namespace travel_recommendation_and_booking_system.Services
             var favoriteTourIds = await _context.DanhSachYeuThichs
                 .AsNoTracking().Where(y => y.MaNguoiDung == userId)
                 .Select(y => y.MaTour).ToListAsync();
+            var typeScoreMap = topPreferences
+                .GroupBy(p => p.MaLoaiTour)
+                .ToDictionary(g => g.Key, g => g.First().DiemYeuThich);
 
-            var now = DateTime.Now;
+            var locationScoreMap = locationScores
+                .GroupBy(s => s.MaDiaDiem)
+                .ToDictionary(g => g.Key, g => g.First().DiemYeuThich);
 
-            var toursQuery = _context.Tours
+            return new UserPreferenceContext(mlScores, typeScoreMap, locationScoreMap, favoriteTourIds.ToHashSet());
+        }
+
+        private sealed class TourScoringRow
+        {
+            public int MaTour { get; set; }
+            public int MaLoaiTour { get; set; }
+            public int LuotDat { get; set; }
+            public List<int> DiaDiemIds { get; set; } = new();
+        }
+
+        private async Task<List<TourScoringRow>> LoadTourScoringDataAsync(
+            DateTime now, IReadOnlyCollection<int>? excludeTourIds)
+        {
+            var query = _context.Tours
+                .AsNoTracking()
+                .WhereVisible(now);
+
+            if (excludeTourIds != null && excludeTourIds.Count > 0)
+                query = query.Where(t => !excludeTourIds.Contains(t.MaTour));
+
+            return await query
+                .Select(t => new TourScoringRow
+                {
+                    MaTour = t.MaTour,
+                    MaLoaiTour = t.MaLoaiTour,
+                    LuotDat = t.LuotDat,
+                    DiaDiemIds = t.LichTrinhs
+                        .SelectMany(lt => lt.CTLichTrinhs)
+                        .Select(ct => ct.MaDiaDiem)
+                        .ToList()
+                })
+                .ToListAsync();
+        }
+
+        private async Task<List<TourCardResponseDTO>> HydrateTourCardsAsync(
+            List<int> orderedTourIds, HashSet<int> favoriteTourIds, bool forceIsFavoriteFalse)
+        {
+            if (orderedTourIds.Count == 0) return new List<TourCardResponseDTO>();
+
+            var tours = await _context.Tours
                 .AsNoTracking()
                 .Include(t => t.LoaiHinhTour)
-                .Include(t => t.LichTrinhs).ThenInclude(l => l.CTLichTrinhs).ThenInclude(ct => ct.DiaDiem)
                 .Include(t => t.HinhAnhTours)
                 .Include(t => t.ChuyenKhoiHanhs).ThenInclude(c => c.GiaChuyens)
                 .Include(t => t.DanhGias)
                 .AsSplitQuery()
-                .WhereVisible(now);
+                .Where(t => orderedTourIds.Contains(t.MaTour))
+                .ToListAsync();
 
-            if (excludeTourIds != null && excludeTourIds.Count > 0)
-                toursQuery = toursQuery.Where(t => !excludeTourIds.Contains(t.MaTour));
+            var tourById = tours.ToDictionary(t => t.MaTour);
 
-            var allTours = await toursQuery.ToListAsync();
+            var result = new List<TourCardResponseDTO>(orderedTourIds.Count);
+            foreach (var id in orderedTourIds)
+            {
+                if (!tourById.TryGetValue(id, out var t)) continue;
 
-            var result = allTours
-                .Select(t => new
+                result.Add(new TourCardResponseDTO
                 {
-                    Tour = t,
-                    //: ưu tiên điểm ML, fallback heuristic nếu tour chưa có điểm ML
-                    TotalScore = mlScores.TryGetValue(t.MaTour, out var mlScore)
-                        ? mlScore * 10000f
-                        : (favoriteTourIds.Contains(t.MaTour) ? 1000 : 0) +
-                          t.LichTrinhs.SelectMany(lt => lt.CTLichTrinhs).Sum(ct =>
-                              locationScores.FirstOrDefault(ls => ls.MaDiaDiem == ct.MaDiaDiem)?.DiemYeuThich ?? 0) +
-                          (topPreferences.FirstOrDefault(p => p.MaLoaiTour == t.MaLoaiTour)?.DiemYeuThich ?? 0)
-                })
-                .OrderByDescending(x => x.TotalScore)
-                .ThenByDescending(x => x.Tour.LuotDat)
-                .Select(x => new TourCardDTO
-                {
-                    MaTour = x.Tour.MaTour,
-                    TenTour = x.Tour.TenTour,
-                    DuongDanAnh = x.Tour.HinhAnhTours.FirstOrDefault(a => a.AnhChinh == true)?.DuongDanAnh ?? "default-image.jpg",
-                    Ngay = x.Tour.Ngay,
-                    Dem = x.Tour.Dem,
-                    slug = x.Tour.Slug,
-                    DiemDen = x.Tour.LichTrinhs.SelectMany(l => l.CTLichTrinhs)
-                        .Select(ct => ct.DiaDiem.TenDiaDiem).FirstOrDefault() ?? "Đang cập nhật",
-                    GiaChuyen = x.Tour.ChuyenKhoiHanhs.SelectMany(c => c.GiaChuyens)
-                        .Min(g => (decimal?)g.GiaNguoiLon) ?? 0,
-                    DiemDanhGia = x.Tour.DanhGias.Any()
-                        ? Math.Round(x.Tour.DanhGias.Average(d => (double)d.DiemDanhGia), 1) : 0,
-                    SoLuongDanhGia = x.Tour.DanhGias.Count(),
-                    IsFavorite = favoriteTourIds.Contains(x.Tour.MaTour),
-                    LuotDat = x.Tour.LuotDat,
-                    MaLoaiTour = x.Tour.MaLoaiTour,
-                    TenLoaiTour = x.Tour.LoaiHinhTour != null ? x.Tour.LoaiHinhTour.TenLoaiTour : null
-                })
-                .ToList();
+                    MaTour = t.MaTour,
+                    TenTour = t.TenTour,
+                    Slug = t.Slug,
+                    MoTa = t.MoTa?.Length > 120 ? t.MoTa.Substring(0, 120) + "..." : t.MoTa,
+                    Ngay = t.Ngay,
+                    Dem = t.Dem,
 
-            return limit is > 0 ? result.Take(limit.Value).ToList() : result;
+                    GiaTu = t.ChuyenKhoiHanhs
+                        .SelectMany(c => c.GiaChuyens)
+                        .Select(g => (decimal?)g.GiaNguoiLon)
+                        .DefaultIfEmpty(0)
+                        .Min() ?? 0,
+
+                    HinhAnhChinh = t.HinhAnhTours
+                        .Where(a => a.NgayXoa == null)
+                        .OrderByDescending(a => a.AnhChinh)
+                        .Select(a => a.DuongDanAnh)
+                        .FirstOrDefault() ?? "default-image.jpg",
+
+                    DiemDens = t.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null)
+                        .Select(c => c.DiemDen)
+                        .Distinct()
+                        .ToList(),
+
+                    SoDanhGia = t.DanhGias.Count,
+                    DiemDanhGia = t.DanhGias.Count > 0
+                        ? Math.Round(t.DanhGias.Average(d => (double)d.DiemDanhGia), 1) : 0,
+
+                    LuotDat = t.LuotDat,
+                    LuotXem = t.LuotXem,
+                    TenLoaiTour = t.LoaiHinhTour?.TenLoaiTour,
+                    IsFavorite = !forceIsFavoriteFalse && favoriteTourIds.Contains(t.MaTour)
+                });
+            }
+
+            return result;
         }
 
-        public Task<List<TourCardDTO>> GetTourDesignJustForYouAsync(int userId, int? limit = null)
+        public Task<List<TourCardResponseDTO>> GetTourDesignJustForYouAsync(int userId, int? limit = null)
             => ScorePersonalizedToursAsync(userId, excludeTourIds: null, limit);
 
-        public async Task<List<TourCardDTO>> GetRecommendedToursAsync(int userId, int? limit = null)
+        private async Task<List<TourCardResponseDTO>> ScorePersonalizedToursAsync(
+            int userId, IReadOnlyCollection<int>? excludeTourIds, int? limit)
+        {
+            var prefs = await LoadUserPreferenceContextAsync(userId);
+            var now = DateTime.Now;
+            var scoringRows = await LoadTourScoringDataAsync(now, excludeTourIds);
+
+            var ranked = scoringRows
+                .Select(t => new
+                {
+                    t.MaTour,
+                    t.LuotDat,
+                    // ưu tiên ml train, không có fallback heuristic nếu tour chưa có điểm ML
+                    TotalScore = prefs.MlScores.TryGetValue(t.MaTour, out var mlScore)
+                        ? mlScore * 10000f
+                        : (prefs.FavoriteTourIds.Contains(t.MaTour) ? 1000 : 0) +
+                          t.DiaDiemIds.Sum(diaDiemId => prefs.LocationScoreMap.GetValueOrDefault(diaDiemId, 0)) +
+                          prefs.TypeScoreMap.GetValueOrDefault(t.MaLoaiTour, 0)
+                })
+                .OrderByDescending(x => x.TotalScore)
+                .ThenByDescending(x => x.LuotDat)
+                .Select(x => x.MaTour)
+                .ToList();
+
+            var topIds = limit is > 0 ? ranked.Take(limit.Value).ToList() : ranked;
+
+            return await HydrateTourCardsAsync(topIds, prefs.FavoriteTourIds, forceIsFavoriteFalse: false);
+        }
+
+        public async Task<List<TourCardResponseDTO>> GetRecommendedToursAsync(int userId, int? limit = null)
         {
             var viewedTourIds = await _context.TrangThaiTuongTacs
                 .Where(t => t.MaNguoiDung == userId && t.DaXemChiTiet)
                 .Select(t => t.MaTour)
                 .ToListAsync();
 
-            return await ScorePersonalizedToursAsync(userId, viewedTourIds, limit);
+            var favoriteTourIds = await _context.DanhSachYeuThichs
+                .AsNoTracking().Where(y => y.MaNguoiDung == userId)
+                .Select(y => y.MaTour).ToListAsync();
+
+      
+            var excludeTourIds = viewedTourIds.Union(favoriteTourIds).ToList();
+
+            return await ScoreDiscoveryToursAsync(userId, excludeTourIds, limit);
         }
 
-        public async Task<List<TourCardDTO>> GetNextTripSuggestionsAsync(int userId, int? limit = null)
+        private async Task<List<TourCardResponseDTO>> ScoreDiscoveryToursAsync(
+            int userId, IReadOnlyCollection<int>? excludeTourIds, int? limit)
+        {
+            var prefs = await LoadUserPreferenceContextAsync(userId);
+            var now = DateTime.Now;
+            var scoringRows = await LoadTourScoringDataAsync(now, excludeTourIds);
+
+            var ranked = scoringRows
+                .Select(t =>
+                {
+                    var locationScore = t.DiaDiemIds.Sum(diaDiemId => prefs.LocationScoreMap.GetValueOrDefault(diaDiemId, 0));
+                    var typeScore = prefs.TypeScoreMap.GetValueOrDefault(t.MaLoaiTour, 0);
+                    var hasMlScore = prefs.MlScores.TryGetValue(t.MaTour, out var mlScore);
+
+                
+                    var totalScore = (hasMlScore ? mlScore * 100f : 0) + locationScore + typeScore;
+
+                    return new { t.MaTour, t.LuotDat, TotalScore = totalScore };
+                })
+                .OrderByDescending(x => x.TotalScore)
+                .ThenByDescending(x => x.LuotDat)
+                .Select(x => x.MaTour)
+                .ToList();
+
+            var topIds = limit is > 0 ? ranked.Take(limit.Value).ToList() : ranked;
+
+            return await HydrateTourCardsAsync(topIds, prefs.FavoriteTourIds, forceIsFavoriteFalse: true);
+        }
+
+        
+
+        public async Task<List<DestinationTourDTO>> GetDestinationsForYouAsync(
+            int userId, IReadOnlyCollection<int>? excludeDestinationIds = null, int? limit = null)
+        {
+            var destinationQuery = _context.DiaDiems
+                .AsNoTracking()
+                .Where(d => d.TrangThai && d.NgayXoa == null);
+
+            if (excludeDestinationIds != null && excludeDestinationIds.Count > 0)
+                destinationQuery = destinationQuery.Where(d => !excludeDestinationIds.Contains(d.MaDiaDiem));
+
+        
+            var destinations = await destinationQuery
+                .Select(d => new
+                {
+                    d.MaDiaDiem,
+                    d.TenDiaDiem,
+                    d.DuongDanAnh,
+                    d.MoTa,
+                    SoLuongTour = d.CTLichTrinhs
+                        .Where(ct => ct.LichTrinh.TrangThai && ct.LichTrinh.NgayXoa == null)
+                        .Select(ct => ct.LichTrinh.MaTour)
+                        .Distinct()
+                        .Count()
+                })
+                .ToListAsync();
+
+         
+            var preferenceRows = await _context.SoThichDiaDiemNguoiDungs
+                .AsNoTracking()
+                .Where(s => s.MaNguoiDung == userId)
+                .ToListAsync();
+
+            var preferenceMap = preferenceRows
+                .GroupBy(p => p.MaDiaDiem)
+                .ToDictionary(g => g.Key, g => g.First().DiemYeuThich);
+
+            var ranked = destinations
+                .Select(d => new
+                {
+                    d.MaDiaDiem,
+                    d.TenDiaDiem,
+                    d.DuongDanAnh,
+                    d.MoTa,
+                    d.SoLuongTour,
+                    Score = preferenceMap.GetValueOrDefault(d.MaDiaDiem, 0f)
+                })
+                .OrderByDescending(x => x.Score)
+                .ThenByDescending(x => x.SoLuongTour)
+                .ThenByDescending(x => x.MaDiaDiem)
+                .Select(x => new DestinationTourDTO
+                {
+                    MaDiaDiem = x.MaDiaDiem,
+                    TenDiaDiem = x.TenDiaDiem,
+                    DuongDanAnh = x.DuongDanAnh,
+                    MoTa = x.MoTa,
+                    SoLuongTour = x.SoLuongTour
+                })
+                .ToList();
+
+            return limit is > 0 ? ranked.Take(limit.Value).ToList() : ranked;
+        }
+
+        public async Task<List<TourCardResponseDTO>> GetNextTripSuggestionsAsync(int userId, int? limit = null)
         {
             var recentTypeIds = await _context.SoThichNguoiDungs
                 .AsNoTracking().Where(s => s.MaNguoiDung == userId)
@@ -155,58 +342,55 @@ namespace travel_recommendation_and_booking_system.Services
                 .ThenByDescending(t => t.LuotDat)
                 .ThenByDescending(t => t.NgayTao)
                 .Take(limit ?? 8)
-                .Select(TourQueryExtensions.ToCardDTO);
+                .Select(TourQueryExtensions.ToCardResponseDTO);
 
             return await query.ToListAsync();
         }
 
-        public async Task TrackViewTourAsync(int userId, int tourId)
+        private async Task UpsertInteractionAsync(
+            int userId, int tourId, float weight,
+            Func<TrangThaiTuongTac> createEntity,
+            Func<TrangThaiTuongTac, bool> isAlreadyMarked,
+            Action<TrangThaiTuongTac> markAsSet)
         {
             var interaction = await _context.TrangThaiTuongTacs
                 .FirstOrDefaultAsync(t => t.MaNguoiDung == userId && t.MaTour == tourId);
 
             if (interaction == null)
             {
-                _context.TrangThaiTuongTacs.Add(new TrangThaiTuongTac
-                {
-                    MaNguoiDung = userId,
-                    MaTour = tourId,
-                    DaXemChiTiet = true
-                });
-                await _recommendation.UpdatePreference(userId, tourId, RecommendationWeights.ViewTour, true);
+                _context.TrangThaiTuongTacs.Add(createEntity());
+                await _recommendation.UpdatePreference(userId, tourId, weight, true);
             }
-            else if (!interaction.DaXemChiTiet)
+            else if (!isAlreadyMarked(interaction))
             {
-                interaction.DaXemChiTiet = true;
-                await _recommendation.UpdatePreference(userId, tourId, RecommendationWeights.ViewTour, true);
+                markAsSet(interaction);
+                await _recommendation.UpdatePreference(userId, tourId, weight, true);
             }
 
             await _context.SaveChangesAsync();
         }
 
-        public async Task TrackDeepInterestAsync(int userId, int tourId)
-        {
-            var interaction = await _context.TrangThaiTuongTacs
-                .FirstOrDefaultAsync(t => t.MaNguoiDung == userId && t.MaTour == tourId);
+        public Task TrackViewTourAsync(int userId, int tourId)
+            => UpsertInteractionAsync(userId, tourId, RecommendationWeights.ViewTour,
+                createEntity: () => new TrangThaiTuongTac
+                {
+                    MaNguoiDung = userId,
+                    MaTour = tourId,
+                    DaXemChiTiet = true
+                },
+                isAlreadyMarked: t => t.DaXemChiTiet,
+                markAsSet: t => t.DaXemChiTiet = true);
 
-            if (interaction == null)
-            {
-                _context.TrangThaiTuongTacs.Add(new TrangThaiTuongTac
+        public Task TrackDeepInterestAsync(int userId, int tourId)
+            => UpsertInteractionAsync(userId, tourId, RecommendationWeights.ConfirmInterest,
+                createEntity: () => new TrangThaiTuongTac
                 {
                     MaNguoiDung = userId,
                     MaTour = tourId,
                     DaXemChiTiet = true,
                     DaQuanTamLau = true
-                });
-                await _recommendation.UpdatePreference(userId, tourId, RecommendationWeights.ConfirmInterest, true);
-            }
-            else if (!interaction.DaQuanTamLau)
-            {
-                interaction.DaQuanTamLau = true;
-                await _recommendation.UpdatePreference(userId, tourId, RecommendationWeights.ConfirmInterest, true);
-            }
-
-            await _context.SaveChangesAsync();
-        }
+                },
+                isAlreadyMarked: t => t.DaQuanTamLau,
+                markAsSet: t => t.DaQuanTamLau = true);
     }
 }

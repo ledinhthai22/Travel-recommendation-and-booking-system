@@ -10,7 +10,7 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task<int> CreateBookingByAdminAsync(CreateBookingAdminDTO createBooking);
         Task<bool> UpdateBookingByAdminAsync(UpdateBookingAdminDTO updateBooking);
         Task<bool> ApproveAsync(int maDonDatTour, int maNhanVien);
-        Task<bool> CancelOrderAsync(int maDonDatTour);
+        Task<bool> CancelOrderAsync(int maDonDatTour, string lyDoHuy);
         Task<bool> UpdatePaymentStatusAsync(int maDonDatTour, int trangThai);
         Task<bool> UpdateInvoiceStatusAsync(int maDonDatTour, int trangThai);
         Task<ReserveSeatsResultDTO> ReserveSeatsAsync(int maNguoiDung, ReserveSeatsDTO dto);

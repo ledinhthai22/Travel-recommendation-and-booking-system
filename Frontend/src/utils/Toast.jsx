@@ -6,7 +6,7 @@ import {
     X,
 } from "lucide-react";
 
-const show = ({
+export const show = ({
     icon,
     title,
     message,

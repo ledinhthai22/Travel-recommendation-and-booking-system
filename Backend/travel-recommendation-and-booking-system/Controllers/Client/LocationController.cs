@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.Interfaces;
+using travel_recommendation_and_booking_system.Services;
 
 namespace travel_recommendation_and_booking_system.Controllers.Client
 {
@@ -15,12 +16,12 @@ namespace travel_recommendation_and_booking_system.Controllers.Client
             _IlocationService = locationService;
         }
 
-        [HttpGet("cards")]
+        [HttpGet("destination/featured")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetLocationCards([FromQuery] int? limit)
+        public async Task<IActionResult> GetFeaturedDestinations([FromQuery] int limit = 8)
         {
-            var result = await _IlocationService.GetLocationCardsAsync(limit);
-            return Ok(result);
+            var destinations = await _IlocationService.GetFeaturedDestinationsAsync(limit);
+            return Ok(destinations);
         }
     }
 }

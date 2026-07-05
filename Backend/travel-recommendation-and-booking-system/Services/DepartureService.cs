@@ -37,7 +37,12 @@ namespace Services
         }
 
 
-        private async Task<string> GenerateUniqueCodeAsync(bool trongNuoc, string diemKhoiHanh, string tenPhuongTien, DateTime ngayKhoiHanh)
+        private async Task<string> GenerateUniqueCodeAsync(
+     bool trongNuoc,
+     string diemKhoiHanh,
+     string tenPhuongTien,
+     DateTime ngayKhoiHanh,
+     int? excludeMaChuyen = null)
         {
             var regionCode = trongNuoc ? "TN" : "NN";
             var locationCode = LocationCodeMap.GetValueOrDefault(diemKhoiHanh?.Trim() ?? "", "XX");
@@ -45,8 +50,12 @@ namespace Services
             var dateCode = ngayKhoiHanh.ToString("ddMMyy");
             var prefix = $"{regionCode}-{locationCode}-{vehicleCode}-{dateCode}-";
 
-            var existingCount = await _context.ChuyenKhoiHanhs
-                .CountAsync(c => c.MaChuyenCode.StartsWith(prefix));
+            var countQuery = _context.ChuyenKhoiHanhs
+                .Where(c => c.MaChuyenCode.StartsWith(prefix));
+            if (excludeMaChuyen.HasValue)
+                countQuery = countQuery.Where(c => c.MaChuyen != excludeMaChuyen.Value);
+
+            var existingCount = await countQuery.CountAsync();
 
             int seq = existingCount + 1;
             string code;
@@ -55,9 +64,16 @@ namespace Services
                 code = $"{prefix}{seq:D3}";
                 seq++;
             }
-            while (await _context.ChuyenKhoiHanhs.AnyAsync(c => c.MaChuyenCode == code));
+            while (await _context.ChuyenKhoiHanhs.AnyAsync(c =>
+                c.MaChuyenCode == code && (!excludeMaChuyen.HasValue || c.MaChuyen != excludeMaChuyen.Value)));
 
             return code;
+        }
+        private static bool ParseTrongNuocFromCode(string? code)
+        {
+            if (string.IsNullOrWhiteSpace(code)) return true;
+            var prefix = code.Split('-')[0];
+            return prefix != "NN";
         }
 
         private static int CalcTrangThai(DateTime ngayKhoiHanh, DateTime ngayKetThuc, int soLuongCho)
@@ -241,48 +257,38 @@ namespace Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-
                 var chuyen = await _context.ChuyenKhoiHanhs
                     .Include(c => c.GiaChuyens)
                     .FirstOrDefaultAsync(c => c.MaChuyen == maChuyen);
+
                 if (chuyen == null)
-                    return false;
+                    throw new Exception($"Không tìm thấy chuyến {maChuyen}");
 
-                if (DateTime.Now >= chuyen.NgayKhoiHanh)
-                {
-                    throw new Exception(
-                        "Chuyến đã khởi hành, không được phép chỉnh sửa."
-                    );
-                }
-                // Thêm check này sau khi lấy được chuyen, trước khi update
-                if (chuyen.SoChoDaDat > 0)
-                    throw new Exception("Chuyến đã có khách đặt, không được phép chỉnh sửa.");
-
-                if (chuyen.TrangThai == 3)
-                    throw new Exception("Chuyến đã kết thúc, không được phép chỉnh sửa.");
-                var oldData = new
-                {
-                    chuyen.MaHDV,
-                    chuyen.MaPhuongTien,
-                    chuyen.DiemKhoiHanh,
-                    chuyen.DiemDen,
-                    chuyen.NgayKhoiHanh,
-                    chuyen.GioDenNoiDi,
-                    chuyen.NgayKetThuc,
-                    chuyen.GioDenNoiVe,
-                    chuyen.SoChoDaDat,
-                    chuyen.SoChoToiDa,
-                    chuyen.TrangThai,
-                    chuyen.GhiChu
-                };
-                if (chuyen == null) return false;
+                Console.WriteLine($"[UPDATE] Bắt đầu update chuyến {maChuyen} - Code cũ: {chuyen.MaChuyenCode}");
 
                 var dep = dto.ChuyenKhoiHanh;
 
                 if (dep.NgayKhoiHanh >= dep.NgayKetThuc)
                     throw new Exception("Ngày khởi hành phải nhỏ hơn ngày kết thúc.");
 
+                if (DateTime.Now >= dep.NgayKhoiHanh)
+                    throw new Exception("Chuyến đã khởi hành hoặc đã qua, không được chỉnh sửa.");
 
+                if (chuyen.SoChoDaDat > 0)
+                    throw new Exception($"Chuyến đã có {chuyen.SoChoDaDat} khách đặt, không được chỉnh sửa.");
+
+          
+                var tenPhuongTien = await GetTenPhuongTienAsync(dep.MaPhuongTien);
+                var trongNuoc = ParseTrongNuocFromCode(chuyen.MaChuyenCode);
+                var newCode = await GenerateUniqueCodeAsync(
+                    trongNuoc,
+                    dep.DiemKhoiHanh,
+                    tenPhuongTien,
+                    dep.NgayKhoiHanh,
+                    excludeMaChuyen: maChuyen);
+
+
+                chuyen.MaChuyenCode = newCode;
                 chuyen.MaHDV = dep.MaHDV;
                 chuyen.MaPhuongTien = dep.MaPhuongTien;
                 chuyen.DiemKhoiHanh = dep.DiemKhoiHanh;
@@ -292,16 +298,19 @@ namespace Services
                 chuyen.NgayKetThuc = dep.NgayKetThuc;
                 chuyen.GioDenNoiVe = dep.GioDenNoiVe;
                 chuyen.SoChoToiDa = dep.SoChoToiDa;
-                chuyen.SoChoDaDat = dep.SoChoDaDat ?? 0;
-                chuyen.TrangThai = CalcTrangThai(dep.NgayKhoiHanh, dep.NgayKetThuc, dep.SoChoToiDa);
                 chuyen.GhiChu = dep.GhiChu;
                 chuyen.NgayCapNhat = DateTime.Now;
+                chuyen.TrangThai = CalcTrangThai(dep.NgayKhoiHanh, dep.NgayKetThuc, dep.SoChoToiDa);
 
+                // Xóa giá cũ
+                if (chuyen.GiaChuyens.Any())
+                {
+                    _context.GiaChuyens.RemoveRange(chuyen.GiaChuyens);
+                    await _context.SaveChangesAsync();
+                    Console.WriteLine($"[UPDATE] Đã xóa {chuyen.GiaChuyens.Count} bản ghi giá cũ");
+                }
 
-                _context.GiaChuyens.RemoveRange(chuyen.GiaChuyens);
-                await _context.SaveChangesAsync();
-
-
+                // Thêm giá mới
                 if (dto.DanhSachGia?.Any() == true)
                 {
                     foreach (var item in dto.DanhSachGia)
@@ -319,42 +328,40 @@ namespace Services
                     }
                 }
 
-                await _context.SaveChangesAsync();
-                await UpdateTourGiaTuAsync(chuyen.MaTour);
-                await _context.SaveChangesAsync();
+                var saveResult = await _context.SaveChangesAsync();
+                Console.WriteLine($"[UPDATE] SaveChangesAsync() trả về: {saveResult} rows affected");
+
+                await transaction.CommitAsync();
+                Console.WriteLine($"[UPDATE] === UPDATE THÀNH CÔNG chuyến {maChuyen} - Code mới: {newCode} ===");
+
                 var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
                 await _logService.LoggingAsync(new LogDTO
                 {
                     LoaiTaiKhoan = currentAccount,
-
                     MaTaiKhoan = _currentUserService.GetUserId(),
                     Email = _currentUserService.GetEmail(),
                     TenHanhDong = ActionLogDTO.CapNhat,
-
                     TenBangTacDong = TableNameDTO.ChuyenKhoiHanh,
-
                     MaDoiTuong = chuyen.MaChuyen,
-
-                    GiaTriTruoc = oldData,
-
                     GiaTriSau = new
                     {
+                        chuyen.MaChuyen,
+                        chuyen.MaChuyenCode,
                         chuyen.MaHDV,
                         chuyen.MaPhuongTien,
                         chuyen.DiemKhoiHanh,
-                        chuyen.DiemDen,
                         chuyen.NgayKhoiHanh,
-                        chuyen.NgayKetThuc,
-                        chuyen.SoChoToiDa,
-                        chuyen.TrangThai,
-                        chuyen.GhiChu
+                        chuyen.SoChoToiDa
                     }
                 });
+
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                Console.WriteLine($"[UPDATE ERROR] {ex.Message}");
+                Console.WriteLine(ex.ToString());
                 throw;
             }
         }
@@ -400,15 +407,14 @@ namespace Services
         {
             var chuyen = await _context.ChuyenKhoiHanhs.FindAsync(maChuyen);
 
-            // Kiểm tra nếu không tìm thấy trong Database
+        
             if (chuyen == null)
             {
-                // Log ra để kiểm tra xem ID gửi lên có tồn tại trong DB thật không
-                Console.WriteLine($"[DELETE ERROR] Không tìm thấy chuyenKhoiHanh nào có MaChuyen = {maChuyen}");
+                
                 return false;
             }
 
-            // Nếu đã xóa mềm trước đó rồi thì báo thành công luôn thay vì trả về 404 gây hiểu lầm cho Frontend
+          
             if (chuyen.NgayXoa != null)
             {
                 return true;
@@ -425,10 +431,10 @@ namespace Services
                 chuyen.TrangThai
             };
 
-            // Thực hiện xóa mềm
+          
             chuyen.NgayXoa = DateTime.Now;
 
-            // Bọc Try-Catch để tránh việc MaTour = 0 làm crash cả hàm xóa
+      
             try
             {
                 if (chuyen.MaTour > 0)
@@ -439,12 +445,12 @@ namespace Services
             catch (Exception ex)
             {
                 Console.WriteLine($"[WARN] Lỗi cập nhật giá tour: {ex.Message}");
-                // Vẫn tiếp tục cho phép xóa chuyến dù tính toán giá tour gặp lỗi dữ liệu liên kết
+                
             }
 
             await _context.SaveChangesAsync();
 
-            // Ghi Log hệ thống
+           
             var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
             await _logService.LoggingAsync(new LogDTO
             {
@@ -475,7 +481,7 @@ namespace Services
              .Where(g =>
                  g.ChuyenKhoiHanh.MaTour == maTour &&
                  g.ChuyenKhoiHanh.NgayXoa == null &&
-                 g.ChuyenKhoiHanh.NgayKhoiHanh >= now) // <-- THÊM ĐIỀU KIỆN NÀY
+                 g.ChuyenKhoiHanh.NgayKhoiHanh >= now) 
              .Select(g => (decimal?)g.GiaNguoiLon)
              .MinAsync() ?? 0;
 

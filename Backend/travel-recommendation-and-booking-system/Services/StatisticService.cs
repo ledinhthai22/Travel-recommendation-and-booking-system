@@ -29,55 +29,62 @@ namespace travel_recommendation_and_booking_system.Services
                                              && targetMonth == currentDate.Month;
 
             var currentPeriodEnd = isCurrentMonthInProgress
-                ? currentDate                                  
-                : endOfCurrentMonth;                            
+                ? currentDate
+                : endOfCurrentMonth;
 
             var previousPeriodEnd = isCurrentMonthInProgress
                 ? startOfPreviousMonth.AddDays((currentDate - startOfCurrentMonth).Days)
-                : startOfCurrentMonth;                          
+                : startOfCurrentMonth;
 
-            var totalBookings = await _context.DonDatTours
-                .CountAsync(d => d.NgayDat >= startOfCurrentMonth && d.NgayDat < currentPeriodEnd);
+            // Bookings
+            var bookingStats = await _context.DonDatTours
+                .Where(d => (d.NgayDat >= startOfCurrentMonth && d.NgayDat < currentPeriodEnd)
+                         || (d.NgayDat >= startOfPreviousMonth && d.NgayDat < previousPeriodEnd))
+                .GroupBy(d => d.NgayDat >= startOfCurrentMonth)
+                .Select(g => new { IsCurrent = g.Key, Count = g.Count() })
+                .ToListAsync();
 
-            var prevBookings = await _context.DonDatTours
-                .CountAsync(d => d.NgayDat >= startOfPreviousMonth && d.NgayDat < previousPeriodEnd);
+            var totalBookings = bookingStats.FirstOrDefault(x => x.IsCurrent)?.Count ?? 0;
+            var prevBookings = bookingStats.FirstOrDefault(x => !x.IsCurrent)?.Count ?? 0;
 
-            var totalRevenue = await _context.ThanhToans
+            //  Revenue
+            var revenueStats = await _context.ThanhToans
                 .Where(t => t.TrangThaiThanhToan == 1 &&
-                            t.NgayThanhToan >= startOfCurrentMonth &&
-                            t.NgayThanhToan < currentPeriodEnd)
-                .SumAsync(t => (decimal?)t.TongTienThanhToan) ?? 0m;
+                            ((t.NgayThanhToan >= startOfCurrentMonth && t.NgayThanhToan < currentPeriodEnd)
+                          || (t.NgayThanhToan >= startOfPreviousMonth && t.NgayThanhToan < previousPeriodEnd)))
+                .GroupBy(t => t.NgayThanhToan >= startOfCurrentMonth)
+                .Select(g => new { IsCurrent = g.Key, Revenue = g.Sum(t => t.TongTienThanhToan) })
+                .ToListAsync();
 
-            var prevRevenue = await _context.ThanhToans
-                .Where(t => t.TrangThaiThanhToan == 1 &&
-                            t.NgayThanhToan >= startOfPreviousMonth &&
-                            t.NgayThanhToan < previousPeriodEnd)
-                .SumAsync(t => (decimal?)t.TongTienThanhToan) ?? 0m;
+            var totalRevenue = revenueStats.FirstOrDefault(x => x.IsCurrent)?.Revenue ?? 0m;
+            var prevRevenue = revenueStats.FirstOrDefault(x => !x.IsCurrent)?.Revenue ?? 0m;
 
-            var newCustomers = await _context.NguoiDungs
-                .CountAsync(u => u.NgayTao >= startOfCurrentMonth &&
-                                 u.NgayTao < currentPeriodEnd &&
-                                 u.MaVaiTro == 4);
+            // New customers
+            var customerStats = await _context.KhachHangs
+                .Where(k => k.LoaiKhach == 1
+                         && k.DonDatTour.TrangThaiDon != 4
+                         && ((k.DonDatTour.NgayDat >= startOfCurrentMonth && k.DonDatTour.NgayDat < currentPeriodEnd)
+                          || (k.DonDatTour.NgayDat >= startOfPreviousMonth && k.DonDatTour.NgayDat < previousPeriodEnd)))
+                .GroupBy(k => k.DonDatTour.NgayDat >= startOfCurrentMonth)
+                .Select(g => new { IsCurrent = g.Key, Count = g.Count() })
+                .ToListAsync();
 
-            var prevNewCustomers = await _context.NguoiDungs
-                .CountAsync(u => u.NgayTao >= startOfPreviousMonth &&
-                                 u.NgayTao < previousPeriodEnd &&
-                                 u.MaVaiTro == 4);
+            var newCustomers = customerStats.FirstOrDefault(x => x.IsCurrent)?.Count ?? 0;
+            var prevNewCustomers = customerStats.FirstOrDefault(x => !x.IsCurrent)?.Count ?? 0;
 
-          
-            var activeTours = await _context.ChuyenKhoiHanhs
-                .CountAsync(c => c.NgayXoa == null &&
-                                 c.NgayKhoiHanh < endOfCurrentMonth &&
-                                 c.NgayKetThuc >= startOfCurrentMonth);
+            // Active tours
+            var tourWindows = await _context.ChuyenKhoiHanhs
+                .Where(c => c.NgayXoa == null &&
+                            ((c.NgayKhoiHanh < endOfCurrentMonth && c.NgayKetThuc >= startOfCurrentMonth)
+                          || (c.NgayKhoiHanh < startOfCurrentMonth && c.NgayKetThuc >= startOfPreviousMonth)))
+                .Select(c => new { c.NgayKhoiHanh, c.NgayKetThuc })
+                .ToListAsync();
 
-            var prevActiveTours = await _context.ChuyenKhoiHanhs
-                .CountAsync(c => c.NgayXoa == null &&
-                                 c.NgayKhoiHanh < startOfCurrentMonth &&
-                                 c.NgayKetThuc >= startOfPreviousMonth);
+            var activeTours = tourWindows.Count(c => c.NgayKhoiHanh < endOfCurrentMonth && c.NgayKetThuc >= startOfCurrentMonth);
+            var prevActiveTours = tourWindows.Count(c => c.NgayKhoiHanh < startOfCurrentMonth && c.NgayKetThuc >= startOfPreviousMonth);
 
             return new DashboardOverviewDTO
             {
-                
                 TotalBookings = totalBookings,
                 TotalRevenue = totalRevenue,
                 NewCustomersThisMonth = newCustomers,
@@ -108,16 +115,15 @@ namespace travel_recommendation_and_booking_system.Services
                 .Select(g => new { MonthNumber = g.Key, Revenue = g.Sum(t => t.TongTienThanhToan) })
                 .ToListAsync();
 
-            var result = new List<RevenueItemDTO>();
-            for (int i = 1; i <= 12; i++)
-            {
-                var existing = rawData.FirstOrDefault(x => x.MonthNumber == i);
-                result.Add(new RevenueItemDTO
+            var lookup = rawData.ToDictionary(x => x.MonthNumber, x => x.Revenue);
+
+            var result = Enumerable.Range(1, 12)
+                .Select(i => new RevenueItemDTO
                 {
                     Month = $"Tháng {i}",
-                    Revenue = existing?.Revenue ?? 0
-                });
-            }
+                    Revenue = lookup.GetValueOrDefault(i, 0m)
+                })
+                .ToList();
 
             return new RevenueChartDTO { Data = result };
         }
@@ -160,9 +166,8 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<List<TopTourDTO>> GetTopToursAsync(int limit = 5, int? month = null, int? year = null)
         {
-            var query = _context.DonDatTours
-                .Include(d => d.ChuyenKhoiHanh!)
-                    .ThenInclude(c => c.Tour).AsQueryable();
+            
+            var query = _context.DonDatTours.AsQueryable();
 
             if (year.HasValue) query = query.Where(d => d.NgayDat.Year == year.Value);
             if (month.HasValue) query = query.Where(d => d.NgayDat.Month == month.Value);
@@ -189,11 +194,6 @@ namespace travel_recommendation_and_booking_system.Services
         {
             var currentYear = DateTime.Now.Year;
 
-            var ages = await _context.NguoiDungs
-                .Where(u => u.NgaySinh.HasValue && u.MaVaiTro == 4)
-                .Select(u => currentYear - u.NgaySinh.Value.Year)
-                .ToListAsync();
-
             var groupDefs = new List<(string Name, int Min, int Max)>
             {
                 ("18-24", 18, 24),
@@ -203,10 +203,26 @@ namespace travel_recommendation_and_booking_system.Services
                 ("55+", 55, 200)
             };
 
+         
+            var groupedAges = await _context.KhachHangs
+                .Where(k => k.NgaySinh != default
+                         && k.LoaiKhach == 1
+                         && k.DonDatTour.TrangThaiDon != 4)
+                .Select(k => currentYear - k.NgaySinh.Year)
+                .GroupBy(age => age < 25 ? "18-24"
+                              : age < 35 ? "25-34"
+                              : age < 45 ? "35-44"
+                              : age < 55 ? "45-54"
+                              : "55+")
+                .Select(g => new { GroupName = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var countLookup = groupedAges.ToDictionary(x => x.GroupName, x => x.Count);
+
             var groups = groupDefs.Select(d => new CustomerAgeGroupDTO
             {
                 GroupName = d.Name,
-                Count = ages.Count(a => a >= d.Min && a <= d.Max)
+                Count = countLookup.GetValueOrDefault(d.Name, 0)
             }).ToList();
 
             var total = groups.Sum(g => g.Count) == 0 ? 1 : groups.Sum(g => g.Count);
@@ -240,10 +256,11 @@ namespace travel_recommendation_and_booking_system.Services
             var bookedQuery = _context.DonDatTours.AsQueryable();
             if (year.HasValue) bookedQuery = bookedQuery.Where(d => d.NgayDat.Year == year.Value);
             if (month.HasValue) bookedQuery = bookedQuery.Where(d => d.NgayDat.Month == month.Value);
+
             var bookedCount = await bookedQuery.CountAsync();
             var favoriteCount = await _context.Set<DanhSachYeuThich>().CountAsync();
 
-            const int viewCount = 0; 
+            const int viewCount = 0;
 
             return new List<TourEngagementDTO>
             {
@@ -252,19 +269,9 @@ namespace travel_recommendation_and_booking_system.Services
                 new() { Name = "Đặt tour", Value = bookedCount, Color = "#10B981" }
             };
         }
+
         public async Task<List<RecentTransactionDTO>> GetRecentTransactionsAsync(int limit = 6)
         {
-      
-            var raw = await _context.ThanhToans
-                .Include(t => t.DonDatTour!)
-                    .ThenInclude(d => d.NguoiDung)
-                .Include(t => t.DonDatTour!)
-                    .ThenInclude(d => d.ChuyenKhoiHanh!)
-                        .ThenInclude(c => c.Tour)
-                .OrderByDescending(t => t.NgayThanhToan)
-                .Take(limit)
-                .ToListAsync();
-
             var statusMap = new Dictionary<int, string>
             {
                 { 0, "Chờ thanh toán" },
@@ -272,11 +279,28 @@ namespace travel_recommendation_and_booking_system.Services
                 { 2, "Đã hủy" }
             };
 
+           
+            var raw = await _context.ThanhToans
+                .OrderByDescending(t => t.NgayThanhToan)
+                .Take(limit)
+                .Select(t => new
+                {
+                    t.DonDatTour!.MaDonDatTour,
+                    CustomerName = t.DonDatTour.NguoiDung != null ? t.DonDatTour.NguoiDung.HoTen : null,
+                    TourName = t.DonDatTour.ChuyenKhoiHanh != null && t.DonDatTour.ChuyenKhoiHanh.Tour != null
+                        ? t.DonDatTour.ChuyenKhoiHanh.Tour.TenTour
+                        : null,
+                    t.TongTienThanhToan,
+                    t.TrangThaiThanhToan,
+                    t.NgayThanhToan
+                })
+                .ToListAsync();
+
             return raw.Select(t => new RecentTransactionDTO
             {
-                MaDon = t.DonDatTour!.MaDonDatTour,
-                CustomerName = t.DonDatTour.NguoiDung?.HoTen ?? "Khách vãng lai",
-                TourName = t.DonDatTour.ChuyenKhoiHanh?.Tour?.TenTour ?? "—",
+                MaDon = t.MaDonDatTour,
+                CustomerName = t.CustomerName ?? "Khách vãng lai",
+                TourName = t.TourName ?? "—",
                 Amount = t.TongTienThanhToan,
                 Status = statusMap.GetValueOrDefault(t.TrangThaiThanhToan, "Không xác định"),
                 Time = t.NgayThanhToan

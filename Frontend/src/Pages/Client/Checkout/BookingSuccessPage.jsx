@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { CheckCircle2, ArrowRight, Home, CalendarDays, Phone, CreditCard } from "lucide-react";
-import { releaseReservationApi } from "~/Services/TourBookingService"; // Đảm bảo import đúng
+import { releaseReservationApi } from "~/Services/TourBookingService"; 
 
 export default function BookingSuccessPage() {
     const [visible, setVisible] = useState(false);
@@ -9,17 +9,16 @@ export default function BookingSuccessPage() {
     const navigate = useNavigate();
     
     const method = location.state?.method ?? "cash";
-    const holdId = location.state?.holdId; // Nếu bạn truyền holdId từ trước
+    const holdId = location.state?.holdId;
     const isVnpay = method === "vnpay";
 
     useEffect(() => {
         setTimeout(() => setVisible(true), 60);
     }, []);
 
-    // HỦY GIỮ CHỖ KHI VỀ TRANG CHỦ
+   
     const handleGoHome = async () => {
-        // Nếu có holdId thì hủy
-        if (holdId) {
+    if (holdId) {
             try {
                 const storedUser = JSON.parse(localStorage.getItem("user"));
                 if (storedUser?.maNguoiDung) {
@@ -87,7 +86,7 @@ export default function BookingSuccessPage() {
 
                     <div className="px-8 pb-10 flex flex-col gap-3">
                         <Link
-                            to="/tai-khoan/don-dat-tour"
+                            to="/Thong-Tin-Ca-Nhan"
                             className="cursor-pointer flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 py-4 font-semibold text-white shadow-sm shadow-sky-200 hover:from-sky-600 hover:to-sky-700 transition-all text-sm"
                         >
                             Xem đơn đặt tour <ArrowRight size={16} />

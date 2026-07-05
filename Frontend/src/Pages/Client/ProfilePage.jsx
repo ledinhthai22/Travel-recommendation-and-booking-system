@@ -18,6 +18,7 @@ import { formatCurrency } from "~/Helper/FormatCurrency";
 import Pagination from "~/components/Common/Pagination";
 import BookingDetailModal from "../admin/UserProfileManager/BookingDetailModal";
 import SelectField from "~/components/UI/Form/SelectField";
+import { useSearchParams } from "react-router-dom";
 export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState("overview");
     const [proFileData, setProFileData] = useState(null);
@@ -68,7 +69,20 @@ export default function ProfilePage() {
             setIsLoadingHistory(false);
         }
     };
+    const [searchParams, setSearchParams] = useSearchParams();
 
+    useEffect(() => {
+        const openId = searchParams.get("open");
+        if (openId) {
+            setActiveTab("history");           
+            handleViewDetail(Number(openId));  
+
+            const next = new URLSearchParams(searchParams);
+            next.delete("open");
+            setSearchParams(next, { replace: true });
+        }
+
+    }, []);
     const handleViewDetail = async (maDonDatTour) => {
         try {
             const data = await getHistoryDetailApi(maDonDatTour);
@@ -180,15 +194,14 @@ export default function ProfilePage() {
                         </nav>
                     </aside>
 
-                    {/* MAIN CONTENT CONTENT */}
+     
                     <main className="bg-white border border-slate-100 rounded-2xl p-6 lg:p-8 shadow-sm min-h-[600px]">
 
-                        {/* TAB: OVERVIEW */}
                         {activeTab === "overview" && (
                             <div className="animate-fadeIn">
                                 <div className="mb-6">
                                     <h2 className="text-xl font-bold text-slate-800">Tổng quan tài khoản</h2>
-                                    <p className="text-xs text-slate-400 mt-1">Theo dõi hoạt động và các chỉ số đặt tour của sếp</p>
+                                    <p className="text-xs text-slate-400 mt-1">Theo dõi hoạt động và các chỉ số đặt tài khoản của bạn</p>
                                 </div>
 
                                 <div className="mb-8 grid gap-4 sm:grid-cols-3">
@@ -254,7 +267,7 @@ export default function ProfilePage() {
                                                 </div>
                                             ))
                                         ) : (
-                                            /* Cải tiến: Tạo một Empty State dạng Box viền đứt nhìn rất chuyên nghiệp */
+                                        
                                             <div className="text-center py-10 border border-dashed border-slate-200 rounded-xl bg-slate-50/40">
                                                 <p className="text-xs sm:text-sm text-slate-400 font-medium italic">
                                                     Sếp chưa có lịch sử đặt tour nào gần đây.

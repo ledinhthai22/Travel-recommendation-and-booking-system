@@ -78,3 +78,10 @@ export const deleteTypeTourApi = async (
 
     return response.data;
 };
+export const getAllTypeTourClientApi = async () => {
+    const response = await axiosClient.get(
+        "/client/Search/type-tour"
+    );
+
+    return response.data;
+};

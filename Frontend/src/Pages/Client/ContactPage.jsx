@@ -244,7 +244,7 @@ const validate = () => {
                                     value={form.noiDung}
                                     onChange={handleChange}
                                     multiline
-                                    rows={8}
+                                    rows={15}
                                     placeholder="Nhập nội dung cần hỗ trợ..."
                                     error={errors.noiDung}
                                 />

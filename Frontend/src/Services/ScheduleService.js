@@ -49,7 +49,6 @@ export const deleteScheduleApi = async (
     return response.data;
 };
 
-// Schedule Detail
 
 export const createScheduleDetailApi = async (
     data

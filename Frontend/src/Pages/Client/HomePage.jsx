@@ -7,44 +7,103 @@ import TourCard from '~/components/Tours/TourCard';
 import SectionTitle from '~/components/Common/SectionTitle';
 import useBanner from '~/Hooks/useBanner';
 import useAuth from '~/Hooks/useAuth';
-import useHomeLocations from '~/Hooks/useHomeLocations';
 import { useReviews } from '~/Hooks/useReview';
-import { useBestTours } from "~/Hooks/useBestTours";
-import { useLasterTours } from '~/Hooks/useLatestTour';
 import { getMyWishlistIdsApi } from '~/Services/TourService';
-import useRefetchOnBack from '~/Hooks/useRefetchOnBack';
+import { getFeaturedToursApi, getNewlyUpdatedToursApi } from "~/Services/HomeService"
+import { getFeaturedDestinationsApi } from '~/Services/LocationService';
+import {
+    getJustForYouApi,
+    getRecommendedToursApi,
+    getDestinationsForYouApi,
+} from '~/Services/TourRecommendationService';
 import { useState, useEffect, useCallback } from 'react';
+
+
 export default function HomePage() {
     const { reviews, reviewsLoading, refetch: refetchReviews } = useReviews();
-    const { tours: bestTours, loading: bestToursLoading, refetch: refetchBestTours } = useBestTours(12);
     const { user, isAuthenticated } = useAuth();
-    const { banners, refresh: refetchBanner } = useBanner();
-    const { location, loading: locationLoading, refetch: refetchLocations } = useHomeLocations(12);
-    const { tours: latestTours, loading: latestToursLoading, refetch: refetchLatestTours } = useLasterTours(12);
+    const { banners } = useBanner();
     const activeBanner = banners;
     const isLoggedIn = !!user;
     const [wishlistIds, setWishlistIds] = useState([]);
 
+    // ---- Điểm đến nổi bật / Điểm đến dành cho bạn ----
+    const [location, setLocation] = useState([]);
+    const [locationLoading, setLocationLoading] = useState(true);
+
+    const fetchLocations = useCallback(async () => {
+        setLocationLoading(true);
+        try {
+            const data = isAuthenticated
+                ? await getDestinationsForYouApi(12)
+                : await getFeaturedDestinationsApi(12);
+            setLocation(data || []);
+        } catch (err) {
+            console.error('fetchLocations error:', err);
+        } finally {
+            setLocationLoading(false);
+        }
+    }, [isAuthenticated]);
+
+    // ---- Tour nổi bật / Tour dành riêng cho bạn ----
+    const [bestTours, setBestTours] = useState([]);
+    const [bestToursLoading, setBestToursLoading] = useState(true);
+
+    const fetchBestTours = useCallback(async () => {
+        setBestToursLoading(true);
+        try {
+            const data = isAuthenticated
+                ? await getJustForYouApi(12)
+                : await getFeaturedToursApi(12);
+            setBestTours(data || []);
+        } catch (err) {
+            console.error('fetchBestTours error:', err);
+        } finally {
+            setBestToursLoading(false);
+        }
+    }, [isAuthenticated]);
+
+    // ---- Tour mới cập nhật / Có thể bạn quan tâm ----
+    const [latestTours, setLatestTours] = useState([]);
+    const [latestToursLoading, setLatestToursLoading] = useState(true);
+
+    const fetchLatestTours = useCallback(async () => {
+        setLatestToursLoading(true);
+        try {
+            const data = isAuthenticated
+                ? await getRecommendedToursApi(12)
+                : await getNewlyUpdatedToursApi(12);
+            setLatestTours(data || []);
+        } catch (err) {
+            console.error('fetchLatestTours error:', err);
+        } finally {
+            setLatestToursLoading(false);
+        }
+    }, [isAuthenticated]);
+
+    // ---- Wishlist ----
     const fetchWishlist = useCallback(() => {
         if (isAuthenticated) {
             getMyWishlistIdsApi().then(ids => setWishlistIds(ids));
         }
     }, [isAuthenticated]);
 
+    // Refetch khi trạng thái đăng nhập thay đổi (login/logout, hoặc auth vừa check xong)
+    useEffect(() => {
+        fetchLocations();
+    }, [fetchLocations]);
+
+    useEffect(() => {
+        fetchBestTours();
+    }, [fetchBestTours]);
+
+    useEffect(() => {
+        fetchLatestTours();
+    }, [fetchLatestTours]);
+
     useEffect(() => {
         fetchWishlist();
     }, [fetchWishlist]);
-
-    const refetchAll = useCallback(() => {
-        refetchReviews();
-        refetchBestTours();
-        refetchBanner();
-        refetchLocations();
-        refetchLatestTours();
-        fetchWishlist();
-    }, [refetchReviews, refetchBestTours, refetchBanner, refetchLocations, refetchLatestTours, fetchWishlist]);
-
-    useRefetchOnBack(refetchAll);
 
     return (
         <div className="min-h-screen bg-white">
@@ -74,14 +133,11 @@ export default function HomePage() {
                 showSearchBar={true}
             />
 
+            {/* Điểm đến nổi bật / dành cho bạn */}
             <section className="py-16 md:py-20">
                 <div className="mx-auto max-w-[1440px] px-4 md:px-8">
                     <SectionTitle
-                        title={
-                            isLoggedIn
-                                ? "Điểm đến dành cho bạn"
-                                : "Điểm đến nổi bật"
-                        }
+                        title={isLoggedIn ? "Điểm đến dành cho bạn" : "Điểm đến nổi bật"}
                         description={
                             isLoggedIn
                                 ? "Dựa trên sở thích và hoạt động của bạn, đây là những điểm đến có thể bạn sẽ yêu thích."
@@ -96,7 +152,6 @@ export default function HomePage() {
                             ))}
                         </div>
                     ) : location && location.length > 0 ? (
-
                         <FeaturedCarousel
                             items={location}
                             itemsPerPage={12}
@@ -116,7 +171,6 @@ export default function HomePage() {
                                     description={dest.moTa || 'Khám phá điểm đến nổi bật với nhiều tour hấp dẫn.'}
                                     toursCount={dest.soLuongTour}
                                     province={dest.tinhThanh}
-
                                     rating={'5.0'}
                                 />
                             )}
@@ -127,14 +181,11 @@ export default function HomePage() {
                 </div>
             </section>
 
+            {/* Tour nổi bật / Tour dành riêng cho bạn */}
             <section className="py-16 md:py-20">
                 <div className="mx-auto max-w-[1440px] px-4 md:px-8">
                     <SectionTitle
-                        title={
-                            isLoggedIn
-                                ? "Tour dành riêng cho bạn"
-                                : "Tour du lịch nổi bật"
-                        }
+                        title={isLoggedIn ? "Tour dành riêng cho bạn" : "Tour du lịch nổi bật"}
                         description={
                             isLoggedIn
                                 ? "Những hành trình được đề xuất dựa trên sở thích và điểm đến bạn quan tâm."
@@ -159,20 +210,21 @@ export default function HomePage() {
                     ) : bestTours && bestTours.length > 0 ? (
                         <FeaturedCarousel
                             items={bestTours.slice(0, 6)}
-                            renderItem={(tour) => <TourCard
-                                id={tour.maTour}
-                                slug={tour.slug || tour.maTour}
-                                name={tour.tenTour}
-                                image={`https://localhost:7016${tour.duongDanAnh}`}
-                                duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
-                                destination={tour.diemDen || "Đang cập nhật"}
-                                price={tour.giaChuyen}
-                                rating={tour.diemDanhGia}
-                                reviewCount={tour.soLuongDanhGia}
-                                initialWishlist={wishlistIds.includes(tour.maTour)}
-                                tourType={tour.tourType}
-                            />
-                            }
+                            renderItem={(tour) => (
+                                <TourCard
+                                    id={tour.maTour}
+                                    slug={tour.slug || tour.maTour}
+                                    name={tour.tenTour}
+                                    image={`https://localhost:7016${tour.hinhAnhChinh}`}
+                                    duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
+                                    destination={tour.diemDens?.[0] || "Đang cập nhật"}
+                                    price={tour.giaTu}
+                                    rating={tour.diemDanhGia}
+                                    reviewCount={tour.soDanhGia}
+                                    initialWishlist={wishlistIds.includes(tour.maTour)}
+                                    tourType={tour.tenLoaiTour}
+                                />
+                            )}
                             itemsPerPage={4}
                             gap={30}
                             autoPlayMs={5000}
@@ -182,14 +234,12 @@ export default function HomePage() {
                     )}
                 </div>
             </section>
+
+            {/* Tour mới cập nhật / Có thể bạn quan tâm */}
             <section className="py-16 md:py-20">
                 <div className="mx-auto max-w-[1440px] px-4 md:px-8">
                     <SectionTitle
-                        title={
-                            isLoggedIn
-                                ? "Có thể bạn quan tâm"
-                                : "Tour mới cập nhật"
-                        }
+                        title={isLoggedIn ? "Có thể bạn quan tâm" : "Tour mới cập nhật"}
                         description={
                             isLoggedIn
                                 ? "Khám phá những hành trình mới và các điểm đến đang được nhiều du khách lựa chọn."
@@ -215,21 +265,21 @@ export default function HomePage() {
                     ) : latestTours && latestTours.length > 0 ? (
                         <FeaturedCarousel
                             items={latestTours.slice(0, 6)}
-                            renderItem={(tour) =>
+                            renderItem={(tour) => (
                                 <TourCard
                                     id={tour.maTour}
                                     slug={tour.slug || tour.maTour}
                                     name={tour.tenTour}
-                                    image={`https://localhost:7016${tour.duongDanAnh}`}
+                                    image={`https://localhost:7016${tour.hinhAnhChinh}`}
                                     duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
-                                    destination={tour.diemDen || "Đang cập nhật"}
-                                    price={tour.giaChuyen}
+                                    destination={tour.diemDens?.[0] || "Đang cập nhật"}
+                                    price={tour.giaTu}
                                     rating={tour.diemDanhGia}
-                                    reviewCount={tour.soLuongDanhGia}
+                                    reviewCount={tour.soDanhGia}
                                     initialWishlist={wishlistIds.includes(tour.maTour)}
-                                    tourType={tour.tourType}
+                                    tourType={tour.tenLoaiTour}
                                 />
-                            }
+                            )}
                             itemsPerPage={4}
                             gap={30}
                             autoPlayMs={5000}
@@ -253,7 +303,6 @@ export default function HomePage() {
                         <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
                             {reviews.map((review, index) => (
                                 <div key={index} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-
                                     <div className="mb-4 flex items-center gap-4">
                                         <img
                                             src={`https://localhost:7016${review.duongDanAnh}`}

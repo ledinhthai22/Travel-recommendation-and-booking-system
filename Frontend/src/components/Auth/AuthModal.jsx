@@ -57,6 +57,55 @@ const DESCRIPTIONS = {
 };
 
 
+function computeErrors(form, { isRegister, isForgot, otpSent, otpVerified }) {
+    return {
+        fullName:
+            isRegister && !form.fullName.trim()
+                ? 'Vui lòng nhập họ tên'
+                : '',
+
+        phone:
+            isRegister && !form.phone.trim()
+                ? 'Vui lòng nhập số điện thoại'
+                : isRegister && !/^0\d{9}$/.test(form.phone)
+                    ? 'Số điện thoại không hợp lệ'
+                    : '',
+
+        email:
+            !form.email.trim()
+                ? 'Vui lòng nhập email'
+                : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)
+                    ? 'Email không hợp lệ'
+                    : '',
+
+        password:
+            !isForgot && !form.password
+                ? 'Vui lòng nhập mật khẩu'
+                : !isForgot && form.password.length < 8
+                    ? 'Mật khẩu tối thiểu 8 ký tự'
+                    : '',
+
+        confirmPassword:
+            isRegister && !form.confirmPassword
+                ? 'Vui lòng xác nhận mật khẩu'
+                : isRegister && form.confirmPassword !== form.password
+                    ? 'Mật khẩu xác nhận không khớp'
+                    : '',
+
+        otp:
+            isForgot && otpSent && !otpVerified && !form.otp.trim()
+                ? 'Vui lòng nhập mã OTP'
+                : '',
+
+        newPassword:
+            isForgot && otpVerified && !form.newPassword
+                ? 'Vui lòng nhập mật khẩu mới'
+                : isForgot && otpVerified && form.newPassword.length < 8
+                    ? 'Mật khẩu tối thiểu 8 ký tự'
+                    : '',
+    };
+}
+
 const OtpCountdown = React.memo(function OtpCountdown({ onResend }) {
     const [countdown, setCountdown] = useState(OTP_TTL);
     const timerRef = useRef(null);
@@ -173,52 +222,14 @@ export default function AuthModal({ open, onClose,redirectAfterLogin = null }) {
     }, [open, resetModal]);
 
 
-    const errors = useMemo(() => ({
-        fullName:
-            isRegister && submitted && !form.fullName.trim()
-                ? 'Vui lòng nhập họ tên'
-                : '',
-
-        phone:
-            isRegister && submitted && !form.phone.trim()
-                ? 'Vui lòng nhập số điện thoại'
-                : isRegister && submitted && !/^0\d{9}$/.test(form.phone)
-                    ? 'Số điện thoại không hợp lệ'
-                    : '',
-
-        email:
-            submitted && !form.email.trim()
-                ? 'Vui lòng nhập email'
-                : submitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)
-                    ? 'Email không hợp lệ'
-                    : '',
-
-        password:
-            !isForgot && submitted && !form.password
-                ? 'Vui lòng nhập mật khẩu'
-                : !isForgot && submitted && form.password.length < 8
-                    ? 'Mật khẩu tối thiểu 8 ký tự'
-                    : '',
-
-        confirmPassword:
-            isRegister && submitted && !form.confirmPassword
-                ? 'Vui lòng xác nhận mật khẩu'
-                : isRegister && submitted && form.confirmPassword !== form.password
-                    ? 'Mật khẩu xác nhận không khớp'
-                    : '',
-
-        otp:
-            isForgot && otpSent && !otpVerified && submitted && !form.otp.trim()
-                ? 'Vui lòng nhập mã OTP'
-                : '',
-
-        newPassword:
-            isForgot && otpVerified && submitted && !form.newPassword
-                ? 'Vui lòng nhập mật khẩu mới'
-                : isForgot && otpVerified && submitted && form.newPassword.length < 8
-                    ? 'Mật khẩu tối thiểu 8 ký tự'
-                    : '',
-    }), [form, submitted, isRegister, isForgot, otpSent, otpVerified]);
+   
+    const errors = useMemo(() => {
+        const computed = computeErrors(form, { isRegister, isForgot, otpSent, otpVerified });
+        if (!submitted) {
+            return Object.fromEntries(Object.keys(computed).map((k) => [k, '']));
+        }
+        return computed;
+    }, [form, submitted, isRegister, isForgot, otpSent, otpVerified]);
 
     const hasError = useMemo(
         () => Object.values(errors).some(Boolean),
@@ -282,10 +293,14 @@ export default function AuthModal({ open, onClose,redirectAfterLogin = null }) {
 
     const handleSubmit = useCallback(async (e) => {
         e.preventDefault();
+
+        const freshErrors = computeErrors(form, { isRegister, isForgot, otpSent, otpVerified });
+        const freshHasError = Object.values(freshErrors).some(Boolean);
+
         setSubmitted(true);
 
-        if (hasError) {
-            toastError('Thông tin không hợp lệ', 'Vui lòng kiểm tra lại dữ liệu.');
+        if (freshHasError) {
+            toastError('Kiểm tra thông tin', 'Vui lòng kiểm tra bạn đã nhập lại dữ liệu.');
             return;
         }
 
@@ -324,7 +339,7 @@ export default function AuthModal({ open, onClose,redirectAfterLogin = null }) {
                 toastSuccess('Đăng nhập thành công', 'Chào mừng bạn quay trở lại.');
                 onClose?.();
                 if (redirectAfterLogin) {
-                    navigate(redirectAfterLogin);           // Quay lại trang chi tiết tour
+                    navigate(redirectAfterLogin);       
                 } else if (profile.maVaiTro === 1 || profile.maVaiTro === 2) {
                     navigate('/Quan-ly');
                 } else {
@@ -355,7 +370,7 @@ export default function AuthModal({ open, onClose,redirectAfterLogin = null }) {
             setLoading(false);
         }
     }, [
-        hasError, isRegister, isForgot, isLogin,
+        isRegister, isForgot, isLogin,
         form, otpSent, otpVerified,
         login, navigate, onClose, switchMode,redirectAfterLogin
     ]);
@@ -384,7 +399,7 @@ export default function AuthModal({ open, onClose,redirectAfterLogin = null }) {
                 type="button"
                 aria-label="Đóng modal"
                 onClick={onClose}
-                className="absolute inset-0 bg-slate-950/30 backdrop-blur-sm"
+                className="absolute inset-0 bg-slate-800/20 backdrop-blur-sm"
             />
 
             <div className="relative max-h-[92vh] w-full max-w-[430px] overflow-y-auto rounded-[28px] bg-white shadow-2xl">

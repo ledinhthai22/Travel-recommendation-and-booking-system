@@ -9,12 +9,10 @@ import {
 
 export const AuthContext = createContext();
 
-
 export const apiClient = axios.create({
     baseURL: "YOUR_API_URL",
     withCredentials: true
 });
-
 
 let isRefreshing = false;
 let failedQueue = [];
@@ -31,7 +29,7 @@ export default function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isStaff, setIsStaff] = useState(false);
-
+    const [showLoginModal, setShowLoginModal] = useState(false); 
 
     useEffect(() => {
         initAuth();
@@ -49,7 +47,6 @@ export default function AuthProvider({ children }) {
             setLoading(false);
         }
     };
-
 
     const loadProfile = async () => {
         const accountType = localStorage.getItem("account_type");
@@ -69,13 +66,11 @@ export default function AuthProvider({ children }) {
         return profile
     };
 
-
     const refreshToken = async () => {
         const accessToken = localStorage.getItem("token");
         const refresh = localStorage.getItem("refreshToken");
         if (!refresh) throw new Error("No refresh token");
 
-        // Backend TokenModelDTO yêu cầu cả accessToken (kể cả đã hết hạn) lẫn refreshToken
         const res = await refreshTokenApi(accessToken, refresh);
 
         localStorage.setItem("token", res.token);
@@ -83,7 +78,6 @@ export default function AuthProvider({ children }) {
 
         return res.token;
     };
-
 
     const forceLogout = useCallback(async () => {
         const refresh = localStorage.getItem("refreshToken");
@@ -96,9 +90,8 @@ export default function AuthProvider({ children }) {
         setUser(null);
         setIsStaff(false);
 
-        window.location.reload(); // tạm thời
+        window.location.reload();
     }, []);
-
 
     const login = async (res, isStaffLogin = false) => {
         localStorage.setItem("token", res.token);
@@ -114,7 +107,6 @@ export default function AuthProvider({ children }) {
 
         return await loadProfile();
     };
-
 
     useEffect(() => {
         const interceptor = apiClient.interceptors.response.use(
@@ -162,7 +154,6 @@ export default function AuthProvider({ children }) {
         };
     }, [forceLogout]);
 
-
     return (
         <AuthContext.Provider
             value={{
@@ -173,7 +164,9 @@ export default function AuthProvider({ children }) {
                 loading,
                 isAuthenticated: !!user,
                 isStaff,
-                apiClient
+                apiClient,
+                showLoginModal,      
+                setShowLoginModal,    
             }}
         >
             {children}

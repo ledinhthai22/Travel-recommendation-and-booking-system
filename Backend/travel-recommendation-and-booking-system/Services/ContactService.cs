@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Log;
 using travel_recommendation_and_booking_system.DTOs.LogSystem;
-using travel_recommendation_and_booking_system.DTOs.Notifications;   // ← Thêm dòng này
+using travel_recommendation_and_booking_system.DTOs.Notifications;   
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Models;
 
@@ -58,7 +58,7 @@ namespace travel_recommendation_and_booking_system.Services
                         TieuDe = "Liên hệ mới",
                         NoiDung = $"Khách hàng {contact.HoTen} vừa gửi liên hệ.",
                         LoaiThongBao = 1, // Contact
-                        LinkChiTiet = $"/Quan-ly/lien-he/{lienhe.MaLienHe}"
+                        LinkChiTiet = "/Quan-ly/Lien-he"
                     });
 
                 return true;

@@ -30,8 +30,13 @@ export const getHistoryDetailApi = async (id) => {
     return response.data;
 };
 
-export const cancelBookingApi = async (id) => {
-    const response = await axiosClient.post(`/customer/UserProfile/cancel/${id}`);
+// Sửa lại: backend nhận LyDoHuy qua query string, không phải body
+export const cancelBookingApi = async (id, lyDoHuy) => {
+    const response = await axiosClient.post(
+        `/customer/UserProfile/cancel/${id}`,
+        null,
+        { params: { LyDoHuy: lyDoHuy } }
+    );
     return response.data;
 };
 
@@ -51,3 +56,14 @@ export const changePasswordApi = async (data) => {
 
 
 
+export const getPendingRefundsApi = async (page = 1, pageSize = 10) => {
+    const response = await axiosClient.get("/admin/refund/pending", {
+        params: { page, pageSize }
+    });
+    return response.data;
+};
+
+export const confirmRefundApi = async (maThanhToan) => {
+    const response = await axiosClient.post(`/admin/refund/confirm/${maThanhToan}`);
+    return response.data;
+};

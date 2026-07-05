@@ -1,18 +1,17 @@
 import { useState } from "react";
 import { formatCurrency } from "~/Helper/FormatCurrency";
-import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
+import CancelReasonModal from "./CancelReasonModal";
 import { cancelBookingApi } from "~/Services/UserProfile";
 import { toastError, toastSuccess } from "~/utils/Toast";
 import { createReviewApi } from "~/Services/ReviewService";
-import { Star, X, Calendar, CreditCard, Users, MapPin } from "lucide-react";
+import { Star, X, CreditCard, MapPin } from "lucide-react";
 
 export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess }) {
-    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [rating, setRating] = useState(5);
     const [comment, setComment] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-
 
     const parseVNDate = (dateString) => {
         if (!dateString) return null;
@@ -27,11 +26,9 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
     const departureDate = parseVNDate(booking?.ngayKhoiHanh);
     const endDate = parseVNDate(booking?.ngayKetThuc);
 
-
     const diffDays = departureDate
         ? Math.ceil((departureDate - today) / (1000 * 60 * 60 * 24))
         : 0;
-
 
     const isCompleted =
         booking?.trangThai === 3 ||
@@ -41,7 +38,6 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
             today > endDate
         );
 
-
     const canCancel =
         (booking?.trangThai === 1 || booking?.trangThai === 2) &&
         departureDate &&
@@ -49,6 +45,7 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
         diffDays >= 3;
 
     const canReview = isCompleted;
+
     const getStatusText = () => {
         if (isCompleted) return "Hoàn tất";
 
@@ -65,11 +62,12 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
                 return "Không xác định";
         }
     };
-    const handleConfirmCancel = async () => {
+
+    const handleConfirmCancel = async (lyDoHuy) => {
         setIsLoading(true);
         try {
-            await cancelBookingApi(booking.maDonDatTour);
-            setIsConfirmOpen(false);
+            await cancelBookingApi(booking.maDonDatTour, lyDoHuy);
+            setIsCancelModalOpen(false);
             onClose();
             toastSuccess("Đã hủy tour thành công!");
             if (onSuccess) onSuccess();
@@ -100,7 +98,6 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
     };
 
     if (!isOpen || !booking) return null;
-
 
     return (
         <>
@@ -147,7 +144,7 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
                     {canCancel && (
                         <div className="mt-6 border-t border-slate-100 pt-4">
                             <button
-                                onClick={() => setIsConfirmOpen(true)}
+                                onClick={() => setIsCancelModalOpen(true)}
                                 disabled={isLoading}
                                 className="w-full bg-rose-500 text-white py-2.5 text-xs font-bold tracking-wide rounded-xl hover:bg-rose-600 transition-all shadow-sm shadow-rose-500/10 disabled:opacity-50"
                             >
@@ -193,12 +190,11 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
                 </div>
             </div>
 
-            <ConfirmModal
-                isOpen={isConfirmOpen}
-                title="Xác nhận hủy đặt tour"
-                message="Sếp có chắc chắn muốn thực hiện hủy đặt hành trình này? Hành động sau khi xác nhận không thể hoàn tác."
+            <CancelReasonModal
+                isOpen={isCancelModalOpen}
+                onClose={() => setIsCancelModalOpen(false)}
                 onConfirm={handleConfirmCancel}
-                onClose={() => setIsConfirmOpen(false)}
+                isLoading={isLoading}
             />
         </>
     );
