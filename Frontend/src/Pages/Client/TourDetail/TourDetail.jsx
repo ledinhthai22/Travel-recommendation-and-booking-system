@@ -196,7 +196,10 @@ export default function TourDetail() {
                         />
 
                         <Notes />
-                        <Reviews reviews={[]} reviewCount={0} />
+                        <Reviews
+                            reviews={tour?.danhGia || []}
+                            reviewCount={tour?.danhGia?.length || 0}
+                        />
                     </div>
 
                     <aside className="sticky top-28 self-start z-20">

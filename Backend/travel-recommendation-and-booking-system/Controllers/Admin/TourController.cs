@@ -75,7 +75,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
                 else if (requestForm.Keys.Any(k => k.ToLower().Contains("tourinfo")))
                 {
                     if (requestForm.TryGetValue("TourInfo", out var tInfo) || requestForm.TryGetValue("tourInfo", out tInfo))
-                        dto.TourInfo = System.Text.Json.JsonSerializer.Deserialize<TourDTO>(tInfo, options);
+                        dto.TourInfo = System.Text.Json.JsonSerializer.Deserialize<TourDTO>(tInfo, options) ;
 
                     if (requestForm.TryGetValue("DanhSachKhachSan", out var ks) || requestForm.TryGetValue("danhSachKhachSan", out ks))
                         dto.DanhSachKhachSan = System.Text.Json.JsonSerializer.Deserialize<List<Tour_KSDTO>>(ks, options);

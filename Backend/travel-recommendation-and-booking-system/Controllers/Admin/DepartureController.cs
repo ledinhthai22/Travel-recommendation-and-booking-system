@@ -55,10 +55,11 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 
             try
             {
+                // Giả sử UpdateDepartureAsync đã được sửa để trả về DepartureFullDTO
                 var result = await _service.UpdateDepartureAsync(maChuyen, dto);
-                return result
-                    ? Ok(new { message = "Cập nhật chuyến khởi hành thành công!" })
-                    : NotFound(new { message = "Không tìm thấy chuyến khởi hành." });
+
+                // Trả về dữ liệu mới đã update
+                return Ok(result);
             }
             catch (Exception ex)
             {

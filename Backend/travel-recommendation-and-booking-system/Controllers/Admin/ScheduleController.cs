@@ -25,9 +25,9 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 
             try
             {
-                
+                // SỬA: Trả về dữ liệu mới thay vì bool
                 var result = await _service.AddScheduleAsync(dto);
-                return result ? Ok(new { message = "Thêm lịch trình thành công!" }) : BadRequest("Không thể thêm lịch trình.");
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -49,9 +49,9 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 
             try
             {
-            
+                // SỬA: Trả về dữ liệu mới thay vì bool
                 var result = await _service.UpdateScheduleAsync(maLichTrinh, dto);
-                return result ? Ok(new { message = "Cập nhật thành công!" }) : NotFound("Không tìm thấy lịch trình.");
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -62,19 +62,31 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         [HttpDelete("{maLichTrinh}")]
         public async Task<IActionResult> DeleteSchedule(int maLichTrinh)
         {
-            var result = await _service.DeleteScheduleAsync(maLichTrinh);
-            return result ? Ok(new { message = "Đã xóa lịch trình thành công!" }) : BadRequest("Không thể xóa hoặc lịch trình không tồn tại.");
+            try
+            {
+                var result = await _service.DeleteScheduleAsync(maLichTrinh);
+                return result ? Ok(new { message = "Đã xóa lịch trình thành công!" }) : NotFound("Không tìm thấy lịch trình.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpPost("create-ScheduleDetail")]
-        public async Task<IActionResult> Add([FromBody] ScheduleDetailsDTO dto)
+        public async Task<IActionResult> AddScheduleDetail([FromBody] ScheduleDetailsDTO dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var result = await _service.AddCTLTAsync(dto);
-            if (result) return Ok(new { message = "Thêm hoạt động thành công!" });
-
-            return BadRequest("Thêm hoạt động thất bại.");
+            try
+            {
+                var result = await _service.AddCTLTAsync(dto);
+                return result ? Ok(new { message = "Thêm hoạt động thành công!" }) : BadRequest("Thêm hoạt động thất bại.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpGet("by-Schedule/{maLichTrinh}")]
@@ -87,15 +99,29 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         [HttpPut("update-ScheduleDetail/{maCTLT}")]
         public async Task<IActionResult> UpdateScheduleDetail(int maCTLT, [FromBody] ScheduleDetailsDTO dto)
         {
-            var result = await _service.UpdateCTLTAsync(maCTLT, dto);
-            return result ? Ok(new { message = "Cập nhật thành công!" }) : NotFound();
+            try
+            {
+                var result = await _service.UpdateCTLTAsync(maCTLT, dto);
+                return result ? Ok(new { message = "Cập nhật thành công!" }) : NotFound("Không tìm thấy chi tiết lịch trình.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpDelete("delete-ScheduleDetail/{maCTLT}")]
         public async Task<IActionResult> DeleteScheduleDetail(int maCTLT)
         {
-            var result = await _service.DeleteCTLTAsync(maCTLT);
-            return result ? Ok(new { message = "Xóa thành công!" }) : NotFound();
+            try
+            {
+                var result = await _service.DeleteCTLTAsync(maCTLT);
+                return result ? Ok(new { message = "Xóa thành công!" }) : NotFound("Không tìm thấy chi tiết lịch trình.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

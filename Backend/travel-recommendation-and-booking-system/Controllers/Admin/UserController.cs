@@ -8,7 +8,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
-    [Authorize(Policy = "AdminOnly")]
+    
     public class UserController : ControllerBase
     {
         private readonly IUserService _user;
@@ -18,6 +18,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpPost("create-user")]
+        [Authorize(Policy = "Admin&Staff")]
         public async Task<IActionResult> CreateUser([FromForm] UserCreateDTO request)
         {
             if (!ModelState.IsValid)
@@ -54,6 +55,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpPut("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> UpdateUser(int id, [FromForm] UserUpdateDTO request)
         {
             if (!ModelState.IsValid)
@@ -111,6 +113,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpGet("get-user")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> GetUsers([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] string? keyword = null, [FromQuery] int? status = null)
         {
             try
@@ -124,6 +127,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             }
         }
         [HttpGet("booking-select")]
+
         public async Task<IActionResult> GetUsersForBookingSelect([FromQuery] string? keyword = null, [FromQuery] int? status = null)
         {
             try
@@ -146,6 +150,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             }
         }
         [HttpGet("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> DetailUser(int id)
         {
             var user = await _user.DetailUserAsync(id);
@@ -158,6 +163,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             return Ok(user);
         }
         [HttpPatch("{id}/lock")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> LockUser(int id)
         {
             var isSuccess = await _user.LockUserAsync(id);
@@ -179,6 +185,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpPatch("{id}/unlock")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> UnlockUser(int id)
         {
             var isSuccess = await _user.UnLockUserAsync(id);

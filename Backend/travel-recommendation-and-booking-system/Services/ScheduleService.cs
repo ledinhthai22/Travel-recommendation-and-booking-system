@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Log;
 using travel_recommendation_and_booking_system.DTOs.LogSystem;
@@ -15,18 +16,61 @@ namespace travel_recommendation_and_booking_system.Services
     public class ScheduleService : IScheduleService
     {
         private readonly AppDbContext _context;
+        private readonly IMemoryCache _cache;
         private const string DEFAULT_SCHEDULE_IMAGE = "default-schedule.jpg";
         private readonly ILogService _logService;
         private readonly ICurrentUserService _currentUserService;
+        private const string CacheVersionKey = "tour:cache:version";
 
         public ScheduleService(
             AppDbContext context,
             ILogService logService,
-            ICurrentUserService currentUserService)
+            ICurrentUserService currentUserService,
+            IMemoryCache cache)
         {
             _context = context;
             _logService = logService;
             _currentUserService = currentUserService;
+            _cache = cache;
+        }
+
+        // ─── Cache Helper ──────────────────────────────────────────────────────────
+
+        private int GetCacheVersion()
+        {
+            return _cache.GetOrCreate(CacheVersionKey, entry =>
+            {
+                entry.SlidingExpiration = TimeSpan.FromDays(1);
+                return 1;
+            });
+        }
+
+        private void BumpCacheVersion()
+        {
+            var current = GetCacheVersion();
+            _cache.Set(CacheVersionKey, current + 1, TimeSpan.FromDays(1));
+        }
+
+        private string VKey(string key) => $"v{GetCacheVersion()}:{key}";
+
+        private void ClearTourCache(int tourId)
+        {
+            // Clear detail cache
+            var detailKey = VKey($"tour:detail:{tourId}");
+            _cache.Remove(detailKey);
+
+            // Clear slug cache nếu có
+            var tour = _context.Tours.AsNoTracking().FirstOrDefault(t => t.MaTour == tourId);
+            if (tour != null && !string.IsNullOrEmpty(tour.Slug))
+            {
+                var slugKey = VKey($"tour:detail:slug:{tour.Slug.ToLower()}");
+                _cache.Remove(slugKey);
+            }
+
+            // Bump version để invalidate tất cả list cache
+            BumpCacheVersion();
+
+            Console.WriteLine($"[CACHE] Cleared cache for tour {tourId}");
         }
 
         // ─── Helpers ──────────────────────────────────────────────────────────
@@ -118,8 +162,6 @@ namespace travel_recommendation_and_booking_system.Services
                 File.Delete(oldPath);
         }
 
-
-
         private async Task<bool> HasStartedDepartureAsync(int maTour)
         {
             return await _context.ChuyenKhoiHanhs
@@ -129,9 +171,47 @@ namespace travel_recommendation_and_booking_system.Services
                     (x.TrangThai == 2 || x.TrangThai == 3 || x.SoChoDaDat > 0));
         }
 
+        private async Task<ScheduleReponseDTO> MapToResponseDTO(LichTrinh lichTrinh)
+        {
+            if (lichTrinh == null) return null;
+
+            return new ScheduleReponseDTO
+            {
+                MaLichTrinh = lichTrinh.MaLichTrinh,
+                MaTour = lichTrinh.MaTour,
+                TenLichTrinh = lichTrinh.TenLichTrinh,
+                DuongDanAnh = lichTrinh.DuongDanAnh,
+                BuaAn = lichTrinh.BuaAn,
+                SoThuTuNgay = lichTrinh.SoThuTuNgay,
+                HoatDongChinh = lichTrinh.HoatDongChinh,
+                LuuY = lichTrinh.LuuY,
+                TrangThai = lichTrinh.TrangThai,
+                NgayTao = lichTrinh.NgayTao,
+                NgayCapNhat = lichTrinh.NgayCapNhat,
+                NgayXoa = lichTrinh.NgayXoa,
+                MaKhachSan = lichTrinh.MaKhachSan,
+                TenKhachSan = lichTrinh.KhachSan != null ? lichTrinh.KhachSan.TenKhachSan : null,
+                SlugKhachSan = lichTrinh.KhachSan != null ? lichTrinh.KhachSan.Slug : null,
+                SoSaoKhachSan = lichTrinh.KhachSan != null ? lichTrinh.KhachSan.SoSao : (int?)null,
+                ChiTietLichTrinhs = await _context.CTLichTrinhs
+                    .Where(ct => ct.MaLichTrinh == lichTrinh.MaLichTrinh)
+                    .OrderBy(ct => ct.GioBatDau)
+                    .Select(ct => new ScheduleDetailsDTO
+                    {
+                        MaCTLT = ct.MaCTLT,
+                        MaLichTrinh = ct.MaLichTrinh,
+                        MaDiaDiem = ct.MaDiaDiem,
+                        GioBatDau = ct.GioBatDau,
+                        GioKetThuc = ct.GioKetThuc,
+                        HoatDong = ct.HoatDong
+                    })
+                    .ToListAsync()
+            };
+        }
+
         // ─── CRUD LichTrinh ───────────────────────────────────────────────────
 
-        public async Task<bool> AddScheduleAsync(ScheduleDTO dto)
+        public async Task<ScheduleReponseDTO> AddScheduleAsync(ScheduleDTO dto)
         {
             validatorSheduleTour.ValidateSchedules(new List<ScheduleDTO> { dto });
 
@@ -150,10 +230,7 @@ namespace travel_recommendation_and_booking_system.Services
                 LuuY = dto.LuuY,
                 DuongDanAnh = string.IsNullOrEmpty(fileName) ? DEFAULT_SCHEDULE_IMAGE : fileName,
                 TrangThai = true,
-                // ← lưu khách sạn theo ngày lịch trình
-                MaKhachSan = (dto.MaKhachSan.HasValue && dto.MaKhachSan > 0)
-                                    ? dto.MaKhachSan
-                                    : null,
+                MaKhachSan = (dto.MaKhachSan.HasValue && dto.MaKhachSan > 0) ? dto.MaKhachSan : null,
                 NgayTao = DateTime.Now,
                 NgayCapNhat = DateTime.Now
             };
@@ -175,9 +252,11 @@ namespace travel_recommendation_and_booking_system.Services
             }
 
             await _context.SaveChangesAsync();
+
             var currentAccount = _currentUserService.GetUserId() == 1
                 ? AccountTypeDTO.QuanTriVien
                 : AccountTypeDTO.NguoiDung;
+
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan = currentAccount,
@@ -193,18 +272,26 @@ namespace travel_recommendation_and_booking_system.Services
                     lichTrinh.SoThuTuNgay,
                     lichTrinh.BuaAn,
                     lichTrinh.HoatDongChinh,
-                    lichTrinh.MaKhachSan   // ← log thêm KS
+                    lichTrinh.MaKhachSan
                 }
             });
 
-            return true;
+            // 🔥 Clear cache của tour sau khi thêm mới lịch trình
+            ClearTourCache(dto.MaTour);
+
+            // TRẢ VỀ DỮ LIỆU MỚI
+            var result = await _context.LichTrinhs
+                .Include(x => x.KhachSan)
+                .FirstOrDefaultAsync(x => x.MaLichTrinh == lichTrinh.MaLichTrinh);
+
+            return await MapToResponseDTO(result);
         }
 
         public async Task<List<ScheduleReponseDTO>> GetByTourAsync(int maTour)
         {
             return await _context.LichTrinhs
                 .AsNoTracking()
-                .Include(x => x.KhachSan)   // ← include để lấy tên KS
+                .Include(x => x.KhachSan)
                 .Where(x => x.MaTour == maTour && x.NgayXoa == null)
                 .OrderBy(x => x.SoThuTuNgay)
                 .Select(x => new ScheduleReponseDTO
@@ -221,7 +308,6 @@ namespace travel_recommendation_and_booking_system.Services
                     NgayTao = x.NgayTao,
                     NgayCapNhat = x.NgayCapNhat,
                     NgayXoa = x.NgayXoa,
-                    // ← khách sạn của ngày này
                     MaKhachSan = x.MaKhachSan,
                     TenKhachSan = x.KhachSan != null ? x.KhachSan.TenKhachSan : null,
                     SlugKhachSan = x.KhachSan != null ? x.KhachSan.Slug : null,
@@ -242,16 +328,21 @@ namespace travel_recommendation_and_booking_system.Services
                 .ToListAsync();
         }
 
-        public async Task<bool> UpdateScheduleAsync(int maLichTrinh, ScheduleDTO dto)
+        public async Task<ScheduleReponseDTO> UpdateScheduleAsync(int maLichTrinh, ScheduleDTO dto)
         {
             validatorSheduleTour.ValidateSchedules(new List<ScheduleDTO> { dto });
 
-            var lt = await _context.LichTrinhs.FindAsync(maLichTrinh);
-            if (lt == null) return false;
+            var lt = await _context.LichTrinhs
+                .Include(x => x.KhachSan)
+                .FirstOrDefaultAsync(x => x.MaLichTrinh == maLichTrinh);
+
+            if (lt == null)
+                throw new Exception($"Không tìm thấy lịch trình {maLichTrinh}");
 
             if (await HasStartedDepartureAsync(lt.MaTour))
                 throw new Exception("Tour đã có chuyến khởi hành hoặc đã kết thúc, không thể chỉnh sửa lịch trình.");
 
+            var tourId = lt.MaTour;
             var oldData = new
             {
                 lt.TenLichTrinh,
@@ -260,7 +351,7 @@ namespace travel_recommendation_and_booking_system.Services
                 lt.HoatDongChinh,
                 lt.LuuY,
                 lt.TrangThai,
-                lt.MaKhachSan   // ← log giá trị cũ
+                lt.MaKhachSan
             };
 
             lt.TenLichTrinh = dto.TenLichTrinh;
@@ -270,10 +361,7 @@ namespace travel_recommendation_and_booking_system.Services
             lt.LuuY = dto.LuuY;
             lt.TrangThai = dto.TrangThai;
             lt.NgayCapNhat = DateTime.Now;
-            // ← cập nhật khách sạn theo ngày
-            lt.MaKhachSan = (dto.MaKhachSan.HasValue && dto.MaKhachSan > 0)
-                                    ? dto.MaKhachSan
-                                    : null;
+            lt.MaKhachSan = (dto.MaKhachSan.HasValue && dto.MaKhachSan > 0) ? dto.MaKhachSan : null;
 
             string? oldImagePath = null;
 
@@ -337,9 +425,11 @@ namespace travel_recommendation_and_booking_system.Services
 
             if (oldImagePath != null)
                 DeleteOldScheduleImage(oldImagePath);
+
             var currentAccount = _currentUserService.GetUserId() == 1
-              ? AccountTypeDTO.QuanTriVien
-              : AccountTypeDTO.NguoiDung;
+                ? AccountTypeDTO.QuanTriVien
+                : AccountTypeDTO.NguoiDung;
+
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan = currentAccount,
@@ -357,11 +447,19 @@ namespace travel_recommendation_and_booking_system.Services
                     lt.HoatDongChinh,
                     lt.LuuY,
                     lt.TrangThai,
-                    lt.MaKhachSan   // ← log giá trị mới
+                    lt.MaKhachSan
                 }
             });
 
-            return true;
+            // 🔥 Clear cache của tour sau khi update
+            ClearTourCache(tourId);
+
+            // TRẢ VỀ DỮ LIỆU MỚI
+            var result = await _context.LichTrinhs
+                .Include(x => x.KhachSan)
+                .FirstOrDefaultAsync(x => x.MaLichTrinh == maLichTrinh);
+
+            return await MapToResponseDTO(result);
         }
 
         public async Task<bool> DeleteScheduleAsync(int maLichTrinh)
@@ -373,6 +471,7 @@ namespace travel_recommendation_and_booking_system.Services
             if (await HasStartedDepartureAsync(lt.MaTour))
                 throw new Exception("Tour đã có chuyến khởi hành hoặc đã kết thúc, không thể xóa lịch trình.");
 
+            var tourId = lt.MaTour;
             var oldData = new
             {
                 lt.MaLichTrinh,
@@ -388,9 +487,11 @@ namespace travel_recommendation_and_booking_system.Services
 
             var result = await _context.SaveChangesAsync() > 0;
             if (!result) return false;
+
             var currentAccount = _currentUserService.GetUserId() == 1
                 ? AccountTypeDTO.QuanTriVien
                 : AccountTypeDTO.NguoiDung;
+
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan = currentAccount,
@@ -403,6 +504,9 @@ namespace travel_recommendation_and_booking_system.Services
                 GiaTriSau = new { lt.NgayXoa }
             });
 
+            // 🔥 Clear cache của tour sau khi xóa
+            ClearTourCache(tourId);
+
             return true;
         }
 
@@ -410,6 +514,11 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<bool> AddCTLTAsync(ScheduleDetailsDTO dto)
         {
+            // Lấy tourId từ maLichTrinh để clear cache sau này
+            var lichTrinh = await _context.LichTrinhs
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.MaLichTrinh == dto.MaLichTrinh);
+
             var ctlt = new CTLichTrinh
             {
                 MaLichTrinh = dto.MaLichTrinh,
@@ -427,7 +536,7 @@ namespace travel_recommendation_and_booking_system.Services
                 LoaiTaiKhoan = AccountTypeDTO.NhanVien,
                 Email = _currentUserService.GetEmail(),
                 MaTaiKhoan = _currentUserService.GetUserId(),
-                TenHanhDong = ActionLogDTO.Tao, 
+                TenHanhDong = ActionLogDTO.Tao,
                 TenBangTacDong = TableNameDTO.CTLichTrinh,
                 MaDoiTuong = ctlt.MaCTLT,
                 GiaTriSau = new
@@ -439,6 +548,12 @@ namespace travel_recommendation_and_booking_system.Services
                     ctlt.HoatDong
                 }
             });
+
+            // 🔥 Clear cache của tour
+            if (lichTrinh != null)
+            {
+                ClearTourCache(lichTrinh.MaTour);
+            }
 
             return true;
         }
@@ -466,6 +581,11 @@ namespace travel_recommendation_and_booking_system.Services
         {
             var ctlt = await _context.CTLichTrinhs.FindAsync(maCTLT);
             if (ctlt == null) return false;
+
+            // Lấy tourId để clear cache
+            var lichTrinh = await _context.LichTrinhs
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.MaLichTrinh == ctlt.MaLichTrinh);
 
             var oldData = new
             {
@@ -501,6 +621,12 @@ namespace travel_recommendation_and_booking_system.Services
                 }
             });
 
+            // 🔥 Clear cache của tour
+            if (lichTrinh != null)
+            {
+                ClearTourCache(lichTrinh.MaTour);
+            }
+
             return true;
         }
 
@@ -508,6 +634,11 @@ namespace travel_recommendation_and_booking_system.Services
         {
             var ctlt = await _context.CTLichTrinhs.FindAsync(maCTLT);
             if (ctlt == null) return false;
+
+            // Lấy tourId để clear cache
+            var lichTrinh = await _context.LichTrinhs
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.MaLichTrinh == ctlt.MaLichTrinh);
 
             var oldData = new
             {
@@ -530,6 +661,12 @@ namespace travel_recommendation_and_booking_system.Services
                 MaDoiTuong = ctlt.MaCTLT,
                 GiaTriTruoc = oldData
             });
+
+            // 🔥 Clear cache của tour
+            if (lichTrinh != null)
+            {
+                ClearTourCache(lichTrinh.MaTour);
+            }
 
             return true;
         }

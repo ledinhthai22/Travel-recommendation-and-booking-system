@@ -102,28 +102,25 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
 
     const handleSubmit = async (e) => {
         if (e) e.preventDefault();
-
         if (!validate()) return;
 
         try {
             setLoading(true);
 
-            const payload = {
-                hoTen: form.hoTen,
-                email: form.email,
-                soDienThoai: form.soDienThoai,
-                ngaySinh: form.ngaySinh, // Đưa dữ liệu ngày sinh vào payload gửi lên API
-                matKhau: form.matKhau,
-                xacNhanMatKhau: form.xacNhanMatKhau,
-                gioiTinh: Boolean(form.gioiTinh),
-                maVaiTro: 4
-            };
+            const fd = new FormData();
+            fd.append("hoTen", form.hoTen);
+            fd.append("email", form.email);
+            fd.append("soDienThoai", form.soDienThoai);
+            fd.append("ngaySinh", form.ngaySinh);
+            fd.append("matKhau", form.matKhau);
+            fd.append("xacNhanMatKhau", form.xacNhanMatKhau);
+            fd.append("gioiTinh", Boolean(form.gioiTinh));
+            fd.append("maVaiTro", 4);
 
-            await createUserApi(payload);
+            const newUser = await createUserApi(fd);
 
             toastSuccess("Thêm khách hàng thành công!");
-
-            onSuccess?.();
+            onSuccess?.(newUser);
             onClose();
         } catch (error) {
             toastError(getErrorMessage(error));
@@ -134,7 +131,7 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }) {
 
     return (
         <div className="fixed inset-0 bg-black/50 z-[999] flex items-center justify-center p-4">
-            <form onSubmit={handleSubmit} className="bg-white rounded-3xl w-full max-w-xl p-6 shadow-2xl overflow-y-auto max-h-[99vh]">
+            <form onSubmit={handleSubmit} className="bg-white rounded-3xl w-full max-w-[440px] p-6 shadow-2xl overflow-y-auto max-h-[99vh]">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold text-slate-800">Thêm khách hàng mới</h2>
                     <button

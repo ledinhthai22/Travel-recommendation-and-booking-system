@@ -1,5 +1,6 @@
 ﻿using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Location;
 using travel_recommendation_and_booking_system.Helper;
@@ -11,12 +12,35 @@ namespace travel_recommendation_and_booking_system.Services
     public class LocationService : ILocationService
     {
         private readonly AppDbContext _context;
-        public LocationService(AppDbContext context, IWebHostEnvironment webHostEnvironment)
+        private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly IMemoryCache _cache;
+
+        private const string CacheVersionKey = "location:cache:version";
+        private static readonly TimeSpan FeaturedCacheDuration = TimeSpan.FromMinutes(15);
+
+        public LocationService(AppDbContext context, IWebHostEnvironment webHostEnvironment, IMemoryCache cache)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
+            _cache = cache;
         }
-        private readonly IWebHostEnvironment _webHostEnvironment;
+
+        private int GetCacheVersion()
+        {
+            return _cache.GetOrCreate(CacheVersionKey, entry =>
+            {
+                entry.SlidingExpiration = TimeSpan.FromDays(1);
+                return 1;
+            });
+        }
+
+        private void BumpCacheVersion()
+        {
+            var current = GetCacheVersion();
+            _cache.Set(CacheVersionKey, current + 1, TimeSpan.FromDays(1));
+        }
+
+        private string VKey(string key) => $"v{GetCacheVersion()}:{key}";
 
         public async Task<List<LocationDTO>> GetAllAsync()
         {
@@ -47,7 +71,7 @@ namespace travel_recommendation_and_booking_system.Services
                 })
                 .ToListAsync();
         }
-        
+
 
         public async Task<List<LocationCardResponseDTO>> GetRecommendedLocationsAsync(int userId, int? limit = null)
         {
@@ -100,7 +124,7 @@ namespace travel_recommendation_and_booking_system.Services
         public async Task<PageDTO<LocationReponseDTO>> GetLocationAsync(int pageNumber, int pageSize, string? key, bool? status)
         {
             if (pageNumber < 1) pageNumber = 1;
-            if (pageSize < 1 || pageSize > 100) pageSize = 10; 
+            if (pageSize < 1 || pageSize > 100) pageSize = 10;
 
             var query = _context.DiaDiems
                 .AsNoTracking()
@@ -222,6 +246,9 @@ namespace travel_recommendation_and_booking_system.Services
                 };
                 _context.DiaDiems.Add(newlocation);
                 await _context.SaveChangesAsync();
+
+                BumpCacheVersion();
+
                 return true;
             }
             catch (Exception ex)
@@ -271,7 +298,7 @@ namespace travel_recommendation_and_booking_system.Services
 
                     if (!allowedExtensions.Contains(fileExtension) || !request.DuongDanAnh.ContentType.StartsWith("image/"))
                     {
-                        throw new Exception( "Chỉ nhận các file .jpg, .jpeg, .png, .gif, .webp"
+                        throw new Exception("Chỉ nhận các file .jpg, .jpeg, .png, .gif, .webp"
                         );
                     }
 
@@ -312,6 +339,9 @@ namespace travel_recommendation_and_booking_system.Services
 
                 _context.DiaDiems.Update(location);
                 await _context.SaveChangesAsync();
+
+                BumpCacheVersion();
+
                 return true;
             }
             catch (Exception ex)
@@ -357,6 +387,8 @@ namespace travel_recommendation_and_booking_system.Services
 
             await _context.SaveChangesAsync();
 
+            BumpCacheVersion();
+
             return true;
         }
         public async Task<bool> UpdateStatusAsync(int id, bool status)
@@ -389,6 +421,8 @@ namespace travel_recommendation_and_booking_system.Services
 
             await _context.SaveChangesAsync();
 
+            BumpCacheVersion();
+
             return true;
         }
 
@@ -396,9 +430,13 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<List<LocationCardResponseDTO>> GetFeaturedDestinationsAsync(int limit = 8)
         {
+            var cacheKey = VKey($"location:featured:{limit}");
+            if (_cache.TryGetValue(cacheKey, out List<LocationCardResponseDTO>? cached))
+                return cached!;
+
             var now = DateTime.Now;
 
-            return await _context.DiaDiems
+            var result = await _context.DiaDiems
                 .AsNoTracking()
                 .Where(d => d.TrangThai == true && d.NgayXoa == null)
                 .Select(d => new LocationCardResponseDTO
@@ -418,10 +456,14 @@ namespace travel_recommendation_and_booking_system.Services
                         .Distinct()
                         .Count()
                 })
-                .OrderByDescending(d => d.SoLuongTour) 
-                .ThenByDescending(d => d.TenDiaDiem)   
+                .OrderByDescending(d => d.SoLuongTour)
+                .ThenByDescending(d => d.TenDiaDiem)
                 .Take(limit)
                 .ToListAsync();
+
+            _cache.Set(cacheKey, result, FeaturedCacheDuration);
+
+            return result;
         }
     }
 }

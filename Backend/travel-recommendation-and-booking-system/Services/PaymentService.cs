@@ -21,13 +21,18 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly IHubContext<TravelRecommendationHub> _hubContext;
         private readonly IEmailService _emailService;
         private readonly INotificationService _notificationService;
+        private readonly IDashboardNotifier _dashboardNotifier;
+        private readonly IHttpClientFactory _httpClientFactory;
+
 
         public PaymentService(
             IOptions<VnPayConfig> vnpayConfig,
             AppDbContext context,
             IHubContext<TravelRecommendationHub> hubContext,
             IEmailService emailService,
-            INotificationService notificationService
+            INotificationService notificationService,
+            IDashboardNotifier dashboardNotifier,
+            IHttpClientFactory httpClientFactory
             )
         {
             _vnpayConfig = vnpayConfig.Value;
@@ -35,6 +40,8 @@ namespace travel_recommendation_and_booking_system.Services
             _hubContext = hubContext;
             _emailService = emailService;
             _notificationService = notificationService;
+            _dashboardNotifier = dashboardNotifier;
+            _httpClientFactory = httpClientFactory;
         }
 
         public async Task<(string PaymentUrl, string TxnRef)> CreatePaymentUrlAsync(PaymentRequestDTO request, string remoteIpAddress)
@@ -299,6 +306,7 @@ namespace travel_recommendation_and_booking_system.Services
                             PhuongThucThanhToan = 1,
                             MaGiaoDich = txnRef,
                             NoiDung = noiDung,
+                            VnpTransactionNo = vnpay.GetResponseData("vnp_TransactionNo"),
                             NgayThanhToan = DateTime.Now,
                             TongTienThanhToan = vnpayAmount,
                             TrangThaiThanhToan = 1,
@@ -319,6 +327,7 @@ namespace travel_recommendation_and_booking_system.Services
 
                         await _context.SaveChangesAsync();
                         await transaction.CommitAsync();
+                        await _emailService.SendBookingConfirmationAsync(order);
                     }
                     catch (Exception)
                     {
@@ -385,6 +394,12 @@ namespace travel_recommendation_and_booking_system.Services
 
                 try
                 {
+                    await _dashboardNotifier.NotifyDashboardChangedAsync("NewBooking", new
+                    {
+                        order.MaDonDatTour,
+                        order.NgayDat,
+                        order.TrangThaiDon
+                    });
                     await _hubContext.Clients.Group("ADMIN_GROUP").SendAsync("BookingCreated", new
                     {
                         MaDonDatTour = order.MaDonDatTour,
@@ -405,5 +420,6 @@ namespace travel_recommendation_and_booking_system.Services
                 return ("99", "System error");
             }
         }
+        
     }
 }

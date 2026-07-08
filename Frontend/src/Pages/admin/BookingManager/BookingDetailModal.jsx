@@ -5,7 +5,7 @@ import {
     Check, Ticket, Banknote, Wifi, Clock,
     Hash, MessageSquare, BadgeCheck, MapPin,
     Phone, Users, Tag, StickyNote,
-    ChevronRight, Shield, CheckCheck, DollarSign,
+    ChevronRight, Shield, CheckCheck, DollarSign, ArrowRightLeft
 } from 'lucide-react';
 import InputField from '~/components/UI/Form/InputField';
 import SelectField from '~/components/UI/Form/SelectField';
@@ -31,43 +31,45 @@ const ORDER_STATUS = {
 };
 
 const PAYMENT_METHODS = {
-    1: { text: 'VNPay', icon: <CreditCard size={13} />, color: 'text-blue-600' },
-    2: { text: 'Tiền Mặt', icon: <Banknote size={13} />, color: 'text-emerald-600' },
+    1: { text: 'VNPay' },
+    2: { text: 'Tiền Mặt' },
+    3: { text: 'Chuyển Khoản' },
 };
 
 const PAYMENT_STATUS = {
-    0: {
-        text: 'Chưa thanh toán',
-        color: 'bg-amber-50 text-amber-700 border-amber-200',
-        icon: <Clock size={13} className="text-amber-500" />,
-    },
-    1: {
-        text: 'Đã thanh toán',
-        color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        icon: <CheckCircle size={13} className="text-emerald-500" />,
-    },
-    2: {
-        text: 'Thanh toán thất bại',
-        color: 'bg-red-50 text-red-700 border-red-200',
-        icon: <AlertTriangle size={13} className="text-red-500" />,
-    },
-    3: {
-        text: 'Đã hoàn tiền',
-        color: 'bg-slate-100 text-slate-600 border-slate-200',
-        icon: <Banknote size={13} className="text-slate-500" />,
-    },
+    0: { text: 'Chưa thanh toán', color: 'bg-amber-50 text-amber-700 border-amber-200', icon: <Clock size={13} className="text-amber-500" /> },
+    1: { text: 'Đã thanh toán', color: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: <CheckCircle size={13} className="text-emerald-500" /> },
+    2: { text: 'Thanh toán thất bại', color: 'bg-red-50 text-red-700 border-red-200', icon: <AlertTriangle size={13} className="text-red-500" /> },
+    3: { text: 'Đã hoàn tiền', color: 'bg-slate-100 text-slate-600 border-slate-200', icon: <Banknote size={13} className="text-slate-500" /> },
+    4: { text: 'Chờ hoàn tiền', color: 'bg-orange-50 text-orange-700 border-orange-200', icon: <Clock size={13} className="text-orange-500" /> },
 };
 
 const canApprove = (trangThaiDon) => trangThaiDon === 1;
 const canCancel = (trangThaiDon) => trangThaiDon === 1 || trangThaiDon === 2;
 const canComplete = (trangThaiDon, ngayKetThuc) =>
     trangThaiDon === 2 && ngayKetThuc && new Date(ngayKetThuc) <= new Date();
-const canTogglePayment = (trangThaiDon, trangThaiThanhToan) =>
-    trangThaiThanhToan !== 1 && trangThaiThanhToan !== 3 && trangThaiDon !== 3 && trangThaiDon !== 4;
+
+// Chỉ cho phép admin tự tay "Xác nhận thu tiền" khi:
+// - Thanh toán chưa thành công (1), chưa hoàn tiền (3) và không đang chờ hoàn tiền (4)
+// - Đơn chưa hoàn tất (3) và chưa hủy (4)
+// - Phương thức là Tiền mặt (2) hoặc Chuyển khoản (3), hoặc chưa có giao dịch nào ghi nhận (null) —
+//   trường hợp admin tạo đơn thủ công nhưng chưa thu ngay, không tạo ThanhToan.
+const canTogglePayment = (trangThaiDon, trangThaiThanhToan, phuongThucThanhToan) =>
+    trangThaiThanhToan !== 1 &&
+    trangThaiThanhToan !== 3 &&
+    trangThaiThanhToan !== 4 &&
+    trangThaiDon !== 3 &&
+    trangThaiDon !== 4 &&
+    (phuongThucThanhToan == null || phuongThucThanhToan === 2 || phuongThucThanhToan === 3);
+
+// Chỉ cho phép xác nhận "Đã hoàn tiền" khi đang ở trạng thái Chờ hoàn tiền
+const canConfirmRefunded = (trangThaiThanhToan) => trangThaiThanhToan === 4;
 
 const getCancelWarning = (trangThaiThanhToan, phuongThucThanhToan) => {
     if (trangThaiThanhToan === 1 && phuongThucThanhToan === 2)
         return 'Đơn đã thu tiền mặt. Nhớ hoàn tiền cho khách trước khi hủy!';
+    if (trangThaiThanhToan === 1 && phuongThucThanhToan === 3)
+        return 'Đơn đã thu tiền qua chuyển khoản. Nhớ hoàn tiền cho khách trước khi hủy!';
     if (trangThaiThanhToan === 1 && phuongThucThanhToan === 1)
         return 'Đơn đã thanh toán VNPay. Cần xử lý hoàn tiền qua VNPay!';
     return null;
@@ -176,14 +178,19 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
             isOpen: true,
             title: next === 1 ? 'Xác nhận thu tiền' : 'Đánh dấu chưa thanh toán',
             message: next === 1
-                ? `Xác nhận đơn #${bk.maDatCho} đã thu tiền mặt?`
-                : `Đánh dấu đơn #${bk.maDatCho} là CHƯA thanh toán?`,
+                ? `Xác nhận đơn #${bk.maDatCho} đã thu tiền?`
+                : `Đánh dấu đơn #${bk.maDatCho} là chưa thanh toán?`,
             type: next === 1 ? 'info' : 'warning',
             onConfirm: async () => {
                 closeConfirm();
                 setLoadingAction('toggle');
                 try {
-                    await updatePaymentStatusAdminApi(bk.maDonDatTour, next);
+                    // Truyền đủ 3 tham số: bookingId, isPaid, maNhanVien
+                    await updatePaymentStatusAdminApi(
+                        bk.maDonDatTour,
+                        next,
+                        user?.maNhanVien // Lấy từ useAuth
+                    );
                     setBk(p => ({ ...p, trangThaiThanhToan: next }));
                     toastSuccess(
                         'Cập nhật thanh toán',
@@ -202,6 +209,34 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
         });
     };
 
+    const handleConfirmRefunded = () => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Xác nhận đã hoàn tiền',
+            message: `Xác nhận đã hoàn tiền cho khách hàng của đơn #${bk.maDatCho}? Hành động này không thể hoàn tác.`,
+            type: 'info',
+            onConfirm: async () => {
+                closeConfirm();
+                setLoadingAction('refund');
+                try {
+                    // Truyền đủ 3 tham số
+                    await updatePaymentStatusAdminApi(
+                        bk.maDonDatTour,
+                        3,
+                        user?.maNhanVien
+                    );
+                    setBk(p => ({ ...p, trangThaiThanhToan: 3 }));
+                    toastSuccess('Đã cập nhật', `Đơn #${bk.maDatCho} đã xác nhận hoàn tiền.`);
+                    onRefresh?.();
+                    onClose?.();
+                } catch (e) {
+                    toastError('Thất bại', getErrorMessage(e));
+                } finally {
+                    setLoadingAction(null);
+                }
+            },
+        });
+    };
     const startEdit = (p) => {
         setEditId(p.maKhachHang);
         setPForm({ ...p });
@@ -256,7 +291,13 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
     const hasTT = bk.thongTinThanhToan;
     const tongKhach = (bk.soNguoiLon || 0) + (bk.soTreEm || 0) + (bk.soEmBe || 0);
     const showComplete = canComplete(bk.trangThaiDon, bk.chuyen?.ngayKetThuc);
-    const toggleLabel = bk.trangThaiThanhToan === 0 ? 'Xác nhận đã thu tiền mặt' : 'Đánh dấu chưa thanh toán';
+    const canToggle = canTogglePayment(
+        bk.trangThaiDon,
+        bk.trangThaiThanhToan,
+        bk.thongTinThanhToan?.phuongThucThanhToan
+    );
+    const canRefund = canConfirmRefunded(bk.trangThaiThanhToan);
+    const toggleLabel = bk.trangThaiThanhToan === 0 ? 'Xác nhận đã thu tiền' : 'Đánh dấu chưa thanh toán';
     const toggleStyle = bk.trangThaiThanhToan === 0
         ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm shadow-emerald-200'
         : 'bg-white hover:bg-orange-50 border border-orange-200 text-orange-600';
@@ -432,7 +473,9 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                                                 ? <Wifi size={13} className="text-blue-500" />
                                                 : hasTT.phuongThucThanhToan === 2
                                                     ? <Banknote size={13} className="text-emerald-500" />
-                                                    : <CreditCard size={13} className="text-slate-500" />}
+                                                    : hasTT.phuongThucThanhToan === 3
+                                                        ? <ArrowRightLeft size={13} className="text-indigo-500" />
+                                                        : <CreditCard size={13} className="text-slate-500" />}
                                             <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
                                                 Phương thức: {hasTT.tenPhuongThuc || 'Không xác định'}
                                             </span>
@@ -479,13 +522,23 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                            {canTogglePayment(bk.trangThaiDon, bk.trangThaiThanhToan) && (
+                            {canToggle && (
                                 <button
                                     onClick={handleTogglePayment}
                                     disabled={!!loadingAction}
                                     className={`px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50 ${toggleStyle}`}
                                 >
                                     {loadingAction === 'toggle' ? 'Đang lưu...' : toggleLabel}
+                                </button>
+                            )}
+
+                            {canRefund && (
+                                <button
+                                    onClick={handleConfirmRefunded}
+                                    disabled={!!loadingAction}
+                                    className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition disabled:opacity-50"
+                                >
+                                    {loadingAction === 'refund' ? 'Đang lưu...' : 'Xác nhận đã hoàn tiền'}
                                 </button>
                             )}
 
@@ -510,7 +563,7 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                                 </button>
                             )}
 
-                            {canApprove(bk.trangThaiDon) && (
+                            {/* {canApprove(bk.trangThaiDon) && (
                                 <button
                                     onClick={handleApprove}
                                     disabled={!user || !!loadingAction}
@@ -519,7 +572,7 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                                     <CheckCircle size={15} />
                                     {loadingAction === 'approve' ? 'Đang duyệt...' : 'Phê duyệt đơn'}
                                 </button>
-                            )}
+                            )} */}
                         </div>
                     </div>
                 </div>
@@ -605,6 +658,12 @@ function PaymentSummaryCard({ trangThaiThanhToan, tongTien, thongTinThanhToan })
             title: 'Đã hoàn tiền',
             desc: 'Đơn đã bị hủy và tiền đã được hoàn lại cho khách.',
         },
+        4: {
+            cls: 'border-orange-200 bg-orange-50',
+            Icon: <Clock size={18} className="text-orange-500 shrink-0" />,
+            title: 'Chờ hoàn tiền',
+            desc: 'Đơn đã hủy, đang chờ hoàn tiền cho khách.',
+        },
     };
     const config = CONFIGS[trangThaiThanhToan] || CONFIGS[0];
 
@@ -615,7 +674,7 @@ function PaymentSummaryCard({ trangThaiThanhToan, tongTien, thongTinThanhToan })
                 <div>
                     <p className="font-semibold">{config.title}</p>
                     <p className="text-sm text-slate-600 mt-1">{config.desc}</p>
-                    {(trangThaiThanhToan === 1 || trangThaiThanhToan === 3) && thongTinThanhToan && (
+                    {(trangThaiThanhToan === 1 || trangThaiThanhToan === 3 || trangThaiThanhToan === 4) && thongTinThanhToan && (
                         <p className="text-xs text-slate-500 mt-1">
                             Phương thức: <span className="font-medium">{thongTinThanhToan.tenPhuongThuc}</span>
                             {' • '}

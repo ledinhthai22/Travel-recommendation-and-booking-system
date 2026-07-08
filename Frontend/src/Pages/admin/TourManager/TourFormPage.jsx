@@ -110,19 +110,27 @@ const mapImageFromApi = (img) => ({
     file: null
 });
 
-const mapDepartureFromApi = (ch) => ({
-    ...ch.chuyenKhoiHanh,
-    maChuyen: ch.chuyenKhoiHanh?.maChuyen,
-    tempId: ch.chuyenKhoiHanh?.maChuyen || Date.now() + Math.random(),
-    gia: ch.danhSachGia?.[0] || {
-        maGia: "",
-        hangKhachSan: "",
-        giaNguoiLon: "",
-        giaTreEm: "",
-        giaEmBe: "",
-        phuThuPhongDon: ""
-    }
-});
+const mapDepartureFromApi = (ch) => {
+    const departure = JSON.parse(JSON.stringify(ch.chuyenKhoiHanh || ch));
+
+    return {
+        ...departure,
+        maChuyen: departure.maChuyen,
+        tempId: departure.maChuyen || `temp-${Date.now()}-${Math.random()}`,
+        gia: ch.danhSachGia?.[0] || {
+            maGia: "",
+            hangKhachSan: "",
+            giaNguoiLon: "",
+            giaTreEm: "",
+            giaEmBe: "",
+            phuThuPhongDon: ""
+        },
+        ngayKhoiHanh: departure.ngayKhoiHanh || null,
+        ngayKetThuc: departure.ngayKetThuc || null,
+        gioDenNoiDi: departure.gioDenNoiDi || null,
+        gioDenNoiVe: departure.gioDenNoiVe || null,
+    };
+};
 
 const buildScheduleFormData = (lt, tourId) => {
     const fd = new FormData();
@@ -154,9 +162,11 @@ const buildPricePayload = (ch) => ({
     GiaEmBe: toNumber(ch.gia?.giaEmBe),
     PhuThuPhongDon: toNumber(ch.gia?.phuThuPhongDon)
 });
+
 const toLocalISO = (d) => {
     if (!d) return null;
     const date = d instanceof Date ? d : new Date(d);
+    if (isNaN(date.getTime())) return null;
     const pad = (n) => String(n).padStart(2, "0");
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 };
@@ -391,27 +401,53 @@ export default function TourFormPage({ mode }) {
             mappedDepartures.map(ch => [ch.maChuyen, serializeDeparture(ch)])
         );
 
-        // DEBUG: xem snapshot ban đầu khi load tour
-        console.log("[DEBUG] departureSnapshotRef sau khi load:", departureSnapshotRef.current);
-        console.log("[DEBUG] mappedDepartures:", mappedDepartures);
-
         setChuyenKhoiHanhs(mappedDepartures);
     };
 
-    const refreshLichTrinhs = async () => {
-        if (!id) return;
+    const reloadTourData = useCallback(async () => {
+        if (!id) return null;
         try {
             const tourData = await getTourDetailApi(id);
             originalDataRef.current = tourData;
+
+            const info = tourData.tourInfo;
+            const matchedKhachSan = tourData.maKhachSans?.length
+                ? khachSans.find(ks => ks.maKhachSan === tourData.maKhachSans[0])
+                : khachSans.find(ks => tourData.tenKhachSans?.includes(ks.tenKhachSan));
+
+            setFormData(prev => ({
+                ...prev,
+                tenTour: info.tenTour || "",
+                maLoaiTour: info.maLoaiTour?.toString() || "",
+                maKhachSan: matchedKhachSan?.maKhachSan?.toString() || "",
+                moTa: info.moTa || "",
+                ngay: info.ngay,
+                dem: info.dem,
+                trongNuoc: typeof info.trongNuoc === "boolean" ? info.trongNuoc : true,
+                diemKhoiHanh: info.diemKhoiHanh || "",
+                trangThai: info.trangThai
+            }));
+
+            setImages((tourData.images || []).map(mapImageFromApi));
+
             const mapped = (tourData.lichTrinh || []).map(mapScheduleFromApi);
             setLichTrinhs(mapped);
             scheduleSnapshotRef.current = Object.fromEntries(
                 mapped.map(lt => [lt.id, serializeSchedule(lt)])
             );
+
+            const mappedDepartures = (tourData.chuyenKhoiHanhs || []).map(mapDepartureFromApi);
+            departureSnapshotRef.current = Object.fromEntries(
+                mappedDepartures.map(ch => [ch.maChuyen, serializeDeparture(ch)])
+            );
+            setChuyenKhoiHanhs(mappedDepartures);
+
+            return tourData;
         } catch (error) {
-            toastError("Lỗi tải dữ liệu", getErrorMessage(error, "Không thể tải lại lịch trình!"));
+            toastError("Lỗi tải dữ liệu", getErrorMessage(error, "Không thể tải lại dữ liệu tour!"));
+            throw error;
         }
-    };
+    }, [id, khachSans]);
 
     const handleNumberChange = (field, value) => {
         if (value === "") {
@@ -490,10 +526,9 @@ export default function TourFormPage({ mode }) {
             fd.append("TourDataJson", JSON.stringify(buildTourInfoJson()));
             files.forEach(file => fd.append("Images", file));
             await updateFullTourApi(id, fd);
-            const tourData = await getTourDetailApi(id);
-            originalDataRef.current = { ...originalDataRef.current, images: tourData.images };
-            setImages((tourData.images || []).map(mapImageFromApi));
+            await reloadTourData();
             imgSaving.markSaved();
+            toastSuccess("Thành công", "Đã cập nhật hình ảnh.");
         } catch (err) {
             imgSaving.markIdle();
             toastError("Lỗi upload ảnh", getErrorMessage(err));
@@ -515,12 +550,9 @@ export default function TourFormPage({ mode }) {
         try {
             imgSaving.markSaving();
             await deleteTourImageApi(targetId);
-            setImages(prev => {
-                const filtered = prev.filter(img => img.id !== targetId);
-                if (filtered.length > 0 && !filtered.some(img => img.anhChinh)) filtered[0].anhChinh = true;
-                return filtered;
-            });
+            await reloadTourData();
             imgSaving.markSaved();
+            toastSuccess("Thành công", "Đã xóa ảnh.");
         } catch (err) {
             imgSaving.markIdle();
             toastError("Lỗi xóa ảnh", getErrorMessage(err));
@@ -536,38 +568,53 @@ export default function TourFormPage({ mode }) {
         try {
             imgSaving.markSaving();
             await setMainTourImageApi(targetId);
-            setImages(prev => prev.map(img => ({ ...img, anhChinh: img.id === targetId })));
+            await reloadTourData();
             imgSaving.markSaved();
+            toastSuccess("Thành công", "Đã đặt ảnh chính.");
         } catch (err) {
             imgSaving.markIdle();
             toastError("Lỗi đặt ảnh chính", getErrorMessage(err));
         }
     };
 
+    // ─── SCHEDULE HANDLERS ──────────────────────────────────────────────
+
     const handleLichTrinhsChange = async (newLichTrinhs) => {
         if (!isEdit || !id) {
             setLichTrinhs(newLichTrinhs);
             return;
         }
+
         try {
             scheduleSaving.markSaving();
+
+            // Sync schedules và nhận về kết quả từ server
             await syncSchedulesImmediate(newLichTrinhs);
-            await refreshLichTrinhs();
+
+            // Reload toàn bộ dữ liệu để đồng bộ
+            await reloadTourData();
+
             scheduleSaving.markSaved();
+           
         } catch (err) {
             scheduleSaving.markIdle();
             toastError("Lỗi lưu lịch trình", getErrorMessage(err));
+            // Rollback nếu lỗi
+            await reloadTourData();
             throw err;
         }
     };
 
     const syncSchedulesImmediate = async (snapshotLichTrinhs) => {
         const originalSchedules = originalDataRef.current?.lichTrinh || [];
+
+        // Tìm schedules cần xóa
         const deletedSchedules = originalSchedules.filter(ol => {
             const originalId = toNumber(ol.maLichTrinh);
             return isExistingId(originalId) && !snapshotLichTrinhs.some(sl => toNumber(sl.id) === originalId);
         });
 
+        // Tìm schedules cần update/create
         const toUpsert = snapshotLichTrinhs.filter(lt => {
             const scheduleId = toNumber(lt.id);
             if (!isExistingId(scheduleId)) return true;
@@ -575,22 +622,94 @@ export default function TourFormPage({ mode }) {
             return prev !== serializeSchedule(lt);
         });
 
-        const deleteResults = await Promise.allSettled(
-            deletedSchedules.map(lt => deleteScheduleApi(toNumber(lt.maLichTrinh)))
-        );
-        const upsertResults = await Promise.allSettled(
-            toUpsert.map(lt => {
-                const scheduleId = toNumber(lt.id);
-                const fd = buildScheduleFormData(lt, id);
-                return isExistingId(scheduleId) ? updateScheduleApi(scheduleId, fd) : createScheduleApi(fd);
-            })
-        );
+        // Xóa schedules
+        if (deletedSchedules.length > 0) {
+            const deleteResults = await Promise.allSettled(
+                deletedSchedules.map(lt => deleteScheduleApi(toNumber(lt.maLichTrinh)))
+            );
+            const failedDeletes = deleteResults.filter(r => r.status === "rejected");
+            if (failedDeletes.length > 0) {
+                throw new Error(`Xóa ${failedDeletes.length} lịch trình thất bại.`);
+            }
+        }
 
-        const failed = [...deleteResults, ...upsertResults].filter(r => r.status === "rejected");
-        if (failed.length > 0) throw new Error(`Có ${failed.length} thao tác lịch trình thất bại.`);
+        // Update/Create schedules
+        if (toUpsert.length > 0) {
+            const upsertResults = await Promise.allSettled(
+                toUpsert.map(async (lt) => {
+                    const scheduleId = toNumber(lt.id);
+                    const fd = buildScheduleFormData(lt, id);
+
+                    if (isExistingId(scheduleId)) {
+                        return await updateScheduleApi(scheduleId, fd);
+                    } else {
+                        return await createScheduleApi(fd);
+                    }
+                })
+            );
+
+            const failedUpserts = upsertResults.filter(r => r.status === "rejected");
+            if (failedUpserts.length > 0) {
+                throw new Error(`Cập nhật ${failedUpserts.length} lịch trình thất bại.`);
+            }
+        }
     };
 
-    const handleChuyenKhoiHanhsChange = async (newChuyen) => {
+    // ─── DEPARTURE HANDLERS ─────────────────────────────────────────────
+
+    const syncSingleDeparture = useCallback(async (snapshotChuyenKhoiHanhs) => {
+        // Tìm chuyến đã thay đổi
+        const changedIndex = snapshotChuyenKhoiHanhs.findIndex(ch => {
+            const maChuyen = toNumber(ch.maChuyen);
+            if (!isExistingId(maChuyen)) return true;
+
+            const currentSnapshot = departureSnapshotRef.current[maChuyen];
+            const newSerialized = serializeDeparture(ch);
+            return currentSnapshot !== newSerialized;
+        });
+
+        if (changedIndex === -1) {
+            console.log("Không có thay đổi nào");
+            return null;
+        }
+
+        const changedDeparture = snapshotChuyenKhoiHanhs[changedIndex];
+        const maChuyen = toNumber(changedDeparture.maChuyen);
+        const payload = buildDeparturePayload(changedDeparture, id);
+
+        console.log(`[API CALL] ${isExistingId(maChuyen) ? 'UPDATE' : 'CREATE'} cho maChuyen=${maChuyen}`);
+
+        try {
+            let responseData;
+            if (isExistingId(maChuyen)) {
+                responseData = await updateDepartureApi(maChuyen, payload);
+            } else {
+                responseData = await createDepartureApi(payload);
+            }
+
+            const mappedDeparture = mapDepartureFromApi({
+                chuyenKhoiHanh: responseData.chuyenKhoiHanh,
+                danhSachGia: responseData.danhSachGia
+            });
+
+            const newMaChuyen = toNumber(mappedDeparture.maChuyen);
+            if (isExistingId(newMaChuyen)) {
+                departureSnapshotRef.current[newMaChuyen] = serializeDeparture(mappedDeparture);
+            }
+
+            return {
+                index: changedIndex,
+                data: mappedDeparture,
+                isNew: !isExistingId(maChuyen)
+            };
+        } catch (err) {
+            console.error(`[API ERROR]`, err?.response?.data || err);
+            throw err;
+        }
+    }, [id]);
+
+    const handleChuyenKhoiHanhsChange = useCallback(async (newChuyen) => {
+        // Cập nhật UI ngay lập tức
         setChuyenKhoiHanhs(newChuyen);
 
         if (!isEdit || !id) return;
@@ -598,36 +717,38 @@ export default function TourFormPage({ mode }) {
         try {
             deleteSaving.markSaving();
 
-            const upsertCount = await syncDeparturesImmediate(newChuyen);
+            const result = await syncSingleDeparture(newChuyen);
 
-            const tourData = await getTourDetailApi(id);
-            originalDataRef.current = {
-                ...originalDataRef.current,
-                chuyenKhoiHanhs: tourData.chuyenKhoiHanhs
-            };
+            if (result) {
+                // Cập nhật chính xác item đã thay đổi
+                setChuyenKhoiHanhs(prev => {
+                    const updated = [...prev];
+                    if (result.isNew) {
+                        updated[result.index] = result.data;
+                    } else {
+                        updated[result.index] = {
+                            ...prev[result.index],
+                            ...result.data,
+                            tempId: prev[result.index].tempId || result.data.tempId
+                        };
+                    }
+                    return updated;
+                });
 
-            const refreshed = (tourData.chuyenKhoiHanhs || []).map(mapDepartureFromApi);
-            setChuyenKhoiHanhs(refreshed);
-
-            departureSnapshotRef.current = Object.fromEntries(
-                refreshed.map(ch => [toNumber(ch.maChuyen), serializeDeparture(ch)])
-            );
+                toastSuccess("Thành công", result.isNew ? "Đã thêm chuyến mới." : "Đã cập nhật chuyến.");
+            }
 
             deleteSaving.markSaved();
-
-            if (upsertCount > 0) {
-                toastSuccess("Thành công", "Đã cập nhật chuyến khởi hành.");
-            } else {
-                toastWarning("Không có gì thay đổi", "Dữ liệu chuyến khởi hành không có gì khác so với trước, không cần lưu.");
-            }
         } catch (err) {
             deleteSaving.markIdle();
             toastError("Lỗi cập nhật chuyến", getErrorMessage(err));
             console.error(err);
+            // Rollback về dữ liệu từ server nếu lỗi
+            await reloadTourData();
         }
-    };
+    }, [isEdit, id, deleteSaving, syncSingleDeparture, reloadTourData]);
+
     const handleDeleteDeparture = async (row) => {
-        // 1. Kiểm tra nếu đang ở chế độ thêm mới Tour (Chưa có ID tour trên server)
         if (!isEdit) {
             const updated = chuyenKhoiHanhs.filter(ch => ch.tempId !== row.tempId);
             setChuyenKhoiHanhs(updated);
@@ -635,81 +756,40 @@ export default function TourFormPage({ mode }) {
             return;
         }
 
-
         let rawId = null;
-
         if (row) {
             if (typeof row.maChuyen !== 'undefined' && row.maChuyen !== null) {
-                rawId = row.maChuyen; // Trường hợp row đã được làm phẳng
+                rawId = row.maChuyen;
             } else if (row.chuyenKhoiHanh && row.chuyenKhoiHanh.maChuyen) {
-                rawId = row.chuyenKhoiHanh.maChuyen; // Trường hợp row là cấu trúc gốc từ Server
+                rawId = row.chuyenKhoiHanh.maChuyen;
             } else if (row.id) {
-                rawId = row.id; // Phòng hờ cấu trúc bảng đặt tên trường định danh là id
+                rawId = row.id;
             }
         }
 
         const targetMaChuyen = Number(rawId);
 
-        // 3. Nếu kiểm tra ID vẫn ra bằng 0 hoặc không hợp lệ, không cho gọi API để tránh 404
         if (!rawId || isNaN(targetMaChuyen) || targetMaChuyen <= 0) {
-            console.error("Dữ liệu dòng chọn xóa bị lỗi định danh. Đối tượng row nhận được thực tế là:", row);
-            toastError("Lỗi dữ liệu", `Không xác định được mã chuyến khởi hành hợp lệ trên hệ thống (Mã nhận được: ${rawId}).`);
+            console.error("Dữ liệu dòng chọn xóa bị lỗi định danh:", row);
+            toastError("Lỗi dữ liệu", `Không xác định được mã chuyến khởi hành hợp lệ.`);
             return;
         }
 
-        // 4. Thực hiện gọi API xóa khi ID đã hợp lệ
         try {
             deleteSaving.markSaving();
-
-            // Gọi API xóa trực tiếp xuống Backend
             await deleteDepartureApi(targetMaChuyen);
-
-            // Tải lại toàn bộ dữ liệu Tour mới nhất từ Server để đồng bộ lại danh sách sạch sẽ
-            const tourData = await getTourDetailApi(id);
-            originalDataRef.current = { ...originalDataRef.current, chuyenKhoiHanhs: tourData.chuyenKhoiHanhs };
-            setChuyenKhoiHanhs((tourData.chuyenKhoiHanhs || []).map(mapDepartureFromApi));
-
+            await reloadTourData();
             deleteSaving.markSaved();
-            toastSuccess("Thành công", "Đã xóa chuyến khởi hành khỏi hệ thống.");
+            toastSuccess("Thành công", "Đã xóa chuyến khởi hành.");
         } catch (err) {
             deleteSaving.markIdle();
             console.error("Chi tiết lỗi từ Server khi xóa chuyến:", err);
             toastError("Lỗi xóa chuyến", getErrorMessage(err, "Không thể xóa chuyến đi này."));
+            await reloadTourData();
         }
     };
 
-    const syncDeparturesImmediate = async (snapshotChuyenKhoiHanhs) => {
-        console.log("[TEST MODE] Đang force update tất cả chuyến:", snapshotChuyenKhoiHanhs.length);
-
-        const upsertResults = await Promise.allSettled(
-            snapshotChuyenKhoiHanhs.map(async (ch) => {
-                const maChuyen = toNumber(ch.maChuyen);
-                const payload = buildDeparturePayload(ch, id);
-
-                console.log(`[API CALL] Gọi ${isExistingId(maChuyen) ? 'UPDATE' : 'CREATE'} cho maChuyen=${maChuyen}`, payload);
-
-                try {
-                    const result = isExistingId(maChuyen)
-                        ? await updateDepartureApi(maChuyen, payload)
-                        : await createDepartureApi(payload);
-
-                    console.log(`[API SUCCESS] maChuyen=${maChuyen} →`, result);
-                    return result;
-                } catch (err) {
-                    console.error(`[API ERROR] maChuyen=${maChuyen} →`, err?.response?.data || err);
-                    throw err;
-                }
-            })
-        );
-
-        const failed = upsertResults.filter(r => r.status === "rejected");
-        if (failed.length > 0) {
-            console.error("Failed updates:", failed);
-            throw new Error(`Có ${failed.length} thao tác thất bại.`);
-        }
-
-        return snapshotChuyenKhoiHanhs.length;
-    };
+    // ─── OTHER HANDLERS ─────────────────────────────────────────────────
 
     const buildTourInfoJson = () => ({
         TourInfo: {
@@ -772,6 +852,7 @@ export default function TourFormPage({ mode }) {
             const fd = new FormData();
             fd.append("TourDataJson", JSON.stringify(buildTourInfoJson()));
             await updateFullTourApi(id, fd);
+            await reloadTourData();
             infoSaving.markSaved();
             toastSuccess("Thành công", "Đã lưu thông tin cơ bản.");
         } catch (err) {
@@ -834,7 +915,7 @@ export default function TourFormPage({ mode }) {
             </div>
 
             <div className="p-8 space-y-10">
-                {/* ── Images Section ── */}
+                {/* Images Section */}
                 <section>
                     <div className="flex items-center gap-3 mb-4">
                         <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
@@ -898,7 +979,7 @@ export default function TourFormPage({ mode }) {
                     />
                 </section>
 
-
+                {/* Basic Info Section */}
                 <section className="border-t border-slate-200 pt-8 space-y-6">
                     <div className="flex items-center justify-between">
                         <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Thông tin cơ bản</p>
@@ -975,7 +1056,7 @@ export default function TourFormPage({ mode }) {
                     />
                 </section>
 
-                {/* ── Itineraries Section ── */}
+                {/* Itineraries Section */}
                 <div>
                     <div className="flex items-center gap-3 mb-2">
                         {isEdit && <SaveStatusBadge state={scheduleSaving.state} />}
@@ -986,7 +1067,7 @@ export default function TourFormPage({ mode }) {
                     <TourItinerariesSection
                         maTour={id}
                         value={lichTrinhs}
-                        onChange={isEdit ? handleLichTrinhsChange : (val) => setLichTrinhs(val)}
+                        onChange={handleLichTrinhsChange}
                         diaDiems={diaDiems}
                         khachSans={khachSans}
                         isViewMode={isViewMode}
@@ -996,7 +1077,7 @@ export default function TourFormPage({ mode }) {
                     />
                 </div>
 
-                {/* ── Departures Section ── */}
+                {/* Departures Section */}
                 <section className="border-t border-slate-200 pt-8 space-y-4">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
@@ -1040,7 +1121,7 @@ export default function TourFormPage({ mode }) {
             <TourScheduleSection
                 ref={tourScheduleRef}
                 value={chuyenKhoiHanhs}
-                onChange={isEdit ? handleChuyenKhoiHanhsChange : setChuyenKhoiHanhs}
+                onChange={handleChuyenKhoiHanhsChange}
                 isViewMode={isViewMode}
                 trongNuoc={formData.trongNuoc}
                 soNgay={formData.ngay}

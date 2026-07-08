@@ -10,6 +10,8 @@ namespace travel_recommendation_and_booking_system.Interfaces
 
         Task<RevenueChartDTO> GetRevenueChartAsync(int year);
 
+        Task<DashboardOverviewDTO> GetYearOverviewAsync(int? year = null);
+
         Task<List<OrderStatusDTO>> GetOrderStatusAsync(int? month = null, int? year = null);
 
         Task<List<TopTourDTO>> GetTopToursAsync(int limit = 5, int? month = null, int? year = null);
@@ -20,5 +22,7 @@ namespace travel_recommendation_and_booking_system.Interfaces
 
         Task<List<TourEngagementDTO>> GetTourEngagementAsync(int? month = null, int? year = null);
         Task<List<RecentTransactionDTO>> GetRecentTransactionsAsync(int limit = 6);
+        //Xuất thông kê
+        Task<byte[]> ExportDashboardReportExcelAsync(int year, int? month = null);
     }
 }

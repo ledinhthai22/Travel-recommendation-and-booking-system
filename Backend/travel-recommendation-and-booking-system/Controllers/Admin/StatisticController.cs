@@ -7,7 +7,6 @@ namespace travel_recommendation_and_booking_system.Controllers
 {
     [ApiController]
     [Route("api/statistics")]
-    
     public class StatisticController : ControllerBase
     {
         private readonly IStatisticService _statisticService;
@@ -17,7 +16,6 @@ namespace travel_recommendation_and_booking_system.Controllers
             _statisticService = statisticService;
         }
 
-  
         [HttpGet("overview")]
         public async Task<IActionResult> GetOverview([FromQuery] int? year = null, [FromQuery] int? month = null)
         {
@@ -25,7 +23,6 @@ namespace travel_recommendation_and_booking_system.Controllers
             return Ok(result);
         }
 
-      
         [HttpGet("revenue-chart")]
         public async Task<IActionResult> GetRevenueChart([FromQuery] int year = 2026)
         {
@@ -33,7 +30,6 @@ namespace travel_recommendation_and_booking_system.Controllers
             return Ok(result);
         }
 
-       
         [HttpGet("order-status")]
         public async Task<IActionResult> GetOrderStatus([FromQuery] int? month = null, [FromQuery] int? year = null)
         {
@@ -50,14 +46,12 @@ namespace travel_recommendation_and_booking_system.Controllers
             return Ok(result);
         }
 
-
         [HttpGet("age-groups")]
         public async Task<IActionResult> GetAgeGroups()
         {
             var result = await _statisticService.GetCustomerAgeGroupsAsync();
             return Ok(result);
         }
-
 
         [HttpGet("new-customers-trend")]
         public async Task<IActionResult> GetNewCustomersTrend([FromQuery] int year = 2026)
@@ -66,18 +60,37 @@ namespace travel_recommendation_and_booking_system.Controllers
             return Ok(result);
         }
 
-
         [HttpGet("tour-engagement")]
         public async Task<IActionResult> GetTourEngagement([FromQuery] int? month = null, [FromQuery] int? year = null)
         {
             var result = await _statisticService.GetTourEngagementAsync(month, year);
             return Ok(result);
         }
+
         [HttpGet("recent-transactions")]
         public async Task<IActionResult> GetRecentTransactions([FromQuery] int limit = 6)
         {
             var result = await _statisticService.GetRecentTransactionsAsync(limit);
             return Ok(result);
+        }
+
+
+        [HttpGet("export-excel")]
+        public async Task<IActionResult> ExportReportExcel([FromQuery] int year, [FromQuery] int? month = null)
+        {
+            if (month.HasValue && (month < 1 || month > 12))
+                return BadRequest("Tháng không hợp lệ (1-12).");
+
+            var fileBytes = await _statisticService.ExportDashboardReportExcelAsync(year, month);
+
+            var fileName = month.HasValue
+                ? $"BaoCaoThongKe_Thang{month}_{year}.xlsx"
+                : $"BaoCaoThongKe_Nam{year}.xlsx";
+
+            return File(
+                fileBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileName);
         }
     }
 }

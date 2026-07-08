@@ -2,6 +2,7 @@
 {
     public class ReviewDTO {
         public int MaNguoiDung { get; set; }
+        public string HoTen { get; set; }
         public int MaTour { get; set; }
         public int DiemDanhGia { get; set; }
         public string NoiDung { get; set; }

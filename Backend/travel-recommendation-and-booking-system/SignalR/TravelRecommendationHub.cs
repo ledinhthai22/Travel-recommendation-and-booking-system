@@ -51,17 +51,16 @@ namespace travel_recommendation_and_booking_system.SignalR
 
         public async Task JoinAdminGroup()
         {
-            Console.WriteLine("Join ADMIN_GROUP");
+            var roleClaim = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
 
-            await Groups.AddToGroupAsync(
-                Context.ConnectionId,
-                "ADMIN_GROUP"
-            );
+            if (roleClaim != "1")
+            {
+                await Clients.Caller.SendAsync("Error", "Không có quyền truy cập");
+                return;
+            }
 
-            await Clients.Caller.SendAsync(
-                "JoinedGroup",
-                "ADMIN_GROUP"
-            );
+            await Groups.AddToGroupAsync(Context.ConnectionId, "ADMIN_GROUP");
+            await Clients.Caller.SendAsync("JoinedGroup", "ADMIN_GROUP");
         }
 
         public async Task LeaveAdminGroup()

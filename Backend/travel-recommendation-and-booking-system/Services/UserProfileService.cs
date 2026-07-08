@@ -16,12 +16,14 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly ILogService _logService;
         private readonly ICurrentUserService _currentUserService;
         private readonly IEmailService _emailService;
-        public UserProfileService(AppDbContext context, ILogService logService, ICurrentUserService currentUserService, IEmailService emailService)
+        private readonly IPaymentService _paymentService;
+        public UserProfileService(AppDbContext context, ILogService logService, ICurrentUserService currentUserService, IEmailService emailService, IPaymentService paymentService)
         {
             _context = context;
             _logService = logService;
             _currentUserService = currentUserService;
             _emailService = emailService;
+            _paymentService = paymentService;
         }
         public async Task<UserProfileReponseDTO?> GetMyProfileAsync(int maNguoiDung)
         {
@@ -159,8 +161,10 @@ namespace travel_recommendation_and_booking_system.Services
         {
             var tongTour = await _context.DonDatTours.CountAsync(d => d.MaNguoiDung == userId);
             var tongDanhGia = await _context.DanhGias.CountAsync(d => d.MaNguoiDung == userId);
-            var tongTien = await _context.ThanhToans.Include(d => d.DonDatTour)
-                .Where(d => d.PhuongThucThanhToan == 1).SumAsync(d => (decimal?)d.TongTienThanhToan) ?? 0m;
+
+            var tongTien = await _context.ThanhToans
+                .Where(t => t.DonDatTour.MaNguoiDung == userId && t.TrangThaiThanhToan == 1)
+                .SumAsync(t => (decimal?)t.TongTienThanhToan) ?? 0m;
 
             var recentTours = await _context.DonDatTours
                 .Include(d => d.ChuyenKhoiHanh)

@@ -27,7 +27,7 @@ namespace travel_recommendation_and_booking_system.Models
         public decimal TongTienThanhToan { get; set; }
         [Column(TypeName = "decimal(18,2)")]
         public decimal? SoTienHoan { get; set; }
-
+        public string? VnpTransactionNo { get; set; }
         public DateTime? NgayHoanTien { get; set; }
         public DateTime NgayThanhToan { get; set; }
         [MaxLength(50)]

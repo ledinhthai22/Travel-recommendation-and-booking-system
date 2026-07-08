@@ -20,16 +20,16 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly IEmailService _emailService;
         private readonly ILogService _logService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IDashboardNotifier _dashboardNotifier;
 
-
-        public AuthService(AppDbContext context, IConfiguration configuration, IEmailService emailService, ILogService logService, ICurrentUserService currentUserService)
+        public AuthService(AppDbContext context, IConfiguration configuration, IEmailService emailService, ILogService logService, ICurrentUserService currentUserService, IDashboardNotifier dashboardNotifier)
         {
             _context = context;
             _configuration = configuration;
             _emailService = emailService;
             _logService = logService;
             _currentUserService = currentUserService;
-
+            _dashboardNotifier = dashboardNotifier;
         }
 
         public async Task<Dictionary<string, List<string>>?> RegisterAsync(RegisterDTO register)
@@ -76,6 +76,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 _context.NguoiDungs.Add(newNguoiDung);
                 await _context.SaveChangesAsync();
+              
                 return null;
 
             }
@@ -83,6 +84,21 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 errors["HeThong"] = new List<string> { $"Lỗi phát sinh khi ghi dữ liệu: {ex.Message}" };
             }
+            try
+            {
+                await _dashboardNotifier.NotifyDashboardChangedAsync("NewCustomer", new
+                {
+                    newNguoiDung.MaNguoiDung,
+                    newNguoiDung.HoTen,
+                    newNguoiDung.Email,
+                    newNguoiDung.NgayTao
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RegisterAsync] Dashboard notify error: {ex.Message}");
+            }
+
             return errors;
         }
         public async Task<LoginResultDTO> LoginAsync(LoginDTO login, string? ipAddress)

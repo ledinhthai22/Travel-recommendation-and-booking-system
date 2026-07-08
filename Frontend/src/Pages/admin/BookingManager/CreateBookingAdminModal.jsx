@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     X, Ticket, Loader2, AlertCircle,
     Users2, CalendarDays, CreditCard, StickyNote,
-    MapPin, ChevronRight, Tag,
+    MapPin, ChevronRight, Tag, Plus
 } from 'lucide-react';
 import InputField from '~/components/UI/Form/InputField';
 import SelectField from '~/components/UI/Form/SelectField';
@@ -15,7 +15,7 @@ import { getDeparturesForBookingApi } from '~/Services/DepartureService';
 import { getPromotionsForBookingApi } from '~/Services/PromotionService';
 import { toastSuccess, toastError } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
-
+import CreateUserModal from '../UserManager/CreateUserModal';
 function SectionCard({ title, icon, children }) {
     return (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
@@ -76,7 +76,7 @@ export default function CreateBookingAdminModal({ onClose, onSuccess }) {
     const [searchingUsers, setSearchingUsers] = useState(false);
     const [searchingTours, setSearchingTours] = useState(false);
     const [searchingPromos, setSearchingPromos] = useState(false);
-
+    const [showCreateUser, setShowCreateUser] = useState(false);
     const [form, setForm] = useState({
         maNguoiDung: '',
         maTour: '',
@@ -250,12 +250,12 @@ export default function CreateBookingAdminModal({ onClose, onSuccess }) {
             danhSachHanhKhach: p.danhSachHanhKhach.map((kh, idx) => idx === i ? { ...kh, phongDon: !kh.phongDon } : kh),
         }));
 
-  
+
     return (
         <div className="fixed inset-0 bg-slate-600/20  z-[1000] flex justify-center items-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-[1340px] shadow-2xl flex flex-col max-h-[92vh] overflow-hidden border border-slate-100">
 
-    
+
                 <div className="flex items-start justify-between px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white shrink-0">
                     <div className="space-y-1.5">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -295,18 +295,30 @@ export default function CreateBookingAdminModal({ onClose, onSuccess }) {
                             <div className="grid grid-cols-1 gap-5">
                                 <div data-error={!!errors.maNguoiDung}>
                                     <FieldLabel required>Người đặt</FieldLabel>
-                                    <SelectField
-                                        value={form.maNguoiDung}
-                                        onChange={v => { setForm(p => ({ ...p, maNguoiDung: v })); clrErr('maNguoiDung'); }}
-                                        options={userOptions}
-                                        valueKey="id" labelKey="name"
-                                        placeholder="Tìm khách hàng..."
-                                        searchable
-                                        searchText="Nhập tên hoặc email..."
-                                        onSearch={handleSearchUsers}
-                                        searching={searchingUsers}
-                                        error={errors.maNguoiDung}
-                                    />
+                                    <div className="flex gap-2 items-start">
+                                        <div className="flex-1">
+                                            <SelectField
+                                                value={form.maNguoiDung}
+                                                onChange={v => { setForm(p => ({ ...p, maNguoiDung: v })); clrErr('maNguoiDung'); }}
+                                                options={userOptions}
+                                                valueKey="id" labelKey="name"
+                                                placeholder="Tìm khách hàng..."
+                                                searchable
+                                                searchText="Nhập tên hoặc email..."
+                                                onSearch={handleSearchUsers}
+                                                searching={searchingUsers}
+                                                error={errors.maNguoiDung}
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCreateUser(true)}
+                                            title="Tạo khách hàng mới"
+                                            className="shrink-0 h-[40px] w-[40px] flex items-center justify-center rounded-xl border border-sky-200 text-sky-600 hover:bg-sky-50 transition"
+                                        >
+                                            <Plus size={18} />
+                                        </button>
+                                    </div>
                                     {selectedUser && (
                                         <div className="mt-2 p-3 bg-sky-50 rounded-xl border border-sky-100 text-xs grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
                                             <span className="text-sky-500 font-semibold">Họ tên</span>
@@ -554,7 +566,7 @@ export default function CreateBookingAdminModal({ onClose, onSuccess }) {
                             />
                         </SectionCard>
                         <SectionCard title="Thanh toán" icon={<CreditCard size={14} className="text-sky-500" />}>
-                            <div className="mb-4 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                            {/* <div className="mb-4 p-3 rounded-xl bg-slate-50 border border-slate-100">
                                 <ToggleSwitch
                                     checked={form.thanhToanNgay}
                                     onChange={v => setForm(p => ({ ...p, thanhToanNgay: v }))}
@@ -566,7 +578,7 @@ export default function CreateBookingAdminModal({ onClose, onSuccess }) {
                                         Đơn sẽ ở trạng thái <strong className="ml-0.5">Chờ duyệt</strong>, chưa có bản ghi thanh toán.
                                     </p>
                                 )}
-                            </div>
+                            </div> */}
 
                             {form.thanhToanNgay && (
                                 <div data-error={!!errors.phuongThucThanhToan}>
@@ -618,6 +630,30 @@ export default function CreateBookingAdminModal({ onClose, onSuccess }) {
                     </div>
                 </div>
             </div>
+
+            {showCreateUser && (
+                <CreateUserModal
+                    isOpen={showCreateUser}
+                    onClose={() => setShowCreateUser(false)}
+                    onSuccess={async ({ email }) => {
+                        try {
+                            const r = await getUsersForBookingSelectApi(email, 1);
+                            const found = r?.data?.find(u => u.email === email) ?? r?.data?.[0];
+                            if (found) {
+                                setUsers(prev => [found, ...prev]);
+                                setForm(p => ({ ...p, email: found.email }));
+                                clrErr('email');
+                            } else {
+                                toastError('Không tìm thấy khách hàng vừa tạo, vui lòng tìm thủ công.');
+                            }
+                        } catch {
+                            toastError('Lỗi khi tải lại danh sách khách hàng.');
+                        } finally {
+                            setShowCreateUser(false);
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 }

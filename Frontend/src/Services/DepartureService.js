@@ -13,18 +13,12 @@ export const createDepartureApi = async (
 };
 
 
-export const updateDepartureApi = async (
-    maChuyen,
-    data
-) => {
-    const response = await axiosClient.put(
-        `/admin/Departure/${maChuyen}`,
-        data
-    );
-
+// Sửa hàm updateDepartureApi để nhận và trả về dữ liệu mới
+export const updateDepartureApi = async (maChuyen, payload) => {
+    const response = await axiosClient.put(`/admin/departure/${maChuyen}`, payload);
     return response.data;
-};
 
+};
 export const getDepartureByTourApi = async (
     maTour
 ) => {

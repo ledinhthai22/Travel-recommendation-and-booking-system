@@ -8,7 +8,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/[controller]")]
     [ApiController]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "Admin&Staff")]
     public class StaffController : ControllerBase
     {
         private readonly IStaffService _staffService;

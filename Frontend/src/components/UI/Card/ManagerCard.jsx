@@ -82,17 +82,34 @@ export default function ManagerCard({
             : "bg-slate-700 text-white";
     }
 
-    const toggleMenu = useCallback(() => {
+    // Tính vị trí dropdown theo VIEWPORT (vì đang dùng position: fixed).
+    // Lỗi cũ: cộng thêm window.scrollY/scrollX vào top/left, trong khi
+    // position: fixed lấy tọa độ theo viewport chứ không theo document.
+    // Kết quả là khi trang bị cuộn (điều tất yếu xảy ra khi list có nhiều
+    // card), dropdown bị đẩy lệch ra ngoài màn hình -> click vào vẫn mở
+    // (isOpen = true) nhưng menu render ở chỗ không nhìn thấy được.
+    const updateDropdownPosition = useCallback(() => {
         if (buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
+
+            // Nếu nút đã bị cuộn ra khỏi khung nhìn thì đóng menu luôn
+            if (rect.bottom < 0 || rect.top > window.innerHeight) {
+                setIsOpen(false);
+                return;
+            }
+
             setDropdownStyle({
-                top: `${rect.bottom + window.scrollY + 6}px`,
-                left: `${rect.left + window.scrollX}px`,
+                top: `${rect.bottom + 6}px`,
+                left: `${rect.left}px`,
                 zIndex: 99999
             });
         }
-        setIsOpen(prev => !prev);
     }, []);
+
+    const toggleMenu = useCallback(() => {
+        updateDropdownPosition();
+        setIsOpen(prev => !prev);
+    }, [updateDropdownPosition]);
 
     // Click outside handler
     useEffect(() => {
@@ -109,6 +126,22 @@ export default function ManagerCard({
 
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isOpen]);
+
+    // Cập nhật lại vị trí dropdown khi cuộn trang hoặc resize cửa sổ
+    // trong lúc menu đang mở, tránh dropdown bị "trôi" sai vị trí.
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleScrollOrResize = () => updateDropdownPosition();
+
+        window.addEventListener('scroll', handleScrollOrResize, true);
+        window.addEventListener('resize', handleScrollOrResize);
+
+        return () => {
+            window.removeEventListener('scroll', handleScrollOrResize, true);
+            window.removeEventListener('resize', handleScrollOrResize);
+        };
+    }, [isOpen, updateDropdownPosition]);
 
     const renderStars = (rating) => {
         return Array.from({ length: 5 }, (_, i) => (
@@ -179,7 +212,7 @@ export default function ManagerCard({
                     </>
                 )}
 
-                {/* TOUR - ĐÃ SỬA */}
+                {/* TOUR */}
                 {type === 'tour' && (
                     <>
                         <p className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mt-1">

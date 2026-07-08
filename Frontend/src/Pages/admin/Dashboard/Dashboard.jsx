@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Ticket, DollarSign, Users, Luggage, Calendar, TrendingUp, TrendingDown, Download } from "lucide-react";
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -10,6 +10,7 @@ import SelectField from "~/components/UI/Form/SelectField";
 import { toastError } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
 import { formatCurrency } from "~/Helper/FormatCurrency";
+import { connection, joinNotificationGroup } from "~/Services/signalRService";
 
 const PIE_PALETTE = ["#0EA5E9", "#8B5CF6", "#F59E0B", "#10B981", "#F43F5E", "#64748B"];
 const colorAt = (i) => PIE_PALETTE[i % PIE_PALETTE.length];
@@ -27,7 +28,6 @@ const formatVND = (value) => {
     if (abs >= 1_000) return `${trim(num / 1_000)}`;
     return num.toLocaleString("vi-VN");
 };
-
 
 const shortMonth = (month) => (typeof month === "string" ? month.replace("Tháng ", "T") : month);
 
@@ -124,7 +124,6 @@ const PieLegend = ({ data }) => (
     </div>
 );
 
-
 const renderDelta = (growth) => {
     if (growth === null || growth === undefined) return "Mới";
     return `${growth >= 0 ? "+" : ""}${growth}%`;
@@ -132,24 +131,27 @@ const renderDelta = (growth) => {
 
 const deltaTypeOf = (growth) => (growth == null || growth >= 0 ? "up" : "down");
 
-
 export default function Dashboard() {
     const currentYear = new Date().getFullYear();
     const [selectedYear, setSelectedYear] = useState(String(currentYear));
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); 
-    const [overview, setOverview] = useState(null);          
-    const [revenueData, setRevenueData] = useState([]);     
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+    const [overview, setOverview] = useState(null);
+    const [revenueData, setRevenueData] = useState([]);
     const [orderStatusData, setOrderStatusData] = useState([]);
-    const [newCustomersData, setNewCustomersData] = useState([]); 
-    const [topToursData, setTopToursData] = useState([]);   
-    const [ageGroupData, setAgeGroupData] = useState([]);  
-    const [recentTransactions, setRecentTransactions] = useState([]); 
+    const [newCustomersData, setNewCustomersData] = useState([]);
+    const [topToursData, setTopToursData] = useState([]);
+    const [ageGroupData, setAgeGroupData] = useState([]);
+    const [recentTransactions, setRecentTransactions] = useState([]);
 
     const [loadingDashboard, setLoadingDashboard] = useState(true);
+    const [exportMode, setExportMode] = useState("month"); // "month" | "year"
+    const [isExporting, setIsExporting] = useState(false);
 
- 
+    const isFirstLoadRef = useRef(true);
+    const debounceTimerRef = useRef(null);
+
     const fetchDashboardData = useCallback(async () => {
-        setLoadingDashboard(true);
+        if (isFirstLoadRef.current) setLoadingDashboard(true);
         try {
             const [
                 overviewRes,
@@ -162,16 +164,13 @@ export default function Dashboard() {
             ] = await Promise.all([
                 StatisticService.getOverview(Number(selectedYear), selectedMonth),
                 StatisticService.getRevenueChart(Number(selectedYear)),
-               
                 StatisticService.getOrderStatus(Number(selectedYear), selectedMonth),
                 StatisticService.getTopTours(5, Number(selectedYear), selectedMonth),
                 StatisticService.getAgeGroups(),
                 StatisticService.getNewCustomersTrend(Number(selectedYear)),
-               
                 StatisticService.getRecentTransactions(6),
             ]);
 
-         
             setOverview(overviewRes);
 
             setRevenueData(revenueRes?.data ?? []);
@@ -184,7 +183,6 @@ export default function Dashboard() {
                 }))
             );
 
-
             setTopToursData(
                 (topToursRes || []).map((d, i) => ({
                     name: d.tenTour ?? d.name ?? d.tourName,
@@ -193,7 +191,6 @@ export default function Dashboard() {
                 }))
             );
 
-
             setAgeGroupData(
                 (ageGroupsRes || []).map((d, i) => ({
                     name: d.groupName,
@@ -201,7 +198,6 @@ export default function Dashboard() {
                     color: colorAt(i),
                 }))
             );
-
 
             {
                 const fullYear = Array.from({ length: 12 }, (_, i) => ({
@@ -214,7 +210,6 @@ export default function Dashboard() {
                 });
                 setNewCustomersData(fullYear);
             }
-
 
             setRecentTransactions(
                 (recentTransactionsRes || []).map((t) => ({
@@ -234,12 +229,52 @@ export default function Dashboard() {
             toastError(getErrorMessage(error));
         } finally {
             setLoadingDashboard(false);
+            isFirstLoadRef.current = false;
         }
     }, [selectedYear, selectedMonth]);
+
+    // Giữ bản mới nhất của fetchDashboardData trong ref để SignalR listener
+    // luôn gọi đúng hàm hiện tại (theo đúng selectedYear/selectedMonth)
+    // mà không cần re-subscribe mỗi khi người dùng đổi tháng/năm.
+    const fetchDashboardDataRef = useRef(fetchDashboardData);
+    useEffect(() => {
+        fetchDashboardDataRef.current = fetchDashboardData;
+    }, [fetchDashboardData]);
 
     useEffect(() => {
         fetchDashboardData();
     }, [fetchDashboardData]);
+
+    // Kết nối SignalR: join ADMIN_GROUP và lắng nghe sự kiện DashboardChanged
+    // do backend bắn ra mỗi khi có booking mới, thanh toán mới, đổi trạng thái đơn, v.v.
+    useEffect(() => {
+        let mounted = true;
+
+        joinNotificationGroup("admin").catch((err) => {
+            console.error("Join ADMIN_GROUP error:", err);
+        });
+
+        const handleDashboardChanged = (payload) => {
+            if (!mounted) return;
+
+            // Gom nhiều sự kiện dồn dập trong khoảng thời gian ngắn
+            // thành một lần refetch duy nhất, tránh gọi API liên tục.
+            clearTimeout(debounceTimerRef.current);
+            debounceTimerRef.current = setTimeout(() => {
+                fetchDashboardDataRef.current();
+            }, 1000);
+        };
+
+        connection.on("DashboardChanged", handleDashboardChanged);
+
+        return () => {
+            mounted = false;
+            clearTimeout(debounceTimerRef.current);
+            connection.off("DashboardChanged", handleDashboardChanged);
+            // Không gọi connection.stop() ở đây vì connection này dùng chung
+            // cho toàn bộ app (thông báo cá nhân, admin group, ...).
+        };
+    }, []);
 
     const handleMonthChange = useCallback((val) => setSelectedMonth(Number(val)), []);
     const handleYearChange = useCallback((val) => setSelectedYear(val), []);
@@ -251,17 +286,25 @@ export default function Dashboard() {
         }))
     ), []);
 
-
     const yearOptions = useMemo(() => (
         Array.from({ length: 5 }, (_, i) => {
             const y = currentYear - i;
             return { value: String(y), label: `Năm ${y}` };
         })
     ), [currentYear]);
-
-    const handleExport = useCallback(() => {
-        alert("Đang xuất dữ liệu thống kê...");
-    }, []);
+    const handleExport = useCallback(async () => {
+        setIsExporting(true);
+        try {
+            await StatisticService.exportReport(
+                Number(selectedYear),
+                exportMode === "month" ? selectedMonth : undefined
+            );
+        } catch (error) {
+            toastError(getErrorMessage(error));
+        } finally {
+            setIsExporting(false);
+        }
+    }, [selectedYear, selectedMonth, exportMode]);
 
     return (
         <div className="min-h-screen p-4 space-y-6 overflow-x-hidden relative">
@@ -282,13 +325,31 @@ export default function Dashboard() {
                 </div>
 
                 <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="w-50">
+                        <SelectField
+                            value={exportMode}
+                            onChange={setExportMode}
+                            options={[
+                                { value: "month", label: "Xuất theo tháng" },
+                                { value: "year", label: "Xuất theo năm" },
+                            ]}
+                            placeholder="Chế độ xuất..."
+                        />
+                    </div>
+
                     <button
                         onClick={handleExport}
-                        className="flex items-center gap-2 bg-white hover:bg-slate-50 text-green-700 font-medium text-sm px-4 py-3 rounded-xl border border-slate-200 shadow-sm transition-all shrink-0"
+                        disabled={isExporting}
+                        className="flex items-center gap-2 bg-white hover:bg-slate-50 text-green-700 font-medium text-sm px-4 py-3 rounded-xl border border-slate-200 shadow-sm transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <Download size={16} className="text-green" />
-                        <span>Xuất thống kê</span>
+                        {isExporting ? (
+                            <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                            <Download size={16} className="text-green" />
+                        )}
+                        <span>{isExporting ? "Đang xuất..." : "Xuất thống kê"}</span>
                     </button>
+
                     <div className="w-40">
                         <SelectField
                             value={selectedMonth}
@@ -312,7 +373,7 @@ export default function Dashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-              
+
                 <KpiCard icon={Ticket} color="bg-sky-500" label="Tổng đặt tour"
                     value={(overview?.totalBookings ?? 0).toLocaleString()}
                     delta={renderDelta(overview?.bookingGrowthPercent)}
@@ -321,7 +382,7 @@ export default function Dashboard() {
                     value={formatCurrency(overview?.totalRevenue)}
                     delta={renderDelta(overview?.revenueGrowthPercent)}
                     deltaType={deltaTypeOf(overview?.revenueGrowthPercent)} />
-                <KpiCard icon={Users} color="bg-purple-500" label="Khách hàng mới"
+                <KpiCard icon={Users} color="bg-purple-500" label="Số lượng hành khách"
                     value={(overview?.newCustomersThisMonth ?? 0).toLocaleString()}
                     delta={renderDelta(overview?.newCustomersGrowthPercent)}
                     deltaType={deltaTypeOf(overview?.newCustomersGrowthPercent)} />
@@ -342,10 +403,10 @@ export default function Dashboard() {
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={revenueData} barSize={28} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                                 <CartesianGrid vertical={false} stroke="#F1F5F9" />
-                             
+
                                 <XAxis dataKey="month" axisLine={false} tickLine={false} interval={0}
                                     tickFormatter={shortMonth} tick={{ fontSize: 12, fill: "#94A3B8" }} />
-                             
+
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94A3B8" }}
                                     tickFormatter={formatVND} />
                                 {/* Tooltip vẫn giữ số đầy đủ (toLocaleString) để chính xác
@@ -384,7 +445,6 @@ export default function Dashboard() {
                     <PieLegend data={orderStatusData} />
                 </div>
             </div>
-
 
             <div className="grid grid-cols-12 gap-5">
                 <div className="col-span-12 lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 min-w-0">
@@ -479,8 +539,8 @@ export default function Dashboard() {
                             <h3 className="font-semibold text-slate-800 text-base">Giao dịch gần đây</h3>
                             <p className="text-xs text-slate-400 mt-0.5">6 giao dịch mới nhất</p>
                         </div>
-                        <Link  to="/Quan-ly/Don-dat-cac-chuyen-di"className="text-sm text-sky-600 hover:text-sky-700 font-medium">
-                            Xem tất cả 
+                        <Link to="/Quan-ly/Don-dat-cac-chuyen-di" className="text-sm text-sky-600 hover:text-sky-700 font-medium">
+                            Xem tất cả
                         </Link>
                     </div>
                     <div className="overflow-x-auto">

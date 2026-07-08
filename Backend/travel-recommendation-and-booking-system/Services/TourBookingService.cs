@@ -24,13 +24,15 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly IEmailService _emailService;
         private readonly INotificationService _notificationService;
         private readonly IRecommendationService _RecommendationService;
-
+        private readonly IDashboardNotifier _dashboardNotifier;
         public TourBookingService(AppDbContext context, ILogService logService,
             ICurrentUserService currentUserService,
             IHubContext<TravelRecommendationHub> hubContext,
             IEmailService emailService,
             INotificationService notificationService,
-            IRecommendationService recommendationService
+            IRecommendationService recommendationService,
+            IDashboardNotifier dashboardNotifier
+            
             )
         {
             _context = context;
@@ -40,6 +42,7 @@ namespace travel_recommendation_and_booking_system.Services
             _emailService = emailService;
             _notificationService = notificationService;
             _RecommendationService = recommendationService;
+            _dashboardNotifier = dashboardNotifier;
         }
 
 
@@ -57,6 +60,10 @@ namespace travel_recommendation_and_booking_system.Services
                 .Where(t => t.TrangThaiThanhToan == 1)
                 .OrderByDescending(t => t.NgayThanhToan)
                 .FirstOrDefault();
+        private static ThanhToan? GetThanhToanGanNhat(ICollection<ThanhToan> thanhToans) =>
+        thanhToans?
+            .OrderByDescending(t => t.NgayThanhToan)
+            .FirstOrDefault();
 
         private static string GetTenPhuongThuc(int ma) => ma switch
         {
@@ -71,7 +78,8 @@ namespace travel_recommendation_and_booking_system.Services
             0 => "Chờ thanh toán",
             1 => "Thành công",
             2 => "Thất bại",
-            3 => "Hoàn tiền",
+            3 => "Đã hoàn tiền",
+            4 => "Chờ hoàn tiền",
             _ => "Không xác định"
         };
 
@@ -147,25 +155,22 @@ namespace travel_recommendation_and_booking_system.Services
                         .FirstOrDefault() ?? 0,
 
                     PhuongThucThanhToan = x.ThanhToans
-                        .Where(t => t.TrangThaiThanhToan == 1)
-                        .OrderByDescending(t => t.NgayThanhToan)
-                        .Select(t => t.PhuongThucThanhToan == 1 ? "VNPay"
-                                   : t.PhuongThucThanhToan == 2 ? "Tiền mặt"
-                                   : t.PhuongThucThanhToan == 3 ? "Chuyển khoản"
-                                   : "Không xác định")
-                        .FirstOrDefault(),
+                    .OrderByDescending(t => t.NgayThanhToan)
+                    .Select(t => t.PhuongThucThanhToan == 1 ? "VNPay"
+                               : t.PhuongThucThanhToan == 2 ? "Tiền mặt"
+                               : t.PhuongThucThanhToan == 3 ? "Chuyển khoản"
+                               : "Không xác định")
+                    .FirstOrDefault(),
 
-                    MaGiaoDich = x.ThanhToans
-                        .Where(t => t.TrangThaiThanhToan == 1)
-                        .OrderByDescending(t => t.NgayThanhToan)
-                        .Select(t => t.MaGiaoDich)
-                        .FirstOrDefault(),
+                                    MaGiaoDich = x.ThanhToans
+                    .OrderByDescending(t => t.NgayThanhToan)
+                    .Select(t => t.MaGiaoDich)
+                    .FirstOrDefault(),
 
-                    NgayThanhToan = x.ThanhToans
-                        .Where(t => t.TrangThaiThanhToan == 1)
-                        .OrderByDescending(t => t.NgayThanhToan)
-                        .Select(t => (DateTime?)t.NgayThanhToan)
-                        .FirstOrDefault()
+                                    NgayThanhToan = x.ThanhToans
+                    .OrderByDescending(t => t.NgayThanhToan)
+                    .Select(t => (DateTime?)t.NgayThanhToan)
+                    .FirstOrDefault()
                 })
                 .ToListAsync();
 
@@ -195,7 +200,7 @@ namespace travel_recommendation_and_booking_system.Services
             if (order == null) return null;
 
             // Lấy giao dịch thành công mới nhất để hiển thị
-            var thanhToan = GetThanhToanThanhCong(order.ThanhToans);
+            var thanhToan = GetThanhToanGanNhat(order.ThanhToans);
 
 
             int trangThaiThanhToan = GetTrangThaiThanhToan(order.ThanhToans);
@@ -319,7 +324,11 @@ namespace travel_recommendation_and_booking_system.Services
                     LinkChiTiet = $"/Thong-Tin-Ca-Nhan"
                 });
 
-
+            await _dashboardNotifier.NotifyDashboardChangedAsync("OrderStatusChanged", new
+            {
+                order.MaDonDatTour,
+                TrangThaiMoi = order.TrangThaiDon
+            });
 
 
 
@@ -384,22 +393,21 @@ namespace travel_recommendation_and_booking_system.Services
 
             if (gdThanhCong != null)
             {
-                // Áp cùng chính sách tỷ lệ hoàn như khách tự hủy (CancelBookingAsync) —
-                // không còn hoàn 100% TongTien mặc định như trước
+                // Áp cùng chính sách tỷ lệ hoàn như khách tự hủy (CancelBookingAsync)
                 decimal tyLeHoan = RefundHelper.TinhTyLeHoanTien(order.ChuyenKhoiHanh.NgayKhoiHanh, now);
                 soTienHoan = Math.Round(gdThanhCong.TongTienThanhToan * tyLeHoan, 0);
 
-                _context.ThanhToans.Add(new ThanhToan
+                if (soTienHoan > 0)
                 {
-                    MaDonDatTour = order.MaDonDatTour,
-                    PhuongThucThanhToan = gdThanhCong.PhuongThucThanhToan,
-                    MaGiaoDich = $"REFUND-{gdThanhCong.MaGiaoDich}",
-                    NoiDung = $"Hoàn tiền đơn hàng bị hủy {order.MaDatCho}. Lý do: {lyDoHuy}",
-                    TongTienThanhToan = soTienHoan,
-                    NgayThanhToan = now,
-                    TrangThaiThanhToan = soTienHoan > 0 ? 4 : trangThaiThanhToanHienTai
-                    // 4 = Chờ hoàn tiền, đồng bộ với CancelBookingAsync — không tự đánh dấu "đã hoàn" (3) ngay
-                });
+                    // FIX: cập nhật ngay trên bản ghi thanh toán thành công gốc,
+                    // không tạo bản ghi ThanhToan mới nữa. Bug cũ: tạo record mới và gán
+                    // TongTienThanhToan = soTienHoan nhưng KHÔNG set SoTienHoan
+                    // => GetPendingRefundsAsync đọc t.SoTienHoan luôn ra null/0.
+                    gdThanhCong.SoTienHoan = soTienHoan;
+                    gdThanhCong.TrangThaiThanhToan = 4; // Chờ hoàn tiền — admin xử lý thủ công
+                    _context.ThanhToans.Update(gdThanhCong);
+                }
+                // Nếu tỷ lệ hoàn = 0% (hủy sát ngày), giữ nguyên trạng thái thanh toán hiện tại
             }
 
             // Trả chỗ lại cho chuyến khởi hành
@@ -448,7 +456,11 @@ namespace travel_recommendation_and_booking_system.Services
                     LyDoHuy = lyDoHuy
                 }
             });
-
+            await _dashboardNotifier.NotifyDashboardChangedAsync("OrderStatusChanged", new
+            {
+                order.MaDonDatTour,
+                TrangThaiMoi = order.TrangThaiDon
+            });
             return true;
         }
 
@@ -520,37 +532,49 @@ namespace travel_recommendation_and_booking_system.Services
                     TrangThaiDon = order.TrangThaiDon
                 }
             });
+            await _dashboardNotifier.NotifyDashboardChangedAsync("OrderStatusChanged", new
+            {
+                order.MaDonDatTour,
+                TrangThaiMoi = order.TrangThaiDon
+            });
 
             return true;
         }
 
 
-        public async Task<bool> UpdatePaymentStatusAsync(int maDonDatTour, int trangThai)
+        public async Task<bool> UpdatePaymentStatusAsync(int maDonDatTour, int trangThai,int maNhanVien)
         {
             if (!new[] { 0, 1, 2, 3 }.Contains(trangThai))
                 throw new InvalidOperationException("Trạng thái thanh toán không hợp lệ.");
 
             var order = await _context.DonDatTours
-                .Include(x => x.NguoiDung)
-                .Include(x => x.ThanhToans)
-                .FirstOrDefaultAsync(x => x.MaDonDatTour == maDonDatTour);
+              .Include(x => x.NguoiDung)
+              .Include(x => x.ThanhToans)
+              .Include(x => x.NhanVien)
+              .FirstOrDefaultAsync(x => x.MaDonDatTour == maDonDatTour);
 
             if (order == null)
                 return false;
 
             int oldTrangThaiThanhToan = GetTrangThaiThanhToan(order.ThanhToans);
 
-            // Thêm lịch sử thanh toán
+            
+            var giaoDichGanNhat = GetThanhToanGanNhat(order.ThanhToans);
+            int phuongThucThanhToan = giaoDichGanNhat?.PhuongThucThanhToan ?? 2;
+
             _context.ThanhToans.Add(new ThanhToan
             {
                 MaDonDatTour = maDonDatTour,
-                PhuongThucThanhToan = 2,
+                PhuongThucThanhToan = phuongThucThanhToan,
                 MaGiaoDich = $"ADJUST-{order.MaDatCho}-{DateTime.Now:yyyyMMddHHmmss}",
                 NoiDung = $"Điều chỉnh trạng thái thanh toán đơn {order.MaDatCho}",
                 TongTienThanhToan = order.TongTien,
                 NgayThanhToan = DateTime.Now,
                 TrangThaiThanhToan = trangThai
             });
+
+            order.TrangThaiDon = 2;
+            order.MaNhanVienDuyet = maNhanVien;
 
             order.NgayCapNhat = DateTime.Now;
 
@@ -594,7 +618,11 @@ namespace travel_recommendation_and_booking_system.Services
                     TrangThaiThanhToan = trangThai
                 }
             });
-
+            await _dashboardNotifier.NotifyDashboardChangedAsync("PaymentStatusChanged", new
+            {
+                MaDonDatTour = maDonDatTour,
+                TrangThaiThanhToan = trangThai
+            });
             return true;
         }
 
@@ -607,7 +635,7 @@ namespace travel_recommendation_and_booking_system.Services
             if (!new[] { 1, 2, 3 }.Contains(trangThai))
                 throw new InvalidOperationException("Trạng thái đơn không hợp lệ.");
             var order = await _context.DonDatTours
-                .Include(x => x.NguoiDung)          // ← cần Include thêm để có MaNguoiDung/thông tin
+                .Include(x => x.NguoiDung)          
                 .FirstOrDefaultAsync(x => x.MaDonDatTour == maDonDatTour);
 
             if (order == null) return false;
@@ -637,7 +665,7 @@ namespace travel_recommendation_and_booking_system.Services
                     new CreateNotificationDTO
                     {
                         TieuDe = tieuDe,
-                        NoiDung = noiDung,
+                        NoiDung = noiDung ?? "",
                         LoaiThongBao = (int)NotificationType.Booking,
                         LinkChiTiet = $"/Thong-Tin-Ca-Nhan"
                     });
@@ -654,7 +682,11 @@ namespace travel_recommendation_and_booking_system.Services
                 GiaTriTruoc = new { TrangThaiDon = oldStatus },
                 GiaTriSau = new { TrangThaiDon = order.TrangThaiDon }
             });
-
+            await _dashboardNotifier.NotifyDashboardChangedAsync("OrderStatusChanged", new
+            {
+                order.MaDonDatTour,
+                TrangThaiMoi = order.TrangThaiDon
+            });
             return true;
         }
 
@@ -834,7 +866,12 @@ namespace travel_recommendation_and_booking_system.Services
                         TongTien = order.TongTien,
                         NgayDat = order.NgayDat
                     });
-
+                    await _dashboardNotifier.NotifyDashboardChangedAsync("NewBooking", new
+                    {
+                        order.MaDonDatTour,
+                        order.NgayDat,
+                        order.TrangThaiDon
+                    });
                     maDonDatTour = order.MaDonDatTour;
                     break; // Thành công → thoát retry
                 }
@@ -981,7 +1018,14 @@ namespace travel_recommendation_and_booking_system.Services
                     GiaTriTruoc = oldValue,
                     GiaTriSau = new { order.SoNguoiLon, order.SoTreEm, order.SoEmBe, order.MaUuDai, order.TrangThaiDon }
                 });
-
+                if (dto.TrangThaiDon.HasValue && dto.TrangThaiDon.Value != oldValue.TrangThaiDon)
+                {
+                    await _dashboardNotifier.NotifyDashboardChangedAsync("OrderStatusChanged", new
+                    {
+                        order.MaDonDatTour,
+                        TrangThaiMoi = order.TrangThaiDon
+                    });
+                }
                 await transaction.CommitAsync();
                 return true;
             }
@@ -1096,16 +1140,6 @@ namespace travel_recommendation_and_booking_system.Services
                     var gia = chuyen.GiaChuyens.FirstOrDefault()
                         ?? throw new InvalidOperationException("Chuyến chưa có bảng giá");
 
-                    var currentUser = _currentUserService.GetUserId();
-                    if (chuyen != null)
-                    {
-                        await _RecommendationService.UpdatePreference(
-                            currentUser,
-                            chuyen.MaTour,
-                            RecommendationWeights.BookTour,
-                            true
-                        );
-                    }
                     UuDai? uuDai = null;
                     decimal giaTriGiam = 0;
                     if (dto.MaUuDai.HasValue)
@@ -1152,12 +1186,8 @@ namespace travel_recommendation_and_booking_system.Services
                         TrangThaiDon = 1,
                     };
 
-
-
                     _context.DonDatTours.Add(order);
-
                     await _context.SaveChangesAsync();
-
 
                     var thanhToan = new ThanhToan
                     {
@@ -1197,9 +1227,26 @@ namespace travel_recommendation_and_booking_system.Services
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
+                    // ====== Các tác vụ phụ (không được phép làm rollback booking đã commit) ======
+
+                    // Cập nhật preference cho recommendation - cô lập riêng, lỗi không ảnh hưởng booking
                     try
                     {
-                        // Thông báo cho client đặt tour thành công
+                        await _RecommendationService.UpdatePreference(
+                            maNguoiDung,
+                            chuyen.MaTour,
+                            RecommendationWeights.BookTour,
+                            true
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[CreateBookingByClientAsync] UpdatePreference error: {ex.Message}");
+                    }
+
+                    // Thông báo cho client + nhân viên
+                    try
+                    {
                         await _notificationService.CreateForUserAsync(
                             maNguoiDung,
                             new CreateNotificationDTO
@@ -1210,7 +1257,6 @@ namespace travel_recommendation_and_booking_system.Services
                                 LinkChiTiet = $"/Thong-Tin-Ca-Nhan"
                             });
 
-                        // Thông báo cho tất cả nhân viên (Admin + Staff) về đơn đặt tour mới
                         var staffIds = await _context.NhanViens
                             .Where(x => x.NgayXoa == null &&
                                        (x.MaVaiTro == RoleIds.Admin ||
@@ -1233,16 +1279,38 @@ namespace travel_recommendation_and_booking_system.Services
                         Console.WriteLine($"[CreateBookingByClientAsync] Notification error: {ex.Message}");
                     }
 
-
-                    await _emailService.SendBookingConfirmationAsync(order);
-
-                    await _hubContext.Clients.All.SendAsync("BookingCreated", new
+                    // Gửi email xác nhận - cô lập riêng
+                    try
                     {
-                        MaDonDatTour = order.MaDonDatTour,
-                        MaDatCho = order.MaDatCho,
-                        TongTien = order.TongTien,
-                        NgayDat = order.NgayDat
-                    });
+                        await _emailService.SendBookingConfirmationAsync(order);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[CreateBookingByClientAsync] Email error: {ex.Message}");
+                    }
+
+                    // Bắn realtime SignalR - cô lập riêng
+                    try
+                    {
+                        await _hubContext.Clients.All.SendAsync("BookingCreated", new
+                        {
+                            MaDonDatTour = order.MaDonDatTour,
+                            MaDatCho = order.MaDatCho,
+                            TongTien = order.TongTien,
+                            NgayDat = order.NgayDat
+                        });
+                        await _dashboardNotifier.NotifyDashboardChangedAsync("NewBooking", new
+                        {
+                            order.MaDonDatTour,
+                            order.NgayDat,
+                            order.TrangThaiDon
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[CreateBookingByClientAsync] Realtime error: {ex.Message}");
+                    }
+
                     return order.MaDonDatTour;
                 }
                 catch (DbUpdateConcurrencyException) when (attempt < maxRetry)
@@ -1261,7 +1329,6 @@ namespace travel_recommendation_and_booking_system.Services
 
             throw new InvalidOperationException("Hệ thống đang bận, vui lòng thử lại.");
         }
-
 
         public async Task<List<UserBookingListDTO>> GetUserBookingsAsync(int maNguoiDung)
         {

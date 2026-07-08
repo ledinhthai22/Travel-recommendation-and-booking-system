@@ -44,7 +44,7 @@ export default function Sidebar() {
         {
             heading: null,
             items: [
-                { title: "Dashboard", path: "/Quan-ly", icon: LayoutDashboard, end: true, roles: [1, 2] }
+                { title: "Dashboard", path: "/Quan-ly", icon: LayoutDashboard, end: true, roles: [1] }
             ]
         },
         {

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Clock } from "lucide-react";
 
 const ITEM_HEIGHT = 34;
-const DROPDOWN_HEIGHT = 260; // ~ max-h-64 (256px) + padding
+const DROPDOWN_HEIGHT = 260;
 
 const Picker = ({
     value,
@@ -14,28 +14,122 @@ const Picker = ({
     onBlur
 }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [inputValue, setInputValue] = useState(value || "");
     const [dropdownStyle, setDropdownStyle] = useState(null);
     const containerRef = useRef(null);
     const dropdownRef = useRef(null);
     const activeItemRef = useRef(null);
     const scrollContainerRef = useRef(null);
+    const inputRef = useRef(null);
 
-    // Đóng khi click ra ngoài (kể cả dropdown đã được portal ra <body>)
+    // Đồng bộ từ props value ngoài vào input khi thay đổi bên ngoài
+    useEffect(() => {
+        setInputValue(value || "");
+    }, [value]);
+
+    // Hàm chuẩn hóa và validate chuỗi thời gian khi người dùng dừng nhập (Enter hoặc Blur)
+    const validateAndCommit = (rawVal) => {
+        const trimmed = rawVal.trim();
+        if (!trimmed) {
+            onChange?.("");
+            setInputValue("");
+            return;
+        }
+
+        const parts = trimmed.split(":");
+        let hour = parseInt(parts[0], 10);
+        let min = parseInt(parts[1] || "0", 10);
+
+        if (isNaN(hour)) hour = 0;
+        if (isNaN(min)) min = 0;
+
+        // Giới hạn giá trị hợp lệ
+        hour = Math.max(0, Math.min(23, hour));
+        min = Math.max(0, Math.min(59, min));
+
+        // Làm tròn phút về khoảng 15 phút (00, 15, 30, 45)
+        const roundedMin = Math.floor(min / 15) * 15;
+        
+        const validTime = `${String(hour).padStart(2, "0")}:${String(roundedMin).padStart(2, "0")}`;
+        
+        onChange?.(validTime);
+        setInputValue(validTime);
+    };
+
+    const handleInputChange = (e) => {
+        let raw = e.target.value;
+        
+        // Chỉ cho phép nhập số và dấu hai chấm
+        let cleaned = raw.replace(/[^0-9:]/g, "");
+
+        // Tự động thêm dấu ":" khi người dùng gõ xong 2 chữ số giờ (ví dụ "12" -> "12:")
+        if (cleaned.length === 2 && !cleaned.includes(":")) {
+            const hour = parseInt(cleaned, 10);
+            if (hour >= 0 && hour <= 23) {
+                cleaned = cleaned + ":";
+            }
+        }
+
+        // Giới hạn tối đa 5 ký tự (HH:mm)
+        if (cleaned.length > 5) {
+            cleaned = cleaned.slice(0, 5);
+        }
+
+        setInputValue(cleaned);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            validateAndCommit(inputValue);
+            setIsOpen(false);
+            onBlur?.();
+        }
+
+        if (e.key === "Escape") {
+            e.preventDefault();
+            setIsOpen(false);
+            setInputValue(value || "");
+            onBlur?.();
+        }
+
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            e.preventDefault();
+            if (!isOpen) {
+                setIsOpen(true);
+            }
+        }
+    };
+
+    const handleFocus = () => {
+        if (!disabled) {
+            if (!value) {
+                const now = new Date();
+                const currentHour = String(now.getHours()).padStart(2, "0");
+                const roundedMinutes = String(Math.floor(now.getMinutes() / 15) * 15).padStart(2, "0");
+                const defaultTime = `${currentHour}:${roundedMinutes}`;
+                onChange?.(defaultTime);
+                setInputValue(defaultTime);
+            }
+            setIsOpen(true);
+        }
+    };
+
+    // Xử lý click ra ngoài: Validate dữ liệu đang nhập dở dang và đóng dropdown
     useEffect(() => {
         const handleClickOutside = (e) => {
             const clickedInsideInput = containerRef.current?.contains(e.target);
             const clickedInsideDropdown = dropdownRef.current?.contains(e.target);
             if (!clickedInsideInput && !clickedInsideDropdown && isOpen) {
                 setIsOpen(false);
+                validateAndCommit(inputValue); // Khớp dữ liệu khi bấm ra ngoài
                 onBlur?.();
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [onBlur, isOpen]);
+    }, [isOpen, inputValue, value, onBlur]);
 
-    // Tính vị trí dropdown theo input thật, dùng position: fixed
-    // để KHÔNG bị cắt bởi các container cha có overflow-x-auto/overflow-hidden (bảng, modal...)
     const updatePosition = () => {
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
@@ -57,8 +151,6 @@ const Picker = ({
         if (!isOpen) return;
         updatePosition();
 
-        // capture: true để bắt được cả sự kiện scroll của các container cha
-        // (div.overflow-x-auto của bảng, div.overflow-y-auto của modal, ...)
         const handle = () => updatePosition();
         window.addEventListener("scroll", handle, true);
         window.addEventListener("resize", handle);
@@ -66,7 +158,6 @@ const Picker = ({
             window.removeEventListener("scroll", handle, true);
             window.removeEventListener("resize", handle);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen]);
 
     useEffect(() => {
@@ -101,25 +192,15 @@ const Picker = ({
         <div className="relative w-full" ref={containerRef}>
             <div className="relative flex items-center">
                 <input
+                    ref={inputRef}
                     type="text"
-                    readOnly
-                    value={value || ""}
+                    value={inputValue} // Bind trực tiếp với state đang nhập thay vì qua hàm format trung gian gây giật lag
+                    onChange={handleInputChange}
+                    onKeyDown={handleKeyDown}
+                    onFocus={handleFocus}
                     placeholder={placeholder}
                     disabled={disabled}
-                    onClick={() => {
-                        if (!disabled) {
-                            if (!value) {
-                                const now = new Date();
-                                const currentHour = String(now.getHours()).padStart(2, "0");
-                                const roundedMinutes = String(Math.floor(now.getMinutes() / 15) * 15).padStart(2, "0");
-
-                                const defaultTime = `${currentHour}:${roundedMinutes}`;
-                                onChange?.(defaultTime);
-                            }
-                            setIsOpen((v) => !v);
-                        }
-                    }}
-                    className={`w-full rounded-xl border bg-white text-slate-900 px-4 py-2.5 outline-none transition-all duration-200 cursor-pointer text-sm
+                    className={`w-full rounded-xl border bg-white text-slate-900 px-4 py-2.5 outline-none transition-all duration-200 text-sm font-mono
                         ${error
                             ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-100"
                             : "border-slate-200 focus:border-sky-500 focus:ring-1 focus:ring-sky-100"
@@ -139,6 +220,9 @@ const Picker = ({
                     style={dropdownStyle}
                     className="min-w-[140px] bg-white border border-slate-200 shadow-xl rounded-2xl p-3 z-[10000] animate-in fade-in zoom-in-95 duration-200"
                 >
+                    <div className="mb-2 text-xs text-slate-500 px-2 font-medium">
+                        Nhập hoặc chọn giờ
+                    </div>
                     <div
                         ref={scrollContainerRef}
                         className="overflow-y-auto max-h-64 pr-1 grid grid-cols-1 gap-1.5 scrollbar-thin"
@@ -151,7 +235,8 @@ const Picker = ({
                                     ref={isSelected ? activeItemRef : null}
                                     type="button"
                                     onClick={() => {
-                                        onChange(timeLabel);
+                                        onChange?.(timeLabel);
+                                        setInputValue(timeLabel);
                                         setIsOpen(false);
                                         onBlur?.();
                                     }}

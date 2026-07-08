@@ -7,19 +7,14 @@ import SelectField from "~/components/UI/Form/SelectField";
 import TimePicker from "~/components/UI/Form/TimePicker";
 import { toastSuccess, toastWarning } from "~/utils/Toast";
 import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
-
-// ⚠️ Kiểm tra lại đường dẫn import cho đúng với cấu trúc thư mục thực tế của bạn.
-// getProvincesApi lấy danh sách tỉnh/thành (provinces.open-api.vn)
 import { getProvincesApi } from "~/Services/ProvinceService";
-// getLocationsByProvinceApi lọc điểm tham quan theo tỉnh
 import { getLocationsByProvinceApi } from "~/Services/LocationService";
-// getHotelsByAddressApi lọc khách sạn theo tỉnh/địa chỉ
 import { getHotelsByAddressApi } from "~/Services/HotelService";
 
 const BUA_AN_OPTIONS = [
     { value: "", label: "Không có" },
     { value: "Trưa, Tối", label: "Trưa, Tối" },
-    { value: "Sáng, Trưa, Tối", label: "Sáng,  Chiều, Tối" },
+    { value: "Sáng, Trưa, Tối", label: "Sáng, Chiều, Tối" },
 ];
 
 const makeTempId = () => `CTLT-TEMP-${Date.now()}-${Math.random()}`;
@@ -69,7 +64,6 @@ const validateItinerary = (item) => {
     return errs;
 };
 
-
 export default function TourItinerariesSection({
     value = [],
     onChange,
@@ -92,7 +86,6 @@ export default function TourItinerariesSection({
     const [editingSubKey, setEditingSubKey] = useState(null);
     const [editingSubRow, setEditingSubRow] = useState(null);
 
-    // ── Lọc điểm tham quan & khách sạn theo tỉnh/thành ──
     const [provinces, setProvinces] = useState([]);
     const [selectedProvince, setSelectedProvince] = useState("");
     const [diaDiemsByProvince, setDiaDiemsByProvince] = useState([]);
@@ -101,8 +94,6 @@ export default function TourItinerariesSection({
 
     const safeData = Array.isArray(value) ? value : [];
 
-    // Danh sách điểm tham quan/khách sạn "đang hiệu lực" để đổ vào các ô chọn:
-    // nếu người dùng đã chọn tỉnh -> chỉ lấy theo tỉnh đó, ngược lại lấy toàn bộ (props)
     const effectiveDiaDiems = selectedProvince ? diaDiemsByProvince : diaDiems;
     const effectiveKhachSans = selectedProvince ? khachSansByProvince : khachSans;
 
@@ -126,7 +117,6 @@ export default function TourItinerariesSection({
         [effectiveDiaDiems, selectedLocationIds]
     );
 
-    // Lấy danh sách tỉnh/thành 1 lần khi mount
     useEffect(() => {
         const fetchProvinces = async () => {
             try {
@@ -139,7 +129,6 @@ export default function TourItinerariesSection({
         fetchProvinces();
     }, []);
 
-    // Khi chọn tỉnh/thành -> tải điểm tham quan + khách sạn tương ứng
     useEffect(() => {
         if (!selectedProvince) {
             setDiaDiemsByProvince([]);
@@ -176,7 +165,6 @@ export default function TourItinerariesSection({
         return () => { cancelled = true; };
     }, [selectedProvince]);
 
-    // Modal handlers
     const openAddModal = () => {
         setCurrentItinerary(makeDayRow(safeData.length + 1));
         setNewSubRow(makeSubRow());
@@ -238,7 +226,6 @@ export default function TourItinerariesSection({
         setSelectedProvince(val);
     };
 
-    // Sub-row handlers
     const handleAddSubRow = () => {
         if (!newSubRow.gioBatDau) {
             setTimelineError("Vui lòng nhập giờ bắt đầu");
@@ -346,7 +333,6 @@ export default function TourItinerariesSection({
             toastSuccess("Thành công", `Đã lưu Ngày ${currentItinerary.soThuTuNgay}`);
             setShowItineraryModal(false);
         } catch {
-            // Lỗi đã toast ở component cha
         } finally {
             setIsSaving(false);
         }
@@ -404,11 +390,9 @@ export default function TourItinerariesSection({
                 isLocked={isLocked}
             />
 
-            {/* Modal */}
             {showItineraryModal && currentItinerary && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-sm">
                     <div className="bg-white w-full max-w-6xl rounded-2xl shadow-2xl flex flex-col overflow-hidden max-h-[95vh]">
-                        {/* Header */}
                         <div className="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
                             <h2 className="text-lg font-bold text-slate-800">
                                 Ngày {currentItinerary.soThuTuNgay} —{" "}
@@ -420,9 +404,7 @@ export default function TourItinerariesSection({
                         </div>
 
                         <div className="p-6 space-y-6 overflow-y-auto flex-1 bg-slate-50/50">
-                            {/* Thông tin chung - Layout Thoải mái hơn */}
                             <div className="flex flex-col md:flex-row gap-6 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                                {/* Khối Ảnh bên trái */}
                                 <div className="w-full md:w-1/4 shrink-0">
                                     <div className="aspect-[5/3] w-full rounded-xl border border-slate-200 overflow-hidden relative group bg-slate-50">
                                         {currentItinerary.preview ? (
@@ -444,7 +426,6 @@ export default function TourItinerariesSection({
                                     </div>
                                 </div>
 
-                                {/* Khối Các Input bên phải */}
                                 <div className="flex-1 space-y-5">
                                     <InputField
                                         label="Tiêu đề ngày"
@@ -510,10 +491,9 @@ export default function TourItinerariesSection({
                                             )}
                                         </div>
                                     </div>
-
-
                                 </div>
                             </div>
+
                             <InputField
                                 label="Tóm tắt hoạt động chính"
                                 multiline
@@ -524,9 +504,7 @@ export default function TourItinerariesSection({
                                 placeholder="Nhập khái quát các điểm đến, trải nghiệm nổi bật của ngày..."
                             />
 
-                            {/* Khung thêm & hiển thị danh sách hoạt động chi tiết (Timeline Table) */}
                             <div className={`bg-white border rounded-2xl shadow-sm ${modalErrors.chiTietLichTrinhs ? "border-red-400" : "border-slate-200"}`}>
-                                {/* Header bảng và Form thêm mốc */}
                                 {!isViewMode && !isLocked && (
                                     <div className="p-5 bg-slate-50/70 border-b border-slate-100 space-y-4">
                                         <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Thêm mốc thời gian & hoạt động</h4>
@@ -534,7 +512,6 @@ export default function TourItinerariesSection({
                                             <div className="md:col-span-3">
                                                 <label className="text-[11px] font-semibold text-slate-500 mb-1 block">Giờ bắt đầu *</label>
                                                 <TimePicker
-
                                                     value={newSubRow.gioBatDau}
                                                     onChange={(timeStr) => setNewSubRow((p) => ({ ...p, gioBatDau: timeStr }))}
                                                 />
@@ -572,7 +549,7 @@ export default function TourItinerariesSection({
                                                     type="button"
                                                     onClick={handleAddSubRow}
                                                     disabled={isSaving}
-                                                    className="px-7 py-3.5  bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold rounded-4xl shadow-sm transition-colors"
+                                                    className="px-7 py-3.5 bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold rounded-4xl shadow-sm transition-colors"
                                                 >
                                                     Thêm
                                                 </button>
@@ -592,7 +569,6 @@ export default function TourItinerariesSection({
                                     </div>
                                 )}
 
-                                {/* Bảng danh sách mốc thời gian làm lại thông thoáng hơn */}
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left text-sm border-collapse">
                                         <thead>
@@ -683,7 +659,6 @@ export default function TourItinerariesSection({
 
                             {modalErrors.chiTietLichTrinhs && <p className="text-red-600 text-sm font-medium">{modalErrors.chiTietLichTrinhs}</p>}
 
-                            {/* Lưu ý quan trọng */}
                             <InputField
                                 label="Lưu ý quan trọng cho ngày này"
                                 multiline
@@ -695,10 +670,8 @@ export default function TourItinerariesSection({
                             />
                         </div>
 
-                        {/* Footer Modal */}
                         {!isViewMode && !isLocked && (
                             <div className="p-4 px-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
-
                                 <button
                                     onClick={handleSaveItineraryModal}
                                     disabled={isSaving}

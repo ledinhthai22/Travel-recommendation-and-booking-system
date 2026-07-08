@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs;
 using travel_recommendation_and_booking_system.DTOs.Departure;
@@ -28,15 +29,54 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly IWebHostEnvironment _env;
         private readonly ILogService _logService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IMemoryCache _cache;
         private const string DEFAULT_SCHEDULE_IMAGE = "default-schedule.jpg";
+        private const string CacheVersionKey = "tour:cache:version";
+        private static readonly TimeSpan ListCacheDuration = TimeSpan.FromMinutes(10);
+        private static readonly TimeSpan DetailCacheDuration = TimeSpan.FromMinutes(5);
+
+        private int GetCacheVersion()
+        {
+            return _cache.GetOrCreate(CacheVersionKey, entry =>
+            {
+                entry.SlidingExpiration = TimeSpan.FromDays(1);
+                return 1;
+            });
+        }
+
+        private void BumpCacheVersion()
+        {
+            var current = GetCacheVersion();
+            _cache.Set(CacheVersionKey, current + 1, TimeSpan.FromDays(1));
+        }
+
+        private void ClearTourCache(int tourId)
+        {
+
+            var detailKey = VKey($"tour:detail:{tourId}");
+            _cache.Remove(detailKey);
 
 
-        public TourService(AppDbContext context, IWebHostEnvironment env, ILogService logService, ICurrentUserService currentUserService)
+            var tour = _context.Tours.AsNoTracking().FirstOrDefault(t => t.MaTour == tourId);
+            if (tour != null && !string.IsNullOrEmpty(tour.Slug))
+            {
+                var slugKey = VKey($"tour:detail:slug:{tour.Slug.ToLower()}");
+                _cache.Remove(slugKey);
+            }
+            BumpCacheVersion();
+
+            
+        }
+
+        private string VKey(string key) => $"v{GetCacheVersion()}:{key}";
+
+        public TourService(AppDbContext context, IWebHostEnvironment env, ILogService logService, ICurrentUserService currentUserService, IMemoryCache cache)
         {
             _context = context;
             _env = env;
             _logService = logService;
             _currentUserService = currentUserService;
+            _cache = cache;
         }
 
 
@@ -51,7 +91,7 @@ namespace travel_recommendation_and_booking_system.Services
 
             try
             {
-                // 1. Tạo Tour
+               
                 var tourEntity = new Tour
                 {
                     TenTour = dto.TourInfo.TenTour,
@@ -66,13 +106,14 @@ namespace travel_recommendation_and_booking_system.Services
                 };
 
                 _context.Tours.Add(tourEntity);
-                await _context.SaveChangesAsync(); // sinh MaTour
+                await _context.SaveChangesAsync(); 
 
-                // 2. Upload ảnh tour
+             
+
                 if (images != null && images.Any())
                     await UploadImagesTourAsync(tourEntity.MaTour, images);
 
-                // 3. Tạo LichTrinh — mỗi ngày gắn 1 khách sạn riêng qua MaKhachSan
+              
                 int imageIndex = 0;
                 var lichTrinhMap = new Dictionary<int, LichTrinh>();
 
@@ -96,8 +137,7 @@ namespace travel_recommendation_and_booking_system.Services
                         imageIndex++;
                     }
 
-                    // FIX: chỉ validate khách sạn khi MaKhachSan thực sự được chọn (> 0),
-                    // trước đây HasValue=true kể cả khi = 0 khiến request bị reject oan
+              
                     if (schedule.MaKhachSan.HasValue && schedule.MaKhachSan > 0)
                     {
                         var hotel = await _context.KhachSans
@@ -125,7 +165,7 @@ namespace travel_recommendation_and_booking_system.Services
                         TenLichTrinh = schedule.TenLichTrinh,
                         MaKhachSan = (schedule.MaKhachSan.HasValue && schedule.MaKhachSan > 0)
                                             ? schedule.MaKhachSan
-                                            : null,                    // ← khách sạn theo ngày
+                                            : null,                   
                         NgayTao = DateTime.Now,
                         NgayCapNhat = DateTime.Now
                     };
@@ -164,9 +204,9 @@ namespace travel_recommendation_and_booking_system.Services
                 }
 
 
-                await _context.SaveChangesAsync(); // sinh MaLichTrinh cho tất cả
+                await _context.SaveChangesAsync();
 
-                // 4. Tạo ChuyenKhoiHanh
+
                 if (dto.ChuyenKhoiHanhs != null)
                 {
                     foreach (var dep in dto.ChuyenKhoiHanhs)
@@ -182,7 +222,7 @@ namespace travel_recommendation_and_booking_system.Services
                         if (dep.DanhSachGia == null || !dep.DanhSachGia.Any())
                             throw new Exception("Chuyến khởi hành: Phải có ít nhất 1 mức giá.");
 
-                        bool TrongNuoc = true; // TODO: đang hardcode true — cần tiêu chí xác định trong nước/quốc tế
+                        bool TrongNuoc = true; 
                         var tenPhuongTien = await GetTenPhuongTienAsync(chuyen.MaPhuongTien);
                         var maChuyenCode = await GenerateUniqueCodeAsync(
                             TrongNuoc,
@@ -223,13 +263,14 @@ namespace travel_recommendation_and_booking_system.Services
                     }
                 }
 
-                // 5. Tính GiaTu
+             
                 tourEntity.GiaTu = dto.ChuyenKhoiHanhs != null && dto.ChuyenKhoiHanhs.Any()
                     ? dto.ChuyenKhoiHanhs.SelectMany(x => x.DanhSachGia).Min(x => x.GiaNguoiLon)
                     : 0;
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+                BumpCacheVersion();
 
                 await _logService.LoggingAsync(new LogDTO
                 {
@@ -266,7 +307,7 @@ namespace travel_recommendation_and_booking_system.Services
             try
             {
                 var existingTour = await _context.Tours
-                    .FirstOrDefaultAsync(t => t.MaTour == tourId && t.NgayXoa == null); // FIX: thêm NgayXoa == null
+                    .FirstOrDefaultAsync(t => t.MaTour == tourId && t.NgayXoa == null); 
 
                 if (existingTour == null) return false;
 
@@ -309,6 +350,8 @@ namespace travel_recommendation_and_booking_system.Services
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
+                ClearTourCache(tourId);
+
                 await _logService.LoggingAsync(new LogDTO
                 {
                     LoaiTaiKhoan = AccountTypeDTO.NhanVien,
@@ -339,9 +382,13 @@ namespace travel_recommendation_and_booking_system.Services
         }
         public async Task<TourReponseDTO?> GetTourDetailAsync(int tourId)
         {
+            var cacheKey = VKey($"tour:detail:{tourId}");
+            if (_cache.TryGetValue(cacheKey, out TourReponseDTO? cached))
+                return cached;
+
             var tour = await _context.Tours
                 .Include(t => t.LichTrinhs).ThenInclude(l => l.CTLichTrinhs)
-                .Include(t => t.LichTrinhs).ThenInclude(l => l.KhachSan)  // ← KS theo ngày
+                .Include(t => t.LichTrinhs).ThenInclude(l => l.KhachSan)  
                 .Include(t => t.ChuyenKhoiHanhs).ThenInclude(c => c.GiaChuyens)
                 .Include(t => t.HinhAnhTours)
                 .AsNoTracking()
@@ -349,7 +396,7 @@ namespace travel_recommendation_and_booking_system.Services
 
             if (tour == null) return null;
 
-            return new TourReponseDTO
+            var result = new TourReponseDTO
             {
                 TourInfo = new TourDTO
                 {
@@ -388,7 +435,7 @@ namespace travel_recommendation_and_booking_system.Services
                         LuuY = l.LuuY,
                         TrangThai = l.TrangThai,
                         DuongDanAnh = l.DuongDanAnh,
-                        // ← khách sạn của ngày này
+                     
                         MaKhachSan = l.MaKhachSan,
                         TenKhachSan = l.KhachSan != null ? l.KhachSan.TenKhachSan : null,
                         SlugKhachSan = l.KhachSan != null ? l.KhachSan.Slug : null,
@@ -437,39 +484,58 @@ namespace travel_recommendation_and_booking_system.Services
                             }).ToList() ?? new List<GiaChuyenDTO>()
                     }).ToList() ?? new List<DepartureFullDTO>()
             };
+
+            _cache.Set(cacheKey, result, DetailCacheDuration);
+            return result;
         }
         //xem chi tiết bằng Slug cho client
         public async Task<TourReponseDTO?> GetTourDetailBySlugAsync(string slug)
         {
+            var normalizedSlug = slug.Trim().ToLower();
+            var cacheKey = VKey($"tour:detail:slug:{normalizedSlug}");
+            if (_cache.TryGetValue(cacheKey, out TourReponseDTO? cached))
+                return cached;
+
             var now = DateTime.Now;
 
             var tour = await _context.Tours
-                .Include(t => t.LichTrinhs).ThenInclude(l => l.CTLichTrinhs).ThenInclude(d => d.DiaDiem)
-                .Include(t => t.LichTrinhs).ThenInclude(l => l.KhachSan)
-                .Include(t => t.ChuyenKhoiHanhs).ThenInclude(pt => pt.PhuongTien)
-                .Include(t => t.ChuyenKhoiHanhs).ThenInclude(c => c.GiaChuyens)
-                .Include(t => t.HinhAnhTours)
-                .Include(t => t.DanhGias)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.Slug == slug.Trim().ToLower() && t.NgayXoa == null);
+                .AsSplitQuery() // ← tách query cho từng collection, tránh cartesian join
+                .Include(t => t.LichTrinhs.Where(l => l.NgayXoa == null))
+                    .ThenInclude(l => l.CTLichTrinhs)
+                    .ThenInclude(d => d.DiaDiem)
+                .Include(t => t.LichTrinhs.Where(l => l.NgayXoa == null))
+                    .ThenInclude(l => l.KhachSan)
+                .Include(t => t.ChuyenKhoiHanhs.Where(c =>
+                        c.NgayXoa == null
+                     && c.NgayKhoiHanh >= now
+                     && c.TrangThai != 3
+                     && c.TrangThai != 4
+                     && c.SoChoToiDa > 0
+                     && (c.SoChoToiDa - c.SoChoDaDat) > 0))
+                    .ThenInclude(c => c.PhuongTien)
+                .Include(t => t.ChuyenKhoiHanhs.Where(c =>
+                        c.NgayXoa == null
+                     && c.NgayKhoiHanh >= now
+                     && c.TrangThai != 3
+                     && c.TrangThai != 4
+                     && c.SoChoToiDa > 0
+                     && (c.SoChoToiDa - c.SoChoDaDat) > 0))
+                    .ThenInclude(c => c.GiaChuyens)
+                .Include(t => t.HinhAnhTours.Where(a => a.NgayXoa == null))
+                .Include(t => t.DanhGias.Where(d => d.NgayXoa == null))
+                    .ThenInclude(d => d.NguoiDung)
+                .FirstOrDefaultAsync(t => t.Slug == normalizedSlug && t.NgayXoa == null);
 
             if (tour == null) return null;
 
-            // Lọc danh sách chuyến khởi hành hợp lệ trước
-            var validDepartures = tour.ChuyenKhoiHanhs?
-                .Where(c => c.NgayXoa == null
-                         && c.NgayKhoiHanh >= now
-                         && c.TrangThai != 3
-                         && c.TrangThai != 4
-                         && c.SoChoToiDa > 0
-                         && (c.SoChoToiDa - c.SoChoDaDat) > 0)
-                .ToList() ?? new List<ChuyenKhoiHanh>();
+            // Đã lọc sẵn ở DB, không cần lọc lại ở memory nữa
+            var validDepartures = tour.ChuyenKhoiHanhs?.ToList() ?? new List<ChuyenKhoiHanh>();
 
-            // Nếu tour không có chuyến khởi hành hợp lệ nào -> coi như không tồn tại để xem
             if (!validDepartures.Any())
                 return null;
 
-            return new TourReponseDTO
+            var result = new TourReponseDTO
             {
                 TourInfo = new TourDTO
                 {
@@ -484,7 +550,6 @@ namespace travel_recommendation_and_booking_system.Services
                 },
 
                 Images = tour.HinhAnhTours?
-                    .Where(a => a.NgayXoa == null)
                     .OrderBy(a => a.SoThuTu)
                     .Select(a => new ImageTourResponseDTO
                     {
@@ -495,7 +560,6 @@ namespace travel_recommendation_and_booking_system.Services
                     }).ToList() ?? new List<ImageTourResponseDTO>(),
 
                 LichTrinh = tour.LichTrinhs?
-                    .Where(l => l.NgayXoa == null)
                     .OrderBy(l => l.SoThuTuNgay)
                     .Select(l => new ScheduleReponseDTO
                     {
@@ -509,9 +573,9 @@ namespace travel_recommendation_and_booking_system.Services
                         TrangThai = l.TrangThai,
                         DuongDanAnh = l.DuongDanAnh,
                         MaKhachSan = l.MaKhachSan,
-                        TenKhachSan = l.KhachSan != null ? l.KhachSan.TenKhachSan : null,
-                        SlugKhachSan = l.KhachSan != null ? l.KhachSan.Slug : null,
-                        SoSaoKhachSan = l.KhachSan != null ? l.KhachSan.SoSao : (int?)null,
+                        TenKhachSan = l.KhachSan?.TenKhachSan,
+                        SlugKhachSan = l.KhachSan?.Slug,
+                        SoSaoKhachSan = l.KhachSan?.SoSao,
                         ChiTietLichTrinhs = l.CTLichTrinhs?
                             .OrderBy(ct => ct.GioBatDau)
                             .Select(ct => new ScheduleDetailsDTO
@@ -519,7 +583,7 @@ namespace travel_recommendation_and_booking_system.Services
                                 MaCTLT = ct.MaCTLT,
                                 MaLichTrinh = ct.MaLichTrinh,
                                 MaDiaDiem = ct.MaDiaDiem,
-                                TenDiaDiem = ct.DiaDiem != null ? ct.DiaDiem.TenDiaDiem : null,
+                                TenDiaDiem = ct.DiaDiem?.TenDiaDiem,
                                 GioBatDau = ct.GioBatDau,
                                 GioKetThuc = ct.GioKetThuc,
                                 HoatDong = ct.HoatDong
@@ -535,8 +599,8 @@ namespace travel_recommendation_and_booking_system.Services
                             MaChuyen = c.MaChuyen,
                             MaHDV = c.MaHDV,
                             MaPhuongTien = c.MaPhuongTien,
-                            TenPhuongTien = c.PhuongTien != null ? c.PhuongTien.TenPhuongTien : null,
-                            Icon = c.PhuongTien != null ? c.PhuongTien.Icon : null,
+                            TenPhuongTien = c.PhuongTien?.TenPhuongTien,
+                            Icon = c.PhuongTien?.Icon,
                             MaChuyenCode = c.MaChuyenCode,
                             NgayKhoiHanh = c.NgayKhoiHanh,
                             NgayKetThuc = c.NgayKetThuc,
@@ -558,32 +622,40 @@ namespace travel_recommendation_and_booking_system.Services
                                 PhuThuPhongDon = g.PhuThuPhongDon
                             }).ToList() ?? new List<GiaChuyenDTO>()
                     }).ToList(),
+
                 DanhGia = tour.DanhGias?
-                    .Where(d => d.NgayXoa == null)
                     .OrderByDescending(d => d.NgayTao)
                     .Select(d => new ReviewDTO
                     {
                         MaNguoiDung = d.MaNguoiDung,
                         MaTour = d.MaTour,
+                        HoTen = d.NguoiDung.HoTen,
                         DiemDanhGia = d.DiemDanhGia,
                         NoiDung = d.NoiDung,
                         NgayTao = d.NgayTao
                     }).ToList() ?? new List<ReviewDTO>()
-
             };
+
+            _cache.Set(cacheKey, result, DetailCacheDuration);
+            return result;
         }
-        //Lấy danh sách tour theo địa điểm 
+
         public async Task<TourByLocationResponseDTO?> GetToursByLocationSlugAsync(string locationSlug)
         {
             if (string.IsNullOrWhiteSpace(locationSlug))
                 return null;
+
+            var normalizedSlug = locationSlug.Trim().ToLower();
+            var cacheKey = VKey($"tour:bylocation:{normalizedSlug}");
+            if (_cache.TryGetValue(cacheKey, out TourByLocationResponseDTO? cached))
+                return cached;
 
             var now = DateTime.Now;
 
             var location = await _context.DiaDiems
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x =>
-                    x.Slug == locationSlug.Trim().ToLower()
+                    x.Slug == normalizedSlug
                     && x.NgayXoa == null);
 
             if (location == null)
@@ -601,8 +673,8 @@ namespace travel_recommendation_and_booking_system.Services
             var tours = await _context.Tours
                 .Include(x => x.HinhAnhTours)
                 .Include(x => x.ChuyenKhoiHanhs)
-                .Include(x => x.LoaiHinhTour)   // ← THÊM: cần để lấy TenLoaiTour
-                .Include(x => x.DanhGias)       // ← THÊM: cần để lấy DiemDanhGia/SoLuongDanhGia
+                .Include(x => x.LoaiHinhTour)   
+                .Include(x => x.DanhGias)       
                 .AsNoTracking()
                 .Where(x =>
                     tourIds.Contains(x.MaTour) &&
@@ -626,13 +698,11 @@ namespace travel_recommendation_and_booking_system.Services
 
                     GiaTu = x.GiaTu,
 
-                    // ← THÊM: loại tour
+                 
                     MaLoaiTour = x.MaLoaiTour,
                     TenLoaiTour = x.LoaiHinhTour != null ? x.LoaiHinhTour.TenLoaiTour : null,
 
-                    //// ← THÊM: đánh giá (đồng bộ với TourCardDTO ở các API khác)
-                    //DiemDanhGia = x.DanhGias.Any() ? Math.Round(x.DanhGias.Average(d => (double)d.DiemDanhGia), 1) : 0,
-                    //SoLuongDanhGia = x.DanhGias.Count(),
+
 
                     HinhAnhChinh = x.HinhAnhTours
                         .Where(i => i.NgayXoa == null)
@@ -654,12 +724,15 @@ namespace travel_recommendation_and_booking_system.Services
                 })
                 .ToListAsync();
 
-            return new TourByLocationResponseDTO
+            var result = new TourByLocationResponseDTO
             {
                 TenDiaDiem = location.TenDiaDiem,
                 Slug = location.Slug,
                 Tours = tours
             };
+
+            _cache.Set(cacheKey, result, ListCacheDuration);
+            return result;
         }
         public async Task<bool> SoftDeleteTourAsync(int tourId)
         {
@@ -703,6 +776,9 @@ namespace travel_recommendation_and_booking_system.Services
             var result = await _context.SaveChangesAsync() > 0;
             if (!result) return false;
 
+            ClearTourCache(tourId);
+
+
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan = AccountTypeDTO.NhanVien,
@@ -725,6 +801,7 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<PageDTO<TourReponseDTO>> GetPagedTourAsync(int page, int pageSize, string? searchTerm, int? status)
         {
+            // Trang quản trị (admin) - không cache vì cần dữ liệu luôn mới nhất khi thao tác quản lý
             var query = _context.Tours
                 .Include(t => t.LoaiHinhTour)
                 .Where(t => t.NgayXoa == null)
@@ -739,7 +816,7 @@ namespace travel_recommendation_and_booking_system.Services
             var totalCount = await query.CountAsync();
 
             var items = await query
-                .OrderByDescending(t => t.MaTour)
+                .OrderByDescending(t => t.NgayCapNhat)
                 .AsNoTracking()
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -777,11 +854,11 @@ namespace travel_recommendation_and_booking_system.Services
         }
         public async Task<List<TourSelectDTO>> GetToursForSelectAsync(string? keyword = null, int? status = null)
         {
+           
             var query = _context.Tours
                 .Where(t => t.NgayXoa == null)
                 .AsQueryable();
 
-            // Lọc theo từ khóa
             if (!string.IsNullOrWhiteSpace(keyword))
             {
                 var lowerKey = keyword.ToLower();
@@ -822,7 +899,7 @@ namespace travel_recommendation_and_booking_system.Services
             var images = await _context.HinhAnhTours
                 .Where(x => x.MaTour == image.MaTour && x.NgayXoa == null) // FIX
                 .ToListAsync();
-
+            int maTour = image.MaTour;
             foreach (var item in images)
                 item.AnhChinh = false;
 
@@ -830,6 +907,8 @@ namespace travel_recommendation_and_booking_system.Services
             image.NgayCapNhat = DateTime.Now;
 
             await _context.SaveChangesAsync();
+
+            ClearTourCache(maTour);
 
             await _logService.LoggingAsync(new LogDTO
             {
@@ -895,6 +974,8 @@ namespace travel_recommendation_and_booking_system.Services
                     await _context.SaveChangesAsync();
                 }
             }
+
+          ClearTourCache(maTour);
 
             await _logService.LoggingAsync(new LogDTO
             {
@@ -964,6 +1045,9 @@ namespace travel_recommendation_and_booking_system.Services
             tour.NgayCapNhat = DateTime.Now;
 
             await _context.SaveChangesAsync();
+
+            ClearTourCache(maTour);
+
 
             await _logService.LoggingAsync(new LogDTO
             {
@@ -1135,6 +1219,7 @@ namespace travel_recommendation_and_booking_system.Services
         //yêu thích
         public async Task<List<int>> GetFavoriteTourIdsAsync(int userId)
         {
+            // Dữ liệu cá nhân theo user, thay đổi thường xuyên khi user like/unlike -> không cache
             return await _context.DanhSachYeuThichs
                 .Where(y => y.MaNguoiDung == userId)
                 .Select(y => y.MaTour)
@@ -1322,69 +1407,100 @@ namespace travel_recommendation_and_booking_system.Services
         //Lấy danh sách các tour
         public async Task<List<TourCardResponseDTO>> GetFeaturedToursAsync(int take = 12)
         {
+            var cacheKey = VKey($"tour:featured:{take}");
+            if (_cache.TryGetValue(cacheKey, out List<TourCardResponseDTO>? cached))
+                return cached!;
+
             var now = DateTime.Now;
 
-            // 1. Lấy dữ liệu trước
-            var data = await _context.Tours
-                .Include(t => t.HinhAnhTours)
-                .Include(t => t.ChuyenKhoiHanhs)
-                .Include(t => t.LoaiHinhTour)
-                .Include(t => t.DanhGias)
+            // Pha 1: chỉ lấy field nhẹ để chấm điểm, KHÔNG include ảnh/chuyến
+            var scored = await _context.Tours
+                .AsNoTracking()
                 .Where(t => t.TrangThai == 1 && t.NgayXoa == null)
                 .Select(t => new
                 {
-                    Tour = t,
-                    AvgRating = t.DanhGias.Any() ? t.DanhGias.Average(d => d.DiemDanhGia) : 0,
-                    RatingCount = t.DanhGias.Count()
+                    t.MaTour,
+                    t.LuotDat,
+                    t.LuotXem,
+                    t.NgayTao,
+                    RatingCount = t.DanhGias.Count(),
+                    AvgRating = t.DanhGias.Any() ? t.DanhGias.Average(d => d.DiemDanhGia) : 0
                 })
-                .ToListAsync();   // ← Chuyển sang client evaluation
+                .ToListAsync();
 
-            // 2. Sắp xếp ở memory (nhanh và ổn định)
-            var result = data
+            var topIds = scored
                 .OrderByDescending(x =>
-                    x.Tour.LuotDat * 0.45 +
+                    x.LuotDat * 0.45 +
                     x.AvgRating * 25 +
                     x.RatingCount * 0.8 +
-                    (x.Tour.LuotXem) * 0.05 +
-                    ((DateTime.Now - (x.Tour.NgayTao)).TotalDays * -0.12))
-                .Select(x => new TourCardResponseDTO
-                {
-                    MaTour = x.Tour.MaTour,
-                    TenTour = x.Tour.TenTour,
-                    Slug = x.Tour.Slug,
-                    MoTa = x.Tour.MoTa?.Length > 120 ? x.Tour.MoTa.Substring(0, 120) + "..." : x.Tour.MoTa,
-                    Ngay = x.Tour.Ngay,
-                    Dem = x.Tour.Dem,
-                    GiaTu = x.Tour.GiaTu,
-                    TenLoaiTour = x.Tour.LoaiHinhTour?.TenLoaiTour,
+                    x.LuotXem * 0.05 +
+                    (now - x.NgayTao).TotalDays * -0.12)
+                .Take(take)
+                .ToDictionary(x => x.MaTour, x => x); // giữ lại điểm để map lại sau
 
-                    HinhAnhChinh = x.Tour.HinhAnhTours
+            var ids = topIds.Keys.ToList();
+
+            // Pha 2: chỉ fetch chi tiết cho đúng top N tour đã chọn
+            var details = await _context.Tours
+                .AsNoTracking()
+                .Where(t => ids.Contains(t.MaTour))
+                .Select(t => new
+                {
+                    t.MaTour,
+                    t.TenTour,
+                    t.Slug,
+                    t.MoTa,
+                    t.Ngay,
+                    t.Dem,
+                    t.GiaTu,
+                    TenLoaiTour = t.LoaiHinhTour != null ? t.LoaiHinhTour.TenLoaiTour : null,
+                    HinhAnhChinh = t.HinhAnhTours
                         .Where(i => i.NgayXoa == null)
                         .OrderByDescending(i => i.AnhChinh)
                         .Select(i => i.DuongDanAnh)
                         .FirstOrDefault(),
-
-                    DiemDens = x.Tour.ChuyenKhoiHanhs
+                    DiemDens = t.ChuyenKhoiHanhs
                         .Where(c => c.NgayXoa == null && c.NgayKhoiHanh >= now)
                         .Select(c => c.DiemDen)
                         .Distinct()
-                        .ToList(),
-
-                    SoDanhGia = x.RatingCount,
-                    DiemDanhGia = Math.Round(x.AvgRating, 1),
-                    LuotDat = x.Tour.LuotDat,
-                    LuotXem = x.Tour.LuotXem
+                        .ToList()
                 })
-                .Take(take)
-                .ToList();
+                .ToListAsync();
 
+            // Ghép lại theo đúng thứ tự điểm đã sắp xếp ở pha 1
+            var result = ids
+             .Select(id => details.First(d => d.MaTour == id))
+             .Select(x => new TourCardResponseDTO
+             {
+                 MaTour = x.MaTour,
+                 TenTour = x.TenTour,
+                 Slug = x.Slug,
+                 MoTa = x.MoTa?.Length > 120 ? x.MoTa.Substring(0, 120) + "..." : x.MoTa,
+                 Ngay = x.Ngay,
+                 Dem = x.Dem,
+                 GiaTu = x.GiaTu,
+                 TenLoaiTour = x.TenLoaiTour,
+                 HinhAnhChinh = x.HinhAnhChinh,
+                 DiemDens = x.DiemDens,
+                 SoDanhGia = topIds[x.MaTour].RatingCount,
+                 DiemDanhGia = Math.Round(topIds[x.MaTour].AvgRating, 1),
+                 LuotDat = topIds[x.MaTour].LuotDat,   // ← lấy từ topIds thay vì details
+                 LuotXem = topIds[x.MaTour].LuotXem    // ← lấy từ topIds thay vì details
+             })
+             .ToList();
+
+            _cache.Set(cacheKey, result, ListCacheDuration);
             return result;
         }
         public async Task<List<TourCardResponseDTO>> GetNewlyUpdatedToursAsync(int take = 8)
         {
+            var cacheKey = VKey($"tour:newlyupdated:{take}");
+            if (_cache.TryGetValue(cacheKey, out List<TourCardResponseDTO>? cached))
+                return cached!;
+
             var now = DateTime.Now;
 
-            return await _context.Tours
+            var result = await _context.Tours
                 .Include(t => t.HinhAnhTours)
                 .Include(t => t.ChuyenKhoiHanhs)
                 .Include(t => t.LoaiHinhTour)
@@ -1422,15 +1538,23 @@ namespace travel_recommendation_and_booking_system.Services
                 })
                 .Take(take)
                 .ToListAsync();
+
+            _cache.Set(cacheKey, result, ListCacheDuration);
+            return result;
         }
         public async Task<List<TourCardResponseDTO>> GetToursByFeaturedDestinationAsync(string diemDen, int take = 6)
         {
             if (string.IsNullOrWhiteSpace(diemDen))
                 return new List<TourCardResponseDTO>();
 
+            var normalizedDiemDen = diemDen.ToLower().Trim();
+            var cacheKey = VKey($"tour:bydestination:{normalizedDiemDen}:{take}");
+            if (_cache.TryGetValue(cacheKey, out List<TourCardResponseDTO>? cached))
+                return cached!;
+
             var now = DateTime.Now;
 
-            return await _context.Tours
+            var result = await _context.Tours
                 .Include(t => t.HinhAnhTours)
                 .Include(t => t.ChuyenKhoiHanhs)
                 .Include(t => t.LoaiHinhTour)
@@ -1438,7 +1562,7 @@ namespace travel_recommendation_and_booking_system.Services
                          && t.NgayXoa == null
                          && t.ChuyenKhoiHanhs.Any(c =>
                              c.NgayXoa == null
-                             && c.DiemDen.ToLower().Contains(diemDen.ToLower().Trim())
+                             && c.DiemDen.ToLower().Contains(normalizedDiemDen)
                              && c.NgayKhoiHanh >= now))
                 .Select(t => new
                 {
@@ -1479,12 +1603,19 @@ namespace travel_recommendation_and_booking_system.Services
                 })
                 .Take(take)
                 .ToListAsync();
+
+            _cache.Set(cacheKey, result, ListCacheDuration);
+            return result;
         }
         public async Task<List<TourCardResponseDTO>> GetMostBookedToursAsync(int take = 8)
         {
+            var cacheKey = VKey($"tour:mostbooked:{take}");
+            if (_cache.TryGetValue(cacheKey, out List<TourCardResponseDTO>? cached))
+                return cached!;
+
             var now = DateTime.Now;
 
-            return await _context.Tours
+            var result = await _context.Tours
                 .Include(t => t.HinhAnhTours)
                 .Include(t => t.ChuyenKhoiHanhs)
                 .Include(t => t.LoaiHinhTour)
@@ -1526,9 +1657,16 @@ namespace travel_recommendation_and_booking_system.Services
                 })
                 .Take(take)
                 .ToListAsync();
+
+            _cache.Set(cacheKey, result, ListCacheDuration);
+            return result;
         }
         public async Task<List<TourCardDTO>> GetRelatedToursAsync(int maTour, int take = 6)
         {
+            var cacheKey = VKey($"tour:related:{maTour}:{take}");
+            if (_cache.TryGetValue(cacheKey, out List<TourCardDTO>? cached))
+                return cached!;
+
             var currentTour = await _context.Tours
                 .Include(t => t.ChuyenKhoiHanhs)
                 .FirstOrDefaultAsync(t => t.MaTour == maTour);
@@ -1592,10 +1730,15 @@ namespace travel_recommendation_and_booking_system.Services
                 .Take(take)
                 .ToListAsync();
 
+            _cache.Set(cacheKey, relatedTours, ListCacheDuration);
             return relatedTours;
         }
         public async Task<List<TourCardResponseDTO>> GetRelatedToursByHotelAsync(int maKhachSan)
         {
+            var cacheKey = VKey($"tour:relatedbyhotel:{maKhachSan}");
+            if (_cache.TryGetValue(cacheKey, out List<TourCardResponseDTO>? cached))
+                return cached!;
+
             var diaChiKhachSan = await _context.KhachSans
                 .Where(x => x.MaKhachSan == maKhachSan)
                 .Select(x => x.DiaChi)
@@ -1604,7 +1747,7 @@ namespace travel_recommendation_and_booking_system.Services
             if (string.IsNullOrEmpty(diaChiKhachSan))
                 return new();
 
-            return await _context.Tours
+            var result = await _context.Tours
                 .Include(x => x.LoaiHinhTour)
                 .Include(x => x.HinhAnhTours)
                 .Include(x => x.ChuyenKhoiHanhs)
@@ -1643,9 +1786,13 @@ namespace travel_recommendation_and_booking_system.Services
                     LuotXem = t.LuotXem
                 })
                 .ToListAsync();
+
+            _cache.Set(cacheKey, result, ListCacheDuration);
+            return result;
         }
         public async Task<PageDTO<TourCardDTO>> FilterToursAsync(FilterTourDTO request)
         {
+            // Filter có quá nhiều tổ hợp tham số (keyword, giá, ngày, địa điểm...) -> cache không hiệu quả, bỏ qua
             var query = _context.Tours
                 .Include(t => t.LoaiHinhTour)
                 .Include(t => t.HinhAnhTours)
@@ -1675,11 +1822,20 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 query = query.Where(t => t.Ngay >= request.NgayTu.Value);
             }
-
             if (!string.IsNullOrEmpty(request.DiemDen))
             {
+                var diemDenParam = request.DiemDen.Trim();
+                bool isId = int.TryParse(diemDenParam, out var diaDiemId);
+
                 query = query.Where(t =>
-                    t.ChuyenKhoiHanhs.Any(c => c.DiemDen.Contains(request.DiemDen)));
+                    t.LichTrinhs.Any(l =>
+                        l.NgayXoa == null &&
+                        l.CTLichTrinhs.Any(ct =>
+                            ct.DiaDiem.NgayXoa == null &&
+                            (isId
+                                ? ct.DiaDiem.MaDiaDiem == diaDiemId
+                                : ct.DiaDiem.Slug == diemDenParam)
+                        )));
             }
 
             if (request.MinPrice.HasValue)
@@ -1743,6 +1899,7 @@ namespace travel_recommendation_and_booking_system.Services
         }
         public async Task<PageDTO<SearchResponse>> SearchToursAsync(SearchDTO request)
         {
+           
             var query = _context.Tours
                 .AsNoTracking()
                 .Where(t => t.TrangThai == 1 && t.NgayXoa == null)
@@ -1788,8 +1945,7 @@ namespace travel_recommendation_and_booking_system.Services
                 );
             }
 
-            // FIX: Gộp NgayDi + NgayVe vào CÙNG 1 Any() để đảm bảo cùng 1 chuyến khởi hành
-            // thỏa mãn cả 2 điều kiện, thay vì cho phép match 2 chuyến khác nhau.
+           
             if (request.NgayDi.HasValue || request.NgayVe.HasValue)
             {
                 var ngayDi = request.NgayDi?.Date;
@@ -1803,7 +1959,7 @@ namespace travel_recommendation_and_booking_system.Services
                         (!ngayVe.HasValue || c.NgayKetThuc.Date <= ngayVe.Value)));
             }
 
-            // FIX: Gộp MinPrice + MaxPrice vào cùng 1 Any() trên cùng 1 GiaChuyen
+           
             if (request.MinPrice.HasValue || request.MaxPrice.HasValue)
             {
                 query = query.Where(t =>

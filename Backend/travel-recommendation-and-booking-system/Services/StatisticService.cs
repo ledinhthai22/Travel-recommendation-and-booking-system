@@ -1,4 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Spreadsheet;
+using Microsoft.EntityFrameworkCore;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.Dtos.Statistics;
 using travel_recommendation_and_booking_system.Interfaces;
@@ -10,10 +13,81 @@ namespace travel_recommendation_and_booking_system.Services
     {
         private readonly AppDbContext _context;
 
+        // Thông tin công ty hiển thị trên báo cáo xuất Excel
+        private const string CompanyName = "LỐI RIÊNG TRAVEL";
+        private const string CompanyAddress = ".........,Việt Nam";
+
         public StatisticService(AppDbContext context)
         {
             _context = context;
         }
+
+
+
+        private async Task<DashboardOverviewDTO> GetOverviewForRangeAsync(
+            DateTime currentStart, DateTime currentEnd,
+            DateTime previousStart, DateTime previousEnd)
+        {
+            // Bookings
+            var bookingStats = await _context.DonDatTours
+                .Where(d => (d.NgayDat >= currentStart && d.NgayDat < currentEnd)
+                         || (d.NgayDat >= previousStart && d.NgayDat < previousEnd))
+                .GroupBy(d => d.NgayDat >= currentStart)
+                .Select(g => new { IsCurrent = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var totalBookings = bookingStats.FirstOrDefault(x => x.IsCurrent)?.Count ?? 0;
+            var prevBookings = bookingStats.FirstOrDefault(x => !x.IsCurrent)?.Count ?? 0;
+
+            // Revenue
+            var revenueStats = await _context.ThanhToans
+                .Where(t => t.TrangThaiThanhToan == 1 &&
+                            ((t.NgayThanhToan >= currentStart && t.NgayThanhToan < currentEnd)
+                          || (t.NgayThanhToan >= previousStart && t.NgayThanhToan < previousEnd)))
+                .GroupBy(t => t.NgayThanhToan >= currentStart)
+                .Select(g => new { IsCurrent = g.Key, Revenue = g.Sum(t => t.TongTienThanhToan) })
+                .ToListAsync();
+
+            var totalRevenue = revenueStats.FirstOrDefault(x => x.IsCurrent)?.Revenue ?? 0m;
+            var prevRevenue = revenueStats.FirstOrDefault(x => !x.IsCurrent)?.Revenue ?? 0m;
+
+            // New customers
+            var customerStats = await _context.KhachHangs
+                .Where(k => k.LoaiKhach == 1
+                         && k.DonDatTour.TrangThaiDon != 4
+                         && ((k.DonDatTour.NgayDat >= currentStart && k.DonDatTour.NgayDat < currentEnd)
+                          || (k.DonDatTour.NgayDat >= previousStart && k.DonDatTour.NgayDat < previousEnd)))
+                .GroupBy(k => k.DonDatTour.NgayDat >= currentStart)
+                .Select(g => new { IsCurrent = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var newCustomers = customerStats.FirstOrDefault(x => x.IsCurrent)?.Count ?? 0;
+            var prevNewCustomers = customerStats.FirstOrDefault(x => !x.IsCurrent)?.Count ?? 0;
+
+            // Active tours
+            var tourWindows = await _context.ChuyenKhoiHanhs
+                .Where(c => c.NgayXoa == null &&
+                            ((c.NgayKhoiHanh < currentEnd && c.NgayKetThuc >= currentStart)
+                          || (c.NgayKhoiHanh < previousEnd && c.NgayKetThuc >= previousStart)))
+                .Select(c => new { c.NgayKhoiHanh, c.NgayKetThuc })
+                .ToListAsync();
+
+            var activeTours = tourWindows.Count(c => c.NgayKhoiHanh < currentEnd && c.NgayKetThuc >= currentStart);
+            var prevActiveTours = tourWindows.Count(c => c.NgayKhoiHanh < previousEnd && c.NgayKetThuc >= previousStart);
+
+            return new DashboardOverviewDTO
+            {
+                TotalBookings = totalBookings,
+                TotalRevenue = totalRevenue,
+                NewCustomersThisMonth = newCustomers,
+                ActiveTours = activeTours,
+                RevenueGrowthPercent = CalculateGrowthPercent(totalRevenue, prevRevenue),
+                BookingGrowthPercent = CalculateGrowthPercent(totalBookings, prevBookings),
+                NewCustomersGrowthPercent = CalculateGrowthPercent(newCustomers, prevNewCustomers),
+                ActiveToursGrowthPercent = CalculateGrowthPercent(activeTours, prevActiveTours)
+            };
+        }
+
 
         public async Task<DashboardOverviewDTO> GetDashboardOverviewAsync(int? year = null, int? month = null)
         {
@@ -36,64 +110,35 @@ namespace travel_recommendation_and_booking_system.Services
                 ? startOfPreviousMonth.AddDays((currentDate - startOfCurrentMonth).Days)
                 : startOfCurrentMonth;
 
-            // Bookings
-            var bookingStats = await _context.DonDatTours
-                .Where(d => (d.NgayDat >= startOfCurrentMonth && d.NgayDat < currentPeriodEnd)
-                         || (d.NgayDat >= startOfPreviousMonth && d.NgayDat < previousPeriodEnd))
-                .GroupBy(d => d.NgayDat >= startOfCurrentMonth)
-                .Select(g => new { IsCurrent = g.Key, Count = g.Count() })
-                .ToListAsync();
+            return await GetOverviewForRangeAsync(
+                startOfCurrentMonth, currentPeriodEnd,
+                startOfPreviousMonth, previousPeriodEnd);
+        }
 
-            var totalBookings = bookingStats.FirstOrDefault(x => x.IsCurrent)?.Count ?? 0;
-            var prevBookings = bookingStats.FirstOrDefault(x => !x.IsCurrent)?.Count ?? 0;
 
-            //  Revenue
-            var revenueStats = await _context.ThanhToans
-                .Where(t => t.TrangThaiThanhToan == 1 &&
-                            ((t.NgayThanhToan >= startOfCurrentMonth && t.NgayThanhToan < currentPeriodEnd)
-                          || (t.NgayThanhToan >= startOfPreviousMonth && t.NgayThanhToan < previousPeriodEnd)))
-                .GroupBy(t => t.NgayThanhToan >= startOfCurrentMonth)
-                .Select(g => new { IsCurrent = g.Key, Revenue = g.Sum(t => t.TongTienThanhToan) })
-                .ToListAsync();
 
-            var totalRevenue = revenueStats.FirstOrDefault(x => x.IsCurrent)?.Revenue ?? 0m;
-            var prevRevenue = revenueStats.FirstOrDefault(x => !x.IsCurrent)?.Revenue ?? 0m;
+        public async Task<DashboardOverviewDTO> GetYearOverviewAsync(int? year = null)
+        {
+            var currentDate = DateTime.Now;
+            var targetYear = year ?? currentDate.Year;
 
-            // New customers
-            var customerStats = await _context.KhachHangs
-                .Where(k => k.LoaiKhach == 1
-                         && k.DonDatTour.TrangThaiDon != 4
-                         && ((k.DonDatTour.NgayDat >= startOfCurrentMonth && k.DonDatTour.NgayDat < currentPeriodEnd)
-                          || (k.DonDatTour.NgayDat >= startOfPreviousMonth && k.DonDatTour.NgayDat < previousPeriodEnd)))
-                .GroupBy(k => k.DonDatTour.NgayDat >= startOfCurrentMonth)
-                .Select(g => new { IsCurrent = g.Key, Count = g.Count() })
-                .ToListAsync();
+            var startOfCurrentYear = new DateTime(targetYear, 1, 1);
+            var endOfCurrentYear = startOfCurrentYear.AddYears(1);
+            var startOfPreviousYear = startOfCurrentYear.AddYears(-1);
 
-            var newCustomers = customerStats.FirstOrDefault(x => x.IsCurrent)?.Count ?? 0;
-            var prevNewCustomers = customerStats.FirstOrDefault(x => !x.IsCurrent)?.Count ?? 0;
+            bool isCurrentYearInProgress = targetYear == currentDate.Year;
 
-            // Active tours
-            var tourWindows = await _context.ChuyenKhoiHanhs
-                .Where(c => c.NgayXoa == null &&
-                            ((c.NgayKhoiHanh < endOfCurrentMonth && c.NgayKetThuc >= startOfCurrentMonth)
-                          || (c.NgayKhoiHanh < startOfCurrentMonth && c.NgayKetThuc >= startOfPreviousMonth)))
-                .Select(c => new { c.NgayKhoiHanh, c.NgayKetThuc })
-                .ToListAsync();
+            var currentPeriodEnd = isCurrentYearInProgress
+                ? currentDate
+                : endOfCurrentYear;
 
-            var activeTours = tourWindows.Count(c => c.NgayKhoiHanh < endOfCurrentMonth && c.NgayKetThuc >= startOfCurrentMonth);
-            var prevActiveTours = tourWindows.Count(c => c.NgayKhoiHanh < startOfCurrentMonth && c.NgayKetThuc >= startOfPreviousMonth);
+            var previousPeriodEnd = isCurrentYearInProgress
+                ? startOfPreviousYear.AddDays((currentDate - startOfCurrentYear).Days)
+                : startOfCurrentYear;
 
-            return new DashboardOverviewDTO
-            {
-                TotalBookings = totalBookings,
-                TotalRevenue = totalRevenue,
-                NewCustomersThisMonth = newCustomers,
-                ActiveTours = activeTours,
-                RevenueGrowthPercent = CalculateGrowthPercent(totalRevenue, prevRevenue),
-                BookingGrowthPercent = CalculateGrowthPercent(totalBookings, prevBookings),
-                NewCustomersGrowthPercent = CalculateGrowthPercent(newCustomers, prevNewCustomers),
-                ActiveToursGrowthPercent = CalculateGrowthPercent(activeTours, prevActiveTours)
-            };
+            return await GetOverviewForRangeAsync(
+                startOfCurrentYear, currentPeriodEnd,
+                startOfPreviousYear, previousPeriodEnd);
         }
 
         private static decimal? CalculateGrowthPercent(decimal current, decimal previous)
@@ -106,6 +151,8 @@ namespace travel_recommendation_and_booking_system.Services
 
         private static decimal? CalculateGrowthPercent(int current, int previous)
             => CalculateGrowthPercent((decimal)current, (decimal)previous);
+
+
 
         public async Task<RevenueChartDTO> GetRevenueChartAsync(int year)
         {
@@ -166,7 +213,6 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<List<TopTourDTO>> GetTopToursAsync(int limit = 5, int? month = null, int? year = null)
         {
-            
             var query = _context.DonDatTours.AsQueryable();
 
             if (year.HasValue) query = query.Where(d => d.NgayDat.Year == year.Value);
@@ -203,7 +249,6 @@ namespace travel_recommendation_and_booking_system.Services
                 ("55+", 55, 200)
             };
 
-         
             var groupedAges = await _context.KhachHangs
                 .Where(k => k.NgaySinh != default
                          && k.LoaiKhach == 1
@@ -279,7 +324,6 @@ namespace travel_recommendation_and_booking_system.Services
                 { 2, "Đã hủy" }
             };
 
-           
             var raw = await _context.ThanhToans
                 .OrderByDescending(t => t.NgayThanhToan)
                 .Take(limit)
@@ -306,5 +350,286 @@ namespace travel_recommendation_and_booking_system.Services
                 Time = t.NgayThanhToan
             }).ToList();
         }
+
+
+        public async Task<byte[]> ExportDashboardReportExcelAsync(int year, int? month = null)
+        {
+            bool isYearMode = month == null;
+
+            var overview = isYearMode
+                ? await GetYearOverviewAsync(year)
+                : await GetDashboardOverviewAsync(year, month);
+
+            var orderStatus = await GetOrderStatusAsync(month, year);
+            var topTours = await GetTopToursAsync(5, month, year);
+            var ageGroups = await GetCustomerAgeGroupsAsync();
+            var recentTransactions = await GetRecentTransactionsAsync(10);
+            var revenueChart = isYearMode ? await GetRevenueChartAsync(year) : null;
+
+            // Nhãn kỳ báo cáo: "NĂM 2026" hoặc "THÁNG 7/2026"
+            string periodLabelUpper = isYearMode ? $"NĂM {year}" : $"THÁNG {month}/{year}";
+            var growthColumnLabel = isYearMode ? "So với năm trước" : "So với tháng trước";
+            var exportedAtLabel = $"Ngày xuất báo cáo: {DateTime.Now:dd/MM/yyyy HH:mm}";
+
+            using var stream = new MemoryStream();
+            using (var doc = SpreadsheetDocument.Create(stream, SpreadsheetDocumentType.Workbook))
+            {
+                var workbookPart = doc.AddWorkbookPart();
+                workbookPart.Workbook = new Workbook();
+
+                var stylesPart = workbookPart.AddNewPart<WorkbookStylesPart>();
+                stylesPart.Stylesheet = BuildStylesheet();
+                stylesPart.Stylesheet.Save();
+
+                var sheets = workbookPart.Workbook.AppendChild(new Sheets());
+                uint sheetId = 1;
+
+                // ── Sheet 1: Tổng quan ──
+                var overviewPreamble = new List<(string Text, uint Style)>
+                {
+                    (CompanyName, CellStyle.CompanyName),
+                    (CompanyAddress, CellStyle.Italic),
+                    ("BÁO CÁO THỐNG KÊ HOẠT ĐỘNG KINH DOANH", CellStyle.ReportTitle),
+                    ($"Kỳ báo cáo: {periodLabelUpper}", CellStyle.Normal),
+                    (exportedAtLabel, CellStyle.Normal)
+                };
+
+                var overviewRows = new List<string[]>
+                {
+                    new[] { "Chỉ tiêu", "Giá trị", growthColumnLabel },
+                    new[] { "Tổng số đơn đặt tour", overview.TotalBookings.ToString("N0"), FormatGrowth(overview.BookingGrowthPercent) },
+                    new[] { "Doanh thu (VNĐ)", overview.TotalRevenue.ToString("N0"), FormatGrowth(overview.RevenueGrowthPercent) },
+                    new[] { "Khách hàng mới", overview.NewCustomersThisMonth.ToString("N0"), FormatGrowth(overview.NewCustomersGrowthPercent) },
+                    new[] { "Tour đang hoạt động", overview.ActiveTours.ToString("N0"), FormatGrowth(overview.ActiveToursGrowthPercent) },
+                };
+
+                var overviewFooter = new List<string>
+                {
+                    "Người lập báo cáo: ______________________        Người duyệt: ______________________"
+                };
+
+                AddSheet(workbookPart, sheets, "Tong quan", sheetId++, overviewRows,
+                    title: "I. CHỈ SỐ TỔNG QUAN",
+                    preambleLines: overviewPreamble,
+                    footerLines: overviewFooter);
+
+                // ── Sheet 2: Doanh thu theo tháng (chỉ khi xuất theo năm) ──
+                if (isYearMode && revenueChart != null)
+                {
+                    var totalRevenueForYear = revenueChart.Data.Sum(r => r.Revenue);
+                    var divisor = totalRevenueForYear == 0 ? 1 : totalRevenueForYear;
+
+                    var revenueRows = new List<string[]> { new[] { "Tháng", "Doanh thu (VNĐ)", "Tỷ trọng (%)" } };
+                    revenueRows.AddRange(revenueChart.Data.Select(r => new[]
+                    {
+                        r.Month,
+                        r.Revenue.ToString("N0"),
+                        FormatPercent(Math.Round(r.Revenue * 100m / divisor, 1))
+                    }));
+
+                    AddSheet(workbookPart, sheets, "Doanh thu theo thang", sheetId++, revenueRows,
+                        title: $"BẢNG DOANH THU THEO THÁNG - {periodLabelUpper}",
+                        totalRow: new[] { "TỔNG CỘNG", totalRevenueForYear.ToString("N0"), "100%" });
+                }
+
+                // ── Sheet 3: Trạng thái đơn hàng ──
+                var totalOrders = orderStatus.Sum(o => o.Count);
+                var orderRows = new List<string[]> { new[] { "Trạng thái đơn hàng", "Số lượng", "Tỷ lệ (%)" } };
+                orderRows.AddRange(orderStatus.Select(o => new[] { o.StatusName, o.Count.ToString("N0"), FormatPercent(o.Percentage) }));
+
+                AddSheet(workbookPart, sheets, "Trang thai don hang", sheetId++, orderRows,
+                    title: $"THỐNG KÊ TRẠNG THÁI ĐƠN HÀNG - {periodLabelUpper}",
+                    totalRow: new[] { "TỔNG CỘNG", totalOrders.ToString("N0"), "100%" });
+
+                // ── Sheet 4: Top tour bán chạy ──
+                var topTourRows = new List<string[]> { new[] { "STT", "Mã tour", "Tên tour", "Lượt đặt", "Doanh thu (VNĐ)" } };
+                topTourRows.AddRange(topTours.Select((t, i) => new[]
+                {
+                    (i + 1).ToString(), t.MaTour.ToString(), t.TenTour, t.BookedCount.ToString("N0"), t.Revenue.ToString("N0")
+                }));
+
+                AddSheet(workbookPart, sheets, "Top tour", sheetId++, topTourRows,
+                    title: $"TOP {topTours.Count} TOUR BÁN CHẠY NHẤT - {periodLabelUpper}");
+
+                // ── Sheet 5: Độ tuổi khách hàng ──
+                var totalAgeCustomers = ageGroups.Sum(g => g.Count);
+                var ageRows = new List<string[]> { new[] { "Nhóm tuổi", "Số lượng khách hàng", "Tỷ lệ (%)" } };
+                ageRows.AddRange(ageGroups.Select(g => new[] { g.GroupName, g.Count.ToString("N0"), FormatPercent(g.Percentage) }));
+
+                AddSheet(workbookPart, sheets, "Do tuoi khach hang", sheetId++, ageRows,
+                    title: "PHÂN BỔ ĐỘ TUỔI KHÁCH HÀNG (TOÀN HỆ THỐNG)",
+                    totalRow: new[] { "TỔNG CỘNG", totalAgeCustomers.ToString("N0"), "100%" });
+
+                // ── Sheet 6: Giao dịch gần đây ──
+                var transactionRows = new List<string[]>
+                {
+                    new[] { "STT", "Khách hàng", "Tour", "Số tiền (VNĐ)", "Trạng thái", "Thời gian" }
+                };
+                transactionRows.AddRange(recentTransactions.Select((t, i) => new[]
+                {
+                    (i + 1).ToString(), t.CustomerName, t.TourName, t.Amount.ToString("N0"), t.Status, t.Time.ToString("dd/MM/yyyy HH:mm")
+                }));
+
+                AddSheet(workbookPart, sheets, "Giao dich gan day", sheetId++, transactionRows,
+                    title: $"NHẬT KÝ {recentTransactions.Count} GIAO DỊCH GẦN NHẤT");
+
+                workbookPart.Workbook.Save();
+            }
+
+            return stream.ToArray();
+        }
+
+        // Index cột kiểu ô, tương ứng thứ tự CellFormat khai báo trong BuildStylesheet()
+        private static class CellStyle
+        {
+            public const uint Normal = 0;
+            public const uint TableHeader = 1;
+            public const uint SectionTitle = 2;
+            public const uint CompanyName = 3;
+            public const uint Italic = 4;
+            public const uint ReportTitle = 5;
+            public const uint TotalRow = 6;
+        }
+
+        private static void AddSheet(
+            WorkbookPart workbookPart, Sheets sheets, string sheetName, uint sheetId,
+            List<string[]> rows,
+            string? title = null,
+            List<(string Text, uint Style)>? preambleLines = null,
+            string[]? totalRow = null,
+            List<string>? footerLines = null)
+        {
+            var worksheetPart = workbookPart.AddNewPart<WorksheetPart>();
+            var sheetData = new SheetData();
+
+            uint rowIndex = 1;
+
+            // Columns phải đứng TRƯỚC SheetData trong <worksheet> theo schema OpenXml
+            if (rows.Count > 0)
+            {
+                var columns = new Columns();
+                int colCount = rows[0].Length;
+                for (int c = 1; c <= colCount; c++)
+                {
+                    columns.Append(new Column { Min = (uint)c, Max = (uint)c, Width = 24, CustomWidth = true });
+                }
+                worksheetPart.Worksheet = new Worksheet(columns, sheetData);
+            }
+            else
+            {
+                worksheetPart.Worksheet = new Worksheet(sheetData);
+            }
+
+            // Khối tiêu đề công ty / báo cáo (chỉ sheet Tổng quan có)
+            if (preambleLines != null)
+            {
+                foreach (var (text, style) in preambleLines)
+                {
+                    var line = new Row { RowIndex = rowIndex++ };
+                    line.Append(CreateCell(text, style));
+                    sheetData.Append(line);
+                }
+                sheetData.Append(new Row { RowIndex = rowIndex++ }); // dòng trống
+            }
+
+            // Tiêu đề khu vực / bảng dữ liệu
+            if (title != null)
+            {
+                var titleRow = new Row { RowIndex = rowIndex++ };
+                titleRow.Append(CreateCell(title, CellStyle.SectionTitle));
+                sheetData.Append(titleRow);
+                sheetData.Append(new Row { RowIndex = rowIndex++ }); // dòng trống
+            }
+
+            for (int i = 0; i < rows.Count; i++)
+            {
+                var row = new Row { RowIndex = rowIndex++ };
+                bool isHeaderRow = i == 0;
+
+                foreach (var cellText in rows[i])
+                    row.Append(CreateCell(cellText, isHeaderRow ? CellStyle.TableHeader : CellStyle.Normal));
+
+                sheetData.Append(row);
+            }
+
+            // Dòng tổng cộng
+            if (totalRow != null)
+            {
+                var total = new Row { RowIndex = rowIndex++ };
+                foreach (var cellText in totalRow)
+                    total.Append(CreateCell(cellText, CellStyle.TotalRow));
+                sheetData.Append(total);
+            }
+
+            // Chữ ký người lập / người duyệt (chỉ sheet Tổng quan có)
+            if (footerLines != null)
+            {
+                sheetData.Append(new Row { RowIndex = rowIndex++ }); // dòng trống
+                sheetData.Append(new Row { RowIndex = rowIndex++ }); // dòng trống
+                foreach (var text in footerLines)
+                {
+                    var footerRow = new Row { RowIndex = rowIndex++ };
+                    footerRow.Append(CreateCell(text, CellStyle.Italic));
+                    sheetData.Append(footerRow);
+                }
+            }
+
+            var sheet = new Sheet
+            {
+                Id = workbookPart.GetIdOfPart(worksheetPart),
+                SheetId = sheetId,
+                Name = sheetName
+            };
+            sheets.Append(sheet);
+        }
+
+        private static Cell CreateCell(string text, uint styleIndex = 0)
+        {
+            return new Cell
+            {
+                DataType = CellValues.String,
+                CellValue = new CellValue(text ?? ""),
+                StyleIndex = styleIndex
+            };
+        }
+
+        private static Stylesheet BuildStylesheet()
+        {
+            return new Stylesheet(
+                new Fonts(
+                    new Font(),                                                  // 0: normal
+                    new Font(new Bold()),                                        // 1: bold (header bảng / tổng cộng)
+                    new Font(new Bold(), new FontSize { Val = 16 }),             // 2: tiêu đề khu vực
+                    new Font(new Bold(), new FontSize { Val = 18 }),             // 3: tên công ty
+                    new Font(new Italic()),                                      // 4: chữ nghiêng (địa chỉ / chữ ký)
+                    new Font(new Bold(), new FontSize { Val = 13 })              // 5: tiêu đề báo cáo
+                ),
+                new Fills(
+                    new Fill(new PatternFill { PatternType = PatternValues.None }),
+                    new Fill(new PatternFill { PatternType = PatternValues.Gray125 }),
+                    new Fill(new PatternFill(new ForegroundColor { Rgb = "FFD9E2F3" })
+                    { PatternType = PatternValues.Solid })
+                ),
+                new Borders(new Border()),
+                new CellFormats(
+                    new CellFormat { FontId = 0, FillId = 0, BorderId = 0 },                                       // 0: Normal
+                    new CellFormat { FontId = 1, FillId = 2, BorderId = 0, ApplyFont = true, ApplyFill = true },    // 1: TableHeader
+                    new CellFormat { FontId = 2, FillId = 0, BorderId = 0, ApplyFont = true },                     // 2: SectionTitle
+                    new CellFormat { FontId = 3, FillId = 0, BorderId = 0, ApplyFont = true },                     // 3: CompanyName
+                    new CellFormat { FontId = 4, FillId = 0, BorderId = 0, ApplyFont = true },                     // 4: Italic
+                    new CellFormat { FontId = 5, FillId = 0, BorderId = 0, ApplyFont = true },                     // 5: ReportTitle
+                    new CellFormat { FontId = 1, FillId = 0, BorderId = 0, ApplyFont = true }                      // 6: TotalRow
+                )
+            );
+        }
+
+        private static string FormatGrowth(decimal? growth)
+        {
+            if (growth == null) return "N/A";
+            var sign = growth >= 0 ? "+" : "";
+            return $"{sign}{growth}%";
+        }
+
+        private static string FormatPercent(decimal value) => $"{value}%";
     }
 }

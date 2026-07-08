@@ -66,9 +66,9 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpPut("{id}/payment-status")]
-        public async Task<IActionResult> UpdatePayment(int id, [FromBody] int status)
+        public async Task<IActionResult> UpdatePayment(int id, [FromBody] int status,int maNhanVien)
         {
-            var result = await _service.UpdatePaymentStatusAsync(id, status);
+            var result = await _service.UpdatePaymentStatusAsync(id, status,maNhanVien);
             return result ? Ok(new { message = "Cập nhật thanh toán thành công" }) : NotFound();
         }
 

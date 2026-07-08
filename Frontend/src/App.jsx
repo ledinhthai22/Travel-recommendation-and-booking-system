@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import MainLayout from '~/components/layout/UserLayout';
 import AdminLayout from '~/components/layout/AdminLayout';
 import RouteReset from '~/components/Common/RouteReset';
+import AdminIndexPage from '~/Routes/DefaultAdminRedirect';
 import ProtectedRoute from './Routes/ProtectedRoute';
 import { useContext } from 'react';
 import { AuthContext } from '~/Context/AuthContext';
@@ -27,7 +28,6 @@ import {
 
 
 import {
-    DashBoard,
     UserManager,
     TourManager,
     HotelManager,
@@ -101,14 +101,14 @@ function App() {
                         </Route>
                     </Route>
 
-                    {/* ── Admin routes (role 1 & 2) ── */}
+                    {/* ── Admin routes (role 1 & 2) — index tự quyết định nội dung theo role ── */}
                     <Route element={<ProtectedRoute allowedRoles={['1', '2']} />}>
                         <Route path="/Quan-ly" element={<AdminLayout />}>
-                            <Route index element={<DashBoard />} />
+                            <Route index element={<AdminIndexPage />} />
                             <Route path="Dia-diem" element={<LocationManager />} />
                             <Route path="Loai-Dia-Diem" element={<TypeLocationManager />} />
                             <Route path="Loai-Tour" element={<TypeTourManager />} />
-                            <Route path="Danh-gia" element={<ReviewManager />} /> // them moi
+                            <Route path="Danh-gia" element={<ReviewManager />} />
                             <Route path="Cac-chuyen-di">
                                 <Route index element={<TourManager />} />
                                 <Route path="Them-Tour" element={<TourFormPage mode="add" />} />

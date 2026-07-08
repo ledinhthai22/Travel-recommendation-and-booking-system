@@ -100,8 +100,8 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<PaymentWarningJob>();
             builder.Services.AddTransient<GeminiService>();
             builder.Services.AddScoped<TrainRecommendationModelJob>();
+            builder.Services.AddScoped<IDashboardNotifier, DashboardNotifier>();
             builder.Services.AddHttpContextAccessor();
-
             builder.Services.Configure<VnPayConfig>(builder.Configuration.GetSection("VNPay"));
             builder.Services.AddScoped<IPaymentService, PaymentService>();
             var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -129,11 +129,23 @@ namespace travel_recommendation_and_booking_system
                 };
                 options.Events = new JwtBearerEvents
                 {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
+
+                        if (!string.IsNullOrEmpty(accessToken) &&
+                            path.StartsWithSegments("/TravelRecommendationHub"))
+                        {
+                            context.Token = accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    },
                     OnTokenValidated = async context =>
                     {
                         var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
 
-                        // Lấy MaPhien từ claims trong token
                         var maPhienClaim = context.Principal?.FindFirst("MaPhien")?.Value;
 
                         if (string.IsNullOrEmpty(maPhienClaim) || !int.TryParse(maPhienClaim, out int maPhien))
@@ -142,8 +154,6 @@ namespace travel_recommendation_and_booking_system
                             return;
                         }
 
-                        // Kiểm tra xem phiên còn tồn tại trong DB không
-                        // Nếu phiên bị xóa (do người dùng Logout), AnyAsync sẽ trả về false
                         var sessionExists = await dbContext.PhienDangNhaps.AnyAsync(p => p.MaPhien == maPhien);
 
                         if (!sessionExists)
@@ -178,6 +188,8 @@ namespace travel_recommendation_and_booking_system
             });
             builder.Services.AddAuthorization();
             builder.Services.AddHttpContextAccessor();
+            builder.Services.AddHttpClient();
+            builder.Services.AddMemoryCache();
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())

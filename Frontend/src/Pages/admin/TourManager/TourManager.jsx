@@ -1,14 +1,22 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import ManagerCard from "~/components/UI/Card/ManagerCard";
 import ManagerToolbar from "~/components/UI/ToolBar/ToolBar";
 import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
-import SelectField from "~/components/UI/Form/SelectField"; // Import component SelectField của bạn
+import SelectField from "~/components/UI/Form/SelectField";
 
 import { getPagedToursApi, deleteTourApi, changeTourStatusApi } from "~/Services/TourService";
 import { toastSuccess, toastWarning, toastError } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
+
+const STATUS_OPTIONS = [
+    { value: "1", label: "Mở bán" },
+    { value: "2", label: "Tạm ngưng" },
+    { value: "3", label: "Ngừng kinh doanh" }
+];
+
+const PER_PAGE_OPTIONS = [8, 16, 24, 32];
 
 export default function TourManager() {
     const navigate = useNavigate();
@@ -21,32 +29,24 @@ export default function TourManager() {
 
     const [tours, setTours] = useState([]);
     const [totalRows, setTotalRows] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [isFetching, setIsFetching] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     const [confirmOpen, setConfirmOpen] = useState(false);
-    const [selectedTour, setSelectedTour] = useState(null);
+    const [confirmConfig, setConfirmConfig] = useState({
+        title: '', message: '', type: 'warning', confirmText: 'Xác nhận', action: null
+    });
 
-    // Quản lý Modal thay đổi trạng thái linh hoạt
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [selectedStatusTour, setSelectedStatusTour] = useState(null);
     const [nextStatus, setNextStatus] = useState(1);
 
-    // Mảng danh sách options dùng cho bộ lọc Trạng thái và Chọn trạng thái mới trong Modal
-    const statusOptions = [
-        { value: "1", label: "Mở bán" },
-        { value: "2", label: "Tạm ngưng" },
-        { value: "3", label: "Ngừng kinh doanh" }
-    ];
+    const totalPages = useMemo(() => Math.ceil(totalRows / perPage), [totalRows, perPage]);
 
     const fetchTours = useCallback(async () => {
-        const isInitialOrFilterChange = currentPage === 1 || searchTerm || statusFilter;
-
         try {
+            const isInitialOrFilterChange = currentPage === 1 || searchTerm || statusFilter;
             if (isInitialOrFilterChange) {
                 setLoading(true);
-            } else {
-                setIsFetching(true);
             }
 
             const data = await getPagedToursApi(
@@ -74,13 +74,12 @@ export default function TourManager() {
             toastError(getErrorMessage(error));
         } finally {
             setLoading(false);
-            setIsFetching(false);
         }
     }, [currentPage, perPage, searchTerm, statusFilter]);
 
     useEffect(() => {
         fetchTours();
-    }, [fetchTours]);
+    }, [currentPage, perPage, searchTerm, statusFilter]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -90,13 +89,13 @@ export default function TourManager() {
         return () => clearTimeout(timer);
     }, [keyword]);
 
-    const totalPages = Math.ceil(totalRows / perPage);
-
-    const generatePaginationPages = (current, total) => {
+    const generatePaginationPages = useCallback((current, total) => {
         if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 
         const pages = [];
-        const showFirst = 2, showLast = 2, showAround = 2;
+        const showFirst = 2;
+        const showLast = 2;
+        const showAround = 2;
 
         for (let i = 1; i <= Math.min(showFirst, total); i++) pages.push(i);
 
@@ -110,30 +109,45 @@ export default function TourManager() {
         for (let i = Math.max(total - showLast + 1, end + 1); i <= total; i++) pages.push(i);
 
         return [...new Set(pages)];
-    };
+    }, []);
+
+    const paginationPages = useMemo(
+        () => generatePaginationPages(currentPage, totalPages),
+        [currentPage, totalPages, generatePaginationPages]
+    );
 
     const handleAddTour = () => navigate("Them-Tour");
     const handleViewTour = (tour) => navigate(`Xem-chi-tiet/${tour.maTour}`);
     const handleEditTour = (tour) => navigate(`Cap-nhat/${tour.maTour}`);
 
-    const handleDelete = (tour) => {
-        if (tour.trangThai === 1) {
+    const handleDelete = (item) => {
+        if (item.trangThai === 1) {
             toastWarning("Không thể xóa tour đang hoạt động mở bán.");
             return;
         }
-        setSelectedTour(tour);
+        setConfirmConfig({
+            title: "Xác nhận xóa tour",
+            message: `Bạn có chắc chắn muốn xóa tour "${item.tenTour}" không? Dữ liệu liên quan sẽ bị xóa mềm.`,
+            type: "danger",
+            confirmText: "Xóa",
+            action: async () => {
+                try {
+                    setLoading(true);
+                    await deleteTourApi(item.maTour);
+                    toastSuccess("Xóa tour thành công!");
+                    if (tours.length === 1 && currentPage > 1) {
+                        setCurrentPage(prev => prev - 1);
+                    } else {
+                        fetchTours();
+                    }
+                } catch (error) {
+                    toastError(getErrorMessage(error));
+                } finally {
+                    setLoading(false);
+                }
+            }
+        });
         setConfirmOpen(true);
-    };
-
-    const executeDelete = async () => {
-        try {
-            await deleteTourApi(selectedTour.maTour);
-            toastSuccess("Xóa tour thành công!");
-            setConfirmOpen(false);
-            fetchTours();
-        } catch (error) {
-            toastError(getErrorMessage(error));
-        }
     };
 
     const handleChangeStatus = (tour) => {
@@ -154,24 +168,40 @@ export default function TourManager() {
         }
     };
 
-    const statusLabel = (status) => {
+    const statusLabel = useCallback((status) => {
         const s = Number(status);
         if (s === 1) return "Mở bán";
         if (s === 2) return "Tạm ngưng";
         if (s === 3) return "Ngừng kinh doanh";
         return "Không xác định";
-    };
+    }, []);
 
-    // Lọc bỏ trạng thái hiện tại của tour để hiển thị trong select dropdown của Modal đổi trạng thái
-    const getNextStatusOptions = () => {
+    const getNextStatusOptions = useCallback(() => {
         if (!selectedStatusTour) return [];
         const currentStatus = String(selectedStatusTour.trangThai);
-        return statusOptions.filter(opt => opt.value !== currentStatus);
-    };
+        return STATUS_OPTIONS.filter(opt => opt.value !== currentStatus);
+    }, [selectedStatusTour]);
 
-   return (
+    const handlePageChange = useCallback((newPage) => {
+        if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
+            setCurrentPage(newPage);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, [currentPage, totalPages]);
+
+    const handlePerPageChange = useCallback((e) => {
+        const newPerPage = Number(e.target.value);
+        setPerPage(newPerPage);
+        setCurrentPage(1);
+    }, []);
+
+    const handleStatusFilterChange = useCallback((value) => {
+        setStatusFilter(value);
+        setCurrentPage(1);
+    }, []);
+
+    return (
         <div className="p-4 space-y-6">
-            {/* Sửa lại Toolbar sử dụng trực tiếp prop filters đồng bộ giống HotelManager */}
             <ManagerToolbar
                 searchPlaceholder="Tìm kiếm tour..."
                 onSearchChange={(value) => setKeyword(value)}
@@ -182,39 +212,18 @@ export default function TourManager() {
                     {
                         placeholder: 'Trạng thái',
                         value: statusFilter,
-                        onChange: (value) => {
-                            setStatusFilter(value);
-                            setCurrentPage(1);
-                        },
+                        onChange: handleStatusFilterChange,
                         options: [
                             { value: "", label: "Tất cả" },
-                            ...statusOptions
+                            ...STATUS_OPTIONS
                         ]
                     }
                 ]}
             />
 
-            {isFetching && (
-                <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-                    <div className="bg-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3">
-                        <div className="w-6 h-6 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
-                        <span className="text-slate-600 font-medium">Đang tải...</span>
-                    </div>
-                </div>
-            )}
-
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {Array.from({ length: perPage }).map((_, i) => (
-                        <div key={i} className="bg-white rounded-2xl border border-slate-100 overflow-hidden animate-pulse">
-                            <div className="h-48 bg-slate-200" />
-                            <div className="p-4 space-y-3">
-                                <div className="h-5 bg-slate-200 rounded w-3/4" />
-                                <div className="h-4 bg-slate-200 rounded w-1/2" />
-                                <div className="h-4 bg-slate-200 rounded w-full" />
-                            </div>
-                        </div>
-                    ))}
+                <div className="flex justify-center items-center py-20">
+                    <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
                 </div>
             ) : tours.length === 0 ? (
                 <div className="text-center py-20 text-slate-500 font-medium bg-white rounded-2xl border border-dashed border-slate-300">
@@ -243,10 +252,10 @@ export default function TourManager() {
                             <span className="text-sm text-slate-500">Số lượng:</span>
                             <select
                                 value={perPage}
-                                onChange={(e) => { setPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                                onChange={handlePerPageChange}
                                 className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-1.5 outline-none cursor-pointer"
                             >
-                                {[8, 16, 24, 32].map((n) => (
+                                {PER_PAGE_OPTIONS.map((n) => (
                                     <option key={n} value={n}>{n}</option>
                                 ))}
                             </select>
@@ -259,24 +268,27 @@ export default function TourManager() {
 
                     <div className="flex items-center gap-1.5">
                         <button
-                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 1}
                             className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-sky-600 disabled:opacity-40 transition-all"
+                            aria-label="Trang trước"
                         >
                             <span className="material-symbols-outlined text-xl">chevron_left</span>
                         </button>
 
-                        {generatePaginationPages(currentPage, totalPages).map((page, index) => (
+                        {paginationPages.map((page, index) => (
                             page === '...' ? (
                                 <span key={`ellipsis-${index}`} className="w-9 h-9 flex items-center justify-center text-slate-400">...</span>
                             ) : (
                                 <button
                                     key={page}
-                                    onClick={() => setCurrentPage(page)}
-                                    className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${currentPage === page
-                                        ? "bg-sky-500 text-white"
-                                        : "border border-slate-200 text-slate-600 hover:bg-slate-50"
-                                        }`}
+                                    onClick={() => handlePageChange(page)}
+                                    className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${
+                                        currentPage === page
+                                            ? "bg-sky-500 text-white"
+                                            : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    }`}
+                                    aria-label={`Trang ${page}`}
                                 >
                                     {page}
                                 </button>
@@ -284,9 +296,10 @@ export default function TourManager() {
                         ))}
 
                         <button
-                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages}
                             className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-sky-600 disabled:opacity-40 transition-all"
+                            aria-label="Trang sau"
                         >
                             <span className="material-symbols-outlined text-xl">chevron_right</span>
                         </button>
@@ -333,12 +346,15 @@ export default function TourManager() {
 
             <ConfirmModal
                 isOpen={confirmOpen}
-                title="Xác nhận xóa tour"
-                message={`Bạn có chắc chắn muốn xóa tour "${selectedTour?.tenTour}" không? Dữ liệu liên quan sẽ bị xóa mềm.`}
-                type="danger"
-                confirmText="Xóa"
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                type={confirmConfig.type}
+                confirmText={confirmConfig.confirmText}
                 onCancel={() => setConfirmOpen(false)}
-                onConfirm={executeDelete}
+                onConfirm={async () => {
+                    if (confirmConfig.action) await confirmConfig.action();
+                    setConfirmOpen(false);
+                }}
             />
         </div>
     );

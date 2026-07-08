@@ -63,12 +63,16 @@ export const cancelBookingAdminApi = async (id, lyDoHuy) => {
     });
     return response.data;
 };
-export const updatePaymentStatusAdminApi = async (bookingId, isPaid) => {
-    return await axiosClient.put(`/admin/tour-bookings/${bookingId}/payment-status`, isPaid, {
-        headers: { "Content-Type": "application/json" },
-    });
+export const updatePaymentStatusAdminApi = async (bookingId, isPaid, maNhanVien) => {
+    return await axiosClient.put(
+        `/admin/tour-bookings/${bookingId}/payment-status`,
+        isPaid, // status trong body
+        {
+            params: { maNhanVien }, // maNhanVien trong query params
+            headers: { "Content-Type": "application/json" },
+        }
+    );
 };
-
 
 export const updateBookingStatusAdminApi = async (bookingId, statusId) => {
     return await axiosClient.put(`/admin/tour-bookings/${bookingId}/status`, null, {
