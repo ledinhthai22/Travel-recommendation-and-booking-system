@@ -12,7 +12,20 @@ export default function TourSchedulesTable({
     showCodeChuyen = true,
     isCreateMode = false
 }) {
-    const safeData = Array.isArray(data) ? data : [];
+
+    const safeData = useMemo(() => {
+        if (!Array.isArray(data)) return [];
+        
+        return data.filter(item => {
+            // Nếu không có maChuyen và không có tempId -> bỏ qua
+            if (!item.maChuyen && !item.tempId) return false;
+            
+            // Nếu không có bất kỳ thông tin cơ bản nào -> bỏ qua
+            if (!item.diemKhoiHanh && !item.diemDen && !item.ngayKhoiHanh) return false;
+            
+            return true;
+        });
+    }, [data]);
 
     const statusColumn = {
         name: "Trạng thái",
@@ -20,10 +33,11 @@ export default function TourSchedulesTable({
         center: true,
         cell: (row) => {
             const statusMap = {
+                0: { text: "Hết chỗ", className: "bg-red-100 text-red-700" },
                 1: { text: "Sắp khởi hành", className: "bg-amber-100 text-amber-700" },
-                2: { text: "Đang khởi hành", className: "bg-blue-100 text-blue-700" },
+                2: { text: "Đang diễn ra", className: "bg-blue-100 text-blue-700" },
                 3: { text: "Đã kết thúc", className: "bg-gray-100 text-gray-700" },
-                4: { text: "Đã hủy", className: "bg-red-100 text-red-700" },
+                5: { text: "Đã hủy", className: "bg-red-100 text-red-700" },
             };
 
             const status = statusMap[row.trangThai] ?? {
@@ -133,20 +147,19 @@ export default function TourSchedulesTable({
             width: "140px", 
             center: true,
             cell: (row) => {
-                // CHÍNH SÁCH BẢO MẬT: 
-                // Chỉ cho sửa/xóa khi: chưa khởi hành (trangThai === 1 hoặc khi đang tạo mới chưa có trangThai)
-                // VÀ đồng thời chưa có bất kì ai đặt chỗ (soChoDaDat == 0 hoặc undefined)
                 const hasBookings = (row.soChoDaDat ?? 0) > 0;
-                const isStartedOrCanceled = row.trangThai !== undefined && row.trangThai !== 1;
                 
-                const isLocked = isStartedOrCanceled || hasBookings;
+                const isLocked = hasBookings || 
+                    row.trangThai === 2 ||
+                    row.trangThai === 3 ||
+                    row.trangThai === 5;
 
                 return (
                     <RowActionsButton
                         row={row}
                         onView={!isCreateMode ? onView : null}
                         onEdit={isLocked ? null : onEdit}
-                        onDelete={isLocked ? null : onDelete} // <--- Sẽ bị ẩn hoàn toàn nếu đã khởi hành hoặc đã có người đặt chỗ
+                        onDelete={isLocked ? null : onDelete}
                     />
                 );
             },

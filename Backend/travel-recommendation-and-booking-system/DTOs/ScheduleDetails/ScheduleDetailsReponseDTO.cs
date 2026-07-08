@@ -4,7 +4,7 @@
     {
         public int MaCTLT { get; set; }
         public int MaLichTrinh { get; set; }
-        public int MaDiaDiem { get; set; }
+        public int ?MaDiaDiem { get; set; }
         public string TenDiaDiem { get; set; }
         public string GioBatDau { get; set; }
         public string GioKetThuc { get; set; }

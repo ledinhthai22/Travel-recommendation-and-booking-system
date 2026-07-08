@@ -302,8 +302,7 @@ export default function Tours() {
                                         </p>
                                     </div>
 
-                                    {/* Giữ nguyên grid kết quả cũ, chỉ làm mờ nhẹ khi đang fetch lại
-                                        (không unmount/skeleton) -> không còn giật layout/scroll */}
+                           
                                     <div
                                         className={`grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4 transition-opacity duration-200 ${
                                             isFetching ? "opacity-60 pointer-events-none" : "opacity-100"

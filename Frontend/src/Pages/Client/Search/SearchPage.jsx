@@ -249,9 +249,9 @@ export default function SearchPage() {
                         </div>
                     </div>
 
-                    <div className="hidden md:block w-px bg-gray-200 my-2" />
+                    {/* <div className="hidden md:block w-px bg-gray-200 my-2" /> */}
 
-                    {/* Ngày về */}
+                    {/* Ngày về
                     <div className="group flex items-center gap-3 flex-1 hover:bg-gray-50 rounded-xl px-2 py-1 transition-all">
                         <div className="w-full text-left custom-search-datepicker">
                             <DatePicker
@@ -264,7 +264,7 @@ export default function SearchPage() {
                                 Icon={Calendar}
                             />
                         </div>
-                    </div>
+                    </div> */}
 
                     {/* Nút Tìm ngay */}
                     {/* <button

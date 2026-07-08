@@ -134,10 +134,8 @@ namespace travel_recommendation_and_booking_system.Services
         }
 
         // Dữ liệu scoring của toàn bộ tour hợp lệ - phụ thuộc excludeTourIds nên cache theo key riêng
-        private async Task<List<TourScoringRow>> LoadTourScoringDataAsync(
-            DateTime now, IReadOnlyCollection<int>? excludeTourIds)
+        private async Task<List<TourScoringRow>> LoadTourScoringDataAsync(DateTime now, IReadOnlyCollection<int>? excludeTourIds)
         {
-            // Chỉ cache khi không có exclude list (trường hợp phổ biến nhất, danh sách toàn bộ tour)
             bool cacheable = excludeTourIds == null || excludeTourIds.Count == 0;
             const string cacheKey = "tours:scoringdata:all";
 
@@ -159,7 +157,8 @@ namespace travel_recommendation_and_booking_system.Services
                     LuotDat = t.LuotDat,
                     DiaDiemIds = t.LichTrinhs
                         .SelectMany(lt => lt.CTLichTrinhs)
-                        .Select(ct => ct.MaDiaDiem)
+                        .Where(ct => ct.MaDiaDiem.HasValue)
+                        .Select(ct => ct.MaDiaDiem!.Value)
                         .ToList()
                 })
                 .ToListAsync();

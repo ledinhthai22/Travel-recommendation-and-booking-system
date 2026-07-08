@@ -127,6 +127,8 @@ const mapDepartureFromApi = (ch) => {
         },
         ngayKhoiHanh: departure.ngayKhoiHanh || null,
         ngayKetThuc: departure.ngayKetThuc || null,
+        gioTapTrung: departure.gioTapTrung || "",
+        gioXuatPhat: departure.gioXuatPhat || "",
         gioDenNoiDi: departure.gioDenNoiDi || null,
         gioDenNoiVe: departure.gioDenNoiVe || null,
     };
@@ -181,6 +183,8 @@ const buildDeparturePayload = (ch, tourId) => ({
         DiemDen: ch.diemDen?.trim() || "",
         NgayKhoiHanh: toLocalISO(ch.ngayKhoiHanh),
         NgayKetThuc: toLocalISO(ch.ngayKetThuc),
+        GioTapTrung: ch.gioTapTrung || "",
+        GioXuatPhat: ch.gioXuatPhat || "",
         GioDenNoiDi: toLocalISO(ch.gioDenNoiDi),
         GioDenNoiVe: toLocalISO(ch.gioDenNoiVe),
         SoChoToiDa: toNumber(ch.soChoToiDa),
@@ -244,8 +248,10 @@ const serializeDeparture = (ch) => JSON.stringify({
     diemKhoiHanh: ch.diemKhoiHanh,
     diemDen: ch.diemDen,
     ngayKhoiHanh: toISO(ch.ngayKhoiHanh),
-    gioDenNoiDi: toISO(ch.gioDenNoiDi),
     ngayKetThuc: toISO(ch.ngayKetThuc),
+    gioTapTrung: ch.gioTapTrung,
+    gioXuatPhat: ch.gioXuatPhat,
+    gioDenNoiDi: toISO(ch.gioDenNoiDi),
     gioDenNoiVe: toISO(ch.gioDenNoiVe),
     soChoToiDa: ch.soChoToiDa,
     ghiChu: ch.ghiChu,
@@ -320,7 +326,7 @@ export default function TourFormPage({ mode }) {
     const deleteSaving = useSectionSaving();
 
     const isScheduleLocked = chuyenKhoiHanhs.some(
-        x => x.trangThai === 2 || x.trangThai === 3 || x.soChoDaDat > 0
+        x => x.soChoDaDat && x.soChoDaDat > 0
     );
 
     useEffect(() => {
@@ -577,9 +583,15 @@ export default function TourFormPage({ mode }) {
         }
     };
 
-    // ─── SCHEDULE HANDLERS ──────────────────────────────────────────────
-
     const handleLichTrinhsChange = async (newLichTrinhs) => {
+        if (isScheduleLocked && isEdit) {
+            toastWarning(
+                "Không thể sửa lịch trình",
+                "Tour đã có khách đặt, không được phép thay đổi lịch trình."
+            );
+            return;
+        }
+
         if (!isEdit || !id) {
             setLichTrinhs(newLichTrinhs);
             return;
@@ -587,19 +599,12 @@ export default function TourFormPage({ mode }) {
 
         try {
             scheduleSaving.markSaving();
-
-            // Sync schedules và nhận về kết quả từ server
             await syncSchedulesImmediate(newLichTrinhs);
-
-            // Reload toàn bộ dữ liệu để đồng bộ
             await reloadTourData();
-
             scheduleSaving.markSaved();
-           
         } catch (err) {
             scheduleSaving.markIdle();
             toastError("Lỗi lưu lịch trình", getErrorMessage(err));
-            // Rollback nếu lỗi
             await reloadTourData();
             throw err;
         }
@@ -608,13 +613,11 @@ export default function TourFormPage({ mode }) {
     const syncSchedulesImmediate = async (snapshotLichTrinhs) => {
         const originalSchedules = originalDataRef.current?.lichTrinh || [];
 
-        // Tìm schedules cần xóa
         const deletedSchedules = originalSchedules.filter(ol => {
             const originalId = toNumber(ol.maLichTrinh);
             return isExistingId(originalId) && !snapshotLichTrinhs.some(sl => toNumber(sl.id) === originalId);
         });
 
-        // Tìm schedules cần update/create
         const toUpsert = snapshotLichTrinhs.filter(lt => {
             const scheduleId = toNumber(lt.id);
             if (!isExistingId(scheduleId)) return true;
@@ -622,7 +625,6 @@ export default function TourFormPage({ mode }) {
             return prev !== serializeSchedule(lt);
         });
 
-        // Xóa schedules
         if (deletedSchedules.length > 0) {
             const deleteResults = await Promise.allSettled(
                 deletedSchedules.map(lt => deleteScheduleApi(toNumber(lt.maLichTrinh)))
@@ -633,7 +635,6 @@ export default function TourFormPage({ mode }) {
             }
         }
 
-        // Update/Create schedules
         if (toUpsert.length > 0) {
             const upsertResults = await Promise.allSettled(
                 toUpsert.map(async (lt) => {
@@ -655,10 +656,7 @@ export default function TourFormPage({ mode }) {
         }
     };
 
-    // ─── DEPARTURE HANDLERS ─────────────────────────────────────────────
-
     const syncSingleDeparture = useCallback(async (snapshotChuyenKhoiHanhs) => {
-        // Tìm chuyến đã thay đổi
         const changedIndex = snapshotChuyenKhoiHanhs.findIndex(ch => {
             const maChuyen = toNumber(ch.maChuyen);
             if (!isExistingId(maChuyen)) return true;
@@ -708,9 +706,18 @@ export default function TourFormPage({ mode }) {
         }
     }, [id]);
 
+    // ✅ SỬA: Lọc dữ liệu rỗng trước khi set state
     const handleChuyenKhoiHanhsChange = useCallback(async (newChuyen) => {
-        // Cập nhật UI ngay lập tức
-        setChuyenKhoiHanhs(newChuyen);
+        // Lọc bỏ các item không hợp lệ
+        const validData = (newChuyen || []).filter(item => {
+            // Giữ lại nếu có maChuyen hoặc tempId
+            if (!item.maChuyen && !item.tempId) return false;
+            // Giữ lại nếu có ít nhất một thông tin cơ bản
+            if (!item.diemKhoiHanh && !item.diemDen && !item.ngayKhoiHanh) return false;
+            return true;
+        });
+
+        setChuyenKhoiHanhs(validData);
 
         if (!isEdit || !id) return;
 
@@ -720,7 +727,6 @@ export default function TourFormPage({ mode }) {
             const result = await syncSingleDeparture(newChuyen);
 
             if (result) {
-                // Cập nhật chính xác item đã thay đổi
                 setChuyenKhoiHanhs(prev => {
                     const updated = [...prev];
                     if (result.isNew) {
@@ -735,7 +741,7 @@ export default function TourFormPage({ mode }) {
                     return updated;
                 });
 
-                toastSuccess("Thành công", result.isNew ? "Đã thêm chuyến mới." : "Đã cập nhật chuyến.");
+                // toastSuccess("Thành công", result.isNew ? "Đã thêm chuyến mới." : "Đã cập nhật chuyến.");
             }
 
             deleteSaving.markSaved();
@@ -743,7 +749,6 @@ export default function TourFormPage({ mode }) {
             deleteSaving.markIdle();
             toastError("Lỗi cập nhật chuyến", getErrorMessage(err));
             console.error(err);
-            // Rollback về dữ liệu từ server nếu lỗi
             await reloadTourData();
         }
     }, [isEdit, id, deleteSaving, syncSingleDeparture, reloadTourData]);
@@ -788,8 +793,6 @@ export default function TourFormPage({ mode }) {
             await reloadTourData();
         }
     };
-
-    // ─── OTHER HANDLERS ─────────────────────────────────────────────────
 
     const buildTourInfoJson = () => ({
         TourInfo: {
@@ -915,7 +918,6 @@ export default function TourFormPage({ mode }) {
             </div>
 
             <div className="p-8 space-y-10">
-                {/* Images Section */}
                 <section>
                     <div className="flex items-center gap-3 mb-4">
                         <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
@@ -978,8 +980,6 @@ export default function TourFormPage({ mode }) {
                         className="hidden"
                     />
                 </section>
-
-                {/* Basic Info Section */}
                 <section className="border-t border-slate-200 pt-8 space-y-6">
                     <div className="flex items-center justify-between">
                         <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Thông tin cơ bản</p>
@@ -1056,10 +1056,14 @@ export default function TourFormPage({ mode }) {
                     />
                 </section>
 
-                {/* Itineraries Section */}
                 <div>
                     <div className="flex items-center gap-3 mb-2">
                         {isEdit && <SaveStatusBadge state={scheduleSaving.state} />}
+                        {isScheduleLocked && (
+                            <span className="text-xs text-amber-500 bg-amber-50 px-3 py-1 rounded-full">
+                                Đã khóa (có khách đặt)
+                            </span>
+                        )}
                     </div>
                     {errors.lichTrinhs && (
                         <p className="mb-2 text-xs text-red-500">{errors.lichTrinhs}</p>
@@ -1072,12 +1076,11 @@ export default function TourFormPage({ mode }) {
                         khachSans={khachSans}
                         isViewMode={isViewMode}
                         loading={loading}
-                        canAddDay={canAddDay}
+                        canAddDay={canAddDay && !isScheduleLocked}
                         isLocked={isScheduleLocked}
                     />
                 </div>
 
-                {/* Departures Section */}
                 <section className="border-t border-slate-200 pt-8 space-y-4">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
@@ -1125,6 +1128,7 @@ export default function TourFormPage({ mode }) {
                 isViewMode={isViewMode}
                 trongNuoc={formData.trongNuoc}
                 soNgay={formData.ngay}
+                lichTrinhMau={lichTrinhs}
             />
         </div>
     );

@@ -13,7 +13,7 @@ namespace travel_recommendation_and_booking_system.Models
         public int MaLichTrinh { get; set; }
 
         [ForeignKey("DiaDiem")]
-        public int MaDiaDiem { get; set; }
+        public int ?MaDiaDiem { get; set; }
         public string GioBatDau { get; set; }
         public string GioKetThuc { get; set; }
         public string HoatDong { get; set; }

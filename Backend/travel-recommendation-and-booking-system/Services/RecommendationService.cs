@@ -52,8 +52,8 @@ namespace travel_recommendation_and_booking_system.Services
 
             var diaDiemIds = tour.LichTrinhs?
                 .SelectMany(l => l.CTLichTrinhs ?? Enumerable.Empty<CTLichTrinh>())
-                .Select(ct => ct.MaDiaDiem)
-                .Where(id => id > 0)
+                .Where(ct => ct.MaDiaDiem.HasValue && ct.MaDiaDiem > 0)
+                .Select(ct => ct.MaDiaDiem!.Value)
                 .Distinct()
                 .ToList() ?? new List<int>();
 

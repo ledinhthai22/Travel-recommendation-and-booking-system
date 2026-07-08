@@ -103,16 +103,6 @@ export default function TourItinerariesTable({
             center: true,
         },
         {
-            name: "Hoạt động chính",
-            selector: (row) => row.hoatDongChinh || "",
-            cell: (row) => (
-                <p className="text-xs text-slate-600 leading-relaxed line-clamp-2" title={row.hoatDongChinh}>
-                    {row.hoatDongChinh || "---"}
-                </p>
-            ),
-            grow: 2,
-        },
-        {
             name: "Lưu ý",
             selector: (row) => row.luuY || "",
             cell: (row) => (

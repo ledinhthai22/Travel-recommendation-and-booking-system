@@ -9,9 +9,9 @@ namespace travel_recommendation_and_booking_system.DTOs.ScheduleDetails
         [Required(ErrorMessage = "lịch trình không được rỗng")]
         public int MaLichTrinh { get; set; }
 
-        [Required(ErrorMessage = "Địa điểm không được rỗng")]
-        public int MaDiaDiem { get; set; }
-        public string ?TenDiaDiem { get; set; }
+      
+        public int? MaDiaDiem { get; set; }
+        public string? TenDiaDiem { get; set; }
 
         [Required(ErrorMessage = "Giờ bắt đầu không được rỗng")]
         public string GioBatDau { get; set; }

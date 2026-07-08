@@ -38,7 +38,9 @@ export default function TourManager() {
 
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [selectedStatusTour, setSelectedStatusTour] = useState(null);
-    const [nextStatus, setNextStatus] = useState(1);
+    // Luôn lưu dạng string để khớp với STATUS_OPTIONS.value (string)
+    const [nextStatus, setNextStatus] = useState("1");
+    const [statusSubmitting, setStatusSubmitting] = useState(false);
 
     const totalPages = useMemo(() => Math.ceil(totalRows / perPage), [totalRows, perPage]);
 
@@ -153,18 +155,23 @@ export default function TourManager() {
     const handleChangeStatus = (tour) => {
         setSelectedStatusTour(tour);
         const current = Number(tour.trangThai);
-        setNextStatus(current === 1 ? 2 : 1);
+        // luôn set dạng string để khớp value trong STATUS_OPTIONS
+        setNextStatus(String(current === 1 ? 2 : 1));
         setStatusModalOpen(true);
     };
 
     const executeChangeStatus = async () => {
+        if (!selectedStatusTour) return;
         try {
-            await changeTourStatusApi(selectedStatusTour.maTour, nextStatus);
+            setStatusSubmitting(true);
+            await changeTourStatusApi(selectedStatusTour.maTour, Number(nextStatus));
             toastSuccess("Cập nhật trạng thái thành công!");
             setStatusModalOpen(false);
             fetchTours();
         } catch (error) {
             toastError(getErrorMessage(error));
+        } finally {
+            setStatusSubmitting(false);
         }
     };
 
@@ -178,7 +185,7 @@ export default function TourManager() {
 
     const getNextStatusOptions = useCallback(() => {
         if (!selectedStatusTour) return [];
-        const currentStatus = String(selectedStatusTour.trangThai);
+        const currentStatus = String(Number(selectedStatusTour.trangThai));
         return STATUS_OPTIONS.filter(opt => opt.value !== currentStatus);
     }, [selectedStatusTour]);
 
@@ -319,19 +326,19 @@ export default function TourManager() {
                                     {statusLabel(selectedStatusTour.trangThai)}
                                 </span>
                             </p>
-                            
+
                             <div className="mt-4">
                                 <SelectField
                                     label="Chọn trạng thái mới"
                                     value={nextStatus}
-                                    onChange={(val) => setNextStatus(Number(val))}
+                                    onChange={(val) => setNextStatus(String(val))}
                                     options={getNextStatusOptions()}
                                     valueKey="value"
                                     labelKey="label"
                                     placeholder="Chọn trạng thái..."
                                 />
                             </div>
-                            
+
                             <p className="text-xs text-amber-600 italic bg-amber-50 p-2 rounded-lg mt-2">
                                 * Lưu ý: Khi chuyển sang "Ngừng kinh doanh", hệ thống Backend sẽ kiểm tra nghiêm ngặt các chuyến đi đang diễn ra trước khi phê duyệt.
                             </p>
@@ -339,9 +346,10 @@ export default function TourManager() {
                     ) : ""
                 }
                 type="warning"
-                confirmText="Cập nhật ngay"
+                confirmText={statusSubmitting ? "Đang cập nhật..." : "Cập nhật ngay"}
                 onCancel={() => setStatusModalOpen(false)}
                 onConfirm={executeChangeStatus}
+                confirmDisabled={statusSubmitting}
             />
 
             <ConfirmModal

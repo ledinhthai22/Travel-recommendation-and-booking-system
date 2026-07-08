@@ -59,7 +59,7 @@ export default function HeroSection({
             </div>
 
 
-            <div className="relative z-10 w-full max-w-10xl px-4 text-center text-white -translate-y-7">
+            <div className="relative z-10 w-full max-w-6xl px-4 text-center text-white -translate-y-7">
                 <h1 className="text-[45px] md:text-5xl font-bold uppercase mb-3">{title}</h1>
                 <p className="text-base md:text-lg max-w-5xl mx-auto mb-8">{subtitle}</p>
 
@@ -102,7 +102,7 @@ export default function HeroSection({
                         <div className="hidden md:block w-px bg-gray-200 my-2" />
 
                         {/* Ngày về */}
-                        <div className="group flex items-center gap-3 flex-1 hover:bg-gray-50 rounded-xl px-2 py-1 transition-all">
+                        {/* <div className="group flex items-center gap-3 flex-1 hover:bg-gray-50 rounded-xl px-2 py-1 transition-all">
                             <div className="w-full text-left custom-search-datepicker">
                                 <DatePicker
                                     label="Ngày về"
@@ -114,7 +114,7 @@ export default function HeroSection({
                                     Icon={Calendar}
                                 />
                             </div>
-                        </div>
+                        </div> */}
 
                         {/* Nút Tìm ngay kích hoạt luồng */}
                         <button

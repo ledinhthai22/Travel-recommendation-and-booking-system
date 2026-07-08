@@ -34,7 +34,6 @@ namespace travel_recommendation_and_booking_system.Services
             _cache = cache;
         }
 
-        // ─── Cache Helper ──────────────────────────────────────────────────────────
 
         private int GetCacheVersion()
         {
@@ -55,11 +54,11 @@ namespace travel_recommendation_and_booking_system.Services
 
         private void ClearTourCache(int tourId)
         {
-            // Clear detail cache
+
             var detailKey = VKey($"tour:detail:{tourId}");
             _cache.Remove(detailKey);
 
-            // Clear slug cache nếu có
+
             var tour = _context.Tours.AsNoTracking().FirstOrDefault(t => t.MaTour == tourId);
             if (tour != null && !string.IsNullOrEmpty(tour.Slug))
             {
@@ -67,13 +66,13 @@ namespace travel_recommendation_and_booking_system.Services
                 _cache.Remove(slugKey);
             }
 
-            // Bump version để invalidate tất cả list cache
+
             BumpCacheVersion();
 
             Console.WriteLine($"[CACHE] Cleared cache for tour {tourId}");
         }
 
-        // ─── Helpers ──────────────────────────────────────────────────────────
+
 
         private static string ToSafeFileName(string value)
         {
@@ -118,8 +117,8 @@ namespace travel_recommendation_and_booking_system.Services
                 throw new Exception("Chỉ chấp nhận file ảnh JPG, PNG, GIF.");
 
             var detailLocationIds = dto.ChiTietLichTrinh?
-                .Select(x => x.MaDiaDiem)
-                .Where(x => x > 0)
+                .Where(x => x.MaDiaDiem.HasValue && x.MaDiaDiem > 0)
+                .Select(x => x.MaDiaDiem!.Value)      // ép về int sau khi lọc null
                 .Distinct()
                 .ToList() ?? new List<int>();
 
@@ -162,14 +161,14 @@ namespace travel_recommendation_and_booking_system.Services
                 File.Delete(oldPath);
         }
 
-        private async Task<bool> HasStartedDepartureAsync(int maTour)
+        private async Task<bool> HasAnyDepartureAsync(int maTour)
         {
             return await _context.ChuyenKhoiHanhs
                 .AnyAsync(x =>
                     x.MaTour == maTour &&
-                    x.NgayXoa == null &&
-                    (x.TrangThai == 2 || x.TrangThai == 3 || x.SoChoDaDat > 0));
+                    x.NgayXoa == null);
         }
+
 
         private async Task<ScheduleReponseDTO> MapToResponseDTO(LichTrinh lichTrinh)
         {
@@ -183,7 +182,6 @@ namespace travel_recommendation_and_booking_system.Services
                 DuongDanAnh = lichTrinh.DuongDanAnh,
                 BuaAn = lichTrinh.BuaAn,
                 SoThuTuNgay = lichTrinh.SoThuTuNgay,
-                HoatDongChinh = lichTrinh.HoatDongChinh,
                 LuuY = lichTrinh.LuuY,
                 TrangThai = lichTrinh.TrangThai,
                 NgayTao = lichTrinh.NgayTao,
@@ -209,14 +207,13 @@ namespace travel_recommendation_and_booking_system.Services
             };
         }
 
-        // ─── CRUD LichTrinh ───────────────────────────────────────────────────
 
         public async Task<ScheduleReponseDTO> AddScheduleAsync(ScheduleDTO dto)
         {
             validatorSheduleTour.ValidateSchedules(new List<ScheduleDTO> { dto });
 
-            if (await HasStartedDepartureAsync(dto.MaTour))
-                throw new Exception("Tour đã có chuyến khởi hành hoặc đã kết thúc, không thể thêm lịch trình.");
+            if (await HasAnyDepartureAsync(dto.MaTour))
+                throw new Exception("Tour đã có chuyến khởi hành, không thể thêm lịch trình.");
 
             string fileName = await SaveScheduleImageAsync(dto);
 
@@ -226,7 +223,7 @@ namespace travel_recommendation_and_booking_system.Services
                 TenLichTrinh = dto.TenLichTrinh,
                 BuaAn = dto.BuaAn,
                 SoThuTuNgay = dto.SoThuTuNgay,
-                HoatDongChinh = dto.HoatDongChinh,
+                
                 LuuY = dto.LuuY,
                 DuongDanAnh = string.IsNullOrEmpty(fileName) ? DEFAULT_SCHEDULE_IMAGE : fileName,
                 TrangThai = true,
@@ -271,15 +268,12 @@ namespace travel_recommendation_and_booking_system.Services
                     lichTrinh.TenLichTrinh,
                     lichTrinh.SoThuTuNgay,
                     lichTrinh.BuaAn,
-                    lichTrinh.HoatDongChinh,
                     lichTrinh.MaKhachSan
                 }
             });
 
-            // 🔥 Clear cache của tour sau khi thêm mới lịch trình
             ClearTourCache(dto.MaTour);
 
-            // TRẢ VỀ DỮ LIỆU MỚI
             var result = await _context.LichTrinhs
                 .Include(x => x.KhachSan)
                 .FirstOrDefaultAsync(x => x.MaLichTrinh == lichTrinh.MaLichTrinh);
@@ -302,7 +296,6 @@ namespace travel_recommendation_and_booking_system.Services
                     DuongDanAnh = x.DuongDanAnh,
                     BuaAn = x.BuaAn,
                     SoThuTuNgay = x.SoThuTuNgay,
-                    HoatDongChinh = x.HoatDongChinh,
                     LuuY = x.LuuY,
                     TrangThai = x.TrangThai,
                     NgayTao = x.NgayTao,
@@ -339,8 +332,8 @@ namespace travel_recommendation_and_booking_system.Services
             if (lt == null)
                 throw new Exception($"Không tìm thấy lịch trình {maLichTrinh}");
 
-            if (await HasStartedDepartureAsync(lt.MaTour))
-                throw new Exception("Tour đã có chuyến khởi hành hoặc đã kết thúc, không thể chỉnh sửa lịch trình.");
+            //if (await HasAnyDepartureAsync(lt.MaTour))
+            //    throw new Exception("Tour đã có chuyến khởi hành, không thể chỉnh sửa lịch trình.");
 
             var tourId = lt.MaTour;
             var oldData = new
@@ -348,7 +341,7 @@ namespace travel_recommendation_and_booking_system.Services
                 lt.TenLichTrinh,
                 lt.BuaAn,
                 lt.SoThuTuNgay,
-                lt.HoatDongChinh,
+
                 lt.LuuY,
                 lt.TrangThai,
                 lt.MaKhachSan
@@ -357,7 +350,6 @@ namespace travel_recommendation_and_booking_system.Services
             lt.TenLichTrinh = dto.TenLichTrinh;
             lt.BuaAn = dto.BuaAn;
             lt.SoThuTuNgay = dto.SoThuTuNgay;
-            lt.HoatDongChinh = dto.HoatDongChinh;
             lt.LuuY = dto.LuuY;
             lt.TrangThai = dto.TrangThai;
             lt.NgayCapNhat = DateTime.Now;
@@ -377,7 +369,6 @@ namespace travel_recommendation_and_booking_system.Services
                 }
             }
 
-            // Sync CTLichTrinh
             var oldDetails = await _context.CTLichTrinhs
                 .Where(x => x.MaLichTrinh == maLichTrinh)
                 .ToListAsync();
@@ -444,17 +435,14 @@ namespace travel_recommendation_and_booking_system.Services
                     lt.TenLichTrinh,
                     lt.BuaAn,
                     lt.SoThuTuNgay,
-                    lt.HoatDongChinh,
                     lt.LuuY,
                     lt.TrangThai,
                     lt.MaKhachSan
                 }
             });
 
-            // 🔥 Clear cache của tour sau khi update
             ClearTourCache(tourId);
 
-            // TRẢ VỀ DỮ LIỆU MỚI
             var result = await _context.LichTrinhs
                 .Include(x => x.KhachSan)
                 .FirstOrDefaultAsync(x => x.MaLichTrinh == maLichTrinh);
@@ -468,8 +456,8 @@ namespace travel_recommendation_and_booking_system.Services
 
             if (lt == null || lt.NgayXoa != null) return false;
 
-            if (await HasStartedDepartureAsync(lt.MaTour))
-                throw new Exception("Tour đã có chuyến khởi hành hoặc đã kết thúc, không thể xóa lịch trình.");
+            //if (await HasAnyDepartureAsync(lt.MaTour))
+            //    throw new Exception("Tour đã có chuyến khởi hành, không thể xóa lịch trình.");
 
             var tourId = lt.MaTour;
             var oldData = new
@@ -504,20 +492,20 @@ namespace travel_recommendation_and_booking_system.Services
                 GiaTriSau = new { lt.NgayXoa }
             });
 
-            // 🔥 Clear cache của tour sau khi xóa
             ClearTourCache(tourId);
 
             return true;
         }
 
-        // ─── CRUD CTLichTrinh ─────────────────────────────────────────────────
 
         public async Task<bool> AddCTLTAsync(ScheduleDetailsDTO dto)
         {
-            // Lấy tourId từ maLichTrinh để clear cache sau này
             var lichTrinh = await _context.LichTrinhs
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.MaLichTrinh == dto.MaLichTrinh);
+
+            if (lichTrinh != null && await HasAnyDepartureAsync(lichTrinh.MaTour))
+                throw new Exception("Tour đã có chuyến khởi hành, không thể thêm chi tiết lịch trình.");
 
             var ctlt = new CTLichTrinh
             {
@@ -549,7 +537,6 @@ namespace travel_recommendation_and_booking_system.Services
                 }
             });
 
-            // 🔥 Clear cache của tour
             if (lichTrinh != null)
             {
                 ClearTourCache(lichTrinh.MaTour);
@@ -582,10 +569,12 @@ namespace travel_recommendation_and_booking_system.Services
             var ctlt = await _context.CTLichTrinhs.FindAsync(maCTLT);
             if (ctlt == null) return false;
 
-            // Lấy tourId để clear cache
             var lichTrinh = await _context.LichTrinhs
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.MaLichTrinh == ctlt.MaLichTrinh);
+
+            if (lichTrinh != null && await HasAnyDepartureAsync(lichTrinh.MaTour))
+                throw new Exception("Tour đã có chuyến khởi hành, không thể sửa chi tiết lịch trình.");
 
             var oldData = new
             {
@@ -621,7 +610,6 @@ namespace travel_recommendation_and_booking_system.Services
                 }
             });
 
-            // 🔥 Clear cache của tour
             if (lichTrinh != null)
             {
                 ClearTourCache(lichTrinh.MaTour);
@@ -635,10 +623,12 @@ namespace travel_recommendation_and_booking_system.Services
             var ctlt = await _context.CTLichTrinhs.FindAsync(maCTLT);
             if (ctlt == null) return false;
 
-            // Lấy tourId để clear cache
             var lichTrinh = await _context.LichTrinhs
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.MaLichTrinh == ctlt.MaLichTrinh);
+
+            if (lichTrinh != null && await HasAnyDepartureAsync(lichTrinh.MaTour))
+                throw new Exception("Tour đã có chuyến khởi hành, không thể xóa chi tiết lịch trình.");
 
             var oldData = new
             {
@@ -662,7 +652,6 @@ namespace travel_recommendation_and_booking_system.Services
                 GiaTriTruoc = oldData
             });
 
-            // 🔥 Clear cache của tour
             if (lichTrinh != null)
             {
                 ClearTourCache(lichTrinh.MaTour);
