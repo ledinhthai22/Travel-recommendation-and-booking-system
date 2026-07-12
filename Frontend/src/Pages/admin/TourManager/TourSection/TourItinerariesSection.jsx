@@ -10,11 +10,13 @@ import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
 import { getProvincesApi } from "~/Services/ProvinceService";
 import { getLocationsByProvinceApi } from "~/Services/LocationService";
 import { getHotelsByAddressApi } from "~/Services/HotelService";
+import { LOAI_HOAT_DONG_MAP, getColorClass, LOAI_HOAT_DONG_OPTIONS } from "~/constants/loaiHoatDong";
 
 const BUA_AN_OPTIONS = [
     { value: "", label: "Không có" },
     { value: "Trưa, Tối", label: "Trưa, Tối" },
-    { value: "Sáng, Trưa, Tối", label: "Sáng, Chiều, Tối" },
+    { value: "Sáng, Trưa, Tối", label: "Sáng, Trưa, Tối" },
+    { value: "Sáng, Trưa", label: "Sáng, Trưa" },
 ];
 
 const makeTempId = () => `CTLT-TEMP-${Date.now()}-${Math.random()}`;
@@ -39,14 +41,43 @@ const makeSubRow = () => ({
     maCTLT: 0,
     gioBatDau: "",
     gioKetThuc: null,
-    maDiaDiem: "", // Vẫn giữ nhưng không bắt buộc
+    maDiaDiem: "",
     hoatDong: "",
+    loaiHoatDong: "",
 });
+
+const createDayNameWithTitle = (dayNumber, userTitle = "") => {
+    if (userTitle && userTitle.trim()) {
+        return `Ngày ${dayNumber}: ${userTitle.trim()}`;
+    }
+    return `Ngày ${dayNumber}`;
+};
+
+const extractUserTitle = (tenLichTrinh) => {
+    if (!tenLichTrinh) return "";
+    const match = tenLichTrinh.match(/^Ngày\s+\d+:\s*(.*)$/);
+    if (match) {
+        return match[1];
+    }
+    return tenLichTrinh;
+};
+
+const reorderDayNumbers = (itineraries) => {
+    return itineraries.map((item, index) => {
+        const dayNumber = index + 1;
+        const userTitle = extractUserTitle(item.tenLichTrinh || "");
+        return {
+            ...item,
+            soThuTuNgay: dayNumber,
+            tenLichTrinh: createDayNameWithTitle(dayNumber, userTitle)
+        };
+    });
+};
 
 const makeDayRow = (nextDayNumber) => ({
     id: `LT-NEW-${Date.now()}`,
     soThuTuNgay: nextDayNumber,
-    tenLichTrinh: `Hành trình Ngày ${nextDayNumber}`,
+    tenLichTrinh: `Ngày ${nextDayNumber}`,
     buaAn: "",
     hoatDongChinh: "",
     luuY: "",
@@ -64,7 +95,7 @@ const validateItinerary = (item) => {
 
     if (item?.chiTietLichTrinhs?.length > 0) {
         const invalidActivities = item.chiTietLichTrinhs.filter(
-            act => !act.gioBatDau || !act.hoatDong?.trim() // ✅ Bỏ kiểm tra maDiaDiem
+            act => !act.gioBatDau || !act.hoatDong?.trim()
         );
         if (invalidActivities.length > 0) {
             errs.chiTietLichTrinhs = `Có ${invalidActivities.length} mốc hoạt động chưa đầy đủ thông tin.`;
@@ -89,6 +120,55 @@ const getLatestEndTime = (chiTietLichTrinhs) => {
     });
 
     return latestTime > 0 ? latestTime : null;
+};
+
+export const getScheduleTimes = (lichTrinhMau) => {
+    if (!lichTrinhMau || lichTrinhMau.length === 0) {
+        return { firstDayStart: null, firstDayEnd: null, lastDayEnd: null };
+    }
+
+    const sortedSchedules = [...lichTrinhMau].sort((a, b) => a.soThuTuNgay - b.soThuTuNgay);
+    const firstDay = sortedSchedules[0];
+    const lastDay = sortedSchedules[sortedSchedules.length - 1];
+
+    let firstDayStart = null;
+    let firstDayEnd = null;
+    let lastDayEnd = null;
+
+    if (firstDay?.chiTietLichTrinhs?.length > 0) {
+        const sortedByStart = [...firstDay.chiTietLichTrinhs].sort((a, b) =>
+            a.gioBatDau.localeCompare(b.gioBatDau)
+        );
+        firstDayStart = sortedByStart[0]?.gioBatDau || null;
+
+        const diChuyenActivity = firstDay.chiTietLichTrinhs.find(
+            act => act.loaiHoatDong === "DI_CHUYEN"
+        );
+
+        if (diChuyenActivity) {
+            firstDayEnd = diChuyenActivity.gioKetThuc || diChuyenActivity.gioBatDau || null;
+        } else {
+            const sortedByEnd = [...firstDay.chiTietLichTrinhs].sort((a, b) => {
+                const endA = a.gioKetThuc || a.gioBatDau;
+                const endB = b.gioKetThuc || b.gioBatDau;
+                return endA.localeCompare(endB);
+            });
+            const lastActivityFirstDay = sortedByEnd[sortedByEnd.length - 1];
+            firstDayEnd = lastActivityFirstDay.gioKetThuc || lastActivityFirstDay.gioBatDau || null;
+        }
+    }
+
+    if (lastDay?.chiTietLichTrinhs?.length > 0) {
+        const sortedByEnd = [...lastDay.chiTietLichTrinhs].sort((a, b) => {
+            const endA = a.gioKetThuc || a.gioBatDau;
+            const endB = b.gioKetThuc || b.gioBatDau;
+            return endA.localeCompare(endB);
+        });
+        const lastActivity = sortedByEnd[sortedByEnd.length - 1];
+        lastDayEnd = lastActivity.gioKetThuc || lastActivity.gioBatDau || null;
+    }
+
+    return { firstDayStart, firstDayEnd, lastDayEnd };
 };
 
 export default function TourItinerariesSection({
@@ -178,10 +258,7 @@ export default function TourItinerariesSection({
             } catch (error) {
                 if (cancelled) return;
                 console.error(error);
-                toastWarning(
-                    "Lỗi tải dữ liệu",
-                    "Không thể tải điểm tham quan/khách sạn theo tỉnh thành đã chọn."
-                );
+                toastWarning("Lỗi tải dữ liệu", "Không thể tải điểm tham quan/khách sạn theo tỉnh thành đã chọn.");
                 setDiaDiemsByProvince([]);
                 setKhachSansByProvince([]);
             } finally {
@@ -193,16 +270,42 @@ export default function TourItinerariesSection({
         return () => { cancelled = true; };
     }, [selectedProvince]);
 
+    const openViewModal = (row) => {
+        setCurrentItinerary({
+            ...row,
+            file: null,
+            preview: row.preview || null,
+            maKhachSan: row.maKhachSan?.toString() || "",
+            chiTietLichTrinhs: (row.chiTietLichTrinhs || []).map((sub) => ({
+                tempId: sub.tempId || makeTempId(),
+                maCTLT: Number(sub.maCTLT || 0),
+                gioBatDau: sub.gioBatDau || "",
+                gioKetThuc: sub.gioKetThuc || null,
+                maDiaDiem: sub.maDiaDiem || "",
+                hoatDong: sub.hoatDong || "",
+                loaiHoatDong: sub.loaiHoatDong || "",
+            })),
+        });
+        setNewSubRow(makeSubRow());
+        setModalErrors({});
+        setTimelineError("");
+        setEditingSubKey(null);
+        setEditingSubRow(null);
+        setModalMode("VIEW");
+        setSelectedProvince("");
+        setDiaDiemsByProvince([]);
+        setKhachSansByProvince([]);
+        setShowItineraryModal(true);
+    };
+
     const openAddModal = () => {
         if (hasBooking) {
-            toastWarning(
-                "Không thể thêm ngày",
-                "Tour đã có khách đặt, không được phép thay đổi lịch trình."
-            );
+            toastWarning("Không thể thêm ngày", "Tour đã có khách đặt, không được phép thay đổi lịch trình.");
             return;
         }
 
-        setCurrentItinerary(makeDayRow(safeData.length + 1));
+        const nextDayNumber = safeData.length + 1;
+        setCurrentItinerary(makeDayRow(nextDayNumber));
         setNewSubRow(makeSubRow());
         setModalErrors({});
         setTimelineError("");
@@ -215,10 +318,7 @@ export default function TourItinerariesSection({
 
     const handleEditClick = useCallback((row) => {
         if (hasBooking) {
-            toastWarning(
-                "Không thể sửa lịch trình",
-                "Tour đã có khách đặt, không được phép thay đổi lịch trình."
-            );
+            openViewModal(row);
             return;
         }
 
@@ -234,6 +334,7 @@ export default function TourItinerariesSection({
                 gioKetThuc: sub.gioKetThuc || null,
                 maDiaDiem: sub.maDiaDiem || "",
                 hoatDong: sub.hoatDong || "",
+                loaiHoatDong: sub.loaiHoatDong || "",
             })),
         });
         setNewSubRow(makeSubRow());
@@ -256,21 +357,26 @@ export default function TourItinerariesSection({
     };
 
     const handleFieldChange = useCallback((field, val) => {
+        if (modalMode === "VIEW" || isLocked || hasBooking || isViewMode) return;
         setCurrentItinerary((prev) => ({ ...prev, [field]: val }));
         setModalErrors((prev) => (prev[field] ? { ...prev, [field]: null } : prev));
-    }, []);
+    }, [modalMode, isLocked, hasBooking, isViewMode]);
 
     const handleModalImageChange = (e) => {
+        if (modalMode === "VIEW" || isLocked || hasBooking || isViewMode) return;
         const file = e.target.files?.[0];
         if (!file) return;
         setCurrentItinerary((prev) => ({ ...prev, file, preview: URL.createObjectURL(file) }));
     };
 
     const handleProvinceChange = (val) => {
+        if (modalMode === "VIEW" || isLocked || hasBooking || isViewMode) return;
         setSelectedProvince(val);
     };
 
     const handleAddSubRow = () => {
+        if (modalMode === "VIEW" || isLocked || hasBooking || isViewMode) return;
+
         if (!newSubRow.gioBatDau) {
             setTimelineError("Vui lòng nhập giờ bắt đầu");
             toastWarning("Thiếu dữ liệu", "Mốc thời gian bắt đầu không được để trống.");
@@ -284,8 +390,7 @@ export default function TourItinerariesSection({
             setTimelineError("Giờ kết thúc phải lớn hơn giờ bắt đầu");
             return;
         }
-        
-        // ✅ Bỏ kiểm tra bắt buộc chọn địa điểm
+
         if (!newSubRow.hoatDong?.trim()) {
             setTimelineError("Vui lòng nhập nội dung hoạt động");
             toastWarning("Thiếu dữ liệu", "Nội dung hoạt động không được để trống.");
@@ -311,6 +416,7 @@ export default function TourItinerariesSection({
     };
 
     const handleEditSubRow = (sub) => {
+        if (modalMode === "VIEW" || isLocked || hasBooking || isViewMode) return;
         setEditingSubKey(getSubKey(sub));
         setEditingSubRow({ ...sub });
     };
@@ -321,17 +427,25 @@ export default function TourItinerariesSection({
     };
 
     const handleSaveSubRow = () => {
-        if (!editingSubRow.gioBatDau) return toastWarning("Thiếu dữ liệu", "Vui lòng nhập giờ bắt đầu.");
-        if (editingSubRow.gioKetThuc && timeToMinutes(editingSubRow.gioKetThuc) <= timeToMinutes(editingSubRow.gioBatDau)) {
-            return toastWarning("Sai thời gian", "Giờ kết thúc phải lớn hơn giờ bắt đầu.");
+        if (modalMode === "VIEW" || isLocked || hasBooking || isViewMode) return;
+        if (!editingSubRow.gioBatDau) {
+            toastWarning("Thiếu dữ liệu", "Vui lòng nhập giờ bắt đầu.");
+            return;
         }
-        // ✅ Bỏ kiểm tra bắt buộc chọn địa điểm
-        if (!editingSubRow.hoatDong?.trim()) return toastWarning("Thiếu dữ liệu", "Nội dung hoạt động không được để trống.");
+        if (editingSubRow.gioKetThuc && timeToMinutes(editingSubRow.gioKetThuc) <= timeToMinutes(editingSubRow.gioBatDau)) {
+            toastWarning("Sai thời gian", "Giờ kết thúc phải lớn hơn giờ bắt đầu.");
+            return;
+        }
+        if (!editingSubRow.hoatDong?.trim()) {
+            toastWarning("Thiếu dữ liệu", "Nội dung hoạt động không được để trống.");
+            return;
+        }
 
         const otherRows = currentItinerary.chiTietLichTrinhs.filter((item) => getSubKey(item) !== editingSubKey);
 
         if (hasTimeOverlap(otherRows, timeToMinutes(editingSubRow.gioBatDau), timeToMinutes(editingSubRow.gioKetThuc || editingSubRow.gioBatDau))) {
-            return toastWarning("Trùng thời gian", "Khoảng thời gian bị giao với mốc khác.");
+            toastWarning("Trùng thời gian", "Khoảng thời gian bị giao với mốc khác.");
+            return;
         }
 
         setCurrentItinerary((prev) => ({
@@ -345,6 +459,7 @@ export default function TourItinerariesSection({
     };
 
     const handleRemoveSubRow = (targetKey) => {
+        if (modalMode === "VIEW" || isLocked || hasBooking || isViewMode) return;
         setCurrentItinerary((prev) => ({
             ...prev,
             chiTietLichTrinhs: (prev.chiTietLichTrinhs || []).filter((sub) => getSubKey(sub) !== targetKey),
@@ -354,26 +469,21 @@ export default function TourItinerariesSection({
     const checkScheduleImpact = useCallback(() => {
         if (!hasBooking) return true;
 
+        if (safeData.length !== value.length) {
+            toastWarning("Không thể thay đổi số ngày", "Tour đã có khách đặt, không được phép thêm hoặc xóa ngày.");
+            return false;
+        }
+
         const originalSchedule = safeData.find(lt => lt.id === currentItinerary?.id);
         if (!originalSchedule) return true;
 
-        if (safeData.length !== value.length) {
-            toastWarning(
-                "Không thể thay đổi số ngày",
-                "Tour đã có khách đặt, không được phép thêm hoặc xóa ngày."
-            );
-            return false;
-        }
         const isLastDay = currentItinerary.soThuTuNgay === safeData.length;
         if (isLastDay) {
             const oldLatestEnd = getLatestEndTime(originalSchedule.chiTietLichTrinhs);
             const newLatestEnd = getLatestEndTime(currentItinerary.chiTietLichTrinhs);
 
             if (oldLatestEnd !== null && newLatestEnd !== null && newLatestEnd < oldLatestEnd) {
-                toastWarning(
-                    "Không thể giảm thời gian kết thúc",
-                    "Ngày cuối của lịch trình không thể kết thúc sớm hơn vì đã có khách đặt."
-                );
+                toastWarning("Không thể giảm thời gian kết thúc", "Ngày cuối của lịch trình không thể kết thúc sớm hơn vì đã có khách đặt.");
                 return false;
             }
         }
@@ -381,32 +491,65 @@ export default function TourItinerariesSection({
         return true;
     }, [hasBooking, currentItinerary, safeData, value]);
 
+    const saveItinerary = useCallback(async (itineraryToSave) => {
+        let updatedList;
+        const exists = safeData.some((lt) => lt.id === currentItinerary.id);
+
+        if (exists) {
+            updatedList = safeData.map((lt) =>
+                lt.id === itineraryToSave.id ? itineraryToSave : lt
+            );
+        } else {
+            updatedList = [...safeData, itineraryToSave];
+        }
+
+        updatedList = reorderDayNumbers(updatedList);
+
+        await onChange?.(updatedList);
+    }, [safeData, currentItinerary, onChange]);
+
     const handleSaveItineraryModal = async () => {
+        if (modalMode === "VIEW" || isLocked || hasBooking || isViewMode) return;
         if (!checkScheduleImpact()) return;
 
-        const errors = validateItinerary(currentItinerary);
+        let formattedItinerary = { ...currentItinerary };
+        const userInput = formattedItinerary.tenLichTrinh || "";
+        const dayNumber = formattedItinerary.soThuTuNgay;
+
+        const userTitle = extractUserTitle(userInput);
+
+        if (userTitle && !userTitle.match(/^Ngày\s+\d+$/)) {
+            formattedItinerary.tenLichTrinh = createDayNameWithTitle(dayNumber, userTitle);
+        } else if (userInput && !userInput.match(/^Ngày\s+\d+$/)) {
+            formattedItinerary.tenLichTrinh = createDayNameWithTitle(dayNumber, userInput);
+        } else {
+            formattedItinerary.tenLichTrinh = createDayNameWithTitle(dayNumber, "");
+        }
+
+        const errors = validateItinerary(formattedItinerary);
         if (Object.keys(errors).length > 0) {
             setModalErrors(errors);
             toastWarning("Dữ liệu chưa hợp lệ", "Vui lòng kiểm tra lại thông tin.");
             return;
         }
 
-        const sortedTimeline = [...currentItinerary.chiTietLichTrinhs].sort(
+        const sortedTimeline = [...formattedItinerary.chiTietLichTrinhs].sort(
             (a, b) => timeToMinutes(a.gioBatDau) - timeToMinutes(b.gioBatDau)
         );
 
-        const itineraryToSave = { ...currentItinerary, chiTietLichTrinhs: sortedTimeline };
-        const exists = safeData.some((lt) => lt.id === currentItinerary.id);
-        const updatedList = exists
-            ? safeData.map((lt) => (lt.id === itineraryToSave.id ? itineraryToSave : lt))
-            : [...safeData, itineraryToSave];
+        const itineraryToSave = {
+            ...formattedItinerary,
+            chiTietLichTrinhs: sortedTimeline
+        };
 
         try {
             setIsSaving(true);
-            await onChange?.(updatedList);
-            toastSuccess("Thành công", `Đã lưu Ngày ${currentItinerary.soThuTuNgay}`);
+            await saveItinerary(itineraryToSave);
+            toastSuccess("Thành công", `Đã lưu ${createDayNameWithTitle(currentItinerary.soThuTuNgay, extractUserTitle(currentItinerary.tenLichTrinh))}`);
             setShowItineraryModal(false);
-        } catch {
+        } catch (error) {
+            toastWarning("Lỗi", "Không thể lưu lịch trình.");
+            console.error("Save error:", error);
         } finally {
             setIsSaving(false);
         }
@@ -414,10 +557,7 @@ export default function TourItinerariesSection({
 
     const handleDeleteClick = (row) => {
         if (hasBooking) {
-            toastWarning(
-                "Không thể xóa ngày",
-                "Tour đã có khách đặt, không được phép xóa ngày trong lịch trình."
-            );
+            toastWarning("Không thể xóa ngày", "Tour đã có khách đặt, không được phép xóa ngày trong lịch trình.");
             return;
         }
         setSelectedDeleteItem(row);
@@ -426,11 +566,18 @@ export default function TourItinerariesSection({
 
     const confirmDeleteItinerary = async () => {
         if (!selectedDeleteItem) return;
-        const updatedList = safeData.filter((lt) => lt.id !== selectedDeleteItem.id);
+
+        const filteredList = safeData.filter((lt) => lt.id !== selectedDeleteItem.id);
+        const reorderedList = reorderDayNumbers(filteredList);
+
         try {
             setIsSaving(true);
-            await onChange?.(updatedList);
-            toastSuccess("Thành công", `Đã xóa Ngày ${selectedDeleteItem.soThuTuNgay}`);
+            await onChange?.(reorderedList);
+            const userTitle = extractUserTitle(selectedDeleteItem.tenLichTrinh || "");
+            toastSuccess("Thành công", `Đã xóa ${createDayNameWithTitle(selectedDeleteItem.soThuTuNgay, userTitle)}`);
+        } catch (error) {
+            toastWarning("Lỗi", "Không thể xóa ngày này");
+            console.error("Delete error:", error);
         } finally {
             setShowDeleteModal(false);
             setSelectedDeleteItem(null);
@@ -439,6 +586,7 @@ export default function TourItinerariesSection({
     };
 
     const isActuallyLocked = isLocked || hasBooking || isViewMode || isSaving;
+    const isModalViewOnly = modalMode === "VIEW" || isLocked || hasBooking || isViewMode;
 
     return (
         <section className="border-t border-slate-200 pt-8 space-y-4">
@@ -447,15 +595,7 @@ export default function TourItinerariesSection({
                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">
                         Lịch trình chi tiết theo ngày
                     </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Tổng số: {safeData.length} ngày hành trình</p>
                 </div>
-
-                {hasBooking && (
-                    <span className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
-                        <AlertCircle size={14} />
-                        Đã khóa (có khách đặt)
-                    </span>
-                )}
 
                 {!isViewMode && !isLocked && !hasBooking && (
                     <button
@@ -480,23 +620,23 @@ export default function TourItinerariesSection({
 
             {showItineraryModal && currentItinerary && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/20">
-                    <div className="bg-white w-full max-w-6xl rounded-2xl shadow-2xl flex flex-col overflow-hidden max-h-[95vh]">
+                    <div className="bg-white w-full max-w-7xl rounded-2xl shadow-2xl flex flex-col overflow-hidden max-h-[95vh]">
                         <div className="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
                             <h2 className="text-lg font-bold text-slate-800">
-                                Ngày {currentItinerary.soThuTuNgay} —{" "}
-                                {modalMode === "ADD" ? "Thêm mới" : "Cập nhật"} lịch trình
+                                {isModalViewOnly ? "Chi tiết lịch trình" : (modalMode === "ADD" ? "Thêm mới" : "Cập nhật")} — {currentItinerary.tenLichTrinh || `Ngày ${currentItinerary.soThuTuNgay}`}
                             </h2>
                             <button onClick={handleCloseModal} disabled={isSaving} className="text-slate-400 hover:text-red-500 p-1 rounded-lg hover:bg-slate-100 transition-colors">
                                 <X size={24} />
                             </button>
                         </div>
+
                         {hasBooking && (
                             <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
                                 <AlertCircle size={18} className="text-amber-500 shrink-0 mt-0.5" />
                                 <div className="text-sm text-amber-700">
-                                    <p className="font-medium">Lịch trình đã có khách đặt</p>
+                                    <p className="font-medium">Lịch trình đã có khách đặt - Chế độ chỉ xem</p>
                                     <p className="text-xs text-amber-600 mt-0.5">
-                                        Bạn chỉ có thể thay đổi thời gian kết thúc (tăng lên), không thể giảm hoặc thay đổi số ngày.
+                                        Bạn chỉ có thể xem chi tiết, không thể chỉnh sửa lịch trình.
                                     </p>
                                 </div>
                             </div>
@@ -514,7 +654,7 @@ export default function TourItinerariesSection({
                                                 <span className="text-[11px] text-slate-400 font-medium">Chưa có ảnh đại diện</span>
                                             </div>
                                         )}
-                                        {!isActuallyLocked && (
+                                        {!isModalViewOnly && (
                                             <input
                                                 type="file"
                                                 accept="image/*"
@@ -530,8 +670,9 @@ export default function TourItinerariesSection({
                                         label="Tiêu đề ngày"
                                         value={currentItinerary.tenLichTrinh || ""}
                                         onChange={(e) => handleFieldChange("tenLichTrinh", e.target.value)}
-                                        disabled={isActuallyLocked}
-                                        required
+                                        disabled={isModalViewOnly}
+                                        required={!isModalViewOnly}
+                                        placeholder="Ví dụ: Đà Nẵng - Cầu Vàng - Biển Mỹ Khê"
                                     />
 
                                     <div>
@@ -547,7 +688,7 @@ export default function TourItinerariesSection({
                                             labelKey="name"
                                             placeholder="Chọn tỉnh/thành để lọc điểm tham quan & khách sạn"
                                             onChange={handleProvinceChange}
-                                            disabled={isActuallyLocked}
+                                            disabled={isModalViewOnly}
                                         />
                                         <p className="text-[11px] text-slate-400 mt-1">
                                             Chọn tỉnh/thành để danh sách điểm tham quan và khách sạn bên dưới chỉ hiển thị theo khu vực này.
@@ -564,7 +705,7 @@ export default function TourItinerariesSection({
                                                 value={currentItinerary.buaAn || ""}
                                                 options={BUA_AN_OPTIONS}
                                                 onChange={(val) => handleFieldChange("buaAn", val)}
-                                                disabled={isActuallyLocked}
+                                                disabled={isModalViewOnly}
                                                 fullWidth
                                             />
                                         </div>
@@ -581,7 +722,7 @@ export default function TourItinerariesSection({
                                                 labelKey="tenKhachSan"
                                                 placeholder={selectedProvince ? "Chọn khách sạn trong tỉnh/thành" : "Chọn khách sạn"}
                                                 onChange={(val) => handleFieldChange("maKhachSan", val)}
-                                                disabled={isActuallyLocked || loadingProvinceData}
+                                                disabled={isModalViewOnly || loadingProvinceData}
                                             />
                                             {selectedProvince && effectiveKhachSans.length === 0 && !loadingProvinceData && (
                                                 <p className="text-[11px] text-amber-500 mt-1">
@@ -592,16 +733,20 @@ export default function TourItinerariesSection({
                                     </div>
                                 </div>
                             </div>
+
                             <div className={`bg-white border rounded-2xl shadow-sm ${modalErrors.chiTietLichTrinhs ? "border-red-400" : "border-slate-200"}`}>
-                                {!isViewMode && !isLocked && !hasBooking && (
+                                {!isModalViewOnly && (
                                     <div className="p-5 bg-slate-50/70 border-b border-slate-100 space-y-4">
                                         <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Thêm mốc thời gian & hoạt động</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+
+                                        {/* Hàng 1: Giờ bắt đầu, Giờ kết thúc, Địa điểm tham quan, Loại hoạt động — 4 cột bằng nhau */}
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                                             <div className="md:col-span-3">
                                                 <label className="text-[11px] font-semibold text-slate-500 mb-1 block">Giờ bắt đầu *</label>
                                                 <TimePicker
                                                     value={newSubRow.gioBatDau}
                                                     onChange={(timeStr) => setNewSubRow((p) => ({ ...p, gioBatDau: timeStr }))}
+                                                    className="w-full"
                                                 />
                                             </div>
                                             <div className="md:col-span-3">
@@ -609,9 +754,10 @@ export default function TourItinerariesSection({
                                                 <TimePicker
                                                     value={newSubRow.gioKetThuc}
                                                     onChange={(timeStr) => setNewSubRow((p) => ({ ...p, gioKetThuc: timeStr }))}
+                                                    className="w-full"
                                                 />
                                             </div>
-                                            <div className="md:col-span-5">
+                                            <div className="md:col-span-3">
                                                 <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
                                                     Địa điểm tham quan
                                                     {selectedProvince && <span className="text-sky-500 normal-case font-medium"> (theo {selectedProvince})</span>}
@@ -622,10 +768,11 @@ export default function TourItinerariesSection({
                                                     options={availableLocations}
                                                     valueKey="maDiaDiem"
                                                     labelKey="tenDiaDiem"
-                                                    placeholder={selectedProvince ? "Chọn địa điểm trong tỉnh/thành" : "Chọn địa điểm (không bắt buộc)"}
+                                                    placeholder={selectedProvince ? "Chọn địa điểm trong tỉnh/thành" : "Chọn địa điểm"}
                                                     onChange={(val) => setNewSubRow((p) => ({ ...p, maDiaDiem: val }))}
                                                     disabled={isSaving || loadingProvinceData}
                                                     isClearable={true}
+                                                    className="w-full"
                                                 />
                                                 {selectedProvince && availableLocations.length === 0 && !loadingProvinceData && (
                                                     <p className="text-[11px] text-amber-500 mt-1">
@@ -633,27 +780,52 @@ export default function TourItinerariesSection({
                                                     </p>
                                                 )}
                                             </div>
-                                            <div className="md:col-span-1 pt-6">
-                                                <button
-                                                    type="button"
-                                                    onClick={handleAddSubRow}
-                                                    disabled={isSaving}
-                                                    className="px-7 py-3.5 bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold rounded-4xl shadow-sm transition-colors"
-                                                >
-                                                    Thêm
-                                                </button>
+                                            <div className="md:col-span-3">
+                                                <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
+                                                    Loại hoạt động
+                                                </label>
+                                                <SelectField
+                                                    value={newSubRow.loaiHoatDong}
+                                                    options={LOAI_HOAT_DONG_OPTIONS}
+                                                    valueKey="value"
+                                                    labelKey="label"
+                                                    placeholder="Chọn loại hoạt động"
+                                                    onChange={(val) => setNewSubRow(prev => ({ ...prev, loaiHoatDong: val }))}
+                                                    disabled={isSaving || loadingProvinceData}
+                                                    isClearable={true}
+                                                    className="w-full"
+                                                />
                                             </div>
+                                        </div>
 
-                                            <div className="md:col-span-12">
+                                        {/* Hàng 2: Nội dung hoạt động */}
+                                        <div className="grid grid-cols-1 gap-4">
+                                            <div>
+                                                <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
+                                                    Nội dung hoạt động chi tiết
+                                                </label>
                                                 <InputField
                                                     multiline
                                                     rows={2}
                                                     placeholder="Nội dung hoạt động chi tiết tại địa điểm này..."
                                                     value={newSubRow.hoatDong}
                                                     onChange={(e) => setNewSubRow((p) => ({ ...p, hoatDong: e.target.value }))}
+                                                    className="w-full"
                                                 />
                                             </div>
-                                            {timelineError && <p className="text-red-500 text-xs md:col-span-12 font-medium mt-1">{timelineError}</p>}
+                                            {timelineError && <p className="text-red-500 text-xs font-medium mt-1">{timelineError}</p>}
+                                        </div>
+
+                                        {/* Hàng 3: Nút Thêm */}
+                                        <div className="flex justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={handleAddSubRow}
+                                                disabled={isSaving}
+                                                className="px-7 py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold rounded-xl shadow-sm transition-colors disabled:opacity-50"
+                                            >
+                                                Thêm mốc hoạt động
+                                            </button>
                                         </div>
                                     </div>
                                 )}
@@ -662,16 +834,17 @@ export default function TourItinerariesSection({
                                     <table className="w-full text-left text-sm border-collapse">
                                         <thead>
                                             <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-100 text-xs uppercase tracking-wider">
-                                                <th className="py-3 px-5 w-64">Thời gian</th>
-                                                <th className="py-3 px-5 w-64">Địa điểm</th>
+                                                <th className="py-3 px-5 w-56">Thời gian</th>
+                                                <th className="py-3 px-5 w-48">Địa điểm</th>
+                                                <th className="py-3 px-5 w-36">Loại hoạt động</th>
                                                 <th className="py-3 px-5">Chi tiết hoạt động</th>
-                                                {!isViewMode && !isLocked && !hasBooking && <th className="py-3 px-5 w-28 text-center">Thao tác</th>}
+                                                {!isModalViewOnly && <th className="py-3 px-5 w-28 text-center">Thao tác</th>}
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {(currentItinerary.chiTietLichTrinhs || []).length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={isViewMode || isLocked || hasBooking ? 3 : 4} className="py-10 px-5 text-center text-slate-400 italic">
+                                                    <td colSpan={isModalViewOnly ? 4 : 5} className="py-10 px-5 text-center text-slate-400 italic">
                                                         Chưa có mốc hoạt động chi tiết nào cho ngày này.
                                                     </td>
                                                 </tr>
@@ -683,12 +856,12 @@ export default function TourItinerariesSection({
 
                                                     return (
                                                         <tr key={subKey} className="hover:bg-slate-50/60 transition-colors">
-                                                            <td className="py-4 px-5 vertical-align-top font-medium text-slate-700">
+                                                            <td className="py-4 px-5 font-medium text-slate-700">
                                                                 {isEditing ? (
-                                                                    <div className="flex items-center gap-2 min-w-[260px]">
-                                                                        <TimePicker value={editingSubRow.gioBatDau} onChange={(t) => setEditingSubRow((p) => ({ ...p, gioBatDau: t }))} />
+                                                                    <div className="flex items-center gap-2 min-w-[220px]">
+                                                                        <TimePicker value={editingSubRow.gioBatDau} onChange={(t) => setEditingSubRow((p) => ({ ...p, gioBatDau: t }))} className="flex-1" />
                                                                         <span className="text-slate-400 shrink-0">-</span>
-                                                                        <TimePicker value={editingSubRow.gioKetThuc} onChange={(t) => setEditingSubRow((p) => ({ ...p, gioKetThuc: t }))} />
+                                                                        <TimePicker value={editingSubRow.gioKetThuc} onChange={(t) => setEditingSubRow((p) => ({ ...p, gioKetThuc: t }))} className="flex-1" />
                                                                     </div>
                                                                 ) : (
                                                                     <div className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 text-xs font-semibold">
@@ -707,9 +880,36 @@ export default function TourItinerariesSection({
                                                                         placeholder="Không chọn"
                                                                         onChange={(val) => setEditingSubRow((p) => ({ ...p, maDiaDiem: val }))}
                                                                         isClearable={true}
+                                                                        className="w-full"
                                                                     />
                                                                 ) : (
-                                                                    <span className="font-semibold text-slate-800">{loc?.tenDiaDiem || "Không chọn"}</span>
+                                                                    <span className="font-semibold text-slate-800">{loc?.tenDiaDiem || ""}</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="py-4 px-5">
+                                                                {isEditing ? (
+                                                                    <SelectField
+                                                                        value={editingSubRow.loaiHoatDong}
+                                                                        options={LOAI_HOAT_DONG_OPTIONS}
+                                                                        valueKey="value"
+                                                                        labelKey="label"
+                                                                        placeholder="Chưa chọn"
+                                                                        onChange={(val) => setEditingSubRow((p) => ({ ...p, loaiHoatDong: val }))}
+                                                                        disabled={isSaving}
+                                                                        isClearable={true}
+                                                                        className="w-full"
+                                                                    />
+                                                                ) : (
+                                                                    sub.loaiHoatDong ? (
+                                                                        <span className={`
+                                                                            inline-block px-2 py-0.5 rounded-full text-[9px] font-medium border
+                                                                            ${getColorClass(sub.loaiHoatDong)}
+                                                                        `}>
+                                                                            {LOAI_HOAT_DONG_MAP[sub.loaiHoatDong]?.label || sub.loaiHoatDong}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="text-xs text-slate-400">Chưa chọn</span>
+                                                                    )
                                                                 )}
                                                             </td>
                                                             <td className="py-4 px-5 text-slate-600 whitespace-pre-line leading-relaxed">
@@ -719,12 +919,13 @@ export default function TourItinerariesSection({
                                                                         rows={2}
                                                                         value={editingSubRow.hoatDong}
                                                                         onChange={(e) => setEditingSubRow((p) => ({ ...p, hoatDong: e.target.value }))}
+                                                                        className="w-full"
                                                                     />
                                                                 ) : (
                                                                     sub.hoatDong
                                                                 )}
                                                             </td>
-                                                            {!isViewMode && !isLocked && !hasBooking && (
+                                                            {!isModalViewOnly && (
                                                                 <td className="py-4 px-5 text-center">
                                                                     {isEditing ? (
                                                                         <div className="flex items-center justify-center gap-2">
@@ -756,12 +957,12 @@ export default function TourItinerariesSection({
                                 rows={3}
                                 value={currentItinerary.luuY || ""}
                                 onChange={(e) => handleFieldChange("luuY", e.target.value)}
-                                disabled={isActuallyLocked}
+                                disabled={isModalViewOnly}
                                 placeholder="Nhập các quy định, trang phục khuyên dùng, ghi chú sức khỏe hoặc lưu ý đặc biệt cho khách hàng..."
                             />
                         </div>
 
-                        {!isViewMode && !isLocked && !hasBooking && (
+                        {!isModalViewOnly && (
                             <div className="p-4 px-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
                                 <button
                                     onClick={handleSaveItineraryModal}
@@ -773,6 +974,17 @@ export default function TourItinerariesSection({
                                 </button>
                             </div>
                         )}
+
+                        {isModalViewOnly && (
+                            <div className="p-4 px-6 border-t border-slate-200 bg-slate-50 flex justify-end">
+                                <button
+                                    onClick={handleCloseModal}
+                                    className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold text-sm transition-colors"
+                                >
+                                    Đóng
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -780,7 +992,7 @@ export default function TourItinerariesSection({
             <ConfirmModal
                 isOpen={showDeleteModal}
                 title="Xóa lịch trình"
-                message={selectedDeleteItem ? `Bạn có chắc muốn xóa Hành trình Ngày ${selectedDeleteItem.soThuTuNgay}?` : ""}
+                message={selectedDeleteItem ? `Bạn có chắc muốn xóa ${selectedDeleteItem.tenLichTrinh || `Ngày ${selectedDeleteItem.soThuTuNgay}`}?` : ""}
                 confirmText="Xóa"
                 cancelText="Hủy"
                 type="danger"

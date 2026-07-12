@@ -252,7 +252,7 @@ export default function CreateBookingAdminModal({ onClose, onSuccess }) {
 
 
     return (
-        <div className="fixed inset-0 bg-slate-600/20  z-[1000] flex justify-center items-center p-4">
+        <div className="fixed inset-0 bg-black/20  z-[999] flex justify-center items-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-[1340px] shadow-2xl flex flex-col max-h-[92vh] overflow-hidden border border-slate-100">
 
 

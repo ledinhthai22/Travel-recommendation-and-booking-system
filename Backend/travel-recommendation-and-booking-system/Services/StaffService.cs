@@ -153,10 +153,22 @@ namespace travel_recommendation_and_booking_system.Services
 
             return staff;
         }
-        public async Task<List<StaffDTO>> GetTourGuiDe()
+        public async Task<List<StaffDTO>> GetTourGuiDe(DateTime ngayKhoiHanh, int? excludeMaChuyen = null)
         {
+            var thang = ngayKhoiHanh.Month;
+            var nam = ngayKhoiHanh.Year;
+
+            var maHDVDaCoChuyen = _context.ChuyenKhoiHanhs
+                .Where(c => c.NgayXoa == null
+                         && c.NgayKhoiHanh.Month == thang
+                         && c.NgayKhoiHanh.Year == nam
+                         && (!excludeMaChuyen.HasValue || c.MaChuyen != excludeMaChuyen.Value))
+                .Select(c => c.MaHDV);
+
             return await _context.NhanViens
-                .Where(n => n.NgayXoa == null && n.MaVaiTro == 3)
+                .Where(n => n.NgayXoa == null
+                         && n.MaVaiTro == 3
+                         && !maHDVDaCoChuyen.Contains(n.MaNhanVien))
                 .OrderBy(n => n.HoTen)
                 .Select(n => new StaffDTO
                 {

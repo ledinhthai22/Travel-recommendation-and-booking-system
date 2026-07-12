@@ -67,15 +67,15 @@ export default function HotelDetail() {
     const hotelImages = hotel.hinhAnh?.map((x) => `${BASE_URL}${x.duongDanAnh}`) || [];
 
     const related = [];
-    const amenityIconMap = {
-        "Wifi": Wifi,
-        "Wifi miễn phí": Wifi,
-        "Hồ bơi": Waves,
-        "Nhà hàng": UtensilsCrossed,
-        "Bãi đỗ xe": Car,
-        "Điều hòa": Snowflake,
-        "Spa": Sparkles,
-    };
+    // const amenityIconMap = {
+    //     "Wifi": Wifi,
+    //     "Wifi miễn phí": Wifi,
+    //     "Hồ bơi": Waves,
+    //     "Nhà hàng": UtensilsCrossed,
+    //     "Bãi đỗ xe": Car,
+    //     "Điều hòa": Snowflake,
+    //     "Spa": Sparkles,
+    // };
     return (
         <div className="mx-auto mt-20 max-w-[1440px] px-6 py-6">
 
@@ -192,18 +192,16 @@ export default function HotelDetail() {
                     </h2>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600">
                         {hotel.tienIch?.map((item, index) => {
-                            const Icon = amenityIconMap[item.tenTienIch];
+                            // const Icon = amenityIconMap[item.tenTienIch];
 
                             return (
                                 <div
                                     key={item.maTienIch}
                                     className="flex items-center gap-1.5"
                                 >
-                                    {Icon ? (
-                                        <Icon size={15} className="text-sky-500" />
-                                    ) : (
-                                        <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
-                                    )}
+
+                                    <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+
 
                                     <span>{item.tenTienIch}</span>
                                 </div>

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Star, MapPin, Earth, Tag, Phone, Clock3, Users } from 'lucide-react';
 
+const DEFAULT_IMAGE = 'https://cdn-media.sforum.vn/storage/app/media/anh-vinh-ha-long-2.jpg';
+
 export default function ManagerCard({
     item,
     type,
@@ -12,6 +14,7 @@ export default function ManagerCard({
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [dropdownStyle, setDropdownStyle] = useState({});
+    const [imageError, setImageError] = useState(false);
 
     const buttonRef = useRef(null);
     const dropdownRef = useRef(null);
@@ -81,6 +84,11 @@ export default function ManagerCard({
             ? "bg-emerald-500/70 text-white"
             : "bg-slate-700 text-white";
     }
+
+    // Reset trạng thái lỗi ảnh khi item/imageUrl thay đổi (ví dụ list được refetch)
+    useEffect(() => {
+        setImageError(false);
+    }, [imageUrl]);
 
     // Tính vị trí dropdown theo VIEWPORT (vì đang dùng position: fixed).
     // Lỗi cũ: cộng thêm window.scrollY/scrollX vào top/left, trong khi
@@ -154,15 +162,20 @@ export default function ManagerCard({
         ));
     };
 
+    // Xác định ảnh hiển thị: nếu không có ảnh gốc HOẶC ảnh load lỗi thì dùng ảnh CDN mặc định
+    const fullImageUrl = imageUrl ? `${url}${imageUrl}` : null;
+    const displayImage = (imageError || !fullImageUrl) ? DEFAULT_IMAGE : fullImageUrl;
+
     return (
         <div className="group bg-white rounded-xl mt-[5px] mb-[0px] overflow-hidden border border-slate-200 hover:border-blue-400 transition-all duration-300 flex flex-col shadow-sm hover:shadow-md">
             {/* IMAGE */}
             <div className={`relative overflow-hidden ${!isOnline ? 'grayscale' : ''}`} style={{ height: '110px' }}>
                 <img
-                    src={imageUrl ? `${url}${imageUrl}` : '/images/no-image.jpg'}
+                    src={displayImage}
                     alt={displayName}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     loading="lazy"
+                    onError={() => setImageError(true)}
                 />
                 <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-all duration-300"></div>
 

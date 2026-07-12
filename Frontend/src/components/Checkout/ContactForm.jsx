@@ -2,13 +2,22 @@ import React, { useState, useEffect } from 'react';
 import InputField from '~/components/UI/Form/InputField';
 import { getMeApi } from '~/Services/AuthService'; 
 
-export default function ContactForm({ contact, onChange, onTabChange, errors = {} }) {
-    const [activeTab, setActiveTab] = useState('me'); // 'me' hoặc 'other'
+export default function ContactForm({ 
+    contact, 
+    onChange, 
+    onTabChange, 
+    errors = {},
+    onActiveTabChange
+}) {
+    const [activeTab, setActiveTab] = useState('me');
     const [loading, setLoading] = useState(false);
 
-    // Xử lý chuyển đổi giữa các Tab và điền/xóa dữ liệu form
     const handleTabChange = async (tab) => {
         setActiveTab(tab);
+        
+        if (onActiveTabChange) {
+            onActiveTabChange(tab);
+        }
         
         if (tab === 'me') {
             try {
@@ -20,7 +29,8 @@ export default function ContactForm({ contact, onChange, onTabChange, errors = {
                     fullName: meData?.hoTen || '',
                     phone: meData?.soDienThoai || '',
                     email: meData?.email || '',
-                    address: meData?.diaChi || ''
+                    address: meData?.diaChi || '',
+                    dob: meData?.ngaySinh || '' 
                 };
 
                 if (onTabChange) {
@@ -33,23 +43,25 @@ export default function ContactForm({ contact, onChange, onTabChange, errors = {
             }
         } else if (tab === 'other') {
             if (onTabChange) {
-                onTabChange({ fullName: '', phone: '', email: '', address: '' });
+                onTabChange({ 
+                    fullName: '', 
+                    phone: '', 
+                    email: '', 
+                    address: '',
+                    dob: '' 
+                });
             }
         }
     };
 
-    // Tự động điền thông tin tài khoản lần đầu
     useEffect(() => {
         let isMounted = true;
-        
         const initData = async () => {
             if (isMounted) {
                 await handleTabChange('me');
             }
         };
-        
         initData();
-        
         return () => {
             isMounted = false;
         };
@@ -57,7 +69,6 @@ export default function ContactForm({ contact, onChange, onTabChange, errors = {
 
     return (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm relative">
-            {/* Loading overlay */}
             {loading && (
                 <div className="absolute inset-0 bg-white/70 backdrop-blur-sm rounded-3xl flex items-center justify-center z-10">
                     <div className="flex flex-col items-center gap-3">
@@ -67,7 +78,6 @@ export default function ContactForm({ contact, onChange, onTabChange, errors = {
                 </div>
             )}
 
-            {/* Tiêu đề & Thanh chuyển đổi Tabs */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
                 <h2 className="text-xl font-bold text-slate-900">Thông tin liên lạc</h2>
                 
@@ -99,7 +109,6 @@ export default function ContactForm({ contact, onChange, onTabChange, errors = {
                 </div>
             </div>
             
-            {/* Form */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                 <InputField
                     label="Họ tên"

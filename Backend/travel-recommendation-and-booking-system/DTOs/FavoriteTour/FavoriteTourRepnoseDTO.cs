@@ -14,5 +14,6 @@ namespace travel_recommendation_and_booking_system.DTOs.FavoriteTour
         public decimal GiaTour { get; set; }
         public int MaLoaiTour { get; set; }
         public string TenLoaiTour { get; set; }
+        public string Slug { get; set; }
     }
 }

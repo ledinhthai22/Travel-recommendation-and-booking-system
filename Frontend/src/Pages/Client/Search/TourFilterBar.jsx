@@ -84,7 +84,7 @@ export default function TourFilterBar({
     }, []);
 
     return (
-        <div className="mb-8 rounded-3xl border border-slate-200 bg-white p-5 shadow-xl">
+        <div className="mb-8 rounded-3xl justify-items-center ">
             <div className="flex flex-wrap items-end gap-5">
 
                 <FilterField icon={MapPin} label="Điểm đến" className="w-full sm:w-52">
@@ -123,77 +123,67 @@ export default function TourFilterBar({
                     />
                 </FilterField>
 
-                <div className="w-full sm:w-64 sm:flex-1 flex flex-col gap-1.5">
-
-                    <div className="flex items-center justify-between h-[17px]">
-                        <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                            <DollarSign size={13} className="text-[#0EA5E5]" />
-                            Khoảng giá
-                        </span>
-                        
-
-                        <div className="flex items-center gap-1 tabular-nums">
-                            <span className="text-[11px] font-bold text-[#0EA5E5] bg-sky-50 border border-sky-100 rounded-md px-1.5 py-0.5">
+                <FilterField icon={DollarSign} label="Khoảng giá" className="w-full sm:w-48">
+                    <div className="flex flex-col justify-center gap-1.5 rounded-xl border border-slate-200 px-3 h-[42px]">
+                        <div className="flex items-center justify-between tabular-nums">
+                            <span className="text-[11px] font-bold text-[#0EA5E5]">
                                 {minPrice.toLocaleString('vi-VN')}đ
                             </span>
                             <span className="text-slate-300 text-[10px]">—</span>
-                            <span className="text-[11px] font-bold text-[#0EA5E5] bg-sky-50 border border-sky-100 rounded-md px-1.5 py-0.5">
+                            <span className="text-[11px] font-bold text-[#0EA5E5]">
                                 {maxPrice.toLocaleString('vi-VN')}đ
                             </span>
                         </div>
-                    </div>
 
- 
-                    <div className="relative h-[42px] flex items-center w-full px-2">
-                        <div className="relative w-full h-1.5 rounded-full bg-slate-100">
+                        <div className="relative h-2 flex items-center w-full">
+                            <div className="relative w-full h-1.5 rounded-full bg-slate-100">
 
-                            <div
-                                className="absolute top-0 h-full rounded-full bg-[#0EA5E5]"
-                                style={{ left: `${minPercent}%`, width: `${maxPercent - minPercent}%` }}
-                            />
+                                <div
+                                    className="absolute top-0 h-full rounded-full bg-[#0EA5E5]"
+                                    style={{ left: `${minPercent}%`, width: `${maxPercent - minPercent}%` }}
+                                />
 
+                                <input
+                                    type="range"
+                                    min={MIN}
+                                    max={MAX}
+                                    step={500000}
+                                    value={minPrice}
+                                    onChange={e => {
+                                        const val = Number(e.target.value);
+                                        if (val <= maxPrice - 500000) setMinPrice(val);
+                                    }}
+                                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0 pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-moz-range-thumb]:pointer-events-auto"
+                                    style={{ zIndex: minPrice > MAX * 0.7 ? 30 : 20 }}
+                                />
 
-                            <input
-                                type="range"
-                                min={MIN}
-                                max={MAX}
-                                step={500000}
-                                value={minPrice}
-                                onChange={e => {
-                                    const val = Number(e.target.value);
-                                    if (val <= maxPrice - 500000) setMinPrice(val);
-                                }}
-                                className="absolute inset-0 h-full w-full cursor-pointer opacity-0 pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-moz-range-thumb]:pointer-events-auto"
-                                style={{ zIndex: minPrice > MAX * 0.7 ? 30 : 20 }}
-                            />
+                                <div
+                                    className="pointer-events-none absolute top-0 h-4 w-4 -translate-x-1/2 -translate-y-[5px] rounded-full border-2 border-[#0EA5E5] bg-white shadow-sm"
+                                    style={{ left: `${minPercent}%`, zIndex: minPrice > MAX * 0.7 ? 31 : 21 }}
+                                />
 
-                            <div
-                                className="pointer-events-none absolute top-0 h-4 w-4 -translate-x-1/2 -translate-y-[5px] rounded-full border-2 border-[#0EA5E5] bg-white shadow-sm"
-                                style={{ left: `${minPercent}%`, zIndex: minPrice > MAX * 0.7 ? 31 : 21 }}
-                            />
+                                <input
+                                    type="range"
+                                    min={MIN}
+                                    max={MAX}
+                                    step={500000}
+                                    value={maxPrice}
+                                    onChange={e => {
+                                        const val = Number(e.target.value);
+                                        if (val >= minPrice + 500000) setMaxPrice(val);
+                                    }}
+                                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0 pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-moz-range-thumb]:pointer-events-auto"
+                                    style={{ zIndex: minPrice > MAX * 0.7 ? 20 : 30 }}
+                                />
 
-                            <input
-                                type="range"
-                                min={MIN}
-                                max={MAX}
-                                step={500000}
-                                value={maxPrice}
-                                onChange={e => {
-                                    const val = Number(e.target.value);
-                                    if (val >= minPrice + 500000) setMaxPrice(val);
-                                }}
-                                className="absolute inset-0 h-full w-full cursor-pointer opacity-0 pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-moz-range-thumb]:pointer-events-auto"
-                                style={{ zIndex: minPrice > MAX * 0.7 ? 20 : 30 }}
-                            />
-   
-                            <div
-                                className="pointer-events-none absolute top-0 h-4 w-4 -translate-x-1/2 -translate-y-[5px] rounded-full border-2 border-[#0EA5E5] bg-white shadow-sm"
-                                style={{ left: `${maxPercent}%`, zIndex: minPrice > MAX * 0.7 ? 21 : 31 }}
-                            />
+                                <div
+                                    className="pointer-events-none absolute top-0 h-4 w-4 -translate-x-1/2 -translate-y-[5px] rounded-full border-2 border-[#0EA5E5] bg-white shadow-sm"
+                                    style={{ left: `${maxPercent}%`, zIndex: minPrice > MAX * 0.7 ? 21 : 31 }}
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
-
+                </FilterField>
 
                 {onReset && (
                     <button

@@ -20,10 +20,16 @@ namespace travel_recommendation_and_booking_system.Validations
             List<ScheduleDTO> schedules
         )
         {
+            // SỬA: Chỉ lấy các MaDiaDiem có giá trị > 0 (bỏ qua null và 0)
             var allLocationIds = schedules
                 .SelectMany(x => x.ChiTietLichTrinh ?? new())
+                .Where(x => x.MaDiaDiem.HasValue && x.MaDiaDiem.Value > 0)
                 .Select(x => x.MaDiaDiem)
                 .ToList();
+
+            // Nếu không có địa điểm nào được chọn, không cần kiểm tra
+            if (!allLocationIds.Any())
+                return;
 
             var duplicateLocation = allLocationIds
                 .GroupBy(x => x)

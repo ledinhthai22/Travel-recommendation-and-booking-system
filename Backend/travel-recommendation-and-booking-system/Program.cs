@@ -101,6 +101,7 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddTransient<GeminiService>();
             builder.Services.AddScoped<TrainRecommendationModelJob>();
             builder.Services.AddScoped<IDashboardNotifier, DashboardNotifier>();
+            builder.Services.AddScoped<ITourCacheService, TourCacheService>();
             builder.Services.AddHttpContextAccessor();
             builder.Services.Configure<VnPayConfig>(builder.Configuration.GetSection("VNPay"));
             builder.Services.AddScoped<IPaymentService, PaymentService>();

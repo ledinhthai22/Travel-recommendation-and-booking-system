@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using System.IO.Compression;
 using travel_recommendation_and_booking_system.DTOs.TourBooking;
 using travel_recommendation_and_booking_system.Interfaces;
 using travel_recommendation_and_booking_system.Services;
@@ -66,9 +67,9 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         }
 
         [HttpPut("{id}/payment-status")]
-        public async Task<IActionResult> UpdatePayment(int id, [FromBody] int status,int maNhanVien)
+        public async Task<IActionResult> UpdatePayment(int id, [FromBody] int status, int maNhanVien)
         {
-            var result = await _service.UpdatePaymentStatusAsync(id, status,maNhanVien);
+            var result = await _service.UpdatePaymentStatusAsync(id, status, maNhanVien);
             return result ? Ok(new { message = "Cập nhật thanh toán thành công" }) : NotFound();
         }
 
@@ -101,12 +102,8 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 
             try
             {
-                var (pdf, fileName) = await _service.GenerateContractsPdfWithNameAsync(dto.MaDonDatTours);
-
-                Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{fileName}\"");
-                Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
-
-                return File(pdf, "application/pdf");
+                var files = await _service.GenerateContractsPdfWithNameAsync(dto.MaDonDatTours);
+                return BuildFileResult(files);
             }
             catch (InvalidOperationException ex)
             {
@@ -114,22 +111,50 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             }
         }
 
-        [HttpGet("print-contract/by-chuyen/{maChuyen}")]
+        [HttpGet("print-contract/by-chuyen/{maChuyen}")]    
         public async Task<IActionResult> PrintContractsByChuyen(int maChuyen)
         {
             try
             {
-                var (pdf, fileName) = await _service.GenerateContractsPdfByChuyenWithNameAsync(maChuyen);
-
-                Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{fileName}\"");
-                Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
-
-                return File(pdf, "application/pdf");
+                var files = await _service.GenerateContractsPdfByChuyenWithNameAsync(maChuyen);
+                return BuildFileResult(files);
             }
             catch (InvalidOperationException ex)
             {
                 return BadRequest(ex.Message);
             }
+        }
+        private IActionResult BuildFileResult(List<(byte[] Pdf, string FileName)> files)
+        {
+            if (files == null || !files.Any())
+                return BadRequest("Không có hợp đồng nào được tạo.");
+
+            if (files.Count == 1)
+            {
+                var (pdf, fileName) = files[0];
+                Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{fileName}\"");
+                Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
+                return File(pdf, "application/pdf");
+            }
+
+            using var memoryStream = new MemoryStream();
+            using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                foreach (var (pdf, fileName) in files)
+                {
+                    var entry = archive.CreateEntry(fileName, CompressionLevel.Fastest);
+                    using var entryStream = entry.Open();
+                    entryStream.Write(pdf, 0, pdf.Length);
+                }
+            }
+
+            memoryStream.Position = 0;
+            var zipFileName = $"HopDong_{DateTime.Now:yyyyMMddHHmmss}.zip";
+
+            Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{zipFileName}\"");
+            Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
+
+            return File(memoryStream.ToArray(), "application/zip");
         }
     }
 }

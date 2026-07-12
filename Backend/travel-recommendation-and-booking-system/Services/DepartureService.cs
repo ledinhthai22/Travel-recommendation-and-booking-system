@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Departure;
 using travel_recommendation_and_booking_system.DTOs.Log;
@@ -14,8 +13,7 @@ namespace Services
         private readonly AppDbContext _context;
         private readonly ILogService _logService;
         private readonly ICurrentUserService _currentUserService;
-        private readonly IMemoryCache _cache;
-        private const string CacheVersionKey = "tour:cache:version";
+        private readonly ITourCacheService _tourCache;
 
         private static readonly Dictionary<string, string> LocationCodeMap = new()
         {
@@ -29,54 +27,42 @@ namespace Services
             ["Máy Bay"] = "MB",
             ["Ô tô Du Lịch"] = "OT",
             ["Tàu Hỏa"] = "TH",
-            ["Tàu Thủy"] = "TT",
-            ["Xe Máy Trekking"] = "XM"
         };
 
         public DepartureService(
             AppDbContext context,
             ILogService logService,
             ICurrentUserService currentUserService,
-            IMemoryCache cache)
+            ITourCacheService tourCache)
         {
             _context = context;
             _currentUserService = currentUserService;
             _logService = logService;
-            _cache = cache;
+            _tourCache = tourCache;
         }
 
-
-        private int GetCacheVersion()
+        /// <summary>
+        /// Lấy slug hiện tại của tour để vô hiệu hóa đúng cache chi tiết theo slug.
+        /// </summary>
+        private async Task<string?> GetTourSlugAsync(int tourId)
         {
-            return _cache.GetOrCreate(CacheVersionKey, entry =>
-            {
-                entry.SlidingExpiration = TimeSpan.FromDays(1);
-                return 1;
-            });
+            return await _context.Tours
+                .AsNoTracking()
+                .Where(t => t.MaTour == tourId)
+                .Select(t => t.Slug)
+                .FirstOrDefaultAsync();
         }
 
-        private void BumpCacheVersion()
+        /// <summary>
+        /// Chuyến khởi hành ảnh hưởng tới GiaTu, SoChoDaDat, LuotDat (dùng trong list
+        /// most-booked/related) và danh sách chuyến hiển thị ở trang chi tiết tour,
+        /// nên cần vô hiệu hóa cả cache chi tiết lẫn cache danh sách.
+        /// </summary>
+        private async Task InvalidateTourCacheAsync(int tourId)
         {
-            var current = GetCacheVersion();
-            _cache.Set(CacheVersionKey, current + 1, TimeSpan.FromDays(1));
-        }
-
-        private string VKey(string key) => $"v{GetCacheVersion()}:{key}";
-
-        private void ClearTourCache(int tourId)
-        {
-            var detailKey = VKey($"tour:detail:{tourId}");
-            _cache.Remove(detailKey);
-
-            var tour = _context.Tours.AsNoTracking().FirstOrDefault(t => t.MaTour == tourId);
-            if (tour != null && !string.IsNullOrEmpty(tour.Slug))
-            {
-                var slugKey = VKey($"tour:detail:slug:{tour.Slug.ToLower()}");
-                _cache.Remove(slugKey);
-            }
-
-            BumpCacheVersion();
-            Console.WriteLine($"[CACHE] Cleared cache for tour {tourId}");
+            var slug = await GetTourSlugAsync(tourId);
+            _tourCache.InvalidateTourDetail(tourId, slug);
+            _tourCache.InvalidateLists();
         }
 
 
@@ -156,12 +142,23 @@ namespace Services
             }
         }
 
-        private async Task<bool> HasAnyDepartureAsync(int maTour)
+        private async Task ValidateHDVAvailability(int maHDV, DateTime ngayKhoiHanh, int? excludeMaChuyen = null)
         {
-            return await _context.ChuyenKhoiHanhs
-                .AnyAsync(x =>
-                    x.MaTour == maTour &&
-                    x.NgayXoa == null);
+            var thang = ngayKhoiHanh.Month;
+            var nam = ngayKhoiHanh.Year;
+
+            var query = _context.ChuyenKhoiHanhs
+                .Where(c => c.MaHDV == maHDV
+                         && c.NgayXoa == null
+                         && c.NgayKhoiHanh.Month == thang
+                         && c.NgayKhoiHanh.Year == nam);
+
+            if (excludeMaChuyen.HasValue)
+                query = query.Where(c => c.MaChuyen != excludeMaChuyen.Value);
+
+            var daCoChuyen = await query.AnyAsync();
+            if (daCoChuyen)
+                throw new Exception($"Hướng dẫn viên đã có chuyến khởi hành khác trong tháng {thang}/{nam}, không thể thêm.");
         }
 
         private async Task ValidateDuplicateDepartureDate(DepartureDTO departure, int? excludeMaChuyen = null)
@@ -287,7 +284,7 @@ namespace Services
         }
 
 
-        public async Task<bool> AddDepartureFullAsync(DepartureFullDTO dto)
+        public async Task<bool> AddDepartureFullAsync(DepartureFullDTO dto) // kiểm tra lại HDV có đang trống trong tháng đó không mới  được thêm vào hướng dẫn chuyến khởi hành
         {
             var dep = dto.ChuyenKhoiHanh;
 
@@ -296,8 +293,9 @@ namespace Services
 
             if (dep.NgayKhoiHanh.Date < DateTime.Today)
                 throw new Exception("Ngày khởi hành không được là ngày trong quá khứ.");
-
+            var getUserId = _currentUserService.GetUserId();
             ValidateSeats(dep);
+            await ValidateHDVAvailability(getUserId, dep.NgayKhoiHanh);
 
             await ValidateDuplicateDepartureDate(dep);
 
@@ -352,9 +350,9 @@ namespace Services
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                ClearTourCache(dep.MaTour);
-
+                await InvalidateTourCacheAsync(dep.MaTour);
                 var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
+
                 await _logService.LoggingAsync(new LogDTO
                 {
                     LoaiTaiKhoan = currentAccount,
@@ -403,20 +401,23 @@ namespace Services
                 var dep = dto.ChuyenKhoiHanh;
                 var tourId = chuyen.MaTour;
 
-               
+
                 if (dep.NgayKhoiHanh >= dep.NgayKetThuc)
                     throw new Exception("Ngày khởi hành phải nhỏ hơn ngày kết thúc.");
 
                 if (DateTime.Now >= dep.NgayKhoiHanh)
                     throw new Exception("Chuyến đã khởi hành hoặc đã qua, không được chỉnh sửa.");
 
-              
-                ValidateSeats(dep, chuyen.SoChoDaDat);
 
-                
+                ValidateSeats(dep, chuyen.SoChoDaDat);
+                await ValidateDuplicateDepartureDate(dep, maChuyen);
+                var getUserID = _currentUserService.GetUserId();
+                await ValidateHDVAvailability(getUserID, dep.NgayKhoiHanh, maChuyen);
+
+
                 await ValidateDuplicateDepartureDate(dep, maChuyen);
 
-               
+
                 var tenPhuongTien = await GetTenPhuongTienAsync(dep.MaPhuongTien);
                 var trongNuoc = ParseTrongNuocFromCode(chuyen.MaChuyenCode);
                 var newCode = await GenerateUniqueCodeAsync(trongNuoc, dep.DiemKhoiHanh, tenPhuongTien, dep.NgayKhoiHanh, maChuyen);
@@ -464,7 +465,7 @@ namespace Services
 
                 await transaction.CommitAsync();
 
-                ClearTourCache(tourId);
+                await InvalidateTourCacheAsync(tourId);
 
                 var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
                 await _logService.LoggingAsync(new LogDTO
@@ -578,7 +579,7 @@ namespace Services
 
             if (tourId > 0)
             {
-                ClearTourCache(tourId);
+                await InvalidateTourCacheAsync(tourId);
             }
 
             var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;

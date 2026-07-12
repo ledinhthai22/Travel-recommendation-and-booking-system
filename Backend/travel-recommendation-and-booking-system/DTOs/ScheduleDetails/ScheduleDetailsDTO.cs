@@ -19,6 +19,8 @@ namespace travel_recommendation_and_booking_system.DTOs.ScheduleDetails
         [Required(ErrorMessage = "Giờ kết thúc không được rỗng")]
         public string GioKetThuc { get; set; }
 
+        public string? LoaiHoatDong { get; set; }
+
         [Required(ErrorMessage = "Hoạt động không được rỗng")]
         public string HoatDong { get; set; }
     }

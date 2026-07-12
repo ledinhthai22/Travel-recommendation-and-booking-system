@@ -99,9 +99,10 @@ const KpiCard = React.memo(function KpiCard({ icon: Icon, color, label, value, d
 
 const StatusBadge = ({ status }) => {
     const map = {
-        "Đã thanh toán": "bg-emerald-50 text-emerald-700",
+        "Thành công": "bg-emerald-50 text-emerald-700",
         "Chờ thanh toán": "bg-amber-50 text-amber-700",
-        "Đã hủy": "bg-red-50 text-red-600",
+        "Thất bại": "bg-red-50 text-red-600",
+        "Hoàn tiền": "bg-sky-50 text-sky-700",
     };
     return (
         <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${map[status] ?? "bg-slate-50 text-slate-500"}`}>
@@ -233,9 +234,6 @@ export default function Dashboard() {
         }
     }, [selectedYear, selectedMonth]);
 
-    // Giữ bản mới nhất của fetchDashboardData trong ref để SignalR listener
-    // luôn gọi đúng hàm hiện tại (theo đúng selectedYear/selectedMonth)
-    // mà không cần re-subscribe mỗi khi người dùng đổi tháng/năm.
     const fetchDashboardDataRef = useRef(fetchDashboardData);
     useEffect(() => {
         fetchDashboardDataRef.current = fetchDashboardData;
@@ -245,8 +243,6 @@ export default function Dashboard() {
         fetchDashboardData();
     }, [fetchDashboardData]);
 
-    // Kết nối SignalR: join ADMIN_GROUP và lắng nghe sự kiện DashboardChanged
-    // do backend bắn ra mỗi khi có booking mới, thanh toán mới, đổi trạng thái đơn, v.v.
     useEffect(() => {
         let mounted = true;
 
@@ -271,8 +267,7 @@ export default function Dashboard() {
             mounted = false;
             clearTimeout(debounceTimerRef.current);
             connection.off("DashboardChanged", handleDashboardChanged);
-            // Không gọi connection.stop() ở đây vì connection này dùng chung
-            // cho toàn bộ app (thông báo cá nhân, admin group, ...).
+
         };
     }, []);
 

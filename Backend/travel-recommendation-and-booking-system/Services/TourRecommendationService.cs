@@ -207,10 +207,9 @@ namespace travel_recommendation_and_booking_system.Services
                         .Min() ?? 0,
 
                     HinhAnhChinh = t.HinhAnhTours
-                        .Where(a => a.NgayXoa == null)
-                        .OrderByDescending(a => a.AnhChinh)
-                        .Select(a => a.DuongDanAnh)
-                        .FirstOrDefault() ?? "default-image.jpg",
+                            .Where(a => a.NgayXoa == null && a.AnhChinh)
+                            .Select(a => a.DuongDanAnh)
+                            .FirstOrDefault(),
 
                     DiemDens = t.ChuyenKhoiHanhs
                         .Where(c => c.NgayXoa == null)

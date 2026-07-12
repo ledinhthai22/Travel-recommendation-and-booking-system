@@ -246,16 +246,6 @@ namespace travel_recommendation_and_booking_system.Data
                     TrangThai = true,
                     NgayTao = new DateTime(2025, 1, 1),
                     NgayCapNhat = new DateTime(2025, 1, 1)
-                },
-                new PhuongTien
-                {
-                    MaPhuongTien = 4,
-                    TenPhuongTien = "Tàu Thủy",
-                    MaVietTat = "TT",
-                    Icon = "Ship",
-                    TrangThai = true,
-                    NgayTao = new DateTime(2025, 1, 1),
-                    NgayCapNhat = new DateTime(2025, 1, 1)
                 }
             );
             modelBuilder.Entity<ThongTinTrang>().HasData(

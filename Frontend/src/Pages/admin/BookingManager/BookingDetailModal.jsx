@@ -304,7 +304,7 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
 
     return (
         <>
-            <div className="fixed inset-0 bg-slate-600/30 z-[999] flex justify-center items-center p-4">
+            <div className="fixed inset-0 bg-black/20 z-[999] flex justify-center items-center p-4">
                 <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden border border-slate-100">
                     <div className="flex items-start justify-between px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white shrink-0">
                         <div className="space-y-2">

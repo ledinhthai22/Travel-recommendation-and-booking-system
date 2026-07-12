@@ -37,20 +37,13 @@ export default function TourSummaryCard({
             {/* CARD THÔNG TIN */}
             <div className="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
 
-                <h3 className="mb-5 text-2xl font-bold">
+                <h3 className="mb-5 text-2xl font-bold text-center">
                     Tóm tắt đơn đặt tour
                 </h3>
 
                 {/* TOUR */}
                 <div className="flex gap-4">
-                    <img
-                        src={
-                            bookingData?.hinhAnh?.[0]
-                                ?.duongDanAnh
-                        }
-                        alt={bookingData?.tenTour}
-                        className="h-15 w-15 rounded-2xl object-cover"
-                    />
+
 
                     <div className="flex-1">
                         <h4 className="text-[16px] font-semibold leading-7">
@@ -58,8 +51,7 @@ export default function TourSummaryCard({
                         </h4>
 
                         <p className="mt-2 flex items-center gap-1 text-sm text-slate-500">
-                            <CreditCard size={14} />
-                            {bookingData?.maChuyenCode}
+                           Mã chuyến: <span className="font-bold text-black">{bookingData?.maChuyenCode}</span> 
                         </p>
                     </div>
                 </div>

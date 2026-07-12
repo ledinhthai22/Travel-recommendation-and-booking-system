@@ -8,6 +8,7 @@
         public string TenDiaDiem { get; set; }
         public string GioBatDau { get; set; }
         public string GioKetThuc { get; set; }
+        public string ? LoaiHoatDong { get; set; }
         public string HoatDong { get; set; }
     }
 }

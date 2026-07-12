@@ -5,14 +5,14 @@ import { cancelBookingApi } from "~/Services/UserProfile";
 import { toastError, toastSuccess } from "~/utils/Toast";
 import { createReviewApi } from "~/Services/ReviewService";
 import { Star, X, CreditCard, MapPin } from "lucide-react";
-
+import useAuth from "~/Hooks/useAuth";
 export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess }) {
     const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [rating, setRating] = useState(5);
     const [comment, setComment] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-
+    const {user} = useAuth();
     const parseVNDate = (dateString) => {
         if (!dateString) return null;
 
@@ -44,7 +44,8 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
         today < departureDate &&
         diffDays >= 3;
 
-    const canReview = isCompleted;
+    const daDanhGia = !!booking?.daDanhGia;
+    const canReview = isCompleted && !daDanhGia;
 
     const getStatusText = () => {
         if (isCompleted) return "Hoàn tất";
@@ -82,7 +83,8 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
         setIsSubmitting(true);
         try {
             await createReviewApi({
-                maNguoiDung: booking.maNguoiDung,
+                maNguoiDung: user.maNguoiDung,
+                hoTen: user.hoTen,
                 maTour: booking.maTour,
                 diemDanhGia: parseInt(rating),
                 noiDung: comment
@@ -179,6 +181,12 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
                             >
                                 {isSubmitting ? "Đang gửi dữ liệu..." : "Gửi đánh giá chính thức"}
                             </button>
+                        </div>
+                    ) : isCompleted && daDanhGia ? (
+                        <div className="mt-6 border-t border-slate-100 pt-5">
+                            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-center text-sm text-slate-500">
+                                Bạn đã đánh giá tour này. Cảm ơn bạn đã chia sẻ trải nghiệm!
+                            </div>
                         </div>
                     ) : (
                         <div className="mt-6 border-t border-slate-100 pt-5">

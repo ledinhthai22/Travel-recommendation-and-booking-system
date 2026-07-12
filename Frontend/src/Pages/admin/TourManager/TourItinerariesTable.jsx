@@ -24,18 +24,6 @@ export default function TourItinerariesTable({
 
     const columns = [
         {
-            name: "Ngày",
-            selector: (row) => row.soThuTuNgay,
-            cell: (row) => (
-                <span className="inline-block px-3 py-1 text-xs font-bold bg-slate-100 text-slate-700 rounded-md">
-                    Ngày {row.soThuTuNgay}
-                </span>
-            ),
-            width: "100px",
-            center: true,
-            sortable: true,
-        },
-        {
             name: "Hình ảnh",
             width: "160px",
             center: true,

@@ -191,7 +191,6 @@ namespace travel_recommendation_and_booking_system.Services
                 .Include(x => x.ChuyenKhoiHanh).ThenInclude(x => x.Tour).ThenInclude(x => x.HinhAnhTours)
                 .Include(x => x.ChuyenKhoiHanh).ThenInclude(x => x.NhanVien)
                 .Include(x => x.NhanVien)
-
                 .Include(x => x.UuDai)
                 .Include(x => x.KhachHangs)
                 .Include(x => x.ThanhToans)
@@ -222,7 +221,7 @@ namespace travel_recommendation_and_booking_system.Services
                 SoDienThoai = order.NguoiDung.SoDienThoai,
                 Email = order.NguoiDung.Email,
                 GhiChu = order.GhiChu,
-
+                DiaChi = order.NguoiDung.DiaChi,
                 Tour = new TourInfoDTO
                 {
                     MaTour = order.ChuyenKhoiHanh.Tour.MaTour,
@@ -542,7 +541,7 @@ namespace travel_recommendation_and_booking_system.Services
         }
 
 
-        public async Task<bool> UpdatePaymentStatusAsync(int maDonDatTour, int trangThai,int maNhanVien)
+        public async Task<bool> UpdatePaymentStatusAsync(int maDonDatTour, int trangThai, int maNhanVien)
         {
             if (!new[] { 0, 1, 2, 3 }.Contains(trangThai))
                 throw new InvalidOperationException("Trạng thái thanh toán không hợp lệ.");
@@ -558,7 +557,6 @@ namespace travel_recommendation_and_booking_system.Services
 
             int oldTrangThaiThanhToan = GetTrangThaiThanhToan(order.ThanhToans);
 
-            
             var giaoDichGanNhat = GetThanhToanGanNhat(order.ThanhToans);
             int phuongThucThanhToan = giaoDichGanNhat?.PhuongThucThanhToan ?? 2;
 
@@ -575,12 +573,9 @@ namespace travel_recommendation_and_booking_system.Services
 
             order.TrangThaiDon = 2;
             order.MaNhanVienDuyet = maNhanVien;
-
             order.NgayCapNhat = DateTime.Now;
 
             await _context.SaveChangesAsync();
-
-
 
             await _notificationService.CreateForUserAsync(
                 order.MaNguoiDung,
@@ -592,8 +587,35 @@ namespace travel_recommendation_and_booking_system.Services
                     LinkChiTiet = $"/Thong-Tin-Ca-Nhan"
                 });
 
+            // FIX: lần đầu chuyển sang "Thành công" (1) → gửi mail xác nhận + bắn realtime,
+            // giống luồng VNPay IPN. Trước đây hàm này thiếu hoàn toàn 2 bước này.
+            bool laLanDauThanhCong = trangThai == 1 && oldTrangThaiThanhToan != 1;
+            if (laLanDauThanhCong)
+            {
+                try
+                {
+                    await _emailService.SendBookingConfirmationAsync(order);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[UpdatePaymentStatusAsync] Email error: {ex.Message}");
+                }
 
-
+                try
+                {
+                    await _hubContext.Clients.Group("ADMIN_GROUP").SendAsync("BookingCreated", new
+                    {
+                        MaDonDatTour = order.MaDonDatTour,
+                        MaDatCho = order.MaDatCho,
+                        TongTien = order.TongTien,
+                        NgayDat = order.NgayDat
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[UpdatePaymentStatusAsync] Realtime error: {ex.Message}");
+                }
+            }
 
             await _logService.LoggingAsync(new LogDTO
             {
@@ -608,21 +630,16 @@ namespace travel_recommendation_and_booking_system.Services
                 TenBangTacDong = TableNameDTO.DonDatTour,
                 MaDoiTuong = maDonDatTour,
 
-                GiaTriTruoc = new
-                {
-                    TrangThaiThanhToan = oldTrangThaiThanhToan
-                },
-
-                GiaTriSau = new
-                {
-                    TrangThaiThanhToan = trangThai
-                }
+                GiaTriTruoc = new { TrangThaiThanhToan = oldTrangThaiThanhToan },
+                GiaTriSau = new { TrangThaiThanhToan = trangThai }
             });
+
             await _dashboardNotifier.NotifyDashboardChangedAsync("PaymentStatusChanged", new
             {
                 MaDonDatTour = maDonDatTour,
                 TrangThaiThanhToan = trangThai
             });
+
             return true;
         }
 
@@ -1464,7 +1481,7 @@ namespace travel_recommendation_and_booking_system.Services
             return $"{maChuyen}_{ngay}_{tongSoKhach}_khach.pdf";
         }
 
-        public async Task<(byte[] Pdf, string FileName)> GenerateContractsPdfWithNameAsync(List<int> maDonDatTours)
+        public async Task<List<(byte[] Pdf, string FileName)>> GenerateContractsPdfWithNameAsync(List<int> maDonDatTours)
         {
             var details = new List<TourBookingDetailDTO>();
 
@@ -1472,6 +1489,7 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 var detail = await GetDetailAsync(id);
                 if (detail == null) continue;
+
 
                 if (detail.TrangThaiDon < 2 || detail.TrangThaiDon == 4)
                     throw new InvalidOperationException($"Đơn {detail.MaDatCho} chưa được duyệt hoặc đã hủy, không thể in hợp đồng.");
@@ -1482,15 +1500,29 @@ namespace travel_recommendation_and_booking_system.Services
             if (!details.Any())
                 throw new InvalidOperationException("Không có đơn hợp lệ để in.");
 
-            var pdf = ContractPdfBuilder.GenerateContractsPdf(details);
+            var groupedByChuyen = details.GroupBy(d => d.Chuyen.MaChuyen);
 
-            int tongKhach = details.Sum(d => d.SoNguoiLon + d.SoTreEm + d.SoEmBe);
-            var fileName = BuildFileName(details[0].Chuyen, tongKhach);
+          
 
-            return (pdf, fileName);
+            var result = new List<(byte[] Pdf, string FileName)>();
+
+            foreach (var group in groupedByChuyen)
+            {
+                var groupDetails = group.ToList();
+                var pdf = ContractPdfBuilder.GenerateContractsPdf(groupDetails);
+
+                int tongKhach = groupDetails.Sum(d => d.SoNguoiLon + d.SoTreEm + d.SoEmBe);
+                var fileName = BuildFileName(groupDetails[0].Chuyen, tongKhach);
+
+          
+
+                result.Add((pdf, fileName));
+            }
+
+            return result;
         }
 
-        public async Task<(byte[] Pdf, string FileName)> GenerateContractsPdfByChuyenWithNameAsync(int maChuyen)
+        public async Task<List<(byte[] Pdf, string FileName)>> GenerateContractsPdfByChuyenWithNameAsync(int maChuyen)
         {
             var ids = await _context.DonDatTours
                 .Where(x => x.MaChuyen == maChuyen && x.TrangThaiDon >= 2 && x.TrangThaiDon != 4)

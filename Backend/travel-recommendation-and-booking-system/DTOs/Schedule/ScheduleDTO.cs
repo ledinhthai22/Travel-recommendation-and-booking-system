@@ -19,10 +19,6 @@ namespace travel_recommendation_and_booking_system.DTOs.Schedule
         [Range(1, 365, ErrorMessage = "Số thứ tự ngày phải từ 1 đến 365.")]
         public int SoThuTuNgay { get; set; }
 
-        [Required(ErrorMessage = "Hoạt động chính không được để trống.")]
-        [StringLength(500, ErrorMessage = "Hoạt động chính không được quá 500 ký tự.")]
-        public string HoatDongChinh { get; set; } = string.Empty;
-
         [StringLength(500, ErrorMessage = "Lưu ý không được quá 500 ký tự.")]
         public string? LuuY { get; set; }
 

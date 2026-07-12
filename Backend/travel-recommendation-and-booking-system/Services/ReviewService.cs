@@ -131,17 +131,25 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task ProcessReviewsBatchAsync()
         {
-            var pendingReviews = await _context.DanhGias
+            var pendingReviews = await _context.DanhGias  // Quét toàn bộ dánh giá chưa được xử lý, nhưng chỉ lấy 20 bản ghi để tránh quá tải
                 .Where(r => !r.IsProcessed)
-                .OrderBy(r => r.NgayTao)
-                .Take(20)
+                .Take(500)
                 .ToListAsync();
 
             if (!pendingReviews.Any()) return;
 
+            // Đánh dấu ngay là đã "nhận" để job khác không lấy trùng
             foreach (var review in pendingReviews)
             {
-                if (review.IsProcessed) continue;
+                review.IsProcessed = true; // khóa trước
+                review.GhiChuKiemDuyet = "Đang xử lý AI...";
+            }
+            await _context.SaveChangesAsync();
+
+            var updatedData = new List<object>();
+
+            foreach (var review in pendingReviews)
+            {
                 try
                 {
                     var sentiment = await _geminiService.AnalyzeReviewSentiment(review.NoiDung);
@@ -149,34 +157,37 @@ namespace travel_recommendation_and_booking_system.Services
                     bool isPositive = cleanResult.Equals("Positive", StringComparison.OrdinalIgnoreCase);
 
                     review.TrangThai = isPositive;
-                    review.IsProcessed = true;
                     review.GhiChuKiemDuyet = isPositive ? "Tự động duyệt: Tích cực" : "Tự động đánh dấu: Tiêu cực/Cần xem lại";
-                    await Task.Delay(12000);
                 }
                 catch (Exception ex)
                 {
-                    review.IsProcessed = true;
                     review.GhiChuKiemDuyet = "Lỗi AI: " + ex.Message;
                 }
+                finally
+                {
+                    // Lưu ngay từng review, tránh mất dữ liệu nếu batch bị crash giữa chừng
+                    await _context.SaveChangesAsync();
+
+                    updatedData.Add(new
+                    {
+                        maDanhGia = review.MaDanhGia,
+                        trangThai = review.TrangThai,
+                        isProcessedByAI = review.IsProcessed,
+                        ghiChuKiemDuyet = review.GhiChuKiemDuyet
+                    });
+
+                    await _hubContext.Clients.All.SendAsync("ReviewStatusUpdated", new[] { updatedData.Last() });
+                }
+
+                await Task.Delay(12000); // đợi để tránh rate-limit Gemini, kể cả khi lỗi
             }
-
-            await _context.SaveChangesAsync();
-
-            var updatedData = pendingReviews.Select(r => new
-            {
-                maDanhGia = r.MaDanhGia,
-                trangThai = r.TrangThai,
-                isProcessedByAI = r.IsProcessed,
-                ghiChuKiemDuyet = r.GhiChuKiemDuyet
-            }).ToList();
-            await _hubContext.Clients.All.SendAsync("ReviewStatusUpdated", updatedData);
         }
 
         public async Task<List<ReviewReponseDTO>> GetTop3ReviewAsync()
         {
             return await _context.DanhGias
         .Include(d => d.NguoiDung)
-        .Where(d => d.TrangThai == true && d.DiemDanhGia ==5)
+        .Where(d => d.TrangThai == true && d.DiemDanhGia == 5)
         .OrderByDescending(d => d.NgayTao)
         .Take(3)
         .Select(d => new ReviewReponseDTO
@@ -187,6 +198,32 @@ namespace travel_recommendation_and_booking_system.Services
             DuongDanAnh = d.NguoiDung.DuongDanAnh
         })
         .ToListAsync();
+        }
+        public async Task<ReviewDetailDTO?> GetReviewDetailAsync(int maDanhGia)
+        {
+            return await _context.DanhGias
+                .Include(d => d.NguoiDung)
+                .Include(d => d.Tour)
+                .Where(d => d.MaDanhGia == maDanhGia)
+                .Select(d => new ReviewDetailDTO
+                {
+                    MaDanhGia = d.MaDanhGia,
+                    MaNguoiDung = d.MaNguoiDung,
+                    TenNguoiDung = d.NguoiDung.HoTen,
+                    Email = d.NguoiDung.Email,
+                    SoDienThoai = d.NguoiDung.SoDienThoai,
+                    DuongDanAnh = d.NguoiDung.DuongDanAnh,
+                    MaTour = d.MaTour,
+                    TenTour = d.Tour.TenTour,
+                    DiemDanhGia = d.DiemDanhGia,
+                    NoiDung = d.NoiDung,
+                    TrangThai = d.TrangThai,
+                    IsProcessedByAI = d.IsProcessed,
+                    GhiChuKiemDuyet = d.GhiChuKiemDuyet,
+                    NgayTao = d.NgayTao,
+                    NgayCapNhat = d.NgayCapNhat
+                })
+                .FirstOrDefaultAsync();
         }
     }
 }

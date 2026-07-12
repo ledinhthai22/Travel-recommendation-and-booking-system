@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { Clock } from "lucide-react";
 
-const ITEM_HEIGHT = 34;
-const DROPDOWN_HEIGHT = 260;
+const ITEM_HEIGHT = 38; // Tăng từ 34 lên 38
+const DROPDOWN_HEIGHT = 300; // Tăng từ 260 lên 300
 
 const Picker = ({
     value,
@@ -11,7 +11,8 @@ const Picker = ({
     disabled,
     placeholder = "HH:mm",
     error,
-    onBlur
+    onBlur,
+    className = "" // Thêm className prop
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [inputValue, setInputValue] = useState(value || "");
@@ -140,7 +141,7 @@ const Picker = ({
         setDropdownStyle({
             position: "fixed",
             left: rect.left,
-            width: Math.max(rect.width, 140),
+            width: Math.max(rect.width, 160), // Tăng từ 140 lên 160
             ...(openUpward
                 ? { bottom: viewportHeight - rect.top + 6 }
                 : { top: rect.bottom + 6 }),
@@ -189,27 +190,28 @@ const Picker = ({
     }
 
     return (
-        <div className="relative w-full" ref={containerRef}>
+        <div className={`relative w-full ${className}`} ref={containerRef}>
             <div className="relative flex items-center">
                 <input
                     ref={inputRef}
                     type="text"
-                    value={inputValue} // Bind trực tiếp với state đang nhập thay vì qua hàm format trung gian gây giật lag
+                    value={inputValue}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
                     onFocus={handleFocus}
                     placeholder={placeholder}
                     disabled={disabled}
-                    className={`w-full rounded-xl border bg-white text-slate-900 px-4 py-2.5 outline-none transition-all duration-200 text-sm font-mono
+                    className={`w-full rounded-xl border bg-white text-slate-900 px-4 py-3 text-base outline-none transition-all duration-200 font-mono
                         ${error
-                            ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-100"
-                            : "border-slate-200 focus:border-sky-500 focus:ring-1 focus:ring-sky-100"
+                            ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                            : "border-slate-200 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
                         }
-                        disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500`}
+                        disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500
+                        hover:border-slate-300 transition-colors`}
                 />
 
                 <Clock
-                    size={16}
+                    size={20} // Tăng từ 16 lên 20
                     className="absolute right-3.5 text-slate-400 pointer-events-none"
                 />
             </div>
@@ -218,14 +220,14 @@ const Picker = ({
                 <div
                     ref={dropdownRef}
                     style={dropdownStyle}
-                    className="min-w-[140px] bg-white border border-slate-200 shadow-xl rounded-2xl p-3 z-[10000] animate-in fade-in zoom-in-95 duration-200"
+                    className="min-w-[160px] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 z-[10000] animate-in fade-in zoom-in-95 duration-200"
                 >
-                    <div className="mb-2 text-xs text-slate-500 px-2 font-medium">
+                    <div className="mb-3 text-sm text-slate-500 px-2 font-medium">
                         Nhập hoặc chọn giờ
                     </div>
                     <div
                         ref={scrollContainerRef}
-                        className="overflow-y-auto max-h-64 pr-1 grid grid-cols-1 gap-1.5 scrollbar-thin"
+                        className="overflow-y-auto max-h-72 pr-1 grid grid-cols-1 gap-2 scrollbar-thin"
                     >
                         {times.map((timeLabel) => {
                             const isSelected = value === timeLabel;
@@ -240,10 +242,10 @@ const Picker = ({
                                         setIsOpen(false);
                                         onBlur?.();
                                     }}
-                                    className={`w-full text-center py-2 rounded-lg text-xs font-medium transition-all
+                                    className={`w-full text-center py-2.5 rounded-xl text-sm font-medium transition-all duration-150
                                         ${isSelected
-                                            ? "bg-sky-500 text-white font-bold shadow-sm"
-                                            : "hover:bg-slate-100 text-slate-700"
+                                            ? "bg-sky-500 text-white font-bold shadow-md shadow-sky-100"
+                                            : "hover:bg-slate-100 text-slate-700 hover:text-slate-900"
                                         }`}
                                 >
                                     {timeLabel}

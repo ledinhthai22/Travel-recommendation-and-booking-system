@@ -320,7 +320,7 @@ export default function TourManager() {
                 message={
                     selectedStatusTour ? (
                         <div className="space-y-4 text-left">
-                            <p className="text-slate-600">
+                            <p className="text-slate-600 text-[12px]">
                                 Trạng thái hiện tại của tour <strong>"{selectedStatusTour.tenTour}"</strong> là:{" "}
                                 <span className="px-2 py-1 rounded bg-slate-100 text-slate-800 font-semibold text-sm">
                                     {statusLabel(selectedStatusTour.trangThai)}
@@ -339,8 +339,8 @@ export default function TourManager() {
                                 />
                             </div>
 
-                            <p className="text-xs text-amber-600 italic bg-amber-50 p-2 rounded-lg mt-2">
-                                * Lưu ý: Khi chuyển sang "Ngừng kinh doanh", hệ thống Backend sẽ kiểm tra nghiêm ngặt các chuyến đi đang diễn ra trước khi phê duyệt.
+                            <p className="text-[13px] text-amber-600 italic bg-amber-50 p-2 rounded-lg mt-2">
+                                * Lưu ý: Khi chuyển sang "Ngừng kinh doanh", hệ thống sẽ kiểm tra nghiêm ngặt các chuyến đi đang diễn ra trước khi phê duyệt.
                             </p>
                         </div>
                     ) : ""

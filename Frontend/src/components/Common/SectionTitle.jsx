@@ -5,12 +5,12 @@ export default function SectionTitle({ title, description, action }) {
     <div className="mb-6 flex items-end justify-between gap-4 px-0">
       <div className="text-left">
         {title && (
-          <h2 
+          <h1 
             style={{ fontFamily: "'Poppins', sans-serif" }}
             className="text-[16px] font-bold tracking-tight text-slate-900 sm:text-3xl"
           >
             {title}
-          </h2>
+          </h1>
         )}
         
         {description && (

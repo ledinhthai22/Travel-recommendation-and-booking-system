@@ -81,10 +81,11 @@ const normalizeImageUrl = (path) => {
 const mapScheduleDetailFromApi = (ct, maLichTrinh) => ({
     maCTLT: toNumber(ct.maCTLT),
     maLichTrinh: toNumber(ct.maLichTrinh || maLichTrinh),
-    maDiaDiem: toNumber(ct.maDiaDiem),
+    maDiaDiem: ct.maDiaDiem || "",
     gioBatDau: ct.gioBatDau || "",
     gioKetThuc: ct.gioKetThuc || null,
-    hoatDong: ct.hoatDong || ""
+    hoatDong: ct.hoatDong || "",
+    loaiHoatDong: ct.loaiHoatDong || null
 });
 
 const mapScheduleFromApi = (lt) => ({
@@ -148,10 +149,14 @@ const buildScheduleFormData = (lt, tourId) => {
     (lt.chiTietLichTrinhs || []).forEach((ct, index) => {
         fd.append(`ChiTietLichTrinh[${index}].MaCTLT`, toNumber(ct.maCTLT));
         fd.append(`ChiTietLichTrinh[${index}].MaLichTrinh`, toNumber(ct.maLichTrinh || lt.id));
-        fd.append(`ChiTietLichTrinh[${index}].MaDiaDiem`, toNumber(ct.maDiaDiem));
+        const maDiaDiemValue = ct.maDiaDiem && ct.maDiaDiem !== "" && ct.maDiaDiem !== "0" 
+            ? toNumber(ct.maDiaDiem) 
+            : 0;
+        fd.append(`ChiTietLichTrinh[${index}].MaDiaDiem`, maDiaDiemValue);
         fd.append(`ChiTietLichTrinh[${index}].GioBatDau`, ct.gioBatDau || "");
         if (ct.gioKetThuc?.trim()) fd.append(`ChiTietLichTrinh[${index}].GioKetThuc`, ct.gioKetThuc);
         fd.append(`ChiTietLichTrinh[${index}].HoatDong`, ct.hoatDong || "");
+        fd.append(`ChiTietLichTrinh[${index}].LoaiHoatDong`, ct.loaiHoatDong || "");
     });
     return fd;
 };
@@ -212,10 +217,13 @@ const buildCreateTourDto = (formDataObj, lichTrinhs, chuyenKhoiHanhs) => ({
         TrangThai: lt.trangThai,
         MaKhachSan: lt.maKhachSan ? Number(lt.maKhachSan) : null,
         ChiTietLichTrinh: (lt.chiTietLichTrinhs || []).map(ct => ({
-            MaDiaDiem: toNumber(ct.maDiaDiem),
+            MaDiaDiem: ct.maDiaDiem && ct.maDiaDiem !== "" && ct.maDiaDiem !== "0" 
+                ? toNumber(ct.maDiaDiem) 
+                : null,
             GioBatDau: ct.gioBatDau,
             GioKetThuc: ct.gioKetThuc?.trim() || null,
-            HoatDong: ct.hoatDong
+            HoatDong: ct.hoatDong,
+            LoaiHoatDong: ct.loaiHoatDong || null
         }))
     })),
     ChuyenKhoiHanhs: chuyenKhoiHanhs.map(ch => buildDeparturePayload(ch, 0))
@@ -231,10 +239,11 @@ const serializeSchedule = (lt) => JSON.stringify({
     hasFile: !!lt.file,
     chiTiet: (lt.chiTietLichTrinhs || []).map(ct => ({
         maCTLT: ct.maCTLT,
-        maDiaDiem: ct.maDiaDiem,
+        maDiaDiem: ct.maDiaDiem || null,
         gioBatDau: ct.gioBatDau,
         gioKetThuc: ct.gioKetThuc || null,
-        hoatDong: ct.hoatDong
+        hoatDong: ct.hoatDong,
+        loaiHoatDong: ct.loaiHoatDong || null
     }))
 });
 
@@ -311,6 +320,8 @@ export default function TourFormPage({ mode }) {
     const demManualRef = useRef(false);
 
     const [loading, setLoading] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null);
     const [loaiTours, setLoaiTours] = useState([]);
     const [khachSans, setKhachSans] = useState([]);
     const [diaDiems, setDiaDiems] = useState([]);
@@ -348,7 +359,9 @@ export default function TourFormPage({ mode }) {
     useEffect(() => {
         const fetchMasterData = async () => {
             try {
-                setLoading(true);
+                setInitialLoading(true);
+                setLoadError(null);
+                
                 const [typeTourRes, hotelRes, locationRes] = await Promise.all([
                     getAllTypeTourApi(),
                     getHotelListApi(),
@@ -360,18 +373,84 @@ export default function TourFormPage({ mode }) {
                 setDiaDiems(locationRes);
 
                 if ((isEdit || isViewMode) && id) {
-                    const tourData = await getTourDetailApi(id);
-                    applyTourData(tourData, hotelRes);
+                    try {
+                        const tourData = await getTourDetailApi(id);
+                        
+                        if (!tourData) {
+                            throw new Error("Không tìm thấy dữ liệu tour");
+                        }
+                        
+                        if (!tourData.tourInfo) {
+                            throw new Error("Dữ liệu tour không hợp lệ");
+                        }
+                        
+                        applyTourData(tourData, hotelRes);
+                    } catch (tourError) {
+                        console.error("Lỗi tải tour detail:", tourError);
+                        setLoadError(tourError.message || "Không thể tải thông tin tour");
+                        toastError("Lỗi tải dữ liệu", getErrorMessage(tourError, "Không thể tải thông tin tour!"));
+                    }
                 }
             } catch (error) {
+                console.error("Lỗi tải master data:", error);
+                setLoadError(error.message || "Không thể tải dữ liệu cấu hình");
                 toastError("Tải dữ liệu thất bại", getErrorMessage(error, "Không thể tải dữ liệu cấu hình Tour!"));
             } finally {
-                setLoading(false);
+                setInitialLoading(false);
             }
         };
 
         fetchMasterData();
     }, [id, mode]);
+
+    // Kiểm tra nếu đang view mode và chưa có dữ liệu
+    if (isViewMode && !initialLoading && !loading) {
+        if (loadError) {
+            return (
+                <div className="bg-white border border-slate-200 rounded-2xl shadow p-8">
+                    <div className="text-center py-12">
+                        <div className="text-red-500 mb-4">
+                            <AlertCircle size={48} className="mx-auto" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-2">
+                            Không thể tải dữ liệu
+                        </h3>
+                        <p className="text-slate-500 mb-6">{loadError}</p>
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition"
+                        >
+                            Quay lại
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+        
+        if (!formData.tenTour && !initialLoading) {
+            return (
+                <div className="bg-white border border-slate-200 rounded-2xl shadow p-8">
+                    <div className="text-center py-12">
+                        <div className="text-amber-500 mb-4">
+                            <AlertCircle size={48} className="mx-auto" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-2">
+                            Không tìm thấy tour
+                        </h3>
+                        <p className="text-slate-500 mb-6">
+                            Tour với ID #{id} không tồn tại hoặc đã bị xóa.
+                        </p>
+                        <button
+                            onClick={() => navigate("/Quan-ly/Cac-chuyen-di")}
+                            className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition"
+                        >
+                            Quay lại danh sách
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+    }
 
     const applyTourData = (tourData, hotelRes) => {
         originalDataRef.current = tourData;
@@ -706,13 +785,9 @@ export default function TourFormPage({ mode }) {
         }
     }, [id]);
 
-    // ✅ SỬA: Lọc dữ liệu rỗng trước khi set state
     const handleChuyenKhoiHanhsChange = useCallback(async (newChuyen) => {
-        // Lọc bỏ các item không hợp lệ
         const validData = (newChuyen || []).filter(item => {
-            // Giữ lại nếu có maChuyen hoặc tempId
             if (!item.maChuyen && !item.tempId) return false;
-            // Giữ lại nếu có ít nhất một thông tin cơ bản
             if (!item.diemKhoiHanh && !item.diemDen && !item.ngayKhoiHanh) return false;
             return true;
         });
@@ -740,8 +815,6 @@ export default function TourFormPage({ mode }) {
                     }
                     return updated;
                 });
-
-                // toastSuccess("Thành công", result.isNew ? "Đã thêm chuyến mới." : "Đã cập nhật chuyến.");
             }
 
             deleteSaving.markSaved();
@@ -881,6 +954,18 @@ export default function TourFormPage({ mode }) {
             setLoading(false);
         }
     };
+
+    // Hiển thị loading khi đang tải dữ liệu
+    if (initialLoading) {
+        return (
+            <div className="bg-white border border-slate-200 rounded-2xl shadow p-8">
+                <div className="flex flex-col items-center justify-center py-16">
+                    <Loader2 size={48} className="animate-spin text-sky-500 mb-4" />
+                    <p className="text-slate-500">Đang tải dữ liệu...</p>
+                </div>
+            </div>
+        );
+    }
 
     const isBasicInfoCompleted =
         formData.tenTour?.trim() &&
@@ -1057,14 +1142,6 @@ export default function TourFormPage({ mode }) {
                 </section>
 
                 <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        {isEdit && <SaveStatusBadge state={scheduleSaving.state} />}
-                        {isScheduleLocked && (
-                            <span className="text-xs text-amber-500 bg-amber-50 px-3 py-1 rounded-full">
-                                Đã khóa (có khách đặt)
-                            </span>
-                        )}
-                    </div>
                     {errors.lichTrinhs && (
                         <p className="mb-2 text-xs text-red-500">{errors.lichTrinhs}</p>
                     )}
@@ -1078,6 +1155,7 @@ export default function TourFormPage({ mode }) {
                         loading={loading}
                         canAddDay={canAddDay && !isScheduleLocked}
                         isLocked={isScheduleLocked}
+                        hasBooking={isScheduleLocked}
                     />
                 </div>
 

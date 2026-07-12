@@ -28,8 +28,7 @@ namespace travel_recommendation_and_booking_system.Extensions
             RecurringJob.AddOrUpdate<IReviewService>(
                 "auto-process-reviews-batch",
                 service => service.ProcessReviewsBatchAsync(),
-                 "0 23 * * *"
-            //Cron.Minutely()
+                "0 23 * * *"
             );
         }
 
@@ -64,14 +63,14 @@ namespace travel_recommendation_and_booking_system.Extensions
             RecurringJob.AddOrUpdate<PaymentWarningJob>(
                 "cash-payment-reminder-7days",
                 job => job.SendPaymentReminders(),
-                "* * * * *"
+                "0 0 * * *"
             );
 
 
             RecurringJob.AddOrUpdate<PaymentWarningJob>(
                 "cancel-cash-booking-3days",
                 job => job.CancelExpiredCashBookings(),
-               "* * * * *" 
+               "0 0 * * *"
             );
         }
         public static void UseTrainRecommendationModelJob(this WebApplication app)

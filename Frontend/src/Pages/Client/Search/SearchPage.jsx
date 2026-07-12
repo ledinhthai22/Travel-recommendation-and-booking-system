@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { parseISO } from "date-fns";
-import { Search, MapPin, Home,Calendar } from "lucide-react";
+import { Search, MapPin, Home, Calendar } from "lucide-react";
 
 import TourCard from "~/components/Tours/TourCard";
 import TourFilterBar from "./TourFilterBar";
@@ -9,11 +8,11 @@ import Pagination from "~/components/Common/Pagination";
 import Breadcrumb from "~/components/UI/Breadcrumbs/Breadcrumbs";
 import DatePicker from "~/components/UI/Form/DatePicker";
 import { searchToursApi } from "~/Services/SearchService";
+import { mapSearchApiTourToCard } from "~/utils/mapTourCard"; // <-- IMPORT HÀM MAP
 
 const PAGE_SIZE = 12;
 const MIN_PRICE = 1000000;
 const MAX_PRICE = 50000000;
-const IMAGE_BASE_URL = "https://localhost:7016"; // đồng bộ với Tours.jsx / TourDetail.jsx
 
 const DAY_RANGE_MAP = {
     "2-3": { ngayTu: 2, ngayDen: 3 },
@@ -60,9 +59,6 @@ export default function SearchPage() {
 
     const hasFetchedOnce = useRef(false);
     const filterSignatureRef = useRef("");
-
-    // Bảo vệ khỏi race-condition: chỉ áp dụng kết quả của request MỚI NHẤT được gửi đi,
-    // bỏ qua kết quả của các request cũ trả về muộn hơn.
     const requestIdRef = useRef(0);
 
     const fetchSearchResults = useCallback(async (pageToFetch) => {
@@ -91,10 +87,12 @@ export default function SearchPage() {
                 pageSize: PAGE_SIZE
             });
 
-            // Có request mới hơn đã được gửi trong lúc chờ -> bỏ kết quả này, không ghi đè state
             if (currentRequestId !== requestIdRef.current) return;
 
-            setTours(res?.items || []);
+            // ✅ SỬ DỤNG HÀM MAP ĐỂ CHUYỂN ĐỔI DỮ LIỆU
+            const items = (res?.items || []).map(mapSearchApiTourToCard);
+            
+            setTours(items);
             setTotalItems(res?.totalItems || 0);
             setTotalPages(Math.max(1, Math.ceil((res?.totalItems || 0) / PAGE_SIZE)));
         } catch (error) {
@@ -112,7 +110,6 @@ export default function SearchPage() {
         }
     }, [searchKeyword, searchDiemDen, searchNgayDi, searchNgayVe, category, minPrice, maxPrice, dayFilters]);
 
-    // Đồng bộ TOÀN BỘ filter vào URL (debounce chung với fetch, dùng replace để không phá lịch sử back/forward)
     const syncFiltersToUrl = useCallback(() => {
         const params = {};
         if (searchDiemDen.trim()) params.diemDen = searchDiemDen.trim();
@@ -164,8 +161,6 @@ export default function SearchPage() {
 
     const handleSearchSubmit = (e) => {
         e.preventDefault();
-        // Form submit không cần làm gì thêm: state đã đồng bộ 2 chiều qua debounce ở trên.
-        // Giữ handler để Enter trong input không reload trang.
     };
 
     const breadcrumbItems = [
@@ -189,7 +184,6 @@ export default function SearchPage() {
         setSearchParams({}, { replace: true });
     };
 
-    // Thông báo rỗng chung chung, không gắn cứng vào 1 field cụ thể
     const hasAnyFilter =
         searchDiemDen.trim() || searchNgayDi || searchNgayVe || searchKeyword.trim() ||
         category || minPrice !== MIN_PRICE || maxPrice !== MAX_PRICE || dayFilters.length > 0;
@@ -202,18 +196,14 @@ export default function SearchPage() {
         <div className="min-h-screen bg-slate-50/60 pt-24 pb-16">
             <div className="mx-auto max-w-[1440px] px-4 md:px-8">
 
-                {/* ── BREADCRUMB ── */}
                 <div className="mb-4">
                     <Breadcrumb items={breadcrumbItems} />
                 </div>
 
-                {/* ── THANH TÌM KIẾM TRÊN CÙNG TRANG KẾT QUẢ ── */}
-                {/* ── THANH TÌM KIẾM TRÊN CÙNG TRANG KẾT QUẢ (đồng bộ style với HeroSection) ── */}
                 <form
                     onSubmit={handleSearchSubmit}
                     className="mx-auto mb-12 bg-white/95 backdrop-blur-md p-2 rounded-2xl shadow-2xl flex flex-col md:flex-row gap-2 text-black max-w-5xl"
                 >
-                    {/* Điểm đến */}
                     <div className="group flex items-center gap-3 flex-[1.5] hover:bg-gray-50 rounded-xl px-4 py-3 transition-all">
                         <MapPin className="text-[#0EA5E5] group-hover:scale-110 transition-transform shrink-0" size={22} />
                         <div className="flex flex-col items-start w-full">
@@ -230,7 +220,6 @@ export default function SearchPage() {
 
                     <div className="hidden md:block w-px bg-gray-200 my-2" />
 
-                    {/* Ngày đi */}
                     <div className="group flex items-center gap-3 flex-1 hover:bg-gray-50 rounded-xl px-2 py-1 transition-all">
                         <div className="w-full text-left custom-search-datepicker">
                             <DatePicker
@@ -249,32 +238,6 @@ export default function SearchPage() {
                         </div>
                     </div>
 
-                    {/* <div className="hidden md:block w-px bg-gray-200 my-2" /> */}
-
-                    {/* Ngày về
-                    <div className="group flex items-center gap-3 flex-1 hover:bg-gray-50 rounded-xl px-2 py-1 transition-all">
-                        <div className="w-full text-left custom-search-datepicker">
-                            <DatePicker
-                                label="Ngày về"
-                                value={searchNgayVe}
-                                onChange={setSearchNgayVe}
-                                placeholderText="Chọn ngày về"
-                                minDate={searchNgayDi ? parseISO(searchNgayDi) : new Date()}
-                                disabled={!searchNgayDi}
-                                Icon={Calendar}
-                            />
-                        </div>
-                    </div> */}
-
-                    {/* Nút Tìm ngay */}
-                    {/* <button
-                        type="submit"
-                        className="bg-[#0EA5E5] hover:bg-[#0284c7] text-white px-8 rounded-xl font-bold flex items-center justify-center gap-2 transition-all hover:shadow-lg active:scale-95 group self-stretch md:self-auto"
-                    >
-                        <Search size={15} className="group-hover:rotate-12 transition-transform" />
-                        <span>Tìm ngay</span>
-                    </button> */}
-
                     <style>{`
                         .custom-search-datepicker border { border: none !important; }
                         .custom-search-datepicker .relative.flex { gap: 0px !important; }
@@ -289,7 +252,6 @@ export default function SearchPage() {
                     `}</style>
                 </form>
 
-                {/* ── BỘ LỌC DẠNG THANH NGANG, NẰM DƯỚI Ô SEARCH ── */}
                 <TourFilterBar
                     minPrice={minPrice} maxPrice={maxPrice}
                     setMinPrice={setMinPrice} setMaxPrice={setMaxPrice}
@@ -299,7 +261,6 @@ export default function SearchPage() {
                     onReset={resetAllFilters}
                 />
 
-                {/* ── KẾT QUẢ TÌM KIẾM (FULL WIDTH, KHÔNG CÒN SIDEBAR) ── */}
                 <main className="min-w-0 relative">
                     {initialLoading ? (
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -324,15 +285,8 @@ export default function SearchPage() {
                             >
                                 {tours.map((tour) => (
                                     <TourCard
-                                        key={tour.maTour}
-                                        id={tour.maTour}
-                                        name={tour.tenTour}
-                                        slug={tour.slug}
-                                        price={tour.giaTu}
-                                        duration={`${tour.ngay} ngày ${tour.dem} đêm`}
-                                        image={tour.duongDanAnh ? `${IMAGE_BASE_URL}${tour.duongDanAnh}` : undefined}
-                                        destination={tour.diemDen}
-                                        tourType={tour.loaiHinhTour}
+                                        key={tour.id}
+                                        {...tour} // ✅ TRUYỀN TOÀN BỘ PROPS ĐÃ ĐƯỢC MAP
                                     />
                                 ))}
                             </div>

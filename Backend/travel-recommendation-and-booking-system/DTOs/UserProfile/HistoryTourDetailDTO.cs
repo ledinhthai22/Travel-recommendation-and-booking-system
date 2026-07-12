@@ -16,5 +16,6 @@
         public int SoLuongEmBe { get; set; }
         public decimal TongTien { get; set; }
         public string PhuongThucThanhToan { get; set; }
+        public bool DaDanhGia { get; set; }
     }
 }

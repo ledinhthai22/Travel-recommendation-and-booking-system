@@ -27,7 +27,7 @@ const NotificationPanel = () => {
     const panelRef = useRef(null);
     const isFirstLoad = useRef(true);
 
-  
+
 
     const getNotificationStyle = (type) => {
         switch (type) {
@@ -50,8 +50,8 @@ const NotificationPanel = () => {
         }
     };
 
-   
-    
+
+
     const mapNotification = useCallback((n) => ({
         id: n.maThongBao,
         title: n.tieuDe,
@@ -79,7 +79,7 @@ const NotificationPanel = () => {
         });
     };
 
- 
+
     const loadNotifications = useCallback(async () => {
         try {
             setLoading(true);
@@ -179,7 +179,7 @@ const NotificationPanel = () => {
                 return [newNoti, ...prev];
             });
 
-      
+
             const style = getNotificationStyle(newNoti.type);
             show({
                 icon: style.icon,
@@ -196,8 +196,7 @@ const NotificationPanel = () => {
         };
     }, [mapNotification]);
 
-   
-    
+
     const handleMarkAllAsRead = async () => {
         if (unreadCount === 0) return;
         try {
@@ -215,7 +214,7 @@ const NotificationPanel = () => {
             return;
         }
         try {
-           
+
             await NotificationService.markAsRead(noti.id);
             setNotifications(prev =>
                 prev.map(n => n.id === noti.id ? { ...n, read: true } : n)
@@ -242,12 +241,12 @@ const NotificationPanel = () => {
                 className={`relative flex h-10 w-10 items-center justify-center rounded-xl  transition-all duration-200 focus:outline-none cursor-pointer
                 ${isOpen ? " text-sky-600 " : " text-slate-600 hover:bg-slate-50 "}`}
             >
-                <Bell size={16} className={unreadCount > 0 ? "animate-bounce" : ""} />
-                {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white shadow-sm ring-2 ring-white">
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                    </span>
-                )}
+                <span className="relative inline-flex">
+                    <Bell size={16} className={unreadCount > 0 ? "animate-bounce" : ""} />
+                    {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
+                    )}
+                </span>
             </button>
 
             {isOpen && (

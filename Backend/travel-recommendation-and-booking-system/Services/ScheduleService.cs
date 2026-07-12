@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using System.Text;
+using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Log;
 using travel_recommendation_and_booking_system.DTOs.LogSystem;
@@ -16,63 +16,45 @@ namespace travel_recommendation_and_booking_system.Services
     public class ScheduleService : IScheduleService
     {
         private readonly AppDbContext _context;
-        private readonly IMemoryCache _cache;
         private const string DEFAULT_SCHEDULE_IMAGE = "default-schedule.jpg";
         private readonly ILogService _logService;
         private readonly ICurrentUserService _currentUserService;
-        private const string CacheVersionKey = "tour:cache:version";
+        private readonly ITourCacheService _tourCache;
 
         public ScheduleService(
             AppDbContext context,
             ILogService logService,
             ICurrentUserService currentUserService,
-            IMemoryCache cache)
+            ITourCacheService tourCache)
         {
             _context = context;
             _logService = logService;
             _currentUserService = currentUserService;
-            _cache = cache;
+            _tourCache = tourCache;
         }
 
-
-        private int GetCacheVersion()
+        /// <summary>
+        /// Lấy slug hiện tại của tour để vô hiệu hóa đúng cache chi tiết theo slug.
+        /// </summary>
+        private async Task<string?> GetTourSlugAsync(int tourId)
         {
-            return _cache.GetOrCreate(CacheVersionKey, entry =>
-            {
-                entry.SlidingExpiration = TimeSpan.FromDays(1);
-                return 1;
-            });
+            return await _context.Tours
+                .AsNoTracking()
+                .Where(t => t.MaTour == tourId)
+                .Select(t => t.Slug)
+                .FirstOrDefaultAsync();
         }
 
-        private void BumpCacheVersion()
+        /// <summary>
+        /// Lịch trình/chi tiết lịch trình ảnh hưởng trang chi tiết tour và việc tìm tour
+        /// theo địa điểm (GetToursByLocationSlugAsync), nên vô hiệu hóa cả 2 loại cache.
+        /// </summary>
+        private async Task InvalidateTourCacheAsync(int tourId)
         {
-            var current = GetCacheVersion();
-            _cache.Set(CacheVersionKey, current + 1, TimeSpan.FromDays(1));
+            var slug = await GetTourSlugAsync(tourId);
+            _tourCache.InvalidateTourDetail(tourId, slug);
+            _tourCache.InvalidateLists();
         }
-
-        private string VKey(string key) => $"v{GetCacheVersion()}:{key}";
-
-        private void ClearTourCache(int tourId)
-        {
-
-            var detailKey = VKey($"tour:detail:{tourId}");
-            _cache.Remove(detailKey);
-
-
-            var tour = _context.Tours.AsNoTracking().FirstOrDefault(t => t.MaTour == tourId);
-            if (tour != null && !string.IsNullOrEmpty(tour.Slug))
-            {
-                var slugKey = VKey($"tour:detail:slug:{tour.Slug.ToLower()}");
-                _cache.Remove(slugKey);
-            }
-
-
-            BumpCacheVersion();
-
-            Console.WriteLine($"[CACHE] Cleared cache for tour {tourId}");
-        }
-
-
 
         private static string ToSafeFileName(string value)
         {
@@ -118,7 +100,7 @@ namespace travel_recommendation_and_booking_system.Services
 
             var detailLocationIds = dto.ChiTietLichTrinh?
                 .Where(x => x.MaDiaDiem.HasValue && x.MaDiaDiem > 0)
-                .Select(x => x.MaDiaDiem!.Value)      // ép về int sau khi lọc null
+                .Select(x => x.MaDiaDiem!.Value)
                 .Distinct()
                 .ToList() ?? new List<int>();
 
@@ -169,7 +151,6 @@ namespace travel_recommendation_and_booking_system.Services
                     x.NgayXoa == null);
         }
 
-
         private async Task<ScheduleReponseDTO> MapToResponseDTO(LichTrinh lichTrinh)
         {
             if (lichTrinh == null) return null;
@@ -201,12 +182,12 @@ namespace travel_recommendation_and_booking_system.Services
                         MaDiaDiem = ct.MaDiaDiem,
                         GioBatDau = ct.GioBatDau,
                         GioKetThuc = ct.GioKetThuc,
-                        HoatDong = ct.HoatDong
+                        HoatDong = ct.HoatDong,
+                        LoaiHoatDong = ct.LoaiHoatDong // MỚI
                     })
                     .ToListAsync()
             };
         }
-
 
         public async Task<ScheduleReponseDTO> AddScheduleAsync(ScheduleDTO dto)
         {
@@ -223,7 +204,6 @@ namespace travel_recommendation_and_booking_system.Services
                 TenLichTrinh = dto.TenLichTrinh,
                 BuaAn = dto.BuaAn,
                 SoThuTuNgay = dto.SoThuTuNgay,
-                
                 LuuY = dto.LuuY,
                 DuongDanAnh = string.IsNullOrEmpty(fileName) ? DEFAULT_SCHEDULE_IMAGE : fileName,
                 TrangThai = true,
@@ -241,9 +221,10 @@ namespace travel_recommendation_and_booking_system.Services
                 _context.CTLichTrinhs.Add(new CTLichTrinh
                 {
                     MaLichTrinh = lichTrinh.MaLichTrinh,
-                    MaDiaDiem = item.MaDiaDiem,
+                    MaDiaDiem = (item.MaDiaDiem.HasValue && item.MaDiaDiem > 0) ? item.MaDiaDiem : null,
                     GioBatDau = item.GioBatDau,
                     GioKetThuc = item.GioKetThuc,
+                    LoaiHoatDong = item.LoaiHoatDong,
                     HoatDong = item.HoatDong
                 });
             }
@@ -272,7 +253,7 @@ namespace travel_recommendation_and_booking_system.Services
                 }
             });
 
-            ClearTourCache(dto.MaTour);
+            await InvalidateTourCacheAsync(dto.MaTour);
 
             var result = await _context.LichTrinhs
                 .Include(x => x.KhachSan)
@@ -314,7 +295,8 @@ namespace travel_recommendation_and_booking_system.Services
                             MaDiaDiem = ct.MaDiaDiem,
                             GioBatDau = ct.GioBatDau,
                             GioKetThuc = ct.GioKetThuc,
-                            HoatDong = ct.HoatDong
+                            HoatDong = ct.HoatDong,
+                            LoaiHoatDong = ct.LoaiHoatDong // MỚI
                         })
                         .ToList()
                 })
@@ -332,16 +314,12 @@ namespace travel_recommendation_and_booking_system.Services
             if (lt == null)
                 throw new Exception($"Không tìm thấy lịch trình {maLichTrinh}");
 
-            //if (await HasAnyDepartureAsync(lt.MaTour))
-            //    throw new Exception("Tour đã có chuyến khởi hành, không thể chỉnh sửa lịch trình.");
-
             var tourId = lt.MaTour;
             var oldData = new
             {
                 lt.TenLichTrinh,
                 lt.BuaAn,
                 lt.SoThuTuNgay,
-
                 lt.LuuY,
                 lt.TrangThai,
                 lt.MaKhachSan
@@ -393,10 +371,11 @@ namespace travel_recommendation_and_booking_system.Services
                     var existing = oldDetails.FirstOrDefault(x => x.MaCTLT == item.MaCTLT);
                     if (existing != null)
                     {
-                        existing.MaDiaDiem = item.MaDiaDiem;
+                        existing.MaDiaDiem = (item.MaDiaDiem.HasValue && item.MaDiaDiem > 0) ? item.MaDiaDiem : null;
                         existing.GioBatDau = item.GioBatDau;
                         existing.GioKetThuc = item.GioKetThuc;
                         existing.HoatDong = item.HoatDong;
+                        existing.LoaiHoatDong = item.LoaiHoatDong;
                     }
                 }
                 else
@@ -404,10 +383,11 @@ namespace travel_recommendation_and_booking_system.Services
                     _context.CTLichTrinhs.Add(new CTLichTrinh
                     {
                         MaLichTrinh = maLichTrinh,
-                        MaDiaDiem = item.MaDiaDiem,
+                        MaDiaDiem = (item.MaDiaDiem.HasValue && item.MaDiaDiem > 0) ? item.MaDiaDiem : null,
                         GioBatDau = item.GioBatDau,
                         GioKetThuc = item.GioKetThuc,
-                        HoatDong = item.HoatDong
+                        HoatDong = item.HoatDong,
+                        LoaiHoatDong = item.LoaiHoatDong,
                     });
                 }
             }
@@ -441,7 +421,7 @@ namespace travel_recommendation_and_booking_system.Services
                 }
             });
 
-            ClearTourCache(tourId);
+            await InvalidateTourCacheAsync(tourId);
 
             var result = await _context.LichTrinhs
                 .Include(x => x.KhachSan)
@@ -456,9 +436,6 @@ namespace travel_recommendation_and_booking_system.Services
 
             if (lt == null || lt.NgayXoa != null) return false;
 
-            //if (await HasAnyDepartureAsync(lt.MaTour))
-            //    throw new Exception("Tour đã có chuyến khởi hành, không thể xóa lịch trình.");
-
             var tourId = lt.MaTour;
             var oldData = new
             {
@@ -466,16 +443,45 @@ namespace travel_recommendation_and_booking_system.Services
                 lt.TenLichTrinh,
                 lt.MaTour,
                 lt.TrangThai,
-                lt.MaKhachSan
+                lt.MaKhachSan,
+                lt.SoThuTuNgay
             };
 
+            // Xóa mềm lịch trình
             lt.NgayXoa = DateTime.Now;
             lt.NgayCapNhat = DateTime.Now;
             lt.TrangThai = false;
 
-            var result = await _context.SaveChangesAsync() > 0;
-            if (!result) return false;
+            // Lưu thay đổi để xóa mềm
+            var deleteResult = await _context.SaveChangesAsync() > 0;
+            if (!deleteResult) return false;
 
+            // Lấy tất cả lịch trình còn lại của tour, sắp xếp theo số thứ tự ngày
+            var remainingSchedules = await _context.LichTrinhs
+                .Where(x => x.MaTour == tourId && x.NgayXoa == null)
+                .OrderBy(x => x.SoThuTuNgay)
+                .ToListAsync();
+
+            // Cập nhật lại số thứ tự ngày cho các lịch trình còn lại
+            int newOrder = 1;
+            foreach (var schedule in remainingSchedules)
+            {
+                // Chỉ cập nhật nếu số thứ tự hiện tại khác với số thứ tự mới
+                if (schedule.SoThuTuNgay != newOrder)
+                {
+                    schedule.SoThuTuNgay = newOrder;
+                    schedule.NgayCapNhat = DateTime.Now;
+
+                    // Cập nhật tên lịch trình nếu cần (tùy theo logic nghiệp vụ)
+                    // schedule.TenLichTrinh = $"Hành trình Ngày {newOrder}";
+                }
+                newOrder++;
+            }
+
+            // Lưu thay đổi số thứ tự
+            await _context.SaveChangesAsync();
+
+            // Log hành động xóa
             var currentAccount = _currentUserService.GetUserId() == 1
                 ? AccountTypeDTO.QuanTriVien
                 : AccountTypeDTO.NguoiDung;
@@ -489,14 +495,37 @@ namespace travel_recommendation_and_booking_system.Services
                 TenBangTacDong = TableNameDTO.LichTrinh,
                 MaDoiTuong = lt.MaLichTrinh,
                 GiaTriTruoc = oldData,
-                GiaTriSau = new { lt.NgayXoa }
+                GiaTriSau = new
+                {
+                    lt.NgayXoa,
+                    SoThuTuNgayMoi = "Đã xóa và cập nhật lại số thứ tự cho các ngày còn lại"
+                }
             });
 
-            ClearTourCache(tourId);
+            // Log thêm về việc cập nhật số thứ tự
+            foreach (var schedule in remainingSchedules)
+            {
+                await _logService.LoggingAsync(new LogDTO
+                {
+                    LoaiTaiKhoan = currentAccount,
+                    Email = _currentUserService.GetEmail(),
+                    MaTaiKhoan = _currentUserService.GetUserId(),
+                    TenHanhDong = ActionLogDTO.CapNhat,
+                    TenBangTacDong = TableNameDTO.LichTrinh,
+                    MaDoiTuong = schedule.MaLichTrinh,
+                    GiaTriSau = new
+                    {
+                        schedule.SoThuTuNgay,
+                        schedule.NgayCapNhat,
+                        LyDo = "Cập nhật lại số thứ tự sau khi xóa ngày khác"
+                    }
+                });
+            }
+
+            await InvalidateTourCacheAsync(tourId);
 
             return true;
         }
-
 
         public async Task<bool> AddCTLTAsync(ScheduleDetailsDTO dto)
         {
@@ -510,10 +539,11 @@ namespace travel_recommendation_and_booking_system.Services
             var ctlt = new CTLichTrinh
             {
                 MaLichTrinh = dto.MaLichTrinh,
-                MaDiaDiem = dto.MaDiaDiem,
+                MaDiaDiem = (dto.MaDiaDiem.HasValue && dto.MaDiaDiem > 0) ? dto.MaDiaDiem : null,
                 GioBatDau = dto.GioBatDau,
                 GioKetThuc = dto.GioKetThuc,
-                HoatDong = dto.HoatDong
+                HoatDong = dto.HoatDong,
+                LoaiHoatDong = dto.LoaiHoatDong // MỚI
             };
 
             _context.CTLichTrinhs.Add(ctlt);
@@ -533,13 +563,14 @@ namespace travel_recommendation_and_booking_system.Services
                     ctlt.MaDiaDiem,
                     ctlt.GioBatDau,
                     ctlt.GioKetThuc,
-                    ctlt.HoatDong
+                    ctlt.HoatDong,
+                    ctlt.LoaiHoatDong // MỚI
                 }
             });
 
             if (lichTrinh != null)
             {
-                ClearTourCache(lichTrinh.MaTour);
+                await InvalidateTourCacheAsync(lichTrinh.MaTour);
             }
 
             return true;
@@ -559,7 +590,8 @@ namespace travel_recommendation_and_booking_system.Services
                     TenDiaDiem = x.DiaDiem.TenDiaDiem,
                     GioBatDau = x.GioBatDau,
                     GioKetThuc = x.GioKetThuc,
-                    HoatDong = x.HoatDong
+                    HoatDong = x.HoatDong,
+                    LoaiHoatDong = x.LoaiHoatDong // MỚI
                 })
                 .ToListAsync();
         }
@@ -581,14 +613,16 @@ namespace travel_recommendation_and_booking_system.Services
                 ctlt.MaDiaDiem,
                 ctlt.GioBatDau,
                 ctlt.GioKetThuc,
-                ctlt.HoatDong
+                ctlt.HoatDong,
+                ctlt.LoaiHoatDong // MỚI
             };
 
             ctlt.MaLichTrinh = dto.MaLichTrinh;
-            ctlt.MaDiaDiem = dto.MaDiaDiem;
+            ctlt.MaDiaDiem = (dto.MaDiaDiem.HasValue && dto.MaDiaDiem > 0) ? dto.MaDiaDiem : null;
             ctlt.GioBatDau = dto.GioBatDau;
             ctlt.GioKetThuc = dto.GioKetThuc;
             ctlt.HoatDong = dto.HoatDong;
+            ctlt.LoaiHoatDong = dto.LoaiHoatDong; // MỚI
 
             await _context.SaveChangesAsync();
 
@@ -606,13 +640,14 @@ namespace travel_recommendation_and_booking_system.Services
                     ctlt.MaDiaDiem,
                     ctlt.GioBatDau,
                     ctlt.GioKetThuc,
-                    ctlt.HoatDong
+                    ctlt.HoatDong,
+                    ctlt.LoaiHoatDong // MỚI
                 }
             });
 
             if (lichTrinh != null)
             {
-                ClearTourCache(lichTrinh.MaTour);
+                await InvalidateTourCacheAsync(lichTrinh.MaTour);
             }
 
             return true;
@@ -635,7 +670,8 @@ namespace travel_recommendation_and_booking_system.Services
                 ctlt.MaCTLT,
                 ctlt.MaLichTrinh,
                 ctlt.MaDiaDiem,
-                ctlt.HoatDong
+                ctlt.HoatDong,
+                ctlt.LoaiHoatDong // MỚI
             };
 
             _context.CTLichTrinhs.Remove(ctlt);
@@ -654,7 +690,7 @@ namespace travel_recommendation_and_booking_system.Services
 
             if (lichTrinh != null)
             {
-                ClearTourCache(lichTrinh.MaTour);
+                await InvalidateTourCacheAsync(lichTrinh.MaTour);
             }
 
             return true;

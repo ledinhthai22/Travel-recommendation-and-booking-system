@@ -25,14 +25,14 @@ function formatDate(dateString) {
 
 function calcDaysUntilDeparture(ngayKhoiHanh) {
     if (!ngayKhoiHanh) return 0; // Không có ngày thì coi như sát giờ/không hợp lệ
-    
+
     const departure = new Date(ngayKhoiHanh);
     const today = new Date();
-    
+
     // Đưa cả 2 về cùng mốc 0h00 để tính số ngày trọn vẹn
     departure.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
-    
+
     const diffTime = departure.getTime() - today.getTime();
     // Dùng Math.ceil để đảm bảo nếu còn 3.1 ngày thì vẫn tính là sang ngày thứ 4
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -58,6 +58,7 @@ export default function CheckoutPage() {
     const [vnpayUrl, setVnpayUrl] = useState(null);
     const [txnRef, setTxnRef] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [activeTab, setActiveTab] = useState('me');
 
     // Load booking data from sessionStorage
     useEffect(() => {
@@ -92,7 +93,7 @@ export default function CheckoutPage() {
             if (holdId) {
                 const storedUser = JSON.parse(localStorage.getItem("user"));
                 if (storedUser?.maNguoiDung) {
-                    releaseReservationApi(storedUser.maNguoiDung, holdId).catch(() => {});
+                    releaseReservationApi(storedUser.maNguoiDung, holdId).catch(() => { });
                 }
             }
         };
@@ -135,6 +136,7 @@ export default function CheckoutPage() {
         const contactErr = {};
         const passengerErr = {};
 
+        // Validate contact
         if (!contact.fullName.trim()) contactErr.fullName = "Vui lòng nhập họ tên";
         if (!contact.phone.trim()) contactErr.phone = "Vui lòng nhập số điện thoại";
         else if (!/^0\d{9}$/.test(contact.phone)) contactErr.phone = "Số điện thoại không hợp lệ";
@@ -145,15 +147,28 @@ export default function CheckoutPage() {
         const checkPassenger = (key) => {
             const p = passengerDetails[key] ?? {};
             const err = {};
-            if (!p.fullName?.trim()) err.fullName = "Nhập họ tên";
-            if (!p.dob) err.dob = "Chọn ngày sinh";
-            if (p.phone && !/^0\d{9}$/.test(p.phone)) err.phone = "SĐT không hợp lệ";
+
+            // ✅ Chỉ skip validate khi auto-fill THỰC SỰ đầy đủ 
+            // (có cả fullName lẫn dob thật, không chỉ dựa vào tab đang chọn)
+            const isFirstAdultAutoFilled = key === 'adults-0' &&
+                activeTab === 'me' &&
+                p.isAutoFilled === true &&
+                !!p.fullName?.trim() &&
+                !!p.dob;
+
+            if (!isFirstAdultAutoFilled) {
+                if (!p.fullName?.trim()) err.fullName = "Nhập họ tên";
+                if (!p.dob) err.dob = "Chọn ngày sinh";
+                if (p.phone && !/^0\d{9}$/.test(p.phone)) err.phone = "SĐT không hợp lệ";
+            }
+
             if (Object.keys(err).length > 0) {
                 passengerErr[key] = err;
                 valid = false;
             }
         };
 
+        // Validate tất cả hành khách
         for (let i = 0; i < passengers.adults; i++) checkPassenger(`adults-${i}`);
         for (let i = 0; i < passengers.children; i++) checkPassenger(`children-${i}`);
         for (let i = 0; i < passengers.toddlers; i++) checkPassenger(`toddlers-${i}`);
@@ -224,7 +239,7 @@ export default function CheckoutPage() {
             try {
                 const storedUser = JSON.parse(localStorage.getItem("user"));
                 await releaseReservationApi(storedUser.maNguoiDung, holdId);
-            } catch {}
+            } catch { }
             setHoldId(null);
         }
         if (step === 2) {
@@ -243,7 +258,7 @@ export default function CheckoutPage() {
         }
         setIsProcessing(true);
 
-        // Tiền mặt hoặc chuyển khoản
+
         if (paymentMethod === PAYMENT_METHOD.TIEN_MAT || paymentMethod === PAYMENT_METHOD.CHUYEN_KHOAN) {
             try {
                 const storedUser = JSON.parse(localStorage.getItem("user"));
@@ -321,8 +336,12 @@ export default function CheckoutPage() {
                                         const { name, value } = e.target;
                                         setContact((prev) => ({ ...prev, [name]: value }));
                                     }}
-                                    onTabChange={(newContactData) => setContact(newContactData)}
+                                    onTabChange={(newContactData) => {
+                                        setContact(newContactData);
+                                    }}
                                     errors={contactErrors}
+                                    // Thêm props để nhận và cập nhật activeTab
+                                    onActiveTabChange={setActiveTab}
                                 />
                                 <PassengerForm
                                     passengers={passengers}
@@ -340,6 +359,8 @@ export default function CheckoutPage() {
                                     details={passengerDetails}
                                     setDetails={setPassengerDetails}
                                     errors={passengerErrors}
+                                    contact={contact}
+                                    activeTab={activeTab} // Thêm prop này
                                 />
                                 <div className="rounded-3xl bg-white p-6 shadow-sm">
                                     <h2 className="mb-4 text-xl font-bold text-slate-900">Mã ưu đãi</h2>
@@ -436,8 +457,8 @@ export default function CheckoutPage() {
                                                     const typeLabel = p.key.startsWith("adults")
                                                         ? "Người lớn"
                                                         : p.key.startsWith("children")
-                                                        ? "Trẻ em"
-                                                        : "Em bé";
+                                                            ? "Trẻ em"
+                                                            : "Em bé";
                                                     return (
                                                         <tr key={p.key} className="border-t border-slate-100">
                                                             <td className="py-3 text-slate-400">#{index + 1}</td>
@@ -699,7 +720,7 @@ function VNPayWaitingModal({ url, txnRef, onSuccess, onClose }) {
                     closePopup();
                     onClose();
                 }
-            } catch {}
+            } catch { }
         }, POLL_INTERVAL_MS);
 
         timeoutRef.current = setTimeout(() => {

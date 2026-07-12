@@ -27,7 +27,7 @@ export default function HomePage() {
     const isLoggedIn = !!user;
     const [wishlistIds, setWishlistIds] = useState([]);
 
-    // ---- Điểm đến nổi bật / Điểm đến dành cho bạn ----
+
     const [location, setLocation] = useState([]);
     const [locationLoading, setLocationLoading] = useState(true);
 
@@ -45,7 +45,7 @@ export default function HomePage() {
         }
     }, [isAuthenticated]);
 
-    // ---- Tour nổi bật / Tour dành riêng cho bạn ----
+
     const [bestTours, setBestTours] = useState([]);
     const [bestToursLoading, setBestToursLoading] = useState(true);
 
@@ -63,7 +63,6 @@ export default function HomePage() {
         }
     }, [isAuthenticated]);
 
-    // ---- Tour mới cập nhật / Có thể bạn quan tâm ----
     const [latestTours, setLatestTours] = useState([]);
     const [latestToursLoading, setLatestToursLoading] = useState(true);
 
@@ -81,14 +80,13 @@ export default function HomePage() {
         }
     }, [isAuthenticated]);
 
-    // ---- Wishlist ----
+
     const fetchWishlist = useCallback(() => {
         if (isAuthenticated) {
             getMyWishlistIdsApi().then(ids => setWishlistIds(ids));
         }
     }, [isAuthenticated]);
 
-    // Refetch khi trạng thái đăng nhập thay đổi (login/logout, hoặc auth vừa check xong)
     useEffect(() => {
         fetchLocations();
     }, [fetchLocations]);
@@ -133,7 +131,6 @@ export default function HomePage() {
                 showSearchBar={true}
             />
 
-            {/* Điểm đến nổi bật / dành cho bạn */}
             <section className="py-16 md:py-20">
                 <div className="mx-auto max-w-[1440px] px-4 md:px-8">
                     <SectionTitle
@@ -181,7 +178,6 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* Tour nổi bật / Tour dành riêng cho bạn */}
             <section className="py-16 md:py-20">
                 <div className="mx-auto max-w-[1440px] px-4 md:px-8">
                     <SectionTitle
@@ -215,7 +211,7 @@ export default function HomePage() {
                                     id={tour.maTour}
                                     slug={tour.slug || tour.maTour}
                                     name={tour.tenTour}
-                                    image={`https://localhost:7016${tour.hinhAnhChinh}`}
+                                    image={tour.hinhAnhChinh ? `https://localhost:7016${tour.hinhAnhChinh}` : null}
                                     duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
                                     destination={tour.diemDens?.[0] || "Đang cập nhật"}
                                     price={tour.giaTu}
@@ -235,7 +231,6 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* Tour mới cập nhật / Có thể bạn quan tâm */}
             <section className="py-16 md:py-20">
                 <div className="mx-auto max-w-[1440px] px-4 md:px-8">
                     <SectionTitle
@@ -270,7 +265,7 @@ export default function HomePage() {
                                     id={tour.maTour}
                                     slug={tour.slug || tour.maTour}
                                     name={tour.tenTour}
-                                    image={`https://localhost:7016${tour.hinhAnhChinh}`}
+                                    image={tour.hinhAnhChinh ? `https://localhost:7016${tour.hinhAnhChinh}` : null}
                                     duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
                                     destination={tour.diemDens?.[0] || "Đang cập nhật"}
                                     price={tour.giaTu}
@@ -290,7 +285,7 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/*Top 3 đánh giá tốt nhất*/}
+
             <section className="border-t border-slate-100 py-20">
                 <div className="mx-auto max-w-[1440px] px-4 md:px-8">
                     <div className="mb-12 text-center">
@@ -301,26 +296,34 @@ export default function HomePage() {
                         <div className="text-center">Đang tải đánh giá...</div>
                     ) : (
                         <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
-                            {reviews.map((review, index) => (
-                                <div key={index} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                                    <div className="mb-4 flex items-center gap-4">
-                                        <img
-                                            src={`https://localhost:7016${review.duongDanAnh}`}
-                                            alt={review.tenNguoiDung}
-                                            className="h-14 w-14 rounded-full object-cover"
-                                        />
-                                        <div>
-                                            <h3 className="font-semibold text-slate-900">{review.tenNguoiDung}</h3>
-                                            <div className="flex items-center gap-1">
-                                                {[...Array(review.diemDanhGia || 5)].map((_, i) => (
-                                                    <Star key={i} size={12} className="fill-amber-400 text-amber-400" />
-                                                ))}
+                            {reviews.map((review, index) => {
+                                const avatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(review.tenNguoiDung || 'U')}&background=0EA5E5&color=fff`;
+
+                                return (
+                                    <div key={index} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                                        <div className="mb-4 flex items-center gap-4">
+                                            <img
+                                                src={review.duongDanAnh ? `https://localhost:7016${review.duongDanAnh}` : avatarFallback}
+                                                alt={review.tenNguoiDung}
+                                                className="h-14 w-14 rounded-full object-cover"
+                                                onError={(e) => {
+                                                    e.currentTarget.onerror = null; // tránh lặp vô hạn nếu fallback cũng lỗi
+                                                    e.currentTarget.src = avatarFallback;
+                                                }}
+                                            />
+                                            <div>
+                                                <h3 className="font-semibold text-slate-900">{review.tenNguoiDung}</h3>
+                                                <div className="flex items-center gap-1">
+                                                    {[...Array(review.diemDanhGia || 5)].map((_, i) => (
+                                                        <Star key={i} size={12} className="fill-amber-400 text-amber-400" />
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
+                                        <p className="leading-7 text-slate-600">"{review.noiDung}"</p>
                                     </div>
-                                    <p className="leading-7 text-slate-600">"{review.noiDung}"</p>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

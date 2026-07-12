@@ -17,6 +17,8 @@ namespace travel_recommendation_and_booking_system.Models
         public string GioBatDau { get; set; }
         public string GioKetThuc { get; set; }
         public string HoatDong { get; set; }
+        [MaxLength(50)]
+        public string? LoaiHoatDong { get; set; }
         public virtual LichTrinh LichTrinh { get; set; }
         public virtual DiaDiem DiaDiem { get; set; }
 

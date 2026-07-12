@@ -12,8 +12,6 @@ namespace travel_recommendation_and_booking_system.Services
     public class StatisticService : IStatisticService
     {
         private readonly AppDbContext _context;
-
-        // Thông tin công ty hiển thị trên báo cáo xuất Excel
         private const string CompanyName = "LỐI RIÊNG TRAVEL";
         private const string CompanyAddress = ".........,Việt Nam";
 
@@ -320,8 +318,9 @@ namespace travel_recommendation_and_booking_system.Services
             var statusMap = new Dictionary<int, string>
             {
                 { 0, "Chờ thanh toán" },
-                { 1, "Đã thanh toán" },
-                { 2, "Đã hủy" }
+                { 1, "Thành công" },
+                { 2, "Thất bại" },
+                { 3, "Hoàn tiền" }
             };
 
             var raw = await _context.ThanhToans
@@ -363,10 +362,8 @@ namespace travel_recommendation_and_booking_system.Services
             var orderStatus = await GetOrderStatusAsync(month, year);
             var topTours = await GetTopToursAsync(5, month, year);
             var ageGroups = await GetCustomerAgeGroupsAsync();
-            var recentTransactions = await GetRecentTransactionsAsync(10);
             var revenueChart = isYearMode ? await GetRevenueChartAsync(year) : null;
 
-            // Nhãn kỳ báo cáo: "NĂM 2026" hoặc "THÁNG 7/2026"
             string periodLabelUpper = isYearMode ? $"NĂM {year}" : $"THÁNG {month}/{year}";
             var growthColumnLabel = isYearMode ? "So với năm trước" : "So với tháng trước";
             var exportedAtLabel = $"Ngày xuất báo cáo: {DateTime.Now:dd/MM/yyyy HH:mm}";
@@ -384,7 +381,6 @@ namespace travel_recommendation_and_booking_system.Services
                 var sheets = workbookPart.Workbook.AppendChild(new Sheets());
                 uint sheetId = 1;
 
-                // ── Sheet 1: Tổng quan ──
                 var overviewPreamble = new List<(string Text, uint Style)>
                 {
                     (CompanyName, CellStyle.CompanyName),
@@ -397,10 +393,10 @@ namespace travel_recommendation_and_booking_system.Services
                 var overviewRows = new List<string[]>
                 {
                     new[] { "Chỉ tiêu", "Giá trị", growthColumnLabel },
-                    new[] { "Tổng số đơn đặt tour", overview.TotalBookings.ToString("N0"), FormatGrowth(overview.BookingGrowthPercent) },
-                    new[] { "Doanh thu (VNĐ)", overview.TotalRevenue.ToString("N0"), FormatGrowth(overview.RevenueGrowthPercent) },
-                    new[] { "Khách hàng mới", overview.NewCustomersThisMonth.ToString("N0"), FormatGrowth(overview.NewCustomersGrowthPercent) },
-                    new[] { "Tour đang hoạt động", overview.ActiveTours.ToString("N0"), FormatGrowth(overview.ActiveToursGrowthPercent) },
+                    new[] { "Tổng số đơn đặt tour", FormatNumber(overview.TotalBookings), FormatGrowth(overview.BookingGrowthPercent) },
+                    new[] { "Doanh thu (VNĐ)", FormatNumber(overview.TotalRevenue), FormatGrowth(overview.RevenueGrowthPercent) },
+                    new[] { "Khách hàng mới", FormatNumber(overview.NewCustomersThisMonth), FormatGrowth(overview.NewCustomersGrowthPercent) },
+                    new[] { "Tour đang hoạt động", FormatNumber(overview.ActiveTours), FormatGrowth(overview.ActiveToursGrowthPercent) },
                 };
 
                 var overviewFooter = new List<string>
@@ -413,7 +409,6 @@ namespace travel_recommendation_and_booking_system.Services
                     preambleLines: overviewPreamble,
                     footerLines: overviewFooter);
 
-                // ── Sheet 2: Doanh thu theo tháng (chỉ khi xuất theo năm) ──
                 if (isYearMode && revenueChart != null)
                 {
                     var totalRevenueForYear = revenueChart.Data.Sum(r => r.Revenue);
@@ -423,55 +418,41 @@ namespace travel_recommendation_and_booking_system.Services
                     revenueRows.AddRange(revenueChart.Data.Select(r => new[]
                     {
                         r.Month,
-                        r.Revenue.ToString("N0"),
+                        FormatNumber(r.Revenue),
                         FormatPercent(Math.Round(r.Revenue * 100m / divisor, 1))
                     }));
 
                     AddSheet(workbookPart, sheets, "Doanh thu theo thang", sheetId++, revenueRows,
                         title: $"BẢNG DOANH THU THEO THÁNG - {periodLabelUpper}",
-                        totalRow: new[] { "TỔNG CỘNG", totalRevenueForYear.ToString("N0"), "100%" });
+                        totalRow: new[] { "TỔNG CỘNG", FormatNumber(totalRevenueForYear), "100%" });
                 }
 
-                // ── Sheet 3: Trạng thái đơn hàng ──
                 var totalOrders = orderStatus.Sum(o => o.Count);
                 var orderRows = new List<string[]> { new[] { "Trạng thái đơn hàng", "Số lượng", "Tỷ lệ (%)" } };
-                orderRows.AddRange(orderStatus.Select(o => new[] { o.StatusName, o.Count.ToString("N0"), FormatPercent(o.Percentage) }));
+                orderRows.AddRange(orderStatus.Select(o => new[] { o.StatusName, FormatNumber(o.Count), FormatPercent(o.Percentage) }));
 
                 AddSheet(workbookPart, sheets, "Trang thai don hang", sheetId++, orderRows,
                     title: $"THỐNG KÊ TRẠNG THÁI ĐƠN HÀNG - {periodLabelUpper}",
-                    totalRow: new[] { "TỔNG CỘNG", totalOrders.ToString("N0"), "100%" });
+                    totalRow: new[] { "TỔNG CỘNG", FormatNumber(totalOrders), "100%" });
 
-                // ── Sheet 4: Top tour bán chạy ──
                 var topTourRows = new List<string[]> { new[] { "STT", "Mã tour", "Tên tour", "Lượt đặt", "Doanh thu (VNĐ)" } };
                 topTourRows.AddRange(topTours.Select((t, i) => new[]
                 {
-                    (i + 1).ToString(), t.MaTour.ToString(), t.TenTour, t.BookedCount.ToString("N0"), t.Revenue.ToString("N0")
+                    (i + 1).ToString(), t.MaTour.ToString(), t.TenTour, FormatNumber(t.BookedCount), FormatNumber(t.Revenue)
                 }));
 
                 AddSheet(workbookPart, sheets, "Top tour", sheetId++, topTourRows,
                     title: $"TOP {topTours.Count} TOUR BÁN CHẠY NHẤT - {periodLabelUpper}");
 
-                // ── Sheet 5: Độ tuổi khách hàng ──
                 var totalAgeCustomers = ageGroups.Sum(g => g.Count);
                 var ageRows = new List<string[]> { new[] { "Nhóm tuổi", "Số lượng khách hàng", "Tỷ lệ (%)" } };
-                ageRows.AddRange(ageGroups.Select(g => new[] { g.GroupName, g.Count.ToString("N0"), FormatPercent(g.Percentage) }));
+                ageRows.AddRange(ageGroups.Select(g => new[] { g.GroupName, FormatNumber(g.Count), FormatPercent(g.Percentage) }));
 
                 AddSheet(workbookPart, sheets, "Do tuoi khach hang", sheetId++, ageRows,
                     title: "PHÂN BỔ ĐỘ TUỔI KHÁCH HÀNG (TOÀN HỆ THỐNG)",
-                    totalRow: new[] { "TỔNG CỘNG", totalAgeCustomers.ToString("N0"), "100%" });
+                    totalRow: new[] { "TỔNG CỘNG", FormatNumber(totalAgeCustomers), "100%" });
 
-                // ── Sheet 6: Giao dịch gần đây ──
-                var transactionRows = new List<string[]>
-                {
-                    new[] { "STT", "Khách hàng", "Tour", "Số tiền (VNĐ)", "Trạng thái", "Thời gian" }
-                };
-                transactionRows.AddRange(recentTransactions.Select((t, i) => new[]
-                {
-                    (i + 1).ToString(), t.CustomerName, t.TourName, t.Amount.ToString("N0"), t.Status, t.Time.ToString("dd/MM/yyyy HH:mm")
-                }));
 
-                AddSheet(workbookPart, sheets, "Giao dich gan day", sheetId++, transactionRows,
-                    title: $"NHẬT KÝ {recentTransactions.Count} GIAO DỊCH GẦN NHẤT");
 
                 workbookPart.Workbook.Save();
             }
@@ -479,7 +460,7 @@ namespace travel_recommendation_and_booking_system.Services
             return stream.ToArray();
         }
 
-        // Index cột kiểu ô, tương ứng thứ tự CellFormat khai báo trong BuildStylesheet()
+
         private static class CellStyle
         {
             public const uint Normal = 0;
@@ -504,7 +485,6 @@ namespace travel_recommendation_and_booking_system.Services
 
             uint rowIndex = 1;
 
-            // Columns phải đứng TRƯỚC SheetData trong <worksheet> theo schema OpenXml
             if (rows.Count > 0)
             {
                 var columns = new Columns();
@@ -520,7 +500,7 @@ namespace travel_recommendation_and_booking_system.Services
                 worksheetPart.Worksheet = new Worksheet(sheetData);
             }
 
-            // Khối tiêu đề công ty / báo cáo (chỉ sheet Tổng quan có)
+
             if (preambleLines != null)
             {
                 foreach (var (text, style) in preambleLines)
@@ -529,16 +509,16 @@ namespace travel_recommendation_and_booking_system.Services
                     line.Append(CreateCell(text, style));
                     sheetData.Append(line);
                 }
-                sheetData.Append(new Row { RowIndex = rowIndex++ }); // dòng trống
+                sheetData.Append(new Row { RowIndex = rowIndex++ }); 
             }
 
-            // Tiêu đề khu vực / bảng dữ liệu
+
             if (title != null)
             {
                 var titleRow = new Row { RowIndex = rowIndex++ };
                 titleRow.Append(CreateCell(title, CellStyle.SectionTitle));
                 sheetData.Append(titleRow);
-                sheetData.Append(new Row { RowIndex = rowIndex++ }); // dòng trống
+                sheetData.Append(new Row { RowIndex = rowIndex++ }); 
             }
 
             for (int i = 0; i < rows.Count; i++)
@@ -552,7 +532,6 @@ namespace travel_recommendation_and_booking_system.Services
                 sheetData.Append(row);
             }
 
-            // Dòng tổng cộng
             if (totalRow != null)
             {
                 var total = new Row { RowIndex = rowIndex++ };
@@ -561,11 +540,11 @@ namespace travel_recommendation_and_booking_system.Services
                 sheetData.Append(total);
             }
 
-            // Chữ ký người lập / người duyệt (chỉ sheet Tổng quan có)
+
             if (footerLines != null)
             {
-                sheetData.Append(new Row { RowIndex = rowIndex++ }); // dòng trống
-                sheetData.Append(new Row { RowIndex = rowIndex++ }); // dòng trống
+                sheetData.Append(new Row { RowIndex = rowIndex++ });
+                sheetData.Append(new Row { RowIndex = rowIndex++ }); 
                 foreach (var text in footerLines)
                 {
                     var footerRow = new Row { RowIndex = rowIndex++ };
@@ -597,12 +576,12 @@ namespace travel_recommendation_and_booking_system.Services
         {
             return new Stylesheet(
                 new Fonts(
-                    new Font(),                                                  // 0: normal
-                    new Font(new Bold()),                                        // 1: bold (header bảng / tổng cộng)
-                    new Font(new Bold(), new FontSize { Val = 16 }),             // 2: tiêu đề khu vực
-                    new Font(new Bold(), new FontSize { Val = 18 }),             // 3: tên công ty
-                    new Font(new Italic()),                                      // 4: chữ nghiêng (địa chỉ / chữ ký)
-                    new Font(new Bold(), new FontSize { Val = 13 })              // 5: tiêu đề báo cáo
+                    new Font(),                                                  
+                    new Font(new Bold()),                                       
+                    new Font(new Bold(), new FontSize { Val = 16 }),             
+                    new Font(new Bold(), new FontSize { Val = 18 }),             
+                    new Font(new Italic()),                                    
+                    new Font(new Bold(), new FontSize { Val = 13 })              
                 ),
                 new Fills(
                     new Fill(new PatternFill { PatternType = PatternValues.None }),
@@ -612,13 +591,12 @@ namespace travel_recommendation_and_booking_system.Services
                 ),
                 new Borders(new Border()),
                 new CellFormats(
-                    new CellFormat { FontId = 0, FillId = 0, BorderId = 0 },                                       // 0: Normal
-                    new CellFormat { FontId = 1, FillId = 2, BorderId = 0, ApplyFont = true, ApplyFill = true },    // 1: TableHeader
-                    new CellFormat { FontId = 2, FillId = 0, BorderId = 0, ApplyFont = true },                     // 2: SectionTitle
-                    new CellFormat { FontId = 3, FillId = 0, BorderId = 0, ApplyFont = true },                     // 3: CompanyName
-                    new CellFormat { FontId = 4, FillId = 0, BorderId = 0, ApplyFont = true },                     // 4: Italic
-                    new CellFormat { FontId = 5, FillId = 0, BorderId = 0, ApplyFont = true },                     // 5: ReportTitle
-                    new CellFormat { FontId = 1, FillId = 0, BorderId = 0, ApplyFont = true }                      // 6: TotalRow
+                    new CellFormat { FontId = 0, FillId = 0, BorderId = 0 },                                      
+                    new CellFormat { FontId = 1, FillId = 2, BorderId = 0, ApplyFont = true, ApplyFill = true },    
+                    new CellFormat { FontId = 2, FillId = 0, BorderId = 0, ApplyFont = true },                     
+                    new CellFormat { FontId = 3, FillId = 0, BorderId = 0, ApplyFont = true },                  
+                    new CellFormat { FontId = 5, FillId = 0, BorderId = 0, ApplyFont = true },                     
+                    new CellFormat { FontId = 1, FillId = 0, BorderId = 0, ApplyFont = true }                      
                 )
             );
         }
@@ -631,5 +609,12 @@ namespace travel_recommendation_and_booking_system.Services
         }
 
         private static string FormatPercent(decimal value) => $"{value}%";
+
+
+        private static string FormatNumber(decimal value)
+        {
+            return value.ToString("#,##0", System.Globalization.CultureInfo.InvariantCulture)
+                        .Replace(",", ".");
+        }
     }
 }

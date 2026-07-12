@@ -243,7 +243,9 @@ namespace travel_recommendation_and_booking_system.Services
                                     .FirstOrDefault() ?? "",
                     TenTour = d.ChuyenKhoiHanh.Tour.TenTour,
                     NgayBatDau = d.ChuyenKhoiHanh.NgayKhoiHanh.ToString("dd/MM/yyyy"),
-                    TrangThai = d.TrangThaiDon
+                    TrangThai = d.TrangThaiDon,
+                    
+                    
                 })
                 .ToListAsync();
 
@@ -256,15 +258,17 @@ namespace travel_recommendation_and_booking_system.Services
             };
         }
 
-        public async Task<HistoryTourDetailDTO> GetBookingDetailAsync(int userid, int maDonDatTour)
+        public async Task<HistoryTourDetailDTO?> GetBookingDetailAsync(int userid, int maDonDatTour)
         {
-            return await _context.DonDatTours
-                .Include(d => d.ChuyenKhoiHanh).ThenInclude(c => c.Tour)
+            var query = await _context.DonDatTours
+                .Include(d => d.ChuyenKhoiHanh)
+                .ThenInclude(c => c.Tour)
+                .ThenInclude(d => d.DanhGias)
                 .Include(d => d.ThanhToans)
                 .Where(d => d.MaDonDatTour == maDonDatTour && d.MaNguoiDung == userid)
                 .Select(d => new HistoryTourDetailDTO
                 {
-                    MaTour = d.ChuyenKhoiHanh.MaTour,
+                    MaTour = d.ChuyenKhoiHanh!.MaTour,
                     MaNguoiDung = d.MaNguoiDung,
                     MaDonDatTour = d.MaDonDatTour,
                     MaDatCho = d.MaDatCho,
@@ -280,9 +284,11 @@ namespace travel_recommendation_and_booking_system.Services
                     TongTien = d.TongTien,
                     PhuongThucThanhToan = d.ThanhToans.FirstOrDefault() == null ? "Chưa thanh toán" :
                         (d.ThanhToans.FirstOrDefault().PhuongThucThanhToan == 1 ? "VNPay" :
-                        (d.ThanhToans.FirstOrDefault().PhuongThucThanhToan == 2 ? "Tiền mặt" : "Chuyển khoản"))
+                        (d.ThanhToans.FirstOrDefault().PhuongThucThanhToan == 2 ? "Tiền mặt" : "Chuyển khoản")),
+                    DaDanhGia = d.ChuyenKhoiHanh.Tour.DanhGias.Any(dg => dg.MaNguoiDung == userid)
                 })
                 .FirstOrDefaultAsync();
+            return query;
         }
 
         public async Task<bool> CancelBookingAsync(int userId, int maDonDatTour, string lyDoHuy)

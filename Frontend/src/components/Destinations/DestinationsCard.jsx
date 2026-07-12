@@ -20,7 +20,7 @@ function DestinationsCard({
                 hover:-translate-y-1 hover:border-[#0EA5E5]/30
             "
         >
-            {/* 1. IMAGE - Gọn gàng theo thiết kế */}
+
             <div className="relative h-44 flex-shrink-0 overflow-hidden sm:h-48 md:h-52">
                 <img
                     src={image}
@@ -36,7 +36,6 @@ function DestinationsCard({
 
             </div>
 
-            {/* 2. CONTENT - Áp dụng Font Poppins cho Heading & Inter cho Body */}
             <div className="flex flex-1 flex-col gap-1.5 p-4">
                 <div className="flex items-start justify-between gap-3">
                     <h3
@@ -50,7 +49,7 @@ function DestinationsCard({
                         {name}
                     </h3>
 
-                    {/* Badge số lượng tours */}
+
                     <span
                         style={{ color: '#0EA5E5', backgroundColor: '#0EA5E510' }}
                         className="
@@ -62,7 +61,7 @@ function DestinationsCard({
                     </span>
                 </div>
 
-                {/* Mô tả ngắn */}
+       
                 <p
                     style={{ fontFamily: "'Inter', sans-serif" }}
                     className="
@@ -73,7 +72,7 @@ function DestinationsCard({
                 </p>
             </div>
 
-            {/* 3. FOOTER - Text link phẳng chuẩn Figma */}
+
             <div
                 className="
                     flex items-center justify-between gap-2 border-t border-slate-100/80

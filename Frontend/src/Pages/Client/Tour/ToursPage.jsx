@@ -20,10 +20,14 @@ import {
 } from "~/Services/TourService";
 import { getNextTripSuggestionsApi } from "~/Services/TourRecommendationService"
 import { getMostBookedToursApi } from "~/Services/HomeService"
+import InputField from "~/components/UI/Form/InputField";
+
 const PAGE_SIZE = 12;
 const MIN_PRICE = 1000000;
 const MAX_PRICE = 50000000;
 
+// Base URL cho file tĩnh (ảnh...) - KHÔNG có hậu tố /api
+const IMAGE_BASE_URL = import.meta.env.VITE_SIGNAL_URL || "https://localhost:7016";
 
 const DAY_RANGE_MAP = {
     "2-3": { ngayTu: 2, ngayDen: 3 },
@@ -38,7 +42,7 @@ export default function Tours() {
     const { user, isAuthenticated } = useAuth();
     const isLoggedIn = !!user;
 
-   
+
     const [search, setSearch] = useState("");
     const [category, setCategory] = useState("");
     const [province, setProvince] = useState(diaDiemSlug || "");
@@ -47,7 +51,7 @@ export default function Tours() {
     const [dayFilters, setDayFilters] = useState([]);
     const [page, setPage] = useState(1);
 
-   
+
     const [tours, setTours] = useState([]);
     const [totalItems, setTotalItems] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
@@ -57,10 +61,10 @@ export default function Tours() {
     const [initialLoading, setInitialLoading] = useState(true);
     const [isFetching, setIsFetching] = useState(false);
     const hasFetchedOnce = useRef(false);
- 
+
     const filterSignatureRef = useRef("");
 
-   
+
     const [bestTours, setBestTours] = useState([]);
     const [bestToursLoading, setBestToursLoading] = useState(true);
 
@@ -70,7 +74,7 @@ export default function Tours() {
         }
     }, [isAuthenticated]);
 
-   
+
     useEffect(() => {
         const fetchBestTours = async () => {
             setBestToursLoading(true);
@@ -140,7 +144,7 @@ export default function Tours() {
 
         const pageToFetch = filterChanged ? 1 : page;
         if (filterChanged && page !== 1) {
-            setPage(1); 
+            setPage(1);
         }
 
         if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -149,10 +153,10 @@ export default function Tours() {
         }, 400);
 
         return () => clearTimeout(debounceRef.current);
-       
+
     }, [search, category, province, minPrice, maxPrice, dayFilters]);
 
-   
+
     const isFirstPageEffect = useRef(true);
     useEffect(() => {
         if (isFirstPageEffect.current) {
@@ -160,7 +164,7 @@ export default function Tours() {
             return;
         }
         fetchTours(page);
-       
+
     }, [page]);
 
     const resetFilters = () => {
@@ -175,7 +179,7 @@ export default function Tours() {
 
     return (
         <div className="mt-20">
-           
+
             <section className="py-16 md:py-20">
                 <div className="mx-auto max-w-[1440px] px-4 md:px-8">
                     <SectionTitle
@@ -185,7 +189,7 @@ export default function Tours() {
                                 ? "Những hành trình dựa theo nơi bạn tiếp theo"
                                 : "Những hành trình được nhiều du khách lựa chọn với lịch trình hấp dẫn và dịch vụ chất lượng."
                         }
-                    
+
                     />
                     {bestToursLoading ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-[30px]">
@@ -201,7 +205,7 @@ export default function Tours() {
                                     id={tour.maTour}
                                     slug={tour.slug || tour.maTour}
                                     name={tour.tenTour}
-                                    image={`https://localhost:7016${tour.hinhAnhChinh}`}
+                                    image={tour.hinhAnhChinh ? `${IMAGE_BASE_URL}${tour.hinhAnhChinh}` : null}
                                     duration={tour.dem > 0 ? `${tour.ngay} Ngày ${tour.dem} Đêm` : `${tour.ngay} Ngày`}
                                     destination={tour.diemDens?.[0] || "Đang cập nhật"}
                                     price={tour.giaTu}
@@ -226,39 +230,39 @@ export default function Tours() {
                     <SectionHeader
                         title={
                             province
-                                ? `Các tour tại ${province}`
+                                ? `Các chuyến đi theo địa điểm địa bạn vừa chọn`
                                 : isLoggedIn
                                     ? "Khám phá những hành trình phù hợp với bạn"
                                     : "Tất cả các chuyến đi"
                         }
                     />
+                    {/* Search + Filter */}
+                    <div className="mb-8 mt-5 flex justify-center">
+                        <div className="flex flex-wrap items-center justify-center gap-4">
+                            {/* Search */}
+                            <div className="relative w-[400px]">
+                                <label className="text-xs font-bold uppercase tracking-wider text-slate-600" >Tìm kiếm</label>
+                                <InputField
+                                    type="text"
+                                    value={search}
+                                    Icon={Search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Tìm theo tên tour..."
+                                    className="h-[38px] w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-9 text-sm outline-none transition focus:border-[#0EA5E5] focus:ring-2 focus:ring-sky-100"
+                                />
 
-                    <div className="relative mx-auto mb-6 max-w-md">
-                        <Search
-                            size={18}
-                            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                        />
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Tìm theo tên tour..."
-                            className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-10 pr-9 text-sm outline-none transition focus:border-[#0EA5E5] focus:ring-2 focus:ring-sky-100"
-                        />
-                        {search && (
-                            <button
-                                type="button"
-                                onClick={() => setSearch("")}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                                aria-label="Xóa từ khóa"
-                            >
-                                <X size={16} />
-                            </button>
-                        )}
-                    </div>
+                                {search && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearch("")}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                )}
+                            </div>
 
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
-                        <aside className="lg:sticky lg:top-24 lg:self-start mt-10">
+                            {/* Filter */}
                             <TourFilter
                                 minPrice={minPrice}
                                 maxPrice={maxPrice}
@@ -272,65 +276,63 @@ export default function Tours() {
                                 setProvince={setProvince}
                                 onReset={resetFilters}
                             />
-                        </aside>
-
-                        <main className="min-w-0 relative">
-                            {initialLoading ? (
-                                <TourListSkeleton />
-                            ) : tours.length === 0 ? (
-                                <EmptyState
-                                    title="Không tìm thấy tour"
-                                    keyword={search}
-                                    keywordLabel="từ khóa"
-                                    emptyMessage="Không có tour phù hợp với bộ lọc hiện tại."
-                                    suggestions={["Thử từ khóa khác", "Xóa bớt bộ lọc", "Chọn danh mục hoặc thời gian khác"]}
-                                    buttonText="Xóa bộ lọc"
-                                    onReset={resetFilters}
-                                />
-                            ) : (
-                                <>
-                                    <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                        <p className="flex items-center gap-2 text-sm text-slate-500">
-                                            {`Tìm thấy ${totalItems} tour`}
-                                            {isFetching && (
-                                                <span className="h-3 w-3 rounded-full border-2 border-[#0EA5E5] border-t-transparent animate-spin" />
-                                            )}
-                                        </p>
-                                        <p className="flex items-center gap-1.5 text-sm text-slate-400">
-                                            <MapPin size={15} />
-                                            Chọn tour để xem lịch trình và đặt chỗ
-                                        </p>
-                                    </div>
-
-                           
-                                    <div
-                                        className={`grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4 transition-opacity duration-200 ${
-                                            isFetching ? "opacity-60 pointer-events-none" : "opacity-100"
-                                        }`}
-                                    >
-                                        {tours.map((tour) => (
-                                            <TourCard
-                                                key={tour.id}
-                                                {...tour}
-                                                initialWishlist={wishlistIds.includes(tour.id)}
-                                                showWishlist={true}
-                                                disableLink={true}
-                                                tourType={tour.tourType}
-                                            />
-                                        ))}
-                                    </div>
-
-                                    {totalPages > 1 && (
-                                        <Pagination
-                                            currentPage={page}
-                                            totalPages={totalPages}
-                                            onPageChange={setPage}
-                                        />
-                                    )}
-                                </>
-                            )}
-                        </main>
+                        </div>
                     </div>
+
+                    <main className="min-w-0 relative">
+                        {initialLoading ? (
+                            <TourListSkeleton />
+                        ) : tours.length === 0 ? (
+                            <EmptyState
+                                title="Không tìm thấy tour"
+                                keyword={search}
+                                keywordLabel="từ khóa"
+                                emptyMessage="Không có tour phù hợp với bộ lọc hiện tại."
+                                suggestions={["Thử từ khóa khác", "Xóa bớt bộ lọc", "Chọn danh mục hoặc thời gian khác"]}
+                                buttonText="Xóa bộ lọc"
+                                onReset={resetFilters}
+                            />
+                        ) : (
+                            <>
+                                <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                    <p className="flex items-center gap-2 text-sm text-slate-500">
+                                        {`Tìm thấy ${totalItems} tour`}
+                                        {isFetching && (
+                                            <span className="h-3 w-3 rounded-full border-2 border-[#0EA5E5] border-t-transparent animate-spin" />
+                                        )}
+                                    </p>
+                                    <p className="flex items-center gap-1.5 text-sm text-slate-400">
+                                        <MapPin size={15} />
+                                        Chọn tour để xem lịch trình và đặt chỗ
+                                    </p>
+                                </div>
+
+                                <div
+                                    className={`grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4 transition-opacity duration-200 ${isFetching ? "opacity-60 pointer-events-none" : "opacity-100"
+                                        }`}
+                                >
+                                    {tours.map((tour) => (
+                                        <TourCard
+                                            key={tour.id}
+                                            {...tour}
+                                            initialWishlist={wishlistIds.includes(tour.id)}
+                                            showWishlist={true}
+                                            disableLink={true}
+                                            tourType={tour.tourType}
+                                        />
+                                    ))}
+                                </div>
+
+                                {totalPages > 1 && (
+                                    <Pagination
+                                        currentPage={page}
+                                        totalPages={totalPages}
+                                        onPageChange={setPage}
+                                    />
+                                )}
+                            </>
+                        )}
+                    </main>
                 </div>
             </section>
         </div>

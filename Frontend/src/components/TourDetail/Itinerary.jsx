@@ -24,7 +24,7 @@ export function Itinerary({ itinerary = [] }) {
                                 </div>
                                 <div>
                                     <p className="font-semibold text-slate-800">
-                                        Ngày {item.soThuTuNgay}: {item.tenLichTrinh}
+                                        {item.tenLichTrinh}
                                     </p>
                                     <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-slate-500">
                                         <span className="flex items-center gap-1">
@@ -63,9 +63,6 @@ export function Itinerary({ itinerary = [] }) {
                         {/* Hero Section - Đã sửa lỗi cố định chiều cao */}
                         <div className="grid min-h-[176px] grid-cols-1 md:grid-cols-2 border-b border-slate-100">
                             <div className="flex flex-col justify-center bg-sky-50 p-5">
-                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-sky-500">
-                                    Ngày {selectedDay.soThuTuNgay}
-                                </p>
                                 <p className="text-[17px] font-bold leading-snug text-sky-900">
                                     {selectedDay.tenLichTrinh}
                                 </p>

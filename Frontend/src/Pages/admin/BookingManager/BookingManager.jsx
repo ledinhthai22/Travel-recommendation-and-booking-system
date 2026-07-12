@@ -58,7 +58,6 @@ const PAYMENT_OPTIONS = [
     { value: '4', label: 'Chờ hoàn tiền' },
 ];
 
-
 const canPrintContract = (row) => row.trangThaiDon === 2 && row.trangThaiThanhToan === 1;
 
 export default function BookingManager() {
@@ -178,9 +177,10 @@ export default function BookingManager() {
         setSelectedMap({});
     };
 
-    // Tải file PDF về máy với đúng tên file (MaChuyenCode_NgayKhoiHanh_SoLuongKhach.pdf),
-    // đồng thời mở thêm 1 tab xem trước.
-    const downloadPdfBlob = (blob, fileName) => {
+    // Tải file về máy với đúng tên file.
+    // Chỉ mở thêm tab preview khi file là PDF — trình duyệt không xem trước được .zip,
+    // nên với zip chỉ cần tải về là đủ.
+    const downloadFileBlob = (blob, fileName) => {
         const url = URL.createObjectURL(blob);
 
         const a = document.createElement('a');
@@ -190,8 +190,9 @@ export default function BookingManager() {
         a.click();
         document.body.removeChild(a);
 
-        // Mở thêm tab xem trước. Bỏ dòng này nếu chỉ cần tải về, không cần xem ngay.
-        window.open(url, '_blank');
+        if (blob.type === 'application/pdf') {
+            window.open(url, '_blank');
+        }
 
         // Dọn dẹp object URL sau khi dùng xong
         setTimeout(() => URL.revokeObjectURL(url), 60000);
@@ -224,8 +225,13 @@ export default function BookingManager() {
             setPrinting(true);
             const ids = selectedRows.map(r => r.maDonDatTour);
             const res = await printContractsByIdsApi(ids);
-            const fileName = extractFileName(res, `HopDong-${Date.now()}.pdf`);
-            downloadPdfBlob(new Blob([res.data], { type: 'application/pdf' }), fileName);
+
+            // Backend trả PDF nếu các đơn cùng 1 chuyến, hoặc ZIP nếu gộp từ nhiều chuyến khác nhau
+            const contentType = res.headers?.['content-type'] || 'application/pdf';
+            const fallbackExt = contentType.includes('zip') ? 'zip' : 'pdf';
+            const fileName = extractFileName(res, `HopDong-${Date.now()}.${fallbackExt}`);
+
+            downloadFileBlob(new Blob([res.data], { type: contentType }), fileName);
             clearAllSelections();
         } catch (err) {
             console.error(err);

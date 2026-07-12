@@ -14,6 +14,7 @@ namespace travel_recommendation_and_booking_system.Interfaces
         Task ProcessReviewsBatchAsync();
         //client
         Task<List<ReviewReponseDTO>> GetTop3ReviewAsync();
+        Task<ReviewDetailDTO?> GetReviewDetailAsync(int maDanhGia);
 
     }
 }

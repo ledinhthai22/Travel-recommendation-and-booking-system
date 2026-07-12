@@ -49,7 +49,15 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 
             return Ok(new { message = $"Đã cập nhật thành công {count} bình luận." });
         }
+        [HttpGet("{maDanhGia}")]
+        public async Task<IActionResult> GetReviewDetail(int maDanhGia)
+        {
+            var result = await _review.GetReviewDetailAsync(maDanhGia);
+            if (result == null)
+                return NotFound(new { message = "Không tìm thấy đánh giá." });
 
-  
+            return Ok(result);
+        }
+
     }
 }

@@ -48,3 +48,7 @@ export const createReviewApi = async (reviewData) => {
     });
     return response.data;
 };
+export const getReviewDetailApi = async (maDanhGia) => {
+    const response = await axiosClient.get(`/admin/Review/${maDanhGia}`);
+    return response.data;
+};

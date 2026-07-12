@@ -58,6 +58,10 @@ namespace travel_recommendation_and_booking_system.Services
                 <p><strong>Số tiền cần thanh toán: {order.TongTien:N0} đ</strong></p>
                 <p>Vui lòng thanh toán sớm để tránh đơn bị hủy.</p>
                 <p>Điểm thanh toán: {diemThanhToan} </p>
+                <p>Hoặc bạn có thể chuyển khoản theo thông tin bên dưỡi</p>
+                <p>Số tài khoản:9704198526191432198</p>
+                <p>Ngân hàng:NCB</p>
+                <p>Nội dung:{order.NguoiDung?.HoTen}-{order.MaDatCho}</p>
                 <p>Trân trọng,<br/>Lối Riêng Travel</p>";
 
             await SendEmailAsync(order.NguoiDung!.Email, subject, body);

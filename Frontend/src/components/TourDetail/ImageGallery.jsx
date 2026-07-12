@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, X, ZoomIn } from "lucide-react";
 
-const IMAGE_BASE_URL = "https://localhost:7016";
+const IMAGE_BASE_URL = import.meta.env.VITE_SIGNAL_URL || "https://localhost:7016";
+
+const DEFAULT_IMAGE = "https://cdn-media.sforum.vn/storage/app/media/anh-vinh-ha-long-2.jpg";
 
 export function ImageGallery({ images = [] }) {
     const [active, setActive] = useState(0);
@@ -15,7 +17,7 @@ export function ImageGallery({ images = [] }) {
     const isMultiple = totalImages > 1;
 
     const getFullImageUrl = (path) => {
-        if (!path) return "";
+        if (!path) return DEFAULT_IMAGE;
         if (path.startsWith("http://") || path.startsWith("https://")) return path;
         const cleanPath = path.startsWith("/") ? path : `/${path}`;
         const cleanBase = IMAGE_BASE_URL.endsWith("/") ? IMAGE_BASE_URL.slice(0, -1) : IMAGE_BASE_URL;
@@ -45,7 +47,19 @@ export function ImageGallery({ images = [] }) {
         setLightboxOpen(true);
     };
 
-    if (!images || !totalImages) return null;
+    if (!images || !totalImages) {
+        return (
+            <div className="w-full">
+                <div className="relative overflow-hidden rounded-2xl bg-slate-100 shadow-sm">
+                    <img
+                        src={DEFAULT_IMAGE}
+                        alt="Tour"
+                        className="block h-[500px] w-full object-cover"
+                    />
+                </div>
+            </div>
+        );
+    }
 
     const currentImage = images[active] ?? images[0];
 
@@ -61,7 +75,7 @@ export function ImageGallery({ images = [] }) {
                         src={getFullImageUrl(currentImage?.duongDanAnh)}
                         alt="Tour Main"
                         className="block h-[500px] w-full object-cover transition-all duration-500 ease-out"
-                        onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/800x500?text=No+Image+Found"; }}
+                        onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_IMAGE; }}
                     />
 
                     <div className="absolute top-4 right-4 flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-xs text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
@@ -112,7 +126,7 @@ export function ImageGallery({ images = [] }) {
                                         src={getFullImageUrl(image?.duongDanAnh)}
                                         alt={`Thumb ${index + 1}`}
                                         className="h-full w-full object-cover"
-                                        onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/200x120?text=Error"; }}
+                                        onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_IMAGE; }}
                                     />
 
                                     {isLastVisible && (
@@ -162,7 +176,7 @@ export function ImageGallery({ images = [] }) {
                             src={getFullImageUrl(images[lightboxIndex]?.duongDanAnh)}
                             alt={`Ảnh ${lightboxIndex + 1}`}
                             className="max-h-[75vh] max-w-full object-contain rounded-xl select-none"
-                            onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/800x500?text=No+Image"; }}
+                            onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_IMAGE; }}
                         />
 
                         <button
@@ -191,7 +205,7 @@ export function ImageGallery({ images = [] }) {
                                     src={getFullImageUrl(image?.duongDanAnh)}
                                     alt={`Thumb ${index + 1}`}
                                     className="h-full w-full object-cover"
-                                    onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/96x64?text=Err"; }}
+                                    onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_IMAGE; }}
                                 />
                             </button>
                         ))}

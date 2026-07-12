@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Calendar, Clock } from "lucide-react";
 import {
     format,
@@ -52,24 +52,53 @@ const DateTimePicker = ({
         }
     }, [value]);
 
-    // Cuộn mượt list chọn thời gian đến vị trí hiện tại
-    useEffect(() => {
-        if (isOpen && timeListRef.current) {
-            const activeDate = value instanceof Date && isValid(value) ? value : new Date();
-            const currentHour = activeDate.getHours();
-            const currentMinute = Math.floor(activeDate.getMinutes() / 5) * 5;
-            const index = currentHour * 12 + currentMinute / 5;
-            const itemHeight = 34;
-            timeListRef.current.scrollTop = Math.max(0, index * itemHeight - 50);
-        }
-    }, [isOpen, value]);
-
     const isDateDisabled = useCallback((date) => {
         const d = startOfDay(date);
         if (effectiveMinDate && isBefore(d, startOfDay(effectiveMinDate))) return true;
         if (maxDate && isAfter(d, startOfDay(maxDate))) return true;
         return false;
     }, [effectiveMinDate, maxDate]);
+
+   
+    const livePreviewDate = useMemo(() => {
+        const trimmed = inputValue.trim();
+        if (!trimmed) return null;
+
+
+        let parsed = parse(trimmed, "dd/MM/yyyy HH:mm", new Date());
+        if (isValid(parsed)) return parsed;
+
+
+        parsed = parse(trimmed, "dd/MM/yyyy", new Date());
+        if (isValid(parsed)) {
+            const baseDate = value instanceof Date && isValid(value) ? value : new Date();
+            return setMinutes(setHours(parsed, baseDate.getHours()), baseDate.getMinutes());
+        }
+
+        return null;
+    }, [inputValue, value]);
+
+  
+    const displayDate = livePreviewDate || (value instanceof Date && isValid(value) ? value : null);
+
+ 
+    useEffect(() => {
+        if (livePreviewDate && isValid(livePreviewDate) && !isDateDisabled(livePreviewDate)) {
+            setCurrentMonth(livePreviewDate);
+        }
+    }, [livePreviewDate, isDateDisabled]);
+
+   
+    useEffect(() => {
+        if (isOpen && timeListRef.current) {
+            const activeDate = displayDate || new Date();
+            const currentHour = activeDate.getHours();
+            const currentMinute = Math.floor(activeDate.getMinutes() / 5) * 5;
+            const index = currentHour * 12 + currentMinute / 5;
+            const itemHeight = 34;
+            timeListRef.current.scrollTop = Math.max(0, index * itemHeight - 50);
+        }
+    }, [isOpen, displayDate]);
 
     // Hàm thực hiện kiểm tra chuỗi text và lưu giá trị Date chính thức
     const validateAndCommit = (text) => {
@@ -109,14 +138,14 @@ const DateTimePicker = ({
 
     const handleDateClick = (date) => {
         if (isDateDisabled(date)) return;
-        const baseDate = value instanceof Date && isValid(value) ? value : new Date();
+        const baseDate = displayDate || (value instanceof Date && isValid(value) ? value : new Date());
         const updatedDate = setMinutes(setHours(date, baseDate.getHours()), baseDate.getMinutes());
         onChange?.(updatedDate);
         setInputValue(format(updatedDate, "dd/MM/yyyy HH:mm"));
     };
 
     const handleTimeClick = (hours, minutes) => {
-        const baseDate = value instanceof Date && isValid(value) ? value : new Date();
+        const baseDate = displayDate || (value instanceof Date && isValid(value) ? value : new Date());
         const updatedDate = setMinutes(setHours(new Date(baseDate), hours), minutes);
         onChange?.(updatedDate);
         setInputValue(format(updatedDate, "dd/MM/yyyy HH:mm"));
@@ -285,7 +314,7 @@ const DateTimePicker = ({
                             ))}
 
                             {daysInMonth.map((date, idx) => {
-                                const isSelected = value instanceof Date && isValid(value) && isSameDay(date, value);
+                                const isSelected = displayDate && isSameDay(date, displayDate);
                                 const dayDisabled = isDateDisabled(date);
                                 const isToday = isSameDay(date, new Date());
 
@@ -321,9 +350,9 @@ const DateTimePicker = ({
                         </div>
                         <div ref={timeListRef} className="max-h-[220px] overflow-y-auto space-y-1 pr-1 scrollbar-thin">
                             {times.map((t) => {
-                                const isSelected = value instanceof Date && isValid(value) &&
-                                    value.getHours() === t.hours &&
-                                    value.getMinutes() === t.minutes;
+                                const isSelected = displayDate &&
+                                    displayDate.getHours() === t.hours &&
+                                    displayDate.getMinutes() === t.minutes;
 
                                 return (
                                     <button

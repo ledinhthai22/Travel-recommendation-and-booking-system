@@ -1,4 +1,4 @@
-import { Plane, Bus, Train, Ship, Car, Ticket } from "lucide-react";
+import { Plane, Bus, Train, Ship, Car, Ticket, MapPin } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { formatDate } from "~/Helper/FormatDate";
 import { formatCurrency } from "~/Helper/FormatCurrency";
@@ -54,7 +54,6 @@ export function SchedulePicker({
         return (soChoToiDa - soChoDaDat) <= 0;
     }, [selectedDeparture]);
 
-    // Tìm chuyến còn chỗ gần nhất
     const findNextAvailable = () => {
         return filteredSchedules.find(item => {
             const info = item.chuyenKhoiHanh || {};
@@ -110,8 +109,8 @@ export function SchedulePicker({
                                 ${isActive ? "border-[#0EA5E5] shadow-md" : "border-slate-200"}
                             `}
                         >
-                            <div className="flex items-center justify-between p-4">
-                                <div className="flex min-w-0 flex-1 items-center gap-3">
+                            <div className="flex items-center justify-between p-4 flex-wrap gap-3">
+                                <div className="flex min-w-0 flex-1 items-center gap-3 flex-wrap">
                                     <span className="shrink-0 rounded-full bg-[#EFF9FF] px-4 py-1.5 text-sm font-bold text-[#0EA5E5]">
                                         {formatDate(infoChuyen.ngayKhoiHanh)}
                                     </span>
@@ -120,6 +119,13 @@ export function SchedulePicker({
                                         <Ticket size={14} className="text-slate-400 shrink-0" />
                                         <span>{infoChuyen.maChuyenCode || "Chưa có mã"}</span>
                                     </span>
+
+                                    {infoChuyen.diemKhoiHanh && (
+                                        <span className="truncate text-sm text-slate-600 font-medium flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-md">
+                                            <MapPin size={14} className="text-slate-400 shrink-0" />
+                                            <span>{infoChuyen.diemKhoiHanh}</span>
+                                        </span>
+                                    )}
                                 </div>
 
                                 <div className="flex shrink-0 items-center gap-4">
@@ -148,10 +154,10 @@ export function SchedulePicker({
                                 </div>
                             </div>
 
-                            {/* Chi tiết chuyến - vẫn hiển thị dù hết chỗ */}
+
                             {isActive && (
                                 <div className="p-4 bg-slate-50/50">
-                                    {/* ... (phần chi tiết giữ nguyên như cũ) ... */}
+
                                     <div className="mx-4">
                                         <div className="border-t border-slate-200 pt-4">
                                             <h4 className="mb-4 text-center font-bold text-slate-700">Phương tiện di chuyển</h4>

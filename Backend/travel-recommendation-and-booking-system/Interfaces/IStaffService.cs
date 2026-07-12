@@ -7,7 +7,7 @@ namespace travel_recommendation_and_booking_system.Interfaces
 {
     public interface IStaffService
     {
-        Task<List<StaffDTO>> GetTourGuiDe();
+        Task<List<StaffDTO>> GetTourGuiDe(DateTime ngayKhoiHanh, int? excludeMaChuyen = null);
         Task<PageDTO<StaffResponseDTO>> GetPagedStaffsAsync(int pageNumber, int pageSize, StaffFilterDTO staff); // lấy danh sách tất cả nhân viên
         Task<StaffResponseDTO?> GetStaffByIdAsync(int id); // lấy thông tin nhân viên theo id
         Task<StaffResponseDTO> CreateAsync(StaffDTO staff); // tạo mới nhân viên

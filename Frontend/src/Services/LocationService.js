@@ -43,7 +43,9 @@ export const deleteLocationApi = async (id) => {
 
 
 export const updateLocationStatusApi = async (id, status) => {
-    const response = await axiosClient.patch(`/admin/Location/${id}/status`, { status });
+    const response = await axiosClient.patch(`/admin/Location/${id}/status`, status, {
+        headers: { "Content-Type": "application/json" }
+    });
     return response.data;
 };
 

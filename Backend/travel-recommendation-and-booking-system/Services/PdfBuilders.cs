@@ -133,7 +133,7 @@ namespace travel_recommendation_and_booking_system.Services.PdfBuilders
                 col.Item().PaddingTop(8).Text("BÊN A: KHÁCH HÀNG (BÊN MUA DỊCH VỤ)").Bold().FontSize(12);
                 col.Item().Text($"Đại diện/Cá nhân: {d.TenNguoiDat}");
                 col.Item().Text("Số CMND/CCCD/Passport: ..................................................Ngày cấp: .......... Nơi cấp: ..........");
-                col.Item().Text("Địa chỉ: ............................................................................");
+                col.Item().Text($"Địa chỉ: {d.DiaChi}");
                 col.Item().Text($"Điện thoại: {d.SoDienThoai}        Email: {d.Email}");
 
                 // đơn vị lữ hành

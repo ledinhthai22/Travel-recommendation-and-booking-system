@@ -121,6 +121,12 @@ export default function Footer() {
                         >
                             {currentWebInfo.dia_chi}
                         </p>
+                         <p
+                            style={{ fontFamily: "'Inter', sans-serif" }}
+                            className="text-[10px] leading-relaxed text-slate-400 max-w-[240px]"
+                        >
+                          Số điện thoại liên hệ:  {currentWebInfo.so_dien_thoai}
+                        </p>
                         <div className="flex items-center gap-3 mt-1">
                             <a 
                                 href={currentWebInfo.facebook_url} 
