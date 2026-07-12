@@ -834,8 +834,8 @@ export default function TourItinerariesSection({
                                     <table className="w-full text-left text-sm border-collapse">
                                         <thead>
                                             <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-100 text-xs uppercase tracking-wider">
-                                                <th className="py-3 px-5 w-56">Thời gian</th>
-                                                <th className="py-3 px-5 w-48">Địa điểm</th>
+                                                <th className="py-3 px-5 w-50">Thời gian</th>
+                                                <th className="py-3 px-5 w-52">Địa điểm tham quan</th>
                                                 <th className="py-3 px-5 w-36">Loại hoạt động</th>
                                                 <th className="py-3 px-5">Chi tiết hoạt động</th>
                                                 {!isModalViewOnly && <th className="py-3 px-5 w-28 text-center">Thao tác</th>}

@@ -5,7 +5,6 @@ import {
     Clock3,
     ChevronRight,
     Search,
-    SlidersHorizontal,
     Calendar,
     MapPin
 } from "lucide-react";
@@ -18,8 +17,10 @@ import { formatCurrency } from "~/Helper/FormatCurrency";
 import Pagination from "~/components/Common/Pagination";
 import BookingDetailModal from "../admin/UserProfileManager/BookingDetailModal";
 import SelectField from "~/components/UI/Form/SelectField";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useLocation } from "react-router-dom";
+
 export default function ProfilePage() {
+    // State
     const [activeTab, setActiveTab] = useState("overview");
     const [proFileData, setProFileData] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,13 +31,42 @@ export default function ProfilePage() {
     const [isLoadingOverview, setIsLoadingOverview] = useState(true);
 
     // History
-    const [historyData, setHistoryData] = useState({ items: [], pageNumber: 1, totalItems: 0, pageSize: 5 });
+    const [historyData, setHistoryData] = useState({ 
+        items: [], 
+        pageNumber: 1, 
+        totalItems: 0, 
+        pageSize: 5 
+    });
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
 
+    const [searchParams, setSearchParams] = useSearchParams();
+    const location = useLocation();
+
+    // Xử lý chuyển tab từ Checkout hoặc các trang khác
+    useEffect(() => {
+        // Kiểm tra state từ navigate
+        if (location.state?.activeTab) {
+            setActiveTab(location.state.activeTab);
+            // Xóa state để không bị lặp lại
+            window.history.replaceState({}, document.title);
+        }
+
+        // Xử lý từ query param (mở chi tiết booking)
+        const openId = searchParams.get("open");
+        if (openId) {
+            setActiveTab("history");           
+            handleViewDetail(Number(openId));  
+            const next = new URLSearchParams(searchParams);
+            next.delete("open");
+            setSearchParams(next, { replace: true });
+        }
+    }, [location.state, searchParams]);
+
+    // API Calls
     const fetchProfile = async () => {
         try {
             const data = await getUserProfileApi();
@@ -69,20 +99,7 @@ export default function ProfilePage() {
             setIsLoadingHistory(false);
         }
     };
-    const [searchParams, setSearchParams] = useSearchParams();
 
-    useEffect(() => {
-        const openId = searchParams.get("open");
-        if (openId) {
-            setActiveTab("history");           
-            handleViewDetail(Number(openId));  
-
-            const next = new URLSearchParams(searchParams);
-            next.delete("open");
-            setSearchParams(next, { replace: true });
-        }
-
-    }, []);
     const handleViewDetail = async (maDonDatTour) => {
         try {
             const data = await getHistoryDetailApi(maDonDatTour);
@@ -93,6 +110,7 @@ export default function ProfilePage() {
         }
     };
 
+    // Effects
     useEffect(() => {
         fetchProfile();
         fetchOverview();
@@ -104,6 +122,7 @@ export default function ProfilePage() {
         }
     }, [activeTab]);
 
+    // Helpers
     const user = {
         name: proFileData?.hoTen || "Người dùng",
     };
@@ -113,17 +132,6 @@ export default function ProfilePage() {
         { id: "profile", label: "Thông tin cá nhân", icon: User },
         { id: "history", label: "Lịch sử đặt tour", icon: Clock3 },
     ];
-
-    if (!proFileData) {
-        return (
-            <div className="flex h-[70vh] items-center justify-center bg-slate-50/50">
-                <div className="relative flex h-12 w-12 items-center justify-center">
-                    <div className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></div>
-                    <div className="relative inline-flex rounded-full h-8 w-8 bg-sky-500"></div>
-                </div>
-            </div>
-        );
-    }
 
     const getStatusBadge = (status) => {
         const configs = {
@@ -143,12 +151,23 @@ export default function ProfilePage() {
 
     const totalPages = Math.ceil((historyData.totalItems || 0) / (historyData.pageSize || 5)) || 1;
 
+    // Loading state
+    if (!proFileData) {
+        return (
+            <div className="flex h-[70vh] items-center justify-center bg-slate-50/50">
+                <div className="relative flex h-12 w-12 items-center justify-center">
+                    <div className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></div>
+                    <div className="relative inline-flex rounded-full h-8 w-8 bg-sky-500"></div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-slate-50/60 pb-16 mt-25">
             <div className="mx-auto max-w-[1340px] px-4 lg:px-6">
-
                 <div className="grid lg:grid-cols-[280px_1fr] gap-8 items-start">
-
+                    
                     {/* SIDEBAR */}
                     <aside className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm sticky top-24">
                         <div className="mb-6 flex items-center gap-3.5 pb-5 border-b border-slate-100">
@@ -194,9 +213,10 @@ export default function ProfilePage() {
                         </nav>
                     </aside>
 
-     
+                    {/* MAIN CONTENT */}
                     <main className="bg-white border border-slate-100 rounded-2xl p-6 lg:p-8 shadow-sm min-h-[600px]">
 
+                        {/* TAB: OVERVIEW */}
                         {activeTab === "overview" && (
                             <div className="animate-fadeIn">
                                 <div className="mb-6">
@@ -239,8 +259,6 @@ export default function ProfilePage() {
                                                         />
                                                         <div>
                                                             <h4 className="font-semibold text-slate-800 line-clamp-1 text-sm sm:text-base">{tour.tenTour}</h4>
-
-                                                            {/* Giải pháp: Ép flex và giới hạn size icon */}
                                                             <div className="flex gap-4 text-xs text-slate-400 mt-2 flex-wrap items-center">
                                                                 <span className="flex items-center gap-1.5">
                                                                     <Calendar size={13} className="text-slate-400 shrink-0" />
@@ -254,7 +272,6 @@ export default function ProfilePage() {
                                                         </div>
                                                     </div>
 
-                                                    {/* Khu vực trạng thái và nút bấm */}
                                                     <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-0 pt-3 sm:pt-0">
                                                         {getStatusBadge(tour.trangThai)}
                                                         <button
@@ -267,10 +284,9 @@ export default function ProfilePage() {
                                                 </div>
                                             ))
                                         ) : (
-                                        
                                             <div className="text-center py-10 border border-dashed border-slate-200 rounded-xl bg-slate-50/40">
                                                 <p className="text-xs sm:text-sm text-slate-400 font-medium italic">
-                                                    Sếp chưa có lịch sử đặt tour nào gần đây.
+                                                    Bạn chưa có lịch sử đặt tour nào gần đây.
                                                 </p>
                                             </div>
                                         )}
@@ -285,7 +301,7 @@ export default function ProfilePage() {
                             <div className="animate-fadeIn">
                                 <div className="mb-6">
                                     <h2 className="text-xl font-bold text-slate-800">Thông tin cá nhân</h2>
-                                    <p className="text-xs text-slate-400 mt-1 font-medium">Quản lý và cập nhật thông tin tài khoản của sếp</p>
+                                    <p className="text-xs text-slate-400 mt-1 font-medium">Quản lý và cập nhật thông tin tài khoản của bạn</p>
                                 </div>
 
                                 <div className="grid gap-5 md:grid-cols-2 bg-slate-50/40 p-5 rounded-xl border border-slate-100">
@@ -302,7 +318,7 @@ export default function ProfilePage() {
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border border-slate-100 p-4 gap-4">
                                         <div>
                                             <p className="font-semibold text-slate-800 text-sm">Mật khẩu đăng nhập</p>
-                                            <p className="text-xs text-slate-400 mt-0.5">Sếp nên cập nhật mật khẩu định kỳ để bảo vệ tài khoản tốt nhất</p>
+                                            <p className="text-xs text-slate-400 mt-0.5">Bạn nên cập nhật mật khẩu định kỳ để bảo vệ tài khoản tốt nhất</p>
                                         </div>
                                         <button onClick={() => setIsPasswordModalOpen(true)} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 tracking-wide shrink-0">
                                             Đổi mật khẩu
@@ -323,12 +339,10 @@ export default function ProfilePage() {
                                 <div className="mb-6 flex flex-col lg:flex-row lg:items-end justify-between gap-4 border-b border-slate-100 pb-4">
                                     <div>
                                         <h2 className="text-xl font-bold text-slate-800">Lịch sử đặt tour</h2>
-                                        <p className="text-xs text-slate-400 mt-1 font-medium">Danh sách toàn bộ các chuyến đi của sếp</p>
+                                        <p className="text-xs text-slate-400 mt-1 font-medium">Danh sách toàn bộ các chuyến đi của bạn</p>
                                     </div>
 
-                                    {/* FILTERS */}
                                     <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 w-full lg:w-auto">
-                                        {/* Ép độ rộng cứng cho SelectField để không bị tràn dòng */}
                                         <div className="w-full sm:w-48 shrink-0">
                                             <SelectField
                                                 value={filterStatus}
@@ -350,7 +364,6 @@ export default function ProfilePage() {
                                             />
                                         </div>
 
-                                        {/* Cụm Tìm kiếm và nút bấm */}
                                         <div className="flex items-end gap-2 flex-1 sm:flex-none">
                                             <div className="relative flex-1 sm:flex-none">
                                                 <InputField
@@ -362,7 +375,7 @@ export default function ProfilePage() {
                                                         }
                                                     }}
                                                     placeholder="Tìm tên tour..."
-                                                    className="rounded-xl border border-slate-200 pl-8 pr-3 py-3text-sm text-slate-600 placeholder-slate-400 focus:outline-none focus:border-sky-500 transition w-full sm:w-56"
+                                                    className="rounded-xl border border-slate-200 pl-8 pr-3 py-3 text-sm text-slate-600 placeholder-slate-400 focus:outline-none focus:border-sky-500 transition w-full sm:w-56"
                                                 />
                                                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                             </div>
@@ -377,7 +390,6 @@ export default function ProfilePage() {
                                     </div>
                                 </div>
 
-                                {/* Rest of the history content remains the same */}
                                 <div className="space-y-4">
                                     {isLoadingHistory ? (
                                         <p className="text-center text-slate-400 text-xs py-12 italic font-medium">
@@ -414,20 +426,7 @@ export default function ProfilePage() {
                                                         Chi tiết
                                                     </button>
                                                 </div>
-                                                <BookingDetailModal
-                                                    isOpen={isDetailModalOpen}
-                                                    onClose={() => setIsDetailModalOpen(false)}
-                                                    booking={selectedBooking}
-                                                    onSuccess={() =>
-                                                        fetchHistory(
-                                                            historyData.pageNumber,
-                                                            searchTerm,
-                                                            filterStatus ? parseInt(filterStatus) : null
-                                                        )
-                                                    }
-                                                />
                                             </div>
-
                                         ))
                                     ) : (
                                         <div className="rounded-xl border border-dashed border-slate-200 py-12 text-center bg-slate-50/20">
@@ -452,8 +451,30 @@ export default function ProfilePage() {
                     </main>
                 </div>
             </div>
-            <UpdateUserProfileModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} profileData={proFileData} onUpdateSuccess={fetchProfile} />
-            <ChangePasswordModal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} />
+
+            {/* Modals */}
+            <UpdateUserProfileModal 
+                isOpen={isModalOpen} 
+                onClose={() => setIsModalOpen(false)} 
+                profileData={proFileData} 
+                onUpdateSuccess={fetchProfile} 
+            />
+            <ChangePasswordModal 
+                isOpen={isPasswordModalOpen} 
+                onClose={() => setIsPasswordModalOpen(false)} 
+            />
+            <BookingDetailModal 
+                isOpen={isDetailModalOpen} 
+                onClose={() => setIsDetailModalOpen(false)} 
+                booking={selectedBooking} 
+                onSuccess={() =>
+                    fetchHistory(
+                        historyData.pageNumber,
+                        searchTerm,
+                        filterStatus ? parseInt(filterStatus) : null
+                    )
+                }
+            />
         </div>
     );
 }

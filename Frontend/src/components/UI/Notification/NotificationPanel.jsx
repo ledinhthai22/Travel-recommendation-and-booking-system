@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
-    Bell, Check, Calendar, Mail, Newspaper,
+    Bell, Calendar, Mail, Newspaper,
     CreditCard, Tag, MessageSquare, ShieldAlert, CheckCircle2
 } from "lucide-react";
 import NotificationService from "~/Services/NotificationService";
 import { connection, ensureConnectionStarted } from "~/Services/signalRService";
 import useAuth from "~/Hooks/useAuth";
 import { show } from "~/utils/Toast";
+
 const NotificationType = {
     Booking: 1,
     Contact: 2,
@@ -26,8 +27,6 @@ const NotificationPanel = () => {
 
     const panelRef = useRef(null);
     const isFirstLoad = useRef(true);
-
-
 
     const getNotificationStyle = (type) => {
         switch (type) {
@@ -49,8 +48,6 @@ const NotificationPanel = () => {
                 return { icon: <Bell size={16} />, bg: "bg-slate-50 text-slate-600 border-slate-100" };
         }
     };
-
-
 
     const mapNotification = useCallback((n) => ({
         id: n.maThongBao,
@@ -78,7 +75,6 @@ const NotificationPanel = () => {
             hour: "2-digit", minute: "2-digit",
         });
     };
-
 
     const loadNotifications = useCallback(async () => {
         try {
@@ -122,14 +118,11 @@ const NotificationPanel = () => {
                 if (!mounted) return;
 
                 if (isStaff) {
-
                     await connection.invoke("JoinAdminGroup");
                     await connection.invoke("JoinStaffGroup", String(userId));
-
+                    await connection.invoke("JoinGroup", `STAFF_${userId}`);
                 } else if (userId) {
-
                     await connection.invoke("JoinUserGroup", String(userId));
-
                 }
             } catch (err) {
                 console.error("SignalR invoke error:", err);
@@ -146,9 +139,8 @@ const NotificationPanel = () => {
 
         connection.onreconnected(handleReconnect);
 
-
         connection.on("JoinedGroup", (groupName) => {
-            console.log(` Kết nối realtime thành công tới group: ${groupName}`);
+            console.log(`Kết nối realtime thành công tới group: ${groupName}`);
         });
 
         return () => {
@@ -159,6 +151,7 @@ const NotificationPanel = () => {
                 if (isStaff) {
                     if (userId) {
                         connection.invoke("LeaveStaffGroup", String(userId)).catch(console.error);
+                        connection.invoke("LeaveGroup", `STAFF_${userId}`).catch(console.error);
                     }
                     connection.invoke("LeaveAdminGroup").catch(console.error);
                 } else if (userId) {
@@ -168,9 +161,8 @@ const NotificationPanel = () => {
         };
     }, [user, isStaff]);
 
-
     useEffect(() => {
-        const handleReceive = (payload) => {
+        const handleReceiveNotification = (payload) => {
             const newNoti = mapNotification(payload);
 
             setNotifications(prev => {
@@ -178,7 +170,6 @@ const NotificationPanel = () => {
                 setUnreadCount(count => count + 1);
                 return [newNoti, ...prev];
             });
-
 
             const style = getNotificationStyle(newNoti.type);
             show({
@@ -189,13 +180,39 @@ const NotificationPanel = () => {
             });
         };
 
-        connection.on("ReceiveNotification", handleReceive);
+        const handleBookingCreated = (payload) => {
+            const newNoti = {
+                id: Date.now(),
+                title: "Đơn đặt tour mới",
+                message: `Đơn ${payload.maDatCho} - ${payload.tongTien?.toLocaleString() || 0}đ`,
+                time: new Date().toISOString(),
+                read: false,
+                type: NotificationType.Booking,
+                link: "/Quan-ly/Don-dat-cac-chuyen-di"
+            };
+
+            setNotifications(prev => {
+                if (prev.some(n => n.id === newNoti.id)) return prev;
+                setUnreadCount(count => count + 1);
+                return [newNoti, ...prev];
+            });
+
+            show({
+                icon: <Calendar size={16} />,
+                title: newNoti.title,
+                message: newNoti.message,
+                borderClass: "border-sky-100",
+            });
+        };
+
+        connection.on("ReceiveNotification", handleReceiveNotification);
+        connection.on("BookingCreated", handleBookingCreated);
 
         return () => {
-            connection.off("ReceiveNotification", handleReceive);
+            connection.off("ReceiveNotification", handleReceiveNotification);
+            connection.off("BookingCreated", handleBookingCreated);
         };
     }, [mapNotification]);
-
 
     const handleMarkAllAsRead = async () => {
         if (unreadCount === 0) return;
@@ -214,7 +231,6 @@ const NotificationPanel = () => {
             return;
         }
         try {
-
             await NotificationService.markAsRead(noti.id);
             setNotifications(prev =>
                 prev.map(n => n.id === noti.id ? { ...n, read: true } : n)
@@ -238,13 +254,13 @@ const NotificationPanel = () => {
         <div className="relative inline-block text-left" ref={panelRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`relative flex h-10 w-10 items-center justify-center rounded-xl  transition-all duration-200 focus:outline-none cursor-pointer
-                ${isOpen ? " text-sky-600 " : " text-slate-600 hover:bg-slate-50 "}`}
+                className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 focus:outline-none cursor-pointer
+                ${isOpen ? "text-sky-600" : "text-slate-600 hover:bg-slate-50"}`}
             >
                 <span className="relative inline-flex">
-                    <Bell size={16} className={unreadCount > 0 ? "animate-bounce" : ""} />
+                    <Bell size={16} />
                     {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
+                        <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
                     )}
                 </span>
             </button>

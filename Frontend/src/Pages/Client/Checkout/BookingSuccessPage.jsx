@@ -9,27 +9,39 @@ export default function BookingSuccessPage() {
     const navigate = useNavigate();
     
     const method = location.state?.method ?? "cash";
-    const holdId = location.state?.holdId;
+    const holdId = location.state?.hold;
     const isVnpay = method === "vnpay";
 
     useEffect(() => {
         setTimeout(() => setVisible(true), 60);
     }, []);
 
-   
     const handleGoHome = async () => {
-    if (holdId) {
+        if (holdId) {
             try {
                 const storedUser = JSON.parse(localStorage.getItem("user"));
                 if (storedUser?.maNguoiDung) {
                     await releaseReservationApi(storedUser.maNguoiDung, holdId);
-                    console.log(`[SuccessPage] Đã hủy giữ chỗ ${holdId} khi về trang chủ`);
                 }
             } catch (err) {
                 console.log("[SuccessPage] Lỗi hủy giữ chỗ:", err);
             }
         }
         navigate("/");
+    };
+
+    const handleViewBooking = () => {
+        if (holdId) {
+            try {
+                const storedUser = JSON.parse(localStorage.getItem("user"));
+                if (storedUser?.maNguoiDung) {
+                    releaseReservationApi(storedUser.maNguoiDung, holdId).catch(() => {});
+                }
+            } catch (err) {
+                console.log("[SuccessPage] Lỗi hủy giữ chỗ:", err);
+            }
+        }
+        navigate("/Thong-Tin-Ca-Nhan", { state: { activeTab: "history" } });
     };
 
     return (
@@ -85,12 +97,12 @@ export default function BookingSuccessPage() {
                     </div>
 
                     <div className="px-8 pb-10 flex flex-col gap-3">
-                        <Link
-                            to="/Thong-Tin-Ca-Nhan"
+                        <button
+                            onClick={handleViewBooking}
                             className="cursor-pointer flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 py-4 font-semibold text-white shadow-sm shadow-sky-200 hover:from-sky-600 hover:to-sky-700 transition-all text-sm"
                         >
                             Xem đơn đặt tour <ArrowRight size={16} />
-                        </Link>
+                        </button>
                         
                         <button
                             onClick={handleGoHome}

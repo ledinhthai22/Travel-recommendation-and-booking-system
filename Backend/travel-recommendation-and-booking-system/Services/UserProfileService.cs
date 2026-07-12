@@ -334,7 +334,7 @@ namespace travel_recommendation_and_booking_system.Services
                 booking.NgayCapNhat = now;
                 _context.DonDatTours.Update(booking);
 
-                // Trả lại chỗ đã đặt — trước đây bị thiếu ở luồng khách tự hủy
+            
                 var soKhach = booking.SoNguoiLon + booking.SoTreEm + booking.SoEmBe;
                 chuyen.SoChoDaDat -= soKhach;
 
@@ -346,10 +346,10 @@ namespace travel_recommendation_and_booking_system.Services
                     if (soTienHoan > 0)
                     {
                         thanhToanThanhCong.SoTienHoan = soTienHoan;
-                        thanhToanThanhCong.TrangThaiThanhToan = 4; // Chờ hoàn tiền — admin xử lý thủ công
+                        thanhToanThanhCong.TrangThaiThanhToan = 4;
                         _context.ThanhToans.Update(thanhToanThanhCong);
                     }
-                    // Nếu tỷ lệ hoàn = 0% (hủy sát ngày trong khoảng cho phép), không cần đánh dấu gì thêm
+                  
                 }
 
                 await _context.SaveChangesAsync();

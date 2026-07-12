@@ -138,7 +138,7 @@ export default function BookingManager() {
         };
     }, [fetchBookings]);
 
-    // Bật/tắt chọn 1 dòng — cộng dồn đúng qua mọi trang vì state này độc lập với trang hiện tại.
+   
     const toggleRow = useCallback((row) => {
         if (!canPrintContract(row)) return;
         setSelectedMap(prev => {

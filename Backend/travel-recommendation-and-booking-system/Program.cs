@@ -102,6 +102,8 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<TrainRecommendationModelJob>();
             builder.Services.AddScoped<IDashboardNotifier, DashboardNotifier>();
             builder.Services.AddScoped<ITourCacheService, TourCacheService>();
+            builder.Services.AddScoped<IWebInfoCacheService, WebInfoCacheService>();
+            builder.Services.AddScoped<IBannerCacheService, BannerCacheService>();
             builder.Services.AddHttpContextAccessor();
             builder.Services.Configure<VnPayConfig>(builder.Configuration.GetSection("VNPay"));
             builder.Services.AddScoped<IPaymentService, PaymentService>();
@@ -210,9 +212,11 @@ namespace travel_recommendation_and_booking_system
             app.UseCustomHangfireJobs();
             app.UseCustomHangfireReview();
             app.UseCleanExpriedReservationsJob();
-            app.UseDepartureChangeStatusJoc();
+            app.UseDepartureChangeStatusJob();
+            app.UseCleanSystemLogJob();
             app.UsePaymentWarningJobs();
             app.UseTrainRecommendationModelJob();
+            app.UseCompleteTourBookingJob();
             app.MapHub<TravelRecommendationHub>("/TravelRecommendationHub");
             app.Run();
         }

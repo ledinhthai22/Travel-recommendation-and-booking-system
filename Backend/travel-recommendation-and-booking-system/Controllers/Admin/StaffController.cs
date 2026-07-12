@@ -18,9 +18,9 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             _staffService = staffService;
         }
         [HttpGet("TourGuiDe")]
-        public async Task<IActionResult> GetTourGuiDe([FromQuery] DateTime ngayKhoiHanh)
+        public async Task<IActionResult> GetTourGuiDe(DateTime ngayKhoiHanh, DateTime ngayKetThuc, int? excludeMaChuyen = null)
         {
-            var result = await _staffService.GetTourGuiDe(ngayKhoiHanh);
+            var result = await _staffService.GetTourGuiDe(ngayKhoiHanh, ngayKetThuc, excludeMaChuyen);
             return Ok(result);
         }
         [HttpGet("Paged")]

@@ -4,6 +4,7 @@ import SelectField from "~/components/UI/Form/SelectField";
 import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
 import { getAllVehicleApi } from "~/Services/VehicleService";
 import { getAllTourGuideApi } from "~/Services/TourGuideService";
+import { getStaffByIdApi } from "~/Services/StaffService";
 import { toastSuccess, toastError, toastWarning } from "~/utils/Toast";
 import ConfirmModal from "~/components/UI/Modal/ConfirmModal";
 import { getProvincesApi, getWardsByProvinceCodeApi } from "~/Services/ProvinceService";
@@ -257,6 +258,8 @@ const TourScheduleSection = forwardRef(({
     const [guides, setGuides] = useState([]);
     const [provinces, setProvinces] = useState([]);
     const [provincesLoading, setProvincesLoading] = useState(false);
+    const [guideLoading, setGuideLoading] = useState(false);
+    const [isCurrentGuideAdded, setIsCurrentGuideAdded] = useState(false);
 
     const [showModal, setShowModal] = useState(false);
     const [currentSchedule, setCurrentSchedule] = useState(null);
@@ -297,34 +300,89 @@ const TourScheduleSection = forwardRef(({
         fetchVehicles();
     }, []);
 
+    // Fetch guides - dựa trên khoảng thời gian (ngày khởi hành -> ngày kết thúc), không còn theo tháng
     useEffect(() => {
-        if (!currentSchedule?.ngayKhoiHanh) {
+        if (!currentSchedule?.ngayKhoiHanh || !currentSchedule?.ngayKetThuc) {
             setGuides([]);
+            setIsCurrentGuideAdded(false);
             return;
         }
 
+        let cancelled = false;
+
         const fetchGuides = async () => {
             try {
-                const guideRes = await getAllTourGuideApi(currentSchedule.ngayKhoiHanh);
-                setGuides((guideRes.data || guideRes || []).map(({ maNhanVien, hoTen }) => ({
+                setGuideLoading(true);
+
+                const excludeMaChuyen = isEditMode ? currentSchedule.maChuyen : null;
+
+                const availableGuideRes = await getAllTourGuideApi(
+                    currentSchedule.ngayKhoiHanh,
+                    currentSchedule.ngayKetThuc,
+                    excludeMaChuyen
+                );
+                const availableGuideList = (availableGuideRes.data || availableGuideRes || []).map(({ maNhanVien, hoTen }) => ({
                     maHDV: maNhanVien,
                     tenHDV: hoTen
-                })));
-            } catch {
-                toastError("Tải dữ liệu thất bại", "Không thể tải danh sách hướng dẫn viên.");
+                }));
+
+                if (cancelled) return;
+
+                // Luôn thêm HDV đã chọn vào danh sách để hiển thị (kể cả khi không còn rảnh)
+                let finalGuideList = [...availableGuideList];
+                let isCurrentAdded = false;
+
+                if (currentSchedule?.maHDV) {
+                    const stillAvailable = availableGuideList.some(g => g.maHDV === currentSchedule.maHDV);
+
+                    if (!stillAvailable) {
+                        try {
+                            const staffRes = await getStaffByIdApi(currentSchedule.maHDV);
+                            if (!cancelled && staffRes && staffRes.maNhanVien) {
+                                const currentGuide = {
+                                    maHDV: staffRes.maNhanVien,
+                                    tenHDV: staffRes.hoTen,
+                                    isCurrent: true
+                                };
+                                finalGuideList = [currentGuide, ...availableGuideList];
+                                isCurrentAdded = true;
+                            }
+                        } catch {
+                            // Không lấy được thông tin HDV, giữ nguyên danh sách khả dụng
+                        }
+                    }
+                }
+
+                if (cancelled) return;
+
+                setGuides(finalGuideList);
+                setIsCurrentGuideAdded(isCurrentAdded);
+
+                // Ở edit mode: nếu HDV đã chọn bị trùng lịch với chuyến khác -> reset và cảnh báo
+                if (isEditMode && !isViewMode && currentSchedule?.maHDV) {
+                    const stillAvailable = availableGuideList.some(g => g.maHDV === currentSchedule.maHDV);
+                    if (!stillAvailable) {
+                        setCurrentSchedule(prev => prev ? { ...prev, maHDV: "" } : prev);
+                        toastWarning(
+                            "Hướng dẫn viên bị trùng lịch",
+                            "HDV đã chọn đang có chuyến khác trùng thời gian với chuyến này, vui lòng chọn HDV khác."
+                        );
+                    }
+                }
+            } catch (error) {
+                console.error("Lỗi fetch guides:", error);
+                if (!isViewMode) {
+                    toastError("Tải dữ liệu thất bại", "Không thể tải danh sách hướng dẫn viên.");
+                }
+            } finally {
+                if (!cancelled) setGuideLoading(false);
             }
         };
         fetchGuides();
-    }, [currentSchedule?.ngayKhoiHanh]);
-    useEffect(() => {
-        if (currentSchedule?.maHDV && guides.length > 0) {
-            const stillAvailable = guides.some(g => g.maHDV === currentSchedule.maHDV);
-            if (!stillAvailable) {
-                setCurrentSchedule(prev => prev ? { ...prev, maHDV: "" } : prev);
-                toastWarning("Hướng dẫn viên không còn trống", "HDV đã chọn không còn rảnh trong tháng này, vui lòng chọn lại.");
-            }
-        }
-    }, [guides]);
+
+        return () => { cancelled = true; };
+    }, [currentSchedule?.ngayKhoiHanh, currentSchedule?.ngayKetThuc, currentSchedule?.maHDV, currentSchedule?.maChuyen, isEditMode, isViewMode]);
+
     useEffect(() => {
         const fetchProvinces = async () => {
             try {
@@ -509,6 +567,7 @@ const TourScheduleSection = forwardRef(({
         setSelectedWardName("");
         setAutoEndDate(null);
         setAppliedFromSchedule(false);
+        setIsCurrentGuideAdded(false);
     }, [isSaving]);
 
     const validateAndShowErrors = useCallback((item) => {
@@ -727,8 +786,6 @@ const TourScheduleSection = forwardRef(({
 
                     <div className="p-6 space-y-6 overflow-y-auto flex-1">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-
                             <SelectField
                                 label="Điểm khởi hành"
                                 value={currentSchedule.diemKhoiHanh || ""}
@@ -755,7 +812,6 @@ const TourScheduleSection = forwardRef(({
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
                             <SelectField
                                 label="Phường/Xã (không bắt buộc)"
                                 searchable
@@ -779,8 +835,6 @@ const TourScheduleSection = forwardRef(({
                                 disabled={disabled}
                             />
                         </div>
-
-
 
                         <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
                             <div className="flex items-center justify-between mb-4">
@@ -844,7 +898,8 @@ const TourScheduleSection = forwardRef(({
                                         disabled={disabled}
                                         minDate={currentSchedule.gioDenNoiDi ? new Date(currentSchedule.gioDenNoiDi) : today}
                                     />
-                                    {autoEndDate && currentSchedule.ngayKetThuc && (
+                                  
+                                    {!isViewMode && autoEndDate && currentSchedule.ngayKetThuc && (
                                         <div className="mt-1">
                                             <p className="text-[10px] text-emerald-500 flex items-center gap-1">
                                                 <span>Gợi ý từ lịch trình: {formatDateTime(autoEndDate)}</span>
@@ -874,7 +929,7 @@ const TourScheduleSection = forwardRef(({
 
                                 <div>
                                     <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                                        Ngày giờ về
+                                        Ngày giờ đến nơi về
                                     </label>
                                     <DateTimePicker
                                         value={currentSchedule.gioDenNoiVe ? new Date(currentSchedule.gioDenNoiVe) : null}
@@ -923,18 +978,43 @@ const TourScheduleSection = forwardRef(({
                                 ))}
                             </div>
                         </div>
-                        <SelectField
-                            label="Hướng dẫn viên"
-                            searchable
-                            searchText="Tìm hướng dẫn viên"
-                            value={currentSchedule.maHDV || ""}
-                            options={guides}
-                            valueKey="maHDV"
-                            labelKey="tenHDV"
-                            error={modalErrors.maHDV}
-                            onChange={(e) => handleFieldChange("maHDV", getVal(e))}
-                            disabled={disabled}
-                        />
+
+                        <div>
+                            <SelectField
+                                label="Hướng dẫn viên"
+                                searchable
+                                searchText="Tìm hướng dẫn viên"
+                                value={currentSchedule.maHDV || ""}
+                                options={guides}
+                                valueKey="maHDV"
+                                labelKey="tenHDV"
+                                error={modalErrors.maHDV}
+                                onChange={(e) => handleFieldChange("maHDV", getVal(e))}
+                                disabled={disabled || guideLoading || isViewMode}
+                                loading={guideLoading}
+                            />
+                            {guideLoading && (
+                                <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                                    <Loader2 size={12} className="animate-spin" /> Đang tải danh sách HDV...
+                                </p>
+                            )}
+                            {isViewMode && isCurrentGuideAdded && (
+                                <p className="text-xs text-amber-500 mt-1 flex items-center gap-1">
+                                    <span> HDV này đang có chuyến khác trùng thời gian, chỉ hiển thị để tham khảo.</span>
+                                </p>
+                            )}
+                            {!guideLoading && guides.length === 0 && currentSchedule?.ngayKhoiHanh && !isViewMode && (
+                                <p className="text-xs text-amber-500 mt-1">
+                                    Không có HDV nào còn trống trong khoảng thời gian này
+                                </p>
+                            )}
+
+                            {!isViewMode && !currentSchedule?.ngayKetThuc && (
+                                <p className="text-[10px] text-slate-400 mt-1">
+                                    Vui lòng chọn ngày giờ khởi hành và kết thúc để tải danh sách HDV còn trống.
+                                </p>
+                            )}
+                        </div>
 
                         <InputField
                             type="number"
@@ -974,6 +1054,14 @@ const TourScheduleSection = forwardRef(({
                             >
                                 {isSaving && <Loader2 size={18} className="animate-spin" />}
                                 {isEditMode ? "Cập nhật" : "Thêm chuyến"}
+                            </button>
+                        )}
+                        {isViewMode && (
+                            <button
+                                onClick={handleClose}
+                                className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-sm font-medium transition-colors"
+                            >
+                                Đóng
                             </button>
                         )}
                     </div>

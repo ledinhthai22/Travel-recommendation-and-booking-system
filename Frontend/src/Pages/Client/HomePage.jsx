@@ -320,7 +320,7 @@ export default function HomePage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <p className="leading-7 text-slate-600">"{review.noiDung}"</p>
+                                        <p className="leading-7 text-slate-600">{review.noiDung}</p>
                                     </div>
                                 );
                             })}

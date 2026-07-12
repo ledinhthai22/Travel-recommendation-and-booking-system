@@ -51,7 +51,7 @@ export default function Sidebar() {
             heading: "Vận hành Tour",
             items: [
                 { title: "Quản lý tour", path: "/Quan-ly/Cac-chuyen-di", icon: Luggage, roles: [1, 2] },
-                { title: "Loại tour", path: "/Quan-ly/Loai-Tour", icon: Layers, roles: [1] },
+                { title: "Loại tour", path: "/Quan-ly/Loai-Tour", icon: Layers, roles: [1, 2] }, // Thêm role 2
                 { title: "Đơn đặt tour", path: "/Quan-ly/Don-dat-cac-chuyen-di", icon: Ticket, roles: [1, 2] }
             ]
         },
@@ -59,9 +59,9 @@ export default function Sidebar() {
             heading: "Địa điểm & Khách sạn",
             items: [
                 { title: "Quản lý địa điểm", path: "/Quan-ly/Dia-diem", icon: MapPin, roles: [1, 2] },
-                { title: "Loại địa điểm", path: "/Quan-ly/Loai-Dia-Diem", icon: Tags, roles: [1] },
+                { title: "Loại địa điểm", path: "/Quan-ly/Loai-Dia-Diem", icon: Tags, roles: [1, 2] }, // Thêm role 2
                 { title: "Quản lý khách sạn", path: "/Quan-ly/Khach-san", icon: Building2, roles: [1, 2] },
-                { title: "Tiện ích khách sạn", path: "/Quan-ly/Tien-Ich", icon: HousePlus, roles: [1] }
+                { title: "Tiện ích khách sạn", path: "/Quan-ly/Tien-Ich", icon: HousePlus, roles: [1, 2] } // Thêm role 2
             ]
         },
         {

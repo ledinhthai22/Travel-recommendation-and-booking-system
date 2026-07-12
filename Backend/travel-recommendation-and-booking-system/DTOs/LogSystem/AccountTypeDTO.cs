@@ -7,5 +7,6 @@
         public const string NhanVien = "Nhân viên";
 
         public const string QuanTriVien = "Quản trị viên";
+        public const string HeThong = "Hệ thống";
     }
 }

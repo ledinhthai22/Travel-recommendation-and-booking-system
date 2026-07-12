@@ -15,6 +15,7 @@ export default function ContactForm({
     const handleTabChange = async (tab) => {
         setActiveTab(tab);
         
+        // Gọi callback để thông báo lên parent (CheckoutPage)
         if (onActiveTabChange) {
             onActiveTabChange(tab);
         }
@@ -54,6 +55,7 @@ export default function ContactForm({
         }
     };
 
+    // Tự động lấy thông tin khi component mount
     useEffect(() => {
         let isMounted = true;
         const initData = async () => {
@@ -69,6 +71,7 @@ export default function ContactForm({
 
     return (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm relative">
+            {/* Loading overlay */}
             {loading && (
                 <div className="absolute inset-0 bg-white/70 backdrop-blur-sm rounded-3xl flex items-center justify-center z-10">
                     <div className="flex flex-col items-center gap-3">
@@ -78,6 +81,7 @@ export default function ContactForm({
                 </div>
             )}
 
+            {/* Header với tabs */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
                 <h2 className="text-xl font-bold text-slate-900">Thông tin liên lạc</h2>
                 
@@ -109,6 +113,7 @@ export default function ContactForm({
                 </div>
             </div>
             
+            {/* Form fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                 <InputField
                     label="Họ tên"
@@ -146,7 +151,7 @@ export default function ContactForm({
                     name="address"
                     value={contact.address || ''}
                     onChange={onChange}
-                    placeholder="Ví dụ: 65 huỳnh thúc kháng........"
+                    placeholder="Ví dụ: 65 Huỳnh Thúc Kháng, Quận 1, TP.HCM"
                     error={errors.address}
                     disabled={activeTab === 'me'}
                 />

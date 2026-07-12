@@ -18,6 +18,7 @@ export default function CreateStaffModal({
     const [errors, setErrors] = useState({});
     const [previewImage, setPreviewImage] = useState(null);
 
+    // Đồng bộ với backend: 1=Đang làm việc, 2=Nghỉ phép, 0=Nghỉ việc
     const [form, setForm] = useState({
         hoTen: "",
         email: "",
@@ -28,7 +29,7 @@ export default function CreateStaffModal({
         diaChi: "",
         cccd: "",
         ngaySinh: "", 
-        trangThai: 2,
+        trangThai: 1, // Mặc định: Đang làm việc
         maVaiTro: 2
     });
 
@@ -57,6 +58,11 @@ export default function CreateStaffModal({
             return;
         }
 
+        // Revoke old preview URL if exists
+        if (previewImage) {
+            URL.revokeObjectURL(previewImage);
+        }
+
         setForm(prev => ({
             ...prev,
             duongDanAnh: file
@@ -75,8 +81,8 @@ export default function CreateStaffModal({
             newErrors.email = "Email không hợp lệ";
 
         if (!form.matkhau.trim()) newErrors.matkhau = "Vui lòng nhập mật khẩu";
-        else if (form.matkhau.length < 8)
-            newErrors.matkhau = "Mật khẩu tối thiểu 8 ký tự";
+        else if (form.matkhau.length < 6)
+            newErrors.matkhau = "Mật khẩu tối thiểu 6 ký tự";
 
         if (!form.cccd.trim()) newErrors.cccd = "Vui lòng nhập CCCD";
 
@@ -101,16 +107,16 @@ export default function CreateStaffModal({
             setLoading(true);
             const formData = new FormData();
 
-            formData.append("HoTen", form.hoTen);
-            formData.append("Email", form.email);
+            formData.append("HoTen", form.hoTen.trim());
+            formData.append("Email", form.email.trim());
             formData.append("Matkhau", form.matkhau);
-            formData.append("SoDienThoai", form.soDienThoai);
-            formData.append("GioiTinh", form.gioiTinh);
-            formData.append("DiaChi", form.diaChi);
-            formData.append("Cccd", form.cccd);
+            formData.append("SoDienThoai", form.soDienThoai.trim());
+            formData.append("GioiTinh", form.gioiTinh ? "true" : "false");
+            formData.append("DiaChi", form.diaChi.trim());
+            formData.append("Cccd", form.cccd.trim());
             formData.append("NgaySinh", form.ngaySinh);
-            formData.append("TrangThai", form.trangThai);
-            formData.append("MaVaiTro", form.maVaiTro);
+            formData.append("TrangThai", String(form.trangThai));
+            formData.append("MaVaiTro", String(form.maVaiTro));
 
             if (form.duongDanAnh) {
                 formData.append("DuongDanAnh", form.duongDanAnh);
@@ -118,6 +124,24 @@ export default function CreateStaffModal({
 
             await createStaffApi(formData);
             toastSuccess("Thêm nhân viên thành công");
+            
+            // Reset form
+            setForm({
+                hoTen: "",
+                email: "",
+                matkhau: "",
+                soDienThoai: "",
+                gioiTinh: true,
+                duongDanAnh: null,
+                diaChi: "",
+                cccd: "",
+                ngaySinh: "",
+                trangThai: 1,
+                maVaiTro: 2
+            });
+            setPreviewImage(null);
+            setErrors({});
+            
             onSuccess?.();
             onClose();
         } catch (error) {
@@ -127,12 +151,32 @@ export default function CreateStaffModal({
         }
     };
 
+    const handleClose = () => {
+        // Reset form khi đóng modal
+        setForm({
+            hoTen: "",
+            email: "",
+            matkhau: "",
+            soDienThoai: "",
+            gioiTinh: true,
+            duongDanAnh: null,
+            diaChi: "",
+            cccd: "",
+            ngaySinh: "",
+            trangThai: 1,
+            maVaiTro: 2
+        });
+        setPreviewImage(null);
+        setErrors({});
+        onClose();
+    };
+
     return (
         <div className="fixed inset-0 bg-black/50 z-[999] flex items-center justify-center">
             <div className="bg-white rounded-3xl w-full max-w-4xl p-6">
                 <div className="flex justify-between items-center mb-8">
                     <h2 className="text-2xl font-bold">Thêm nhân viên</h2>
-                    <button onClick={onClose}>
+                    <button onClick={handleClose} disabled={loading}>
                         <X size={22} />
                     </button>
                 </div>
@@ -141,14 +185,14 @@ export default function CreateStaffModal({
                     <div className="w-40 h-40 shrink-0">
                         <label className="border-2 border-dashed border-slate-300 rounded-2xl h-full w-full flex flex-col items-center justify-center cursor-pointer overflow-hidden">
                             {previewImage ? (
-                                <img src={previewImage} alt="" className="w-full h-full object-cover" />
+                                <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
                             ) : (
                                 <>
                                     <Upload size={28} />
                                     <span className="text-xs text-center">Upload ảnh</span>
                                 </>
                             )}
-                            <input hidden type="file" accept="image/*" onChange={handleImageChange} />
+                            <input hidden type="file" accept="image/*" onChange={handleImageChange} disabled={loading} />
                         </label>
                     </div>
 
@@ -158,6 +202,7 @@ export default function CreateStaffModal({
                             value={form.hoTen}
                             onChange={(e) => handleChange("hoTen", e.target.value)}
                             error={errors.hoTen}
+                            disabled={loading}
                         />
                         <div className="mt-5">
                             <InputField
@@ -165,6 +210,7 @@ export default function CreateStaffModal({
                                 value={form.email}
                                 onChange={(e) => handleChange("email", e.target.value)}
                                 error={errors.email}
+                                disabled={loading}
                             />
                         </div>
                     </div>
@@ -176,6 +222,7 @@ export default function CreateStaffModal({
                         value={form.cccd}
                         onChange={(e) => handleChange("cccd", e.target.value)}
                         error={errors.cccd}
+                        disabled={loading}
                     />
                     <DatePicker
                         label="Ngày sinh"
@@ -184,6 +231,7 @@ export default function CreateStaffModal({
                         onChange={(formattedDate) => handleChange("ngaySinh", formattedDate)}
                         maxDate={new Date()} 
                         error={errors.ngaySinh}
+                        disabled={loading}
                     />
 
                     <InputField
@@ -191,6 +239,7 @@ export default function CreateStaffModal({
                         value={form.soDienThoai}
                         onChange={(e) => handleChange("soDienThoai", e.target.value)}
                         error={errors.soDienThoai}
+                        disabled={loading}
                     />
                     <InputField
                         label="Mật khẩu"
@@ -198,9 +247,8 @@ export default function CreateStaffModal({
                         value={form.matkhau}
                         onChange={(e) => handleChange("matkhau", e.target.value)}
                         error={errors.matkhau}
+                        disabled={loading}
                     />
-
-
 
                     <Dropdown
                         label="Chức danh"
@@ -211,6 +259,7 @@ export default function CreateStaffModal({
                             { value: "2", label: "Nhân viên" },
                             { value: "3", label: "Hướng dẫn viên" }
                         ]}
+                        disabled={loading}
                     />
                     <Dropdown
                         label="Giới tính"
@@ -222,27 +271,47 @@ export default function CreateStaffModal({
                             { value: false, label: "Nữ" }
                         ]}
                         error={errors.gioiTinh}
+                        disabled={loading}
                     />
-
-
                 </div>
+                
+                <div className="mt-5">
+                    <Dropdown
+                        label="Trạng thái"
+                        placeholder="Trạng thái"
+                        value={form.trangThai.toString()}
+                        onChange={(value) => handleChange("trangThai", parseInt(value))}
+                        options={[
+                            { value: "1", label: "Đang làm việc" },
+                            { value: "2", label: "Nghỉ phép" },
+                            { value: "0", label: "Nghỉ việc" }
+                        ]}
+                        disabled={loading}
+                    />
+                </div>
+
                 <div className="mt-2">
                     <InputField
                         label="Địa chỉ"
                         value={form.diaChi}
                         onChange={(e) => handleChange("diaChi", e.target.value)}
                         error={errors.diaChi}
+                        disabled={loading}
                     />
                 </div>
 
                 <div className="flex justify-end gap-3 mt-8">
-                    <button onClick={onClose} className="px-6 py-2 rounded-xl bg-slate-100">
+                    <button 
+                        onClick={handleClose} 
+                        disabled={loading}
+                        className="px-6 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 transition disabled:opacity-50"
+                    >
                         Hủy
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={loading}
-                        className="px-6 py-2 rounded-xl bg-sky-500 text-white"
+                        className="px-6 py-2 rounded-xl bg-sky-500 text-white hover:bg-sky-600 transition disabled:opacity-50"
                     >
                         {loading ? "Đang lưu..." : "Lưu"}
                     </button>

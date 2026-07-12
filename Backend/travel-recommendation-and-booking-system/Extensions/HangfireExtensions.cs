@@ -44,7 +44,7 @@ namespace travel_recommendation_and_booking_system.Extensions
                 "*/5 * * * *"
             );
         }
-        public static void UseDepartureChangeStatusJoc(this WebApplication app)
+        public static void UseDepartureChangeStatusJob(this WebApplication app)
         {
             using var scope = app.Services.CreateScope();
 
@@ -84,6 +84,33 @@ namespace travel_recommendation_and_booking_system.Extensions
                 "train-recommendation-model",
                 job => job.TrainRecommendationModel(),
                 Cron.Daily(2)
+            );
+        }
+        public static void UseCleanSystemLogJob(this WebApplication app)
+        {
+            using var scope = app.Services.CreateScope();
+
+            var recurringJobManager =
+                scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+
+           
+            RecurringJob.AddOrUpdate<CleanSystemLogJob>(
+                "clean-system-log",
+                job => job.ExecuteAsync(),
+                Cron.Monthly(3) 
+            );
+        }
+        public static void UseCompleteTourBookingJob(this WebApplication app)
+        {
+            using var scope = app.Services.CreateScope();
+
+            var recurringJobManager =
+                scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+
+            RecurringJob.AddOrUpdate<CompleteTourBookingJob>(
+                "complete-tour-booking",
+                job => job.ExecuteAsync(),
+                Cron.Daily(1) // 1:00 AM mỗi ngày
             );
         }
     }

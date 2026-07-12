@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { X } from "lucide-react";
 
 import InputField from "~/components/UI/Form/InputField";
@@ -10,31 +10,14 @@ import { getErrorMessage } from "~/utils/errorHelper";
 export default function StaffDetailModal({
     isOpen,
     onClose,
-    staffId
+    staffId,
+    onStatusChange
 }) {
     const [loading, setLoading] = useState(false);
     const [staff, setStaff] = useState(null);
+    const isClosing = useRef(false);
 
-    useEffect(() => {
-        if (!isOpen || !staffId) return;
-
-        const fetchStaff = async () => {
-            try {
-                setLoading(true);
-                const res = await getStaffByIdApi(staffId);
-                setStaff(res);
-            } catch (error) {
-                toastError(getErrorMessage(error));
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchStaff();
-    }, [isOpen, staffId]);
-
-    if (!isOpen) return null;
-
+    // Đồng bộ với backend: 1=Đang làm việc, 2=Nghỉ phép, 0=Nghỉ việc
     const statusLabels = {
         1: "Đang làm việc",
         2: "Nghỉ phép",
@@ -46,6 +29,48 @@ export default function StaffDetailModal({
         2: "bg-yellow-100 text-yellow-700",
         0: "bg-red-100 text-red-700"
     };
+
+    useEffect(() => {
+        if (!isOpen || !staffId) {
+            isClosing.current = false;
+            return;
+        }
+
+        const fetchStaff = async () => {
+            try {
+                setLoading(true);
+                const res = await getStaffByIdApi(staffId);
+                if (!isClosing.current) {
+                    setStaff(res);
+                }
+            } catch (error) {
+                if (!isClosing.current) {
+                    toastError(getErrorMessage(error));
+                }
+            } finally {
+                if (!isClosing.current) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        fetchStaff();
+    }, [isOpen, staffId]);
+
+    const handleClose = () => {
+        isClosing.current = true;
+        onClose();
+        
+        // Delay nhẹ để modal đóng trước khi refresh dữ liệu
+        if (onStatusChange) {
+            setTimeout(() => {
+                onStatusChange();
+                isClosing.current = false;
+            }, 100);
+        }
+    };
+
+    if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 bg-black/50 z-999 flex items-center justify-center">
@@ -59,7 +84,7 @@ export default function StaffDetailModal({
                             </span>
                         )}
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100">
+                    <button onClick={handleClose} className="p-2 rounded-full hover:bg-slate-100">
                         <X size={20} />
                     </button>
                 </div>
@@ -101,13 +126,10 @@ export default function StaffDetailModal({
                                 value={staff.ngayTao ? new Date(staff.ngayTao).toLocaleDateString("vi-VN") : ""}
                                 readOnly
                             />
-
-
                         </div>
                         <div className="mt-2">
                             <InputField label="Địa chỉ" value={staff.diaChi || ""} readOnly />
                         </div>
-                    
                     </>
                 )}
             </div>

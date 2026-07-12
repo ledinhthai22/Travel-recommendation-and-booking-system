@@ -24,7 +24,6 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly IDashboardNotifier _dashboardNotifier;
         private readonly IHttpClientFactory _httpClientFactory;
 
-
         public PaymentService(
             IOptions<VnPayConfig> vnpayConfig,
             AppDbContext context,
@@ -66,7 +65,6 @@ namespace travel_recommendation_and_booking_system.Services
 
             payload.NgayBatDauThanhToan = DateTime.Now;
 
-            // Gia hạn thời gian giữ chỗ khi bắt đầu thanh toán qua VNPay
             var thoiGianToiThieu = DateTime.Now.AddMinutes(10);
             if (giuCho.ThoiGianHetHan < thoiGianToiThieu)
             {
@@ -137,9 +135,6 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<(string RspCode, string Message)> ProcessVnPayIpnAsync(Dictionary<string, string> queryData)
         {
-            Console.WriteLine($"[VNPay IPN] ===== Bắt đầu xử lý IPN lúc {DateTime.Now:yyyy-MM-dd HH:mm:ss} =====");
-            Console.WriteLine("[VNPay IPN] Query nhận được: " + string.Join(" | ", queryData.Select(x => $"{x.Key}={x.Value}")));
-
             try
             {
                 var vnpay = new VnPayLibrary();
@@ -155,11 +150,9 @@ namespace travel_recommendation_and_booking_system.Services
                 }
 
                 bool isValidSignature = vnpay.ValidateSignature(vnp_SecureHash, _vnpayConfig.HashSecret);
-                Console.WriteLine($"[VNPay IPN] Kết quả kiểm tra chữ ký: {(isValidSignature ? "HỢP LỆ" : "KHÔNG HỢP LỆ")}");
 
                 if (!isValidSignature)
                 {
-                    Console.WriteLine("[VNPay IPN] >>> DỪNG tại bước kiểm tra chữ ký. Không tạo đơn, không gửi email.");
                     return ("97", "Invalid signature");
                 }
 
@@ -169,21 +162,16 @@ namespace travel_recommendation_and_booking_system.Services
                 string vnpAmountRaw = vnpay.GetResponseData("vnp_Amount");
                 decimal vnpayAmount = Convert.ToDecimal(vnpAmountRaw) / 100;
 
-                Console.WriteLine($"[VNPay IPN] txnRef={txnRef} | responseCode={responseCode} | amount={vnpayAmount:N0}");
-
-                // Kiểm tra trùng lặp giao dịch (Idempotency)
                 var existingThanhToan = await _context.ThanhToans
                     .FirstOrDefaultAsync(t => t.MaGiaoDich == txnRef);
 
                 if (existingThanhToan != null)
                 {
-                    Console.WriteLine($"[VNPay IPN] >>> DỪNG: giao dịch {txnRef} đã tồn tại trong DB (ThanhToan.MaThanhToan={existingThanhToan.MaThanhToan}). Không tạo đơn/email lần nữa (idempotency).");
                     return ("02", "Order already confirmed");
                 }
 
                 if (responseCode != "00")
                 {
-                    Console.WriteLine($"[VNPay IPN] >>> DỪNG: VNPay báo giao dịch KHÔNG thành công (responseCode={responseCode}, khác '00'). Không tạo đơn, không gửi email.");
                     return ("00", "Confirm success");
                 }
 
@@ -192,7 +180,6 @@ namespace travel_recommendation_and_booking_system.Services
 
                 if (payload == null)
                 {
-                    Console.WriteLine($"[VNPay IPN] >>> DỪNG: không tìm thấy PaymentPayload có TxnRef={txnRef}.");
                     return ("01", "PaymentPayload not found");
                 }
 
@@ -202,13 +189,11 @@ namespace travel_recommendation_and_booking_system.Services
 
                 if (giuCho == null)
                 {
-                    Console.WriteLine($"[VNPay IPN] >>> DỪNG: không tìm thấy GiuCho (MaGiuCho={payload.MaGiuCho}). Có thể phiên giữ chỗ đã bị dọn (Hangfire cleanup) trước khi IPN tới.");
                     return ("01", "GiuCho not found");
                 }
 
                 if (payload.NgayBatDauThanhToan == null)
                 {
-                    Console.WriteLine("[VNPay IPN] >>> DỪNG: payload.NgayBatDauThanhToan là null (Payment not started).");
                     return ("01", "Payment not started");
                 }
 
@@ -255,7 +240,6 @@ namespace travel_recommendation_and_booking_system.Services
 
                         if (expectedAmountRaw != actualAmountRaw)
                         {
-                            Console.WriteLine($"[VNPay IPN] >>> DỪNG: số tiền không khớp. Kỳ vọng={expectedAmountRaw}, Thực nhận={actualAmountRaw}. Rollback transaction.");
                             await transaction.RollbackAsync();
                             return ("04", "Invalid amount");
                         }
@@ -342,27 +326,21 @@ namespace travel_recommendation_and_booking_system.Services
                         await _context.SaveChangesAsync();
                         await transaction.CommitAsync();
 
-                        Console.WriteLine($"[VNPay IPN] Đã COMMIT thành công đơn {order.MaDatCho} (MaDonDatTour={order.MaDonDatTour}). Chuẩn bị gửi email xác nhận...");
-
                         try
                         {
                             await _emailService.SendBookingConfirmationAsync(order);
-                            Console.WriteLine($"[VNPay IPN] Đã gọi xong SendBookingConfirmationAsync cho đơn {order.MaDatCho}. Xem log [Email] phía trên/dưới để biết gửi thành công hay lỗi.");
                         }
-                        catch (Exception exEmail)
+                        catch
                         {
-                            // SendBookingConfirmationAsync tự bắt exception nội bộ, nhánh này chỉ phòng hờ
-                            Console.WriteLine($"[VNPay IPN] Lỗi KHÔNG MONG ĐỢI khi gọi SendBookingConfirmationAsync: {exEmail.Message}\n{exEmail.StackTrace}");
                         }
                     }
-                    catch (Exception exTransaction)
+                    catch (Exception)
                     {
-                        Console.WriteLine($"[VNPay IPN] >>> LỖI trong transaction, đã rollback: {exTransaction.Message}\n{exTransaction.StackTrace}");
+                        await transaction.RollbackAsync();
                         throw;
                     }
                 }
 
-                // Gửi thông báo đến người dùng và nhân viên
                 try
                 {
                     await _notificationService.CreateForUserAsync(
@@ -374,8 +352,6 @@ namespace travel_recommendation_and_booking_system.Services
                             LoaiThongBao = (int)NotificationType.Payment,
                             LinkChiTiet = $"/Thong-Tin-Ca-Nhan"
                         });
-
-                    Console.WriteLine("[VNPay IPN] Đã tạo thông báo cho user thành công.");
 
                     var staffIds = await _context.NhanViens
                         .Where(x => x.NgayXoa == null &&
@@ -393,31 +369,20 @@ namespace travel_recommendation_and_booking_system.Services
                             TieuDe = coCanhBaoCanKiemTra
                                 ? "Đơn tour mới CẦN KIỂM TRA GẤP"
                                 : "Có đơn đặt tour mới",
-
                             NoiDung = coCanhBaoCanKiemTra
                                 ? $"Đơn {order.MaDatCho} thanh toán trễ, có thể vượt quá số chỗ tối đa. Vui lòng kiểm tra ngay."
                                 : $"Khách hàng vừa thanh toán thành công đơn {order.MaDatCho}.",
-
                             LoaiThongBao = (int)NotificationType.Booking,
-
                             LinkChiTiet = $"/Quan-ly/Don-dat-cac-chuyen-di"
                         });
 
-                    Console.WriteLine($"[VNPay IPN] Đã tạo thông báo cho {staffIds.Count} nhân viên/admin.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[VNPay IPN] Lỗi khi gửi notification (không rollback booking): {ex}");
-                }
-
-                try
-                {
                     await _dashboardNotifier.NotifyDashboardChangedAsync("NewBooking", new
                     {
                         order.MaDonDatTour,
                         order.NgayDat,
                         order.TrangThaiDon
                     });
+
                     await _hubContext.Clients.Group("ADMIN_GROUP").SendAsync("BookingCreated", new
                     {
                         MaDonDatTour = order.MaDonDatTour,
@@ -425,25 +390,31 @@ namespace travel_recommendation_and_booking_system.Services
                         TongTien = order.TongTien,
                         NgayDat = order.NgayDat
                     });
-                    Console.WriteLine("[VNPay IPN] Đã bắn SignalR/dashboard notifier thành công.");
+
+                    foreach (var staffId in staffIds)
+                    {
+                        await _hubContext.Clients.Group($"STAFF_{staffId}").SendAsync("ReceiveNotification", new
+                        {
+                            maThongBao = 0,
+                            tieuDe = "Có đơn đặt tour mới",
+                            noiDung = $"Khách hàng vừa thanh toán thành công đơn {order.MaDatCho}.",
+                            loaiThongBao = (int)NotificationType.Booking,
+                            ngayTao = DateTime.Now,
+                            daDoc = false,
+                            linkChiTiet = $"/Quan-ly/Don-dat-cac-chuyen-di"
+                        });
+                    }
                 }
-                catch (Exception exRealtime)
+                catch
                 {
-                    Console.WriteLine($"[VNPay IPN] Lỗi realtime (không rollback booking): {exRealtime}");
                 }
 
-                Console.WriteLine($"[VNPay IPN] ===== Hoàn tất xử lý IPN cho txnRef={txnRef} =====");
                 return ("00", "Confirm success");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                // QUAN TRỌNG: trước đây catch này chỉ "return" mà KHÔNG log gì cả,
-                // nên mọi lỗi bất ngờ (throw từ transaction, exception ngoài dự kiến...)
-                // đều biến mất không dấu vết. Đây có thể là lý do không thấy log nào.
-                Console.WriteLine($"[VNPay IPN] >>> LỖI HỆ THỐNG (catch ngoài cùng): {ex.Message}\n{ex.StackTrace}");
                 return ("99", "System error");
             }
         }
-
     }
 }

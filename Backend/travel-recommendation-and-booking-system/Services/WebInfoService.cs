@@ -1,9 +1,9 @@
 ﻿using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.WebInfo;
 using travel_recommendation_and_booking_system.Interfaces;
-
 
 namespace travel_recommendation_and_booking_system.Services
 {
@@ -11,11 +11,21 @@ namespace travel_recommendation_and_booking_system.Services
     {
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _environment;
-        public WebInfoService(AppDbContext context, IWebHostEnvironment environment)
+        private readonly IMemoryCache _cache;
+        private readonly IWebInfoCacheService _cacheService;
+
+        public WebInfoService(
+            AppDbContext context,
+            IWebHostEnvironment environment,
+            IMemoryCache cache,
+            IWebInfoCacheService cacheService)
         {
             _context = context;
             _environment = environment;
+            _cache = cache;
+            _cacheService = cacheService;
         }
+
         public async Task<PageDTO<WebInfoResponseDTO>> GetPagedWebInfoAsync(int pageNumber, int pageSize, WebinfoDTO webinfo)
         {
             if (pageNumber < 1)
@@ -24,21 +34,25 @@ namespace travel_recommendation_and_booking_system.Services
             if (pageSize < 1)
                 pageSize = 10;
 
+            var searchKey = $"{pageNumber}_{pageSize}_{webinfo.key ?? ""}_{webinfo.TrangThai?.ToString() ?? "null"}";
+            var cacheKey = _cacheService.ListKey(searchKey);
+
+            if (_cache.TryGetValue(cacheKey, out PageDTO<WebInfoResponseDTO>? cachedResult))
+            {
+                return cachedResult!;
+            }
+
             var query = _context.TrangThongTins
                 .Where(x => x.NgayXoa == null)
                 .AsNoTracking();
 
-
             if (!string.IsNullOrWhiteSpace(webinfo.key))
             {
                 var keyword = webinfo.key.Trim().ToLower();
-
                 query = query.Where(x =>
                     (x.Key ?? "").ToLower().Contains(webinfo.key)
                 );
             }
-
-
 
             if (webinfo.TrangThai.HasValue)
             {
@@ -46,7 +60,6 @@ namespace travel_recommendation_and_booking_system.Services
             }
 
             int totalItems = await query.CountAsync();
-
 
             var items = await query
                 .OrderByDescending(x => x.NgayCapNhat)
@@ -63,16 +76,28 @@ namespace travel_recommendation_and_booking_system.Services
                 })
                 .ToListAsync();
 
-            return new PageDTO<WebInfoResponseDTO>
+            var result = new PageDTO<WebInfoResponseDTO>
             {
                 Items = items,
                 TotalItems = totalItems,
                 PageNumber = pageNumber,
                 PageSize = pageSize
             };
+
+            _cache.Set(cacheKey, result, TimeSpan.FromMinutes(30));
+
+            return result;
         }
+
         public async Task<WebInfoResponseDTO?> GetWebInfoByIdAsync(int id)
         {
+            var cacheKey = _cacheService.DetailKey(id);
+
+            if (_cache.TryGetValue(cacheKey, out WebInfoResponseDTO? cachedResult))
+            {
+                return cachedResult;
+            }
+
             var webInfo = await _context.TrangThongTins.AsNoTracking()
                 .FirstOrDefaultAsync(x =>
                     x.MaTTTrang == id &&
@@ -83,7 +108,7 @@ namespace travel_recommendation_and_booking_system.Services
                 return null;
             }
 
-            return new WebInfoResponseDTO
+            var result = new WebInfoResponseDTO
             {
                 MaTTTrang = webInfo.MaTTTrang,
                 Key = webInfo.Key,
@@ -91,7 +116,12 @@ namespace travel_recommendation_and_booking_system.Services
                 Trangthai = webInfo.Trangthai ?? false,
                 NgayCapNhat = webInfo.NgayCapNhat ?? DateTime.Now
             };
+
+            _cache.Set(cacheKey, result, TimeSpan.FromHours(6));
+
+            return result;
         }
+
         public async Task<WebInfoResponseDTO> UpdateAsync(int maTTTrang, UpdateWebInfoDTO webinfo)
         {
             var webInfo = await _context.TrangThongTins
@@ -104,10 +134,8 @@ namespace travel_recommendation_and_booking_system.Services
                 return null ?? new WebInfoResponseDTO();
             }
 
-
             if (webInfo.Key == "logo_url")
             {
-
                 if (webinfo.Logo != null)
                 {
                     if (!IsImage(webinfo.Logo))
@@ -140,11 +168,9 @@ namespace travel_recommendation_and_booking_system.Services
 
                     webInfo.Noidung = $"/img/Logo_Trang/{fileName}";
                 }
-
             }
             else
             {
-
                 if (string.IsNullOrWhiteSpace(webinfo.NoiDung))
                 {
                     throw new Exception("Nội dung không được để trống");
@@ -157,6 +183,9 @@ namespace travel_recommendation_and_booking_system.Services
 
             await _context.SaveChangesAsync();
 
+            _cacheService.InvalidateWebInfoDetail(maTTTrang, webInfo.Key);
+            _cacheService.InvalidateLists();
+
             return new WebInfoResponseDTO
             {
                 MaTTTrang = webInfo.MaTTTrang,
@@ -166,6 +195,7 @@ namespace travel_recommendation_and_booking_system.Services
                 NgayCapNhat = webInfo.NgayCapNhat ?? DateTime.Now
             };
         }
+
         public async Task<bool> UpdateStatusAsync(int maTTTrang, bool trangthai)
         {
             var webInfo = await _context.TrangThongTins
@@ -183,8 +213,12 @@ namespace travel_recommendation_and_booking_system.Services
 
             await _context.SaveChangesAsync();
 
+            _cacheService.InvalidateWebInfoDetail(maTTTrang, webInfo.Key);
+            _cacheService.InvalidateLists();
+
             return true;
         }
+
         public async Task<bool> ClearContentAsync(int maTTTrang)
         {
             var webInfo = await _context.TrangThongTins
@@ -197,11 +231,23 @@ namespace travel_recommendation_and_booking_system.Services
             webInfo.NgayCapNhat = DateTime.Now;
 
             await _context.SaveChangesAsync();
+
+            _cacheService.InvalidateWebInfoDetail(maTTTrang, webInfo.Key);
+            _cacheService.InvalidateLists();
+
             return true;
         }
+
         public async Task<Dictionary<string, string?>> GetWebInfoSettingsClientAsync()
         {
-            return await _context.TrangThongTins
+            var cacheKey = _cacheService.SettingsKey();
+
+            if (_cache.TryGetValue(cacheKey, out Dictionary<string, string?>? cachedResult))
+            {
+                return cachedResult!;
+            }
+
+            var result = await _context.TrangThongTins
                 .Where(x =>
                     x.NgayXoa == null &&
                     (x.Trangthai ?? true))
@@ -209,7 +255,12 @@ namespace travel_recommendation_and_booking_system.Services
                     x => x.Key,
                     x => x.Noidung
                 );
+
+            _cache.Set(cacheKey, result, TimeSpan.FromHours(6));
+
+            return result;
         }
+
         private bool IsImage(IFormFile file)
         {
             string[] allowedExtensions =

@@ -1,6 +1,6 @@
-﻿
-using DTOs.Page;
+﻿using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Banner;
 using travel_recommendation_and_booking_system.Interfaces;
@@ -12,14 +12,31 @@ namespace travel_recommendation_and_booking_system.Services
     {
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment;
-        public BannerService(AppDbContext context, IWebHostEnvironment webHostEnvironment)
+        private readonly IMemoryCache _cache;
+        private readonly IBannerCacheService _cacheService;
+
+        public BannerService(
+            AppDbContext context,
+            IWebHostEnvironment webHostEnvironment,
+            IMemoryCache cache,
+            IBannerCacheService cacheService)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
+            _cache = cache;
+            _cacheService = cacheService;
         }
+
         public async Task<BannerResponseDTO?> GetBanner()
         {
-            return await _context.Banners
+            var cacheKey = _cacheService.ActiveKey();
+
+            if (_cache.TryGetValue(cacheKey, out BannerResponseDTO? cachedResult))
+            {
+                return cachedResult;
+            }
+
+            var result = await _context.Banners
                 .Where(x => x.NgayXoa == null && x.TrangThai)
                 .OrderBy(x => x.NgayTao)
                 .Select(n => new BannerResponseDTO
@@ -34,7 +51,12 @@ namespace travel_recommendation_and_booking_system.Services
                     NgayXoa = n.NgayXoa
                 })
                 .FirstOrDefaultAsync();
+
+            _cache.Set(cacheKey, result, TimeSpan.FromHours(6));
+
+            return result;
         }
+
         public async Task<bool> CreateBannerAsync(BannerDTO banner)
         {
             try
@@ -52,7 +74,6 @@ namespace travel_recommendation_and_booking_system.Services
                     throw new Exception("File tải lên không phải là định dạng ảnh hợp lệ.");
                 }
 
-                // Tạo tên file an toàn
                 string originalFileName = Path.GetFileName(banner.DuongDanAnh.FileName);
                 originalFileName = originalFileName.Replace(" ", "_");
                 string timeStamp = DateTime.Now.ToString("yyyyMMddHHmmssfff");
@@ -83,6 +104,10 @@ namespace travel_recommendation_and_booking_system.Services
                 };
                 _context.Banners.Add(newbanner);
                 await _context.SaveChangesAsync();
+
+                _cacheService.InvalidateLists();
+                _cacheService.InvalidateActive();
+
                 return true;
             }
             catch (Exception ex)
@@ -141,6 +166,11 @@ namespace travel_recommendation_and_booking_system.Services
 
                 _context.Banners.Update(banner);
                 await _context.SaveChangesAsync();
+
+                _cacheService.InvalidateBannerDetail(id);
+                _cacheService.InvalidateLists();
+                _cacheService.InvalidateActive();
+
                 return true;
             }
             catch (Exception ex)
@@ -163,6 +193,11 @@ namespace travel_recommendation_and_booking_system.Services
 
             _context.Banners.Update(banner);
             await _context.SaveChangesAsync();
+
+            _cacheService.InvalidateBannerDetail(id);
+            _cacheService.InvalidateLists();
+            _cacheService.InvalidateActive();
+
             return true;
         }
 
@@ -175,6 +210,14 @@ namespace travel_recommendation_and_booking_system.Services
             if (pageSize < 1)
             {
                 pageSize = 10;
+            }
+
+            var searchKey = $"{pageNumber}_{pageSize}_{key ?? ""}_{status?.ToString() ?? "null"}";
+            var cacheKey = _cacheService.ListKey(searchKey);
+
+            if (_cache.TryGetValue(cacheKey, out PageDTO<BannerResponseDTO>? cachedResult))
+            {
+                return cachedResult!;
             }
 
             var query = _context.Banners.AsNoTracking().Where(b => b.NgayXoa == null);
@@ -204,13 +247,18 @@ namespace travel_recommendation_and_booking_system.Services
                     NgayXoa = n.NgayXoa
                 })
                 .ToListAsync();
-            return new PageDTO<BannerResponseDTO>
+
+            var result = new PageDTO<BannerResponseDTO>
             {
                 Items = items,
                 TotalItems = totalItems,
                 PageNumber = pageNumber,
                 PageSize = pageSize
             };
+
+            _cache.Set(cacheKey, result, TimeSpan.FromMinutes(30));
+
+            return result;
         }
     }
 }

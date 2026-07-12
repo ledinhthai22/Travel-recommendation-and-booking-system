@@ -41,9 +41,7 @@ namespace Services
             _tourCache = tourCache;
         }
 
-        /// <summary>
-        /// Lấy slug hiện tại của tour để vô hiệu hóa đúng cache chi tiết theo slug.
-        /// </summary>
+
         private async Task<string?> GetTourSlugAsync(int tourId)
         {
             return await _context.Tours
@@ -53,11 +51,7 @@ namespace Services
                 .FirstOrDefaultAsync();
         }
 
-        /// <summary>
-        /// Chuyến khởi hành ảnh hưởng tới GiaTu, SoChoDaDat, LuotDat (dùng trong list
-        /// most-booked/related) và danh sách chuyến hiển thị ở trang chi tiết tour,
-        /// nên cần vô hiệu hóa cả cache chi tiết lẫn cache danh sách.
-        /// </summary>
+
         private async Task InvalidateTourCacheAsync(int tourId)
         {
             var slug = await GetTourSlugAsync(tourId);
@@ -142,23 +136,20 @@ namespace Services
             }
         }
 
-        private async Task ValidateHDVAvailability(int maHDV, DateTime ngayKhoiHanh, int? excludeMaChuyen = null)
+        private async Task ValidateHDVAvailability(int maHDV, DateTime ngayKhoiHanh, DateTime ngayKetThuc, int? excludeMaChuyen = null)
         {
-            var thang = ngayKhoiHanh.Month;
-            var nam = ngayKhoiHanh.Year;
-
             var query = _context.ChuyenKhoiHanhs
                 .Where(c => c.MaHDV == maHDV
                          && c.NgayXoa == null
-                         && c.NgayKhoiHanh.Month == thang
-                         && c.NgayKhoiHanh.Year == nam);
+                         && c.NgayKhoiHanh < ngayKetThuc
+                         && c.NgayKetThuc > ngayKhoiHanh); // overlap logic
 
             if (excludeMaChuyen.HasValue)
                 query = query.Where(c => c.MaChuyen != excludeMaChuyen.Value);
 
             var daCoChuyen = await query.AnyAsync();
             if (daCoChuyen)
-                throw new Exception($"Hướng dẫn viên đã có chuyến khởi hành khác trong tháng {thang}/{nam}, không thể thêm.");
+                throw new Exception($"Hướng dẫn viên đã có chuyến khởi hành trùng thời gian ({ngayKhoiHanh:dd/MM/yyyy} - {ngayKetThuc:dd/MM/yyyy}), không thể thêm.");
         }
 
         private async Task ValidateDuplicateDepartureDate(DepartureDTO departure, int? excludeMaChuyen = null)
@@ -284,7 +275,7 @@ namespace Services
         }
 
 
-        public async Task<bool> AddDepartureFullAsync(DepartureFullDTO dto) // kiểm tra lại HDV có đang trống trong tháng đó không mới  được thêm vào hướng dẫn chuyến khởi hành
+        public async Task<bool> AddDepartureFullAsync(DepartureFullDTO dto)
         {
             var dep = dto.ChuyenKhoiHanh;
 
@@ -293,9 +284,14 @@ namespace Services
 
             if (dep.NgayKhoiHanh.Date < DateTime.Today)
                 throw new Exception("Ngày khởi hành không được là ngày trong quá khứ.");
-            var getUserId = _currentUserService.GetUserId();
+
             ValidateSeats(dep);
-            await ValidateHDVAvailability(getUserId, dep.NgayKhoiHanh);
+
+          
+            if (dep.MaHDV.HasValue && dep.MaHDV.Value > 0)
+            {
+                await ValidateHDVAvailability(dep.MaHDV.Value, dep.NgayKhoiHanh, dep.NgayKetThuc);
+            }
 
             await ValidateDuplicateDepartureDate(dep);
 
@@ -401,22 +397,20 @@ namespace Services
                 var dep = dto.ChuyenKhoiHanh;
                 var tourId = chuyen.MaTour;
 
-
                 if (dep.NgayKhoiHanh >= dep.NgayKetThuc)
                     throw new Exception("Ngày khởi hành phải nhỏ hơn ngày kết thúc.");
 
                 if (DateTime.Now >= dep.NgayKhoiHanh)
                     throw new Exception("Chuyến đã khởi hành hoặc đã qua, không được chỉnh sửa.");
 
-
                 ValidateSeats(dep, chuyen.SoChoDaDat);
+
+                if (dep.MaHDV.HasValue && dep.MaHDV.Value > 0)
+                {
+                    await ValidateHDVAvailability(dep.MaHDV.Value, dep.NgayKhoiHanh, dep.NgayKetThuc, maChuyen);
+                }
+
                 await ValidateDuplicateDepartureDate(dep, maChuyen);
-                var getUserID = _currentUserService.GetUserId();
-                await ValidateHDVAvailability(getUserID, dep.NgayKhoiHanh, maChuyen);
-
-
-                await ValidateDuplicateDepartureDate(dep, maChuyen);
-
 
                 var tenPhuongTien = await GetTenPhuongTienAsync(dep.MaPhuongTien);
                 var trongNuoc = ParseTrongNuocFromCode(chuyen.MaChuyenCode);
@@ -487,7 +481,6 @@ namespace Services
                         chuyen.SoChoToiDa
                     }
                 });
-
 
                 return new DepartureFullDTO
                 {

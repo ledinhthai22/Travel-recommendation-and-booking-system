@@ -207,7 +207,7 @@ namespace travel_recommendation_and_booking_system.Services
 
             var staff = await _context.NhanViens
                 .FirstOrDefaultAsync(n =>
-                    n.Email == login.Email &&
+                    n.Email == login.Email && n.TrangThai != 0 &&
                     n.NgayXoa == null);
 
 

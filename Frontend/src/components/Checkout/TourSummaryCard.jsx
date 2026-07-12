@@ -1,11 +1,9 @@
-import React from "react";
-import { Bus, CreditCard, ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
+import { Bus, ChevronDown, ChevronUp } from "lucide-react";
 import { formatCurrency } from "~/Helper/FormatCurrency";
 
 const formatDate = (dateStr) => {
     if (!dateStr) return "";
-
     return new Date(dateStr).toLocaleDateString("vi-VN");
 };
 
@@ -13,70 +11,52 @@ export default function TourSummaryCard({
     bookingData,
     passengers,
     singleRoomCount,
-    onSubmit,
-    step,
-    setShowPaymentModal
+    onProceed,
+    step
 }) {
-    const adultPrice =
-        bookingData?.gia?.giaNguoiLon || 0;
-
-    const childPrice =
-        bookingData?.gia?.giaTreEm || 0;
-
-    const toddlerPrice =
-        bookingData?.gia?.giaEmBe || 0;
-
-    const singleRoomPrice =
-        bookingData?.gia?.phuThuPhongDon || 0;
     const [showTransport, setShowTransport] = useState(true);
     
+    // Lấy giá từ bookingData
+    const adultPrice = bookingData?.gia?.giaNguoiLon || 0;
+    const childPrice = bookingData?.gia?.giaTreEm || 0;
+    const toddlerPrice = bookingData?.gia?.giaEmBe || 0;
+    const singleRoomPrice = bookingData?.gia?.phuThuPhongDon || 0;
+    const totalPrice = bookingData?.totalPrice || 0;
 
     return (
         <div className="sticky top-24 mb-10">
-
-            {/* CARD THÔNG TIN */}
+            {/* CARD THÔNG TIN TOUR */}
             <div className="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
-
-                <h3 className="mb-5 text-2xl font-bold text-center">
+                <h3 className="mb-5 text-2xl font-bold text-center text-slate-800">
                     Tóm tắt đơn đặt tour
                 </h3>
 
-                {/* TOUR */}
+                {/* TOUR INFO */}
                 <div className="flex gap-4">
-
-
                     <div className="flex-1">
-                        <h4 className="text-[16px] font-semibold leading-7">
-                            {bookingData?.tenTour}
-                        </h4>
-
+                        <p className="mt-2 flex items-center gap-1 text-[14px] text-slate-500 leading-7">
+                           Tên Tour: <span className="font-bold text-slate-800"> {bookingData?.tenTour || "Không có tên tour"} </span>
+                        </p>
                         <p className="mt-2 flex items-center gap-1 text-sm text-slate-500">
-                           Mã chuyến: <span className="font-bold text-black">{bookingData?.maChuyenCode}</span> 
+                            Mã chuyến: <span className="font-bold text-slate-800">{bookingData?.maChuyenCode || "---"}</span>
                         </p>
                     </div>
                 </div>
 
+                {/* THÔNG TIN CHUYẾN ĐI */}
                 <div className="mt-5 border-t border-slate-200 pt-4 text-[13px]">
-
                     <button
                         type="button"
                         onClick={() => setShowTransport(!showTransport)}
-                        className="mb-4 flex w-full items-center justify-between"
+                        className="mb-4 flex w-full items-center justify-between hover:opacity-80 transition"
                     >
-                        <h4 className="font-semibold uppercase text-sky-500">
+                        <h4 className="font-semibold uppercase text-sky-500 text-[13px]">
                             Thông tin chuyến
                         </h4>
-
                         {showTransport ? (
-                            <ChevronUp
-                                size={18}
-                                className="text-slate-500"
-                            />
+                            <ChevronUp size={18} className="text-slate-500" />
                         ) : (
-                            <ChevronDown
-                                size={18}
-                                className="text-slate-500"
-                            />
+                            <ChevronDown size={18} className="text-slate-500" />
                         )}
                     </button>
 
@@ -84,17 +64,11 @@ export default function TourSummaryCard({
                         <>
                             {/* NGÀY ĐI */}
                             <div className="mb-5">
-
                                 <div className="mb-2 flex items-center justify-between">
                                     <span className="font-semibold text-slate-700">
-                                        Ngày đi:
-                                        {" "}
-                                        {formatDate(
-                                            bookingData?.ngayKhoiHanh
-                                        )}
+                                        Ngày đi: {formatDate(bookingData?.ngayKhoiHanh)}
                                     </span>
-
-                                    <span className="flex items-center gap-1 text-orange-500">
+                                    <span className="flex items-center gap-1 text-orange-500 text-sm">
                                         <Bus size={14} />
                                         Xe khách
                                     </span>
@@ -112,8 +86,8 @@ export default function TourSummaryCard({
                                 </div>
 
                                 <div className="flex justify-between text-[13px] text-slate-600">
-                                    <span>{bookingData?.diemKhoiHanh}</span>
-                                    <span>{bookingData?.diemDen}</span>
+                                    <span className="font-medium">{bookingData?.diemKhoiHanh || "---"}</span>
+                                    <span className="font-medium">{bookingData?.diemDen || "---"}</span>
                                 </div>
                             </div>
 
@@ -121,14 +95,9 @@ export default function TourSummaryCard({
                             <div>
                                 <div className="mb-2 flex items-center justify-between">
                                     <span className="font-semibold text-slate-700">
-                                        Ngày về:
-                                        {" "}
-                                        {formatDate(
-                                            bookingData?.ngayKetThuc
-                                        )}
+                                        Ngày về: {formatDate(bookingData?.ngayKetThuc)}
                                     </span>
-
-                                    <span className="flex items-center gap-1 text-orange-500">
+                                    <span className="flex items-center gap-1 text-orange-500 text-sm">
                                         <Bus size={14} />
                                         Xe khách
                                     </span>
@@ -146,126 +115,101 @@ export default function TourSummaryCard({
                                 </div>
 
                                 <div className="flex justify-between text-[13px] text-slate-600">
-                                    <span>{bookingData?.diemDen}</span>
-                                    <span>{bookingData?.diemKhoiHanh}</span>
+                                    <span className="font-medium">{bookingData?.diemDen || "---"}</span>
+                                    <span className="font-medium">{bookingData?.diemKhoiHanh || "---"}</span>
                                 </div>
                             </div>
                         </>
                     )}
-
                 </div>
 
-                {/* CHI PHÍ */}
+                {/* CHI PHÍ CHI TIẾT */}
                 <div className="mt-5 border-t border-slate-200 pt-4">
-
                     <h4 className="mb-4 font-semibold text-sky-500 uppercase text-[13px]">
                         Chi phí chi tiết
                     </h4>
 
                     <div className="space-y-3">
-
-                        <div className="grid grid-cols-3 text-[12px]">
-                            <span >Người lớn</span>
-
-                            <span className="text-center">
-                                {passengers.adults} x
-                            </span>
-
-                            <span className="text-right">
-                                {formatCurrency(adultPrice)}
-                            </span>
+                        {/* Người lớn */}
+                        <div className="grid grid-cols-3 text-[13px]">
+                            <span className="text-slate-600">Người lớn</span>
+                            <span className="text-center text-slate-600">{passengers.adults} x</span>
+                            <span className="text-right font-medium text-slate-800">{formatCurrency(adultPrice)}</span>
                         </div>
 
+                        {/* Trẻ em */}
                         {passengers.children > 0 && (
-                            <div className="grid grid-cols-3 text-[12px]">
-                                <span >Trẻ em</span>
-
-                                <span className="text-center">
-                                    {passengers.children} x
-                                </span>
-
-                                <span className="text-right">
-                                    {formatCurrency(childPrice)}
-                                </span>
+                            <div className="grid grid-cols-3 text-[13px]">
+                                <span className="text-slate-600">Trẻ em</span>
+                                <span className="text-center text-slate-600">{passengers.children} x</span>
+                                <span className="text-right font-medium text-slate-800">{formatCurrency(childPrice)}</span>
                             </div>
                         )}
 
+                        {/* Em bé */}
                         {passengers.toddlers > 0 && (
-                            <div className="grid grid-cols-3 text-[12px]">
-                                <span >Em bé</span>
-
-                                <span className="text-center">
-                                    {passengers.toddlers} x
-                                </span>
-
-                                <span className="text-right">
-                                    {formatCurrency(toddlerPrice)}
-                                </span>
+                            <div className="grid grid-cols-3 text-[13px]">
+                                <span className="text-slate-600">Em bé</span>
+                                <span className="text-center text-slate-600">{passengers.toddlers} x</span>
+                                <span className="text-right font-medium text-slate-800">{formatCurrency(toddlerPrice)}</span>
                             </div>
                         )}
 
-                        <div className="grid grid-cols-3 text-[12px]">
-                            <span >Phụ thu phòng</span>
-
-                            <span className="text-center">
-                                {singleRoomCount} x
-                            </span>
-
-                            <span className="text-right">
-                                {formatCurrency(singleRoomPrice)}
-                            </span>
-                        </div>
-
+                        {/* Phụ thu phòng đơn */}
+                        {singleRoomCount > 0 && (
+                            <div className="grid grid-cols-3 text-[13px]">
+                                <span className="text-slate-600">Phụ thu phòng</span>
+                                <span className="text-center text-slate-600">{singleRoomCount} x</span>
+                                <span className="text-right font-medium text-slate-800">{formatCurrency(singleRoomPrice)}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* CARD TỔNG TIỀN */}
-            <div className="mt-5   rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
-
+            <div className="mt-5 rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-                    <span className="text-[16px] font-bold">
-                        Tổng tiền :
+                    <span className="text-[16px] font-bold text-slate-800">
+                        Tổng tiền:
                     </span>
-
-                    <span className="text-[16px] font-bold text-red-500">
-                        {formatCurrency(
-                            bookingData?.totalPrice
-                        )}
+                    <span className="text-[18px] font-bold text-red-500">
+                        {formatCurrency(totalPrice)}
                     </span>
                 </div>
 
                 <button
-                    onClick={() => {
-                        if (step === 1) {
-                            onSubmit();
-                        } else {
-                            setShowPaymentModal(true);
-                        }
-                    }}
+                    onClick={onProceed}
                     className="
                         mx-auto
                         mt-4
                         block
+                        w-full
                         rounded-full
                         bg-sky-500
                         px-10
-                        py-2
-                        text-lg
+                        py-3
+                        text-base
                         font-bold
                         text-white
                         shadow-md
-                        transition
+                        shadow-sky-500/20
+                        transition-all
                         hover:bg-sky-600
+                        hover:shadow-sky-500/30
+                        active:scale-[0.98]
                     "
                 >
-                    {step === 1
-                        ? "Tiếp tục"
-                        : "Thanh Toán"}
+                    {step === 1 ? "Tiếp tục" : "Thanh Toán"}
                 </button>
-            </div>
 
+                {/* Ghi chú nhỏ */}
+                <p className="mt-3 text-center text-[11px] text-slate-400">
+                    {step === 1 
+                        ? "Vui lòng kiểm tra thông tin trước khi tiếp tục" 
+                        : "Nhấn thanh toán để hoàn tất đặt tour"}
+                </p>
+            </div>
         </div>
     );
 }
-

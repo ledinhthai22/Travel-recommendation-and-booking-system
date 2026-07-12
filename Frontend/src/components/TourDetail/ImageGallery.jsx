@@ -10,9 +10,15 @@ export function ImageGallery({ images = [] }) {
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(0);
 
-    const totalImages = images.length;
+    const sortedImages = [...images].sort((a, b) => {
+        if (a.anhChinh === true && b.anhChinh !== true) return -1;
+        if (a.anhChinh !== true && b.anhChinh === true) return 1;
+        return (a.soThuTu || 0) - (b.soThuTu || 0);
+    });
+
+    const totalImages = sortedImages.length;
     const MAX_THUMBNAILS = 5;
-    const visibleThumbnails = images.slice(0, MAX_THUMBNAILS);
+    const visibleThumbnails = sortedImages.slice(0, MAX_THUMBNAILS);
     const hasMoreImages = totalImages > MAX_THUMBNAILS;
     const isMultiple = totalImages > 1;
 
@@ -23,7 +29,6 @@ export function ImageGallery({ images = [] }) {
         const cleanBase = IMAGE_BASE_URL.endsWith("/") ? IMAGE_BASE_URL.slice(0, -1) : IMAGE_BASE_URL;
         return `${cleanBase}${cleanPath}`;
     };
-
 
     const handleKeyDown = useCallback((e) => {
         if (!lightboxOpen) return;
@@ -47,7 +52,7 @@ export function ImageGallery({ images = [] }) {
         setLightboxOpen(true);
     };
 
-    if (!images || !totalImages) {
+    if (!sortedImages || !totalImages) {
         return (
             <div className="w-full">
                 <div className="relative overflow-hidden rounded-2xl bg-slate-100 shadow-sm">
@@ -61,12 +66,11 @@ export function ImageGallery({ images = [] }) {
         );
     }
 
-    const currentImage = images[active] ?? images[0];
+    const currentImage = sortedImages[active] ?? sortedImages[0];
 
     return (
         <>
             <div className="w-full flex flex-col gap-3">
-
                 <div
                     className="relative overflow-hidden rounded-2xl bg-slate-100 shadow-sm group cursor-zoom-in"
                     onClick={() => openLightbox(active)}
@@ -106,7 +110,7 @@ export function ImageGallery({ images = [] }) {
                 {isMultiple && (
                     <div
                         className="grid gap-3 w-full"
-                        style={{ gridTemplateColumns: `repeat(${visibleThumbnails.length}, minmax(0, 1fr))` }}
+                        style={{ gridTemplateColumns: `repeat(${Math.min(visibleThumbnails.length, MAX_THUMBNAILS)}, minmax(0, 1fr))` }}
                     >
                         {visibleThumbnails.map((image, index) => {
                             const isLastVisible = index === MAX_THUMBNAILS - 1 && hasMoreImages;
@@ -142,13 +146,11 @@ export function ImageGallery({ images = [] }) {
                 )}
             </div>
 
-
             {lightboxOpen && (
                 <div
                     className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex flex-col"
                     onClick={() => setLightboxOpen(false)}
                 >
-
                     <div className="flex items-center justify-between px-6 py-4 shrink-0" onClick={e => e.stopPropagation()}>
                         <span className="text-white/70 text-sm font-medium">
                             {lightboxIndex + 1} / {totalImages}
@@ -173,7 +175,7 @@ export function ImageGallery({ images = [] }) {
                         </button>
 
                         <img
-                            src={getFullImageUrl(images[lightboxIndex]?.duongDanAnh)}
+                            src={getFullImageUrl(sortedImages[lightboxIndex]?.duongDanAnh)}
                             alt={`Ảnh ${lightboxIndex + 1}`}
                             className="max-h-[75vh] max-w-full object-contain rounded-xl select-none"
                             onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_IMAGE; }}
@@ -191,7 +193,7 @@ export function ImageGallery({ images = [] }) {
                         className="flex gap-2 px-6 py-4 overflow-x-auto shrink-0 justify-center"
                         onClick={e => e.stopPropagation()}
                     >
-                        {images.map((image, index) => (
+                        {sortedImages.map((image, index) => (
                             <button
                                 key={image.maAnhTour || image.duongDanAnh || index}
                                 onClick={() => setLightboxIndex(index)}

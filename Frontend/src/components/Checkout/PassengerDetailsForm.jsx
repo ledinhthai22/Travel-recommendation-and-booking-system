@@ -187,7 +187,6 @@ export default function PassengerDetailsForm({
             const p = details[key] || {};
             errors[key] = {};
 
-          
             const isFirstAdultAutoFilled = isValidAutoFill(key, p);
 
             if (!isFirstAdultAutoFilled) {
@@ -359,7 +358,6 @@ export default function PassengerDetailsForm({
 
                             <div className="space-y-6">
                                 {passengerList.map((passenger) => {
-                                    // ✅ Dùng helper thống nhất
                                     const isFirstAdultAutoFilled = isValidAutoFill(passenger.key, details[passenger.key]);
 
                                     return (

@@ -7,14 +7,12 @@ namespace travel_recommendation_and_booking_system.SignalR
         public override async Task OnConnectedAsync()
         {
             Console.WriteLine($"Connected: {Context.ConnectionId}");
-
             await base.OnConnectedAsync();
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             Console.WriteLine($"Disconnected: {Context.ConnectionId}");
-
             await base.OnDisconnectedAsync(exception);
         }
 
@@ -70,6 +68,7 @@ namespace travel_recommendation_and_booking_system.SignalR
                 "ADMIN_GROUP"
             );
         }
+
         public async Task JoinStaffGroup(string staffId)
         {
             Console.WriteLine($"JoinStaffGroup({staffId})");
@@ -83,6 +82,21 @@ namespace travel_recommendation_and_booking_system.SignalR
         {
             if (string.IsNullOrWhiteSpace(staffId)) return;
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"STAFF_{staffId}");
+        }
+
+        public async Task JoinGroup(string groupName)
+        {
+            Console.WriteLine($"JoinGroup({groupName})");
+            if (string.IsNullOrWhiteSpace(groupName)) return;
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+            await Clients.Caller.SendAsync("JoinedGroup", groupName);
+        }
+
+        public async Task LeaveGroup(string groupName)
+        {
+            if (string.IsNullOrWhiteSpace(groupName)) return;
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
         }
     }
 }

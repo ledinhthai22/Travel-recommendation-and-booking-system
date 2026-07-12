@@ -2,7 +2,8 @@ import React, {
     useState,
     useEffect,
     useCallback,
-    useMemo
+    useMemo,
+    useRef
 } from 'react';
 
 import CustomDataTable from '~/components/UI/Table/CustomDataTable';
@@ -38,15 +39,19 @@ export default function StaffManager() {
         action: null
     });
 
+    const fetchTimeoutRef = useRef(null);
+    const isClosingRef = useRef(false);
+
+    // Đồng bộ với backend: 1=Đang làm việc, 2=Nghỉ phép, 0=Nghỉ việc
     const statusLabels = {
-        2: "Đang làm việc",
-        1: "Nghỉ phép",
+        1: "Đang làm việc",
+        2: "Nghỉ phép",
         0: "Nghỉ việc"
     };
 
     const statusColors = {
-        2: "bg-green-100 text-green-700",
-        1: "bg-yellow-100 text-yellow-700",
+        1: "bg-green-100 text-green-700",
+        2: "bg-yellow-100 text-yellow-700",
         0: "bg-red-100 text-red-700"
     };
 
@@ -58,12 +63,10 @@ export default function StaffManager() {
     ) => {
         try {
             setLoading(true);
-
             const res = await getStaffApi(
                 1, 10000,
                 hoTen, email, soDienThoai, trangThai
             );
-
             setStaffs(res?.items || []);
         } catch (error) {
             toastError(getErrorMessage(error));
@@ -72,13 +75,26 @@ export default function StaffManager() {
         }
     }, []);
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            fetchStaffs(searchTerm, "", "", status || null);
+    // Debounce fetch để tránh gọi API quá nhiều
+    const debouncedFetchStaffs = useCallback(() => {
+        if (fetchTimeoutRef.current) {
+            clearTimeout(fetchTimeoutRef.current);
+        }
+        fetchTimeoutRef.current = setTimeout(() => {
+            const statusValue = status ? parseInt(status) : null;
+            fetchStaffs(searchTerm, "", "", statusValue);
+            fetchTimeoutRef.current = null;
         }, 100);
-
-        return () => clearTimeout(timer);
     }, [searchTerm, status, fetchStaffs]);
+
+    useEffect(() => {
+        debouncedFetchStaffs();
+        return () => {
+            if (fetchTimeoutRef.current) {
+                clearTimeout(fetchTimeoutRef.current);
+            }
+        };
+    }, [debouncedFetchStaffs]);
 
     const handleConfirm = async () => {
         try {
@@ -89,7 +105,6 @@ export default function StaffManager() {
             setConfirmOpen(false);
         }
     };
-
 
     const handleView = useCallback((row) => {
         setSelectedItem(row);
@@ -115,11 +130,37 @@ export default function StaffManager() {
             action: async () => {
                 await deleteStaffApi(row.maNguoiDung);
                 toastSuccess("Xóa thành công nhân viên", row.hoTen);
-                fetchStaffs();
+                // Refresh sau khi xóa
+                await debouncedFetchStaffs();
             }
         });
         setConfirmOpen(true);
-    }, [fetchStaffs]);
+    }, [debouncedFetchStaffs]);
+
+    // Hàm xử lý đóng modal chi tiết
+    const handleCloseView = useCallback(() => {
+        isClosingRef.current = true;
+        setOpenView(false);
+        setSelectedItem(null);
+        
+        // Delay refresh để modal kịp đóng
+        setTimeout(() => {
+            isClosingRef.current = false;
+            debouncedFetchStaffs();
+        }, 200);
+    }, [debouncedFetchStaffs]);
+
+    // Hàm xử lý đóng modal cập nhật
+    const handleCloseUpdate = useCallback(() => {
+        isClosingRef.current = true;
+        setOpenUpdate(false);
+        setSelectedItem(null);
+        
+        setTimeout(() => {
+            isClosingRef.current = false;
+            debouncedFetchStaffs();
+        }, 200);
+    }, [debouncedFetchStaffs]);
 
     const columns = useMemo(() => [
         {
@@ -207,7 +248,7 @@ export default function StaffManager() {
                 />
             )
         }
-    ], [handleView, handleEdit, handleDelete, handleResetPass, statusLabels, statusColors]);
+    ], [handleView, handleEdit, handleDelete, handleResetPass]);
 
     return (
         <div className="space-y-6 p-4">
@@ -225,8 +266,8 @@ export default function StaffManager() {
                         onChange: setStatus,
                         options: [
                             { value: "", label: "Tất cả" },
-                            { value: "2", label: "Đang làm việc" },
-                            { value: "1", label: "Nghỉ phép" },
+                            { value: "1", label: "Đang làm việc" },
+                            { value: "2", label: "Nghỉ phép" },
                             { value: "0", label: "Nghỉ việc" }
                         ],
                     }
@@ -258,27 +299,24 @@ export default function StaffManager() {
 
             <StaffDetailModal
                 isOpen={openView}
-                onClose={() => {
-                    setOpenView(false);
-                    setSelectedItem(null);
-                }}
+                onClose={handleCloseView}
                 staffId={selectedItem?.maNhanVien}
             />
 
             <CreateStaffModal
                 isOpen={openCreate}
-                onClose={() => setOpenCreate(false)}
-                onSuccess={() => fetchStaffs()}
+                onClose={() => {
+                    setOpenCreate(false);
+                    debouncedFetchStaffs();
+                }}
+                onSuccess={() => debouncedFetchStaffs()}
             />
 
             <StaffUpdateModal
                 isOpen={openUpdate}
                 staffId={selectedItem?.maNhanVien}
-                onClose={() => {
-                    setOpenUpdate(false);
-                    setSelectedItem(null);
-                }}
-                onSuccess={() => fetchStaffs()}
+                onClose={handleCloseUpdate}
+                onSuccess={() => debouncedFetchStaffs()}
             />
 
             <ResetPasswordModal
@@ -286,6 +324,7 @@ export default function StaffManager() {
                 onClose={() => {
                     setOpenResetPass(false);
                     setSelectedItem(null);
+                    debouncedFetchStaffs();
                 }}
                 staff={selectedItem}
             />

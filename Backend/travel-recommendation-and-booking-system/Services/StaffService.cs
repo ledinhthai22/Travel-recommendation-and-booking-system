@@ -18,7 +18,9 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly ILogService _logService;
         private readonly ICurrentUserService _currentUserService;
 
-        private static readonly int[] ValidStatuses = { 1, 2, 3, 4 };
+        // Đồng bộ với frontend: 1=Đang làm việc, 2=Nghỉ phép, 0=Nghỉ việc
+        private static readonly int[] ValidStatuses = { 0, 1, 2 };
+        private static readonly int[] ValidRoles = { 2, 3 };
 
         public StaffService(
             AppDbContext context,
@@ -31,8 +33,6 @@ namespace travel_recommendation_and_booking_system.Services
             _logService = logService;
             _currentUserService = currentUserService;
         }
-
-
 
         private static void ValidateEmail(string? email)
         {
@@ -64,10 +64,33 @@ namespace travel_recommendation_and_booking_system.Services
                 throw new Exception("CCCD phải gồm đúng 12 chữ số.");
         }
 
+        private static void ValidateNgaySinh(DateTime? ngaySinh)
+        {
+            if (!ngaySinh.HasValue)
+                throw new Exception("Ngày sinh không được để trống.");
+
+            var today = DateTime.UtcNow;
+            var minDate = new DateTime(1900, 1, 1);
+            var maxDate = today.AddYears(-18);
+
+            if (ngaySinh.Value < minDate)
+                throw new Exception("Ngày sinh phải từ năm 1900 trở lại đây.");
+
+            if (ngaySinh.Value > maxDate)
+                throw new Exception("Nhân viên phải từ 18 tuổi trở lên.");
+        }
+
         private static void ValidateTrangThai(int trangThai)
         {
+            // Đồng bộ: 1=Đang làm việc, 2=Nghỉ phép, 0=Nghỉ việc
             if (!ValidStatuses.Contains(trangThai))
-                throw new Exception($"Trạng thái không hợp lệ. Chỉ chấp nhận: {string.Join(", ", ValidStatuses)}.");
+                throw new Exception($"Trạng thái không hợp lệ. Chỉ chấp nhận: 0 (Nghỉ việc), 1 (Đang làm việc), 2 (Nghỉ phép).");
+        }
+
+        private static void ValidateMaVaiTro(int maVaiTro)
+        {
+            if (!ValidRoles.Contains(maVaiTro))
+                throw new Exception($"Vai trò không hợp lệ. Chỉ chấp nhận: 2 (Nhân viên), 3 (Hướng dẫn viên).");
         }
 
         private static void ValidateStaffDTO(StaffDTO staff)
@@ -78,13 +101,18 @@ namespace travel_recommendation_and_booking_system.Services
             ValidateEmail(staff.Email);
             ValidateSoDienThoai(staff.SoDienThoai);
             ValidateCccd(staff.Cccd);
+            ValidateNgaySinh(staff.NgaySinh);
 
             if (staff.TrangThai.HasValue)
                 ValidateTrangThai(staff.TrangThai.Value);
+
+            ValidateMaVaiTro(staff.MaVaiTro);
         }
 
         private static void ValidateImage(IFormFile file)
         {
+            if (file == null) return;
+
             string[] allowedExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
             string extension = Path.GetExtension(file.FileName).ToLower();
 
@@ -95,8 +123,6 @@ namespace travel_recommendation_and_booking_system.Services
                 throw new Exception("Ảnh phải nhỏ hơn 2MB.");
         }
 
-
-
         private async Task<string> SaveImageAsync(IFormFile file, int maNhanVien, string hoTen)
         {
             string folderPath = Path.Combine(_environment.WebRootPath, "img", "staff");
@@ -104,7 +130,6 @@ namespace travel_recommendation_and_booking_system.Services
                 Directory.CreateDirectory(folderPath);
 
             string extension = Path.GetExtension(file.FileName).ToLower();
-
 
             var safeName = Regex.Replace(hoTen.Trim(), @"[^a-zA-Z0-9]", "_");
 
@@ -130,7 +155,6 @@ namespace travel_recommendation_and_booking_system.Services
                 File.Delete(filePath);
         }
 
-
         public async Task<StaffResponseDTO?> GetStaffMeAsync(int maNhanVien)
         {
             var staff = await _context.NhanViens
@@ -146,28 +170,29 @@ namespace travel_recommendation_and_booking_system.Services
                     DiaChi = n.DiaChi,
                     TrangThai = n.TrangThai,
                     MaVaiTro = n.MaVaiTro,
-
                 })
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
             return staff;
         }
-        public async Task<List<StaffDTO>> GetTourGuiDe(DateTime ngayKhoiHanh, int? excludeMaChuyen = null)
-        {
-            var thang = ngayKhoiHanh.Month;
-            var nam = ngayKhoiHanh.Year;
 
-            var maHDVDaCoChuyen = _context.ChuyenKhoiHanhs
+        public async Task<List<StaffDTO>> GetTourGuiDe(DateTime ngayKhoiHanh, DateTime ngayKetThuc, int? excludeMaChuyen = null)
+        {
+            var maHDVDaCoChuyen = await _context.ChuyenKhoiHanhs
                 .Where(c => c.NgayXoa == null
-                         && c.NgayKhoiHanh.Month == thang
-                         && c.NgayKhoiHanh.Year == nam
+                         && c.MaHDV.HasValue
+                         && c.NgayKhoiHanh < ngayKetThuc
+                         && c.NgayKetThuc > ngayKhoiHanh
                          && (!excludeMaChuyen.HasValue || c.MaChuyen != excludeMaChuyen.Value))
-                .Select(c => c.MaHDV);
+                .Select(c => c.MaHDV)
+                .Distinct()
+                .ToListAsync();
 
             return await _context.NhanViens
                 .Where(n => n.NgayXoa == null
                          && n.MaVaiTro == 3
+                         && n.TrangThai == 1
                          && !maHDVDaCoChuyen.Contains(n.MaNhanVien))
                 .OrderBy(n => n.HoTen)
                 .Select(n => new StaffDTO
@@ -199,7 +224,7 @@ namespace travel_recommendation_and_booking_system.Services
                 );
             }
 
-            if (filter != null && filter.TrangThai > 0)
+            if (filter != null && filter.TrangThai >= 0)
                 query = query.Where(x => x.TrangThai == filter.TrangThai);
 
             int totalItems = await query.CountAsync();
@@ -226,8 +251,6 @@ namespace travel_recommendation_and_booking_system.Services
                     NgayTao = x.NgayTao
                 })
                 .ToListAsync();
-
-
 
             return new PageDTO<StaffResponseDTO>
             {
@@ -264,11 +287,8 @@ namespace travel_recommendation_and_booking_system.Services
                 })
                 .FirstOrDefaultAsync();
 
-
             return result;
         }
-
-
 
         public async Task<StaffResponseDTO> CreateAsync(StaffDTO staff)
         {
@@ -288,6 +308,10 @@ namespace travel_recommendation_and_booking_system.Services
                 ));
             if (isDuplicate)
                 throw new Exception("Email, số điện thoại hoặc CCCD đã tồn tại.");
+
+            var roleExists = await _context.VaiTros.AnyAsync(v => v.MaVaiTro == staff.MaVaiTro);
+            if (!roleExists)
+                throw new Exception("Vai trò không tồn tại.");
 
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
@@ -317,7 +341,8 @@ namespace travel_recommendation_and_booking_system.Services
                 }
 
                 await transaction.CommitAsync();
-                var currentAccount = _currentUserService.GetUserId() == 1? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
+
+                var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NhanVien;
 
                 await _logService.LoggingAsync(new LogDTO
                 {
@@ -374,7 +399,6 @@ namespace travel_recommendation_and_booking_system.Services
             if (staff.DuongDanAnh != null)
                 ValidateImage(staff.DuongDanAnh);
 
-            // FIX: thêm check NgayXoa == null
             var entity = await _context.NhanViens
                 .FirstOrDefaultAsync(x => x.MaNhanVien == id && x.NgayXoa == null);
 
@@ -390,6 +414,10 @@ namespace travel_recommendation_and_booking_system.Services
                 ));
             if (isDuplicate)
                 throw new Exception("Email, số điện thoại hoặc CCCD đã tồn tại.");
+
+            var roleExists = await _context.VaiTros.AnyAsync(v => v.MaVaiTro == staff.MaVaiTro);
+            if (!roleExists)
+                throw new Exception("Vai trò không tồn tại.");
 
             var oldData = new
             {
@@ -435,10 +463,10 @@ namespace travel_recommendation_and_booking_system.Services
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-
                 if (oldImagePath != null)
                     DeletePhysicalImage(oldImagePath);
-                var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
+
+                var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NhanVien;
 
                 await _logService.LoggingAsync(new LogDTO
                 {
@@ -494,15 +522,14 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
-
             var entity = await _context.NhanViens
                 .FirstOrDefaultAsync(x => x.MaNhanVien == id && x.NgayXoa == null);
 
             if (entity == null)
                 throw new Exception("Không tìm thấy nhân viên.");
 
-            if (entity.TrangThai == 2 || entity.TrangThai == 3)
-                throw new Exception("Không xóa được nhân viên vì còn đang làm việc.");
+            if (entity.TrangThai == 1)
+                throw new Exception("Không thể xóa nhân viên đang làm việc. Vui lòng chuyển trạng thái sang Nghỉ việc trước.");
 
             var oldData = new
             {
@@ -515,7 +542,9 @@ namespace travel_recommendation_and_booking_system.Services
 
             entity.NgayXoa = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
+
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NhanVien;
+
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan = currentAccount,
@@ -535,7 +564,6 @@ namespace travel_recommendation_and_booking_system.Services
         {
             ValidateTrangThai(trangThai);
 
-
             var staff = await _context.NhanViens
                 .FirstOrDefaultAsync(x => x.MaNhanVien == maNhanVien && x.NgayXoa == null);
 
@@ -547,8 +575,10 @@ namespace travel_recommendation_and_booking_system.Services
             staff.TrangThai = trangThai;
             staff.NgayCapNhat = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+
             var maTaiKhoan = _currentUserService.GetUserId();
-            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NhanVien;
+
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan = currentAccount,
@@ -581,7 +611,9 @@ namespace travel_recommendation_and_booking_system.Services
             staff.MatKhau = BCrypt.Net.BCrypt.HashPassword(newPassword);
             staff.NgayCapNhat = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NguoiDung;
+
+            var currentAccount = _currentUserService.GetUserId() == 1 ? AccountTypeDTO.QuanTriVien : AccountTypeDTO.NhanVien;
+
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan = currentAccount,

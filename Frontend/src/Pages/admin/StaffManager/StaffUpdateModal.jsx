@@ -27,8 +27,8 @@ export default function UpdateStaffModal({
         duongDanAnh: null,
         diaChi: "",
         cccd: "",
-        ngaySinh: "", // Nhận chuỗi dạng "YYYY-MM-DD" từ API
-        trangThai: 2,
+        ngaySinh: "",
+        trangThai: 1, // 1=Đang làm việc
         maVaiTro: 2
     });
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -47,7 +47,6 @@ export default function UpdateStaffModal({
         const fetchData = async () => {
             try {
                 setLoading(true);
-
                 const res = await getStaffByIdApi(staffId);
 
                 setForm({
@@ -57,9 +56,8 @@ export default function UpdateStaffModal({
                     gioiTinh: res.gioiTinh ?? true,
                     diaChi: res.diaChi || "",
                     cccd: res.cccd || "",
-                
                     ngaySinh: res.ngaySinh ? res.ngaySinh.split("T")[0] : "",
-                    trangThai: res.trangThai ?? 2,
+                    trangThai: res.trangThai ?? 1,
                     maVaiTro: res.maVaiTro ?? 2,
                     duongDanAnh: null
                 });
@@ -129,7 +127,6 @@ export default function UpdateStaffModal({
             newErrors.email = "Vui lòng nhập email";
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
         if (form.email && !emailRegex.test(form.email))
             newErrors.email = "Email không hợp lệ";
 
@@ -137,12 +134,10 @@ export default function UpdateStaffModal({
             newErrors.cccd = "Vui lòng nhập CCCD";
 
         const cccdRegex = /^\d{12}$/;
-
         if (form.cccd && !cccdRegex.test(form.cccd))
             newErrors.cccd = "CCCD phải gồm 12 số";
 
         const phoneRegex = /^0\d{9}$/;
-
         if (!phoneRegex.test(form.soDienThoai))
             newErrors.soDienThoai = "Số điện thoại không hợp lệ";
 
@@ -153,7 +148,6 @@ export default function UpdateStaffModal({
             newErrors.ngaySinh = "Vui lòng chọn ngày sinh";
 
         setErrors(newErrors);
-
         return Object.keys(newErrors).length === 0;
     };
 
@@ -180,7 +174,7 @@ export default function UpdateStaffModal({
 
             await updateStaffApi(staffId, formData);
             toastSuccess("Cập nhật thông tin nhân viên thành công");
-            onSuccess?.();
+            await onSuccess?.();
             onClose();
         } catch (error) {
             toastError(getErrorMessage(error));
@@ -290,8 +284,6 @@ export default function UpdateStaffModal({
                         disabled={loading}
                     />
 
-
-
                     <Dropdown
                         label="Chức danh"
                         placeholder="Vai trò"
@@ -304,7 +296,7 @@ export default function UpdateStaffModal({
                         disabled={loading}
                     />
                 </div>
-                <div className="mt-2">
+                <div className="mt-5">
                     <Dropdown
                         label="Trạng thái"
                         placeholder="Trạng thái"
@@ -320,8 +312,6 @@ export default function UpdateStaffModal({
                 </div>
 
                 <div className="flex justify-end gap-3 mt-8">
-
-
                     <button
                         onClick={handleConfirmUpdate}
                         disabled={loading}

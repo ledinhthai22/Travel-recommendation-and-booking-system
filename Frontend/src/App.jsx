@@ -26,7 +26,6 @@ import {
     SearchPage
 } from './Pages/Client';
 
-
 import {
     UserManager,
     TourManager,
@@ -101,7 +100,7 @@ function App() {
                         </Route>
                     </Route>
 
-                    {/* ── Admin routes (role 1 & 2) — index tự quyết định nội dung theo role ── */}
+                    {/* ── Admin routes (role 1 & 2) ── */}
                     <Route element={<ProtectedRoute allowedRoles={['1', '2']} />}>
                         <Route path="/Quan-ly" element={<AdminLayout />}>
                             <Route index element={<AdminIndexPage />} />
@@ -130,7 +129,6 @@ function App() {
                             <Route path="Tai-khoan" element={<UserManager />} />
                             <Route path="Newletter" element={<NewlettersManager />} />
                             <Route path="Banner" element={<BannerManager />} />
-
                             <Route path="Uu-Dai" element={<PromotionManager />} />
                             <Route path="Thong-tin-trang" element={<Webinfo />} />
                             <Route path="Hoat-dong-he-thong" element={<ActivityLogManager />} />

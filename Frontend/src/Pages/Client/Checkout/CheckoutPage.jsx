@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, CreditCard, Banknote } from "lucide-react";
+import { X, CreditCard, Banknote, AlertCircle } from "lucide-react";
 import CheckoutStep from "~/components/Checkout/CheckoutStep";
 import ContactForm from "~/components/Checkout/ContactForm";
 import PassengerForm from "~/components/Checkout/PassengerForm";
@@ -24,19 +24,15 @@ function formatDate(dateString) {
 }
 
 function calcDaysUntilDeparture(ngayKhoiHanh) {
-    if (!ngayKhoiHanh) return 0; // Không có ngày thì coi như sát giờ/không hợp lệ
-
+    if (!ngayKhoiHanh) return 0;
     const departure = new Date(ngayKhoiHanh);
     const today = new Date();
-
-    // Đưa cả 2 về cùng mốc 0h00 để tính số ngày trọn vẹn
     departure.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
-
     const diffTime = departure.getTime() - today.getTime();
-    // Dùng Math.ceil để đảm bảo nếu còn 3.1 ngày thì vẫn tính là sang ngày thứ 4
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
+
 export default function CheckoutPage() {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -59,8 +55,9 @@ export default function CheckoutPage() {
     const [txnRef, setTxnRef] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [activeTab, setActiveTab] = useState('me');
+    const [showProfileWarning, setShowProfileWarning] = useState(false);
+    const [profileMissingFields, setProfileMissingFields] = useState([]);
 
-    // Load booking data from sessionStorage
     useEffect(() => {
         const data = sessionStorage.getItem("bookingData");
         if (data) {
@@ -70,7 +67,6 @@ export default function CheckoutPage() {
         }
     }, []);
 
-    // Cleanup single rooms khi số hành khách thay đổi
     useEffect(() => {
         setSingleRooms((prev) => {
             const next = {};
@@ -87,7 +83,6 @@ export default function CheckoutPage() {
         });
     }, [passengers]);
 
-    // Tự động xóa giữ chỗ khi rời khỏi trang
     useEffect(() => {
         return () => {
             if (holdId) {
@@ -99,10 +94,63 @@ export default function CheckoutPage() {
         };
     }, [holdId]);
 
-    // Reset paymentMethod về VNPAY mỗi lần mở modal
-    const handleOpenPaymentModal = () => {
-        setPaymentMethod(PAYMENT_METHOD.VNPAY);
-        setShowPaymentModal(true);
+    const checkProfileComplete = () => {
+        const missing = [];
+        if (!contact.fullName || contact.fullName.trim() === '') {
+            missing.push('Họ tên');
+        }
+        if (!contact.phone || contact.phone.trim() === '') {
+            missing.push('Số điện thoại');
+        }
+        if (!contact.email || contact.email.trim() === '') {
+            missing.push('Email');
+        }
+        if (!contact.address || contact.address.trim() === '') {
+            missing.push('Địa chỉ');
+        }
+        return missing;
+    };
+
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        if (tab === 'other') {
+            setContactErrors({});
+        } else if (tab === 'me') {
+            setContactErrors({});
+        }
+    };
+
+    const handleContactChange = (e) => {
+        const { name, value } = e.target;
+        setContact((prev) => ({ ...prev, [name]: value }));
+        if (contactErrors[name]) {
+            setContactErrors((prev) => ({ ...prev, [name]: undefined }));
+        }
+    };
+
+    const handleProceed = () => {
+        if (activeTab === 'me' && step === 1) {
+            const missingFields = checkProfileComplete();
+            if (missingFields.length > 0) {
+                setProfileMissingFields(missingFields);
+                setShowProfileWarning(true);
+                return;
+            }
+        }
+
+        if (step === 1) {
+            if (validate()) {
+                onSubmit();
+            }
+        } else if (step === 2) {
+            setPaymentMethod(PAYMENT_METHOD.VNPAY);
+            setShowPaymentModal(true);
+        }
+    };
+
+    const handleGoToProfile = () => {
+        setShowProfileWarning(false);
+        navigate("/Thong-Tin-Ca-Nhan", { state: { activeTab: "profile" } });
     };
 
     const singleRoomCount = useMemo(
@@ -136,7 +184,6 @@ export default function CheckoutPage() {
         const contactErr = {};
         const passengerErr = {};
 
-        // Validate contact
         if (!contact.fullName.trim()) contactErr.fullName = "Vui lòng nhập họ tên";
         if (!contact.phone.trim()) contactErr.phone = "Vui lòng nhập số điện thoại";
         else if (!/^0\d{9}$/.test(contact.phone)) contactErr.phone = "Số điện thoại không hợp lệ";
@@ -148,8 +195,6 @@ export default function CheckoutPage() {
             const p = passengerDetails[key] ?? {};
             const err = {};
 
-            // ✅ Chỉ skip validate khi auto-fill THỰC SỰ đầy đủ 
-            // (có cả fullName lẫn dob thật, không chỉ dựa vào tab đang chọn)
             const isFirstAdultAutoFilled = key === 'adults-0' &&
                 activeTab === 'me' &&
                 p.isAutoFilled === true &&
@@ -168,7 +213,6 @@ export default function CheckoutPage() {
             }
         };
 
-        // Validate tất cả hành khách
         for (let i = 0; i < passengers.adults; i++) checkPassenger(`adults-${i}`);
         for (let i = 0; i < passengers.children; i++) checkPassenger(`children-${i}`);
         for (let i = 0; i < passengers.toddlers; i++) checkPassenger(`toddlers-${i}`);
@@ -217,7 +261,7 @@ export default function CheckoutPage() {
         phuongThucThanhToan: paymentMethod,
     });
 
-    const handleSubmit = async () => {
+    const onSubmit = async () => {
         if (!validate()) return;
         try {
             const storedUser = JSON.parse(localStorage.getItem("user"));
@@ -258,7 +302,6 @@ export default function CheckoutPage() {
         }
         setIsProcessing(true);
 
-
         if (paymentMethod === PAYMENT_METHOD.TIEN_MAT || paymentMethod === PAYMENT_METHOD.CHUYEN_KHOAN) {
             try {
                 const storedUser = JSON.parse(localStorage.getItem("user"));
@@ -274,7 +317,6 @@ export default function CheckoutPage() {
             return;
         }
 
-        // VNPAY
         if (paymentMethod === PAYMENT_METHOD.VNPAY) {
             setVnpayLoading(true);
             const paymentPayload = {
@@ -332,16 +374,13 @@ export default function CheckoutPage() {
                             <>
                                 <ContactForm
                                     contact={contact}
-                                    onChange={(e) => {
-                                        const { name, value } = e.target;
-                                        setContact((prev) => ({ ...prev, [name]: value }));
-                                    }}
+                                    onChange={handleContactChange}
                                     onTabChange={(newContactData) => {
                                         setContact(newContactData);
+                                        setContactErrors({});
                                     }}
                                     errors={contactErrors}
-                                    // Thêm props để nhận và cập nhật activeTab
-                                    onActiveTabChange={setActiveTab}
+                                    onActiveTabChange={handleTabChange}
                                 />
                                 <PassengerForm
                                     passengers={passengers}
@@ -360,7 +399,7 @@ export default function CheckoutPage() {
                                     setDetails={setPassengerDetails}
                                     errors={passengerErrors}
                                     contact={contact}
-                                    activeTab={activeTab} // Thêm prop này
+                                    activeTab={activeTab}
                                 />
                                 <div className="rounded-3xl bg-white p-6 shadow-sm">
                                     <h2 className="mb-4 text-xl font-bold text-slate-900">Mã ưu đãi</h2>
@@ -489,12 +528,19 @@ export default function CheckoutPage() {
                             passengers={passengers}
                             singleRoomCount={singleRoomCount}
                             step={step}
-                            setShowPaymentModal={handleOpenPaymentModal}
-                            onSubmit={handleSubmit}
+                            onProceed={handleProceed}
                         />
                     </div>
                 </div>
             </div>
+
+            {showProfileWarning && (
+                <ProfileWarningModal
+                    missingFields={profileMissingFields}
+                    onClose={() => setShowProfileWarning(false)}
+                    onUpdate={handleGoToProfile}
+                />
+            )}
 
             {showPaymentModal && (
                 <PaymentModal
@@ -530,7 +576,51 @@ export default function CheckoutPage() {
     );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+function ProfileWarningModal({ missingFields, onClose, onUpdate }) {
+    return (
+        <div className="fixed inset-0 z-[9999] bg-black/40 flex items-center justify-center p-4">
+            <div className="w-full max-w-md rounded-3xl bg-white shadow-xl overflow-hidden">
+                <div className="p-6">
+                    <div className="flex flex-col items-center">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 mb-3">
+                            <AlertCircle size={32} className="text-amber-500" />
+                        </div>
+                        <h3 className="text-center text-xl font-bold text-slate-800">
+                            Thông tin tài khoản chưa đầy đủ
+                        </h3>
+                    </div>
+                    
+                    <p className="text-center text-sm text-slate-500 leading-relaxed mt-3">
+                        Bạn đang sử dụng thông tin từ tài khoản nhưng thông tin chưa được cập nhật:
+                    </p>
+                    
+                    <div className="mt-4 space-y-2">
+                        {missingFields.map((field, index) => (
+                            <div key={index} className="flex items-center gap-3 bg-slate-50 rounded-xl px-4 py-2.5 border border-slate-100">
+                                <span className="text-sm font-medium text-slate-700">Thông tin {field} chưa được cập nhật</span>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <div className="mt-6 flex flex-row gap-3">
+                        <button
+                            onClick={onUpdate}
+                            className="flex-1 rounded-xl bg-sky-500 py-2 font-semibold text-white shadow-md shadow-sky-500/15 hover:bg-sky-600 transition"
+                        >
+                            Cập nhật ngay
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="flex-1 rounded-xl border border-slate-200 py-2 font-medium text-slate-600 hover:bg-slate-50 transition"
+                        >
+                            Để sau
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 function InfoCell({ label, value }) {
     return (
@@ -569,7 +659,6 @@ function PaymentModal({ paymentMethod, setPaymentMethod, vnpayLoading, totalPric
         [bookingData]
     );
 
-    // Chỉ hiện tiền mặt nếu còn hơn 3 ngày
     const canPayCash = bookingData?.ngayKhoiHanh && daysUntilDeparture > 3;
 
     const options = [
@@ -590,7 +679,6 @@ function PaymentModal({ paymentMethod, setPaymentMethod, vnpayLoading, totalPric
     return (
         <div className="fixed inset-0 z-[999] bg-black/40 flex items-center justify-center p-4">
             <div className="w-full max-w-2xl rounded-3xl bg-white shadow-xl overflow-hidden">
-                {/* Header */}
                 <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
                     <h2 className="text-xl font-bold text-slate-900">Chọn hình thức thanh toán</h2>
                     <button
@@ -601,7 +689,6 @@ function PaymentModal({ paymentMethod, setPaymentMethod, vnpayLoading, totalPric
                     </button>
                 </div>
 
-                {/* Options */}
                 <div className="p-6 space-y-3">
                     {options.map((opt) => {
                         const isSelected = paymentMethod === opt.value;
@@ -615,14 +702,12 @@ function PaymentModal({ paymentMethod, setPaymentMethod, vnpayLoading, totalPric
                                         : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                                     }`}
                             >
-                                {/* Icon */}
                                 <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors
                                     ${isSelected ? "bg-white shadow-sm" : "bg-slate-100"}`}
                                 >
                                     {opt.icon}
                                 </div>
 
-                                {/* Label + desc */}
                                 <div className="flex-1 min-w-0">
                                     <p className="font-semibold text-slate-800 text-sm">{opt.label}</p>
                                     {isSelected && (
@@ -630,7 +715,6 @@ function PaymentModal({ paymentMethod, setPaymentMethod, vnpayLoading, totalPric
                                     )}
                                 </div>
 
-                                {/* Radio indicator */}
                                 <div className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors
                                     ${isSelected ? "border-sky-500 bg-sky-500" : "border-slate-300"}`}
                                 />
@@ -638,7 +722,6 @@ function PaymentModal({ paymentMethod, setPaymentMethod, vnpayLoading, totalPric
                         );
                     })}
 
-                    {/* Cảnh báo nếu gần khởi hành */}
                     {!canPayCash && (
                         <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5">
                             ⚠️ Chuyến khởi hành trong vòng 3 ngày — chỉ chấp nhận thanh toán trực tuyến qua VNPay.
@@ -646,12 +729,7 @@ function PaymentModal({ paymentMethod, setPaymentMethod, vnpayLoading, totalPric
                     )}
                 </div>
 
-                {/* Footer */}
-                <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-4">
-                    <div>
-                        <p className="text-xs text-slate-400">Tổng thanh toán</p>
-                        <p className="text-lg font-extrabold text-sky-600">{formatCurrency(totalPrice)}</p>
-                    </div>
+                <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-4">
                     <button
                         onClick={onConfirm}
                         disabled={vnpayLoading}
