@@ -898,7 +898,7 @@ const TourScheduleSection = forwardRef(({
                                         disabled={disabled}
                                         minDate={currentSchedule.gioDenNoiDi ? new Date(currentSchedule.gioDenNoiDi) : today}
                                     />
-                                  
+
                                     {!isViewMode && autoEndDate && currentSchedule.ngayKetThuc && (
                                         <div className="mt-1">
                                             <p className="text-[10px] text-emerald-500 flex items-center gap-1">
@@ -1023,14 +1023,25 @@ const TourScheduleSection = forwardRef(({
                             error={modalErrors.soChoToiDa}
                             onChange={(e) => {
                                 const val = getVal(e);
-                                if (val !== "" && val !== null) {
-                                    const num = Number(val);
-                                    if (!Number.isInteger(num) || num <= 0) {
-                                        toastWarning("Giá trị không hợp lệ", "Số chỗ phải là số nguyên dương (> 0).");
-                                        return;
-                                    }
+
+                                // Cho phép để trống hoặc đang gõ dở
+                                if (val === "" || val === null) {
+                                    handleFieldChange("soChoToiDa", val);
+                                    return;
                                 }
+
+                                // Chỉ chặn ký tự không phải số nguyên (không toast, chỉ ignore)
+                                if (!/^\d+$/.test(val)) {
+                                    return; // không cập nhật, không toast
+                                }
+
                                 handleFieldChange("soChoToiDa", val);
+                            }}
+                            onBlur={() => {
+                                const num = Number(currentSchedule.soChoToiDa);
+                                if (currentSchedule.soChoToiDa !== "" && (!Number.isInteger(num) || num <= 0)) {
+                                    toastWarning("Giá trị không hợp lệ", "Số chỗ phải là số nguyên dương (> 0).");
+                                }
                             }}
                             disabled={disabled}
                             required

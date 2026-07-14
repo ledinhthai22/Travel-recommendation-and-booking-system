@@ -531,7 +531,7 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                                     {loadingAction === 'toggle' ? 'Đang lưu...' : toggleLabel}
                                 </button>
                             )}
-
+{/* 
                             {canRefund && (
                                 <button
                                     onClick={handleConfirmRefunded}
@@ -540,7 +540,7 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                                 >
                                     {loadingAction === 'refund' ? 'Đang lưu...' : 'Xác nhận đã hoàn tiền'}
                                 </button>
-                            )}
+                            )} */}
 
                             {showComplete && (
                                 <button
