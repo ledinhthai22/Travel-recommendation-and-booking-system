@@ -33,7 +33,7 @@ namespace travel_recommendation_and_booking_system.Job
                     .ToList();
 
                     var payloads = await _context.PaymentPayloads
-                        .Where(x => maGiuChoIds.Contains(x.MaGiuCho))
+                        .Where(x => maGiuChoIds.Contains(x.MaGiuCho ?? 0))
                         .ToListAsync();
 
                     _context.PaymentPayloads.RemoveRange(payloads);

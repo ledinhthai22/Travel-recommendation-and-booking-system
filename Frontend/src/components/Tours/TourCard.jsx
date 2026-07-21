@@ -211,7 +211,7 @@ function TourCard({
                         to={`/Cac-Chuyen-Di/${slug}`}
                         className="
                             inline-flex shrink-0 items-center justify-center
-                            rounded-full bg-[#0EA5E5] px-4 py-1.5
+                            rounded-full bg-[#0EA5E5] px-4 py-2.5
                             text-xs font-semibold text-white
                             transition-all duration-200
                             hover:bg-[#0EA5E5]/90 hover:shadow-md active:scale-95

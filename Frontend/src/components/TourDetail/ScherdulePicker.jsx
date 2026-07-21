@@ -1,4 +1,4 @@
-import { Plane, Bus, Train, Ship, Car, Ticket, MapPin } from "lucide-react";
+import { Plane, Bus, Train, Ship, Car, Ticket, MapPin, AlertCircle } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { formatDate } from "~/Helper/FormatDate";
 import { formatCurrency } from "~/Helper/FormatCurrency";
@@ -154,10 +154,11 @@ export function SchedulePicker({
                                 </div>
                             </div>
 
+                            {/* Ghi chú chuyến khởi hành */}
+                           
 
                             {isActive && (
                                 <div className="p-4 bg-slate-50/50">
-
                                     <div className="mx-4">
                                         <div className="border-t border-slate-200 pt-4">
                                             <h4 className="mb-4 text-center font-bold text-slate-700">Phương tiện di chuyển</h4>
@@ -243,9 +244,24 @@ export function SchedulePicker({
                                                 </div>
                                             </div>
                                         </div>
+
+                                        {/* Hiển thị ghi chú trong phần chi tiết mở rộng nếu chưa hiển thị ở trên */}
+                                        {infoChuyen.ghiChu && isActive && (
+                                            <div className="mt-6 border-t border-slate-200 pt-4">
+                                                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                                                    <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                                                    <p className="text-sm text-amber-700 leading-relaxed">
+                                                        <span className="font-semibold">Ghi chú: </span>
+                                                        {infoChuyen.ghiChu}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
+                                
                             )}
+                          
                         </div>
                     );
                 })}

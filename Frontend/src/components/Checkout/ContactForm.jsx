@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import InputField from '~/components/UI/Form/InputField';
-import { getMeApi } from '~/Services/AuthService'; 
+import DatePicker from '~/components/UI/Form/DatePicker';
+import { getMeApi } from '~/Services/AuthService';
 
-export default function ContactForm({ 
-    contact, 
-    onChange, 
-    onTabChange, 
+export default function ContactForm({
+    contact,
+    onChange,
+    onTabChange,
     errors = {},
     onActiveTabChange
 }) {
@@ -14,12 +15,11 @@ export default function ContactForm({
 
     const handleTabChange = async (tab) => {
         setActiveTab(tab);
-        
-        // Gọi callback để thông báo lên parent (CheckoutPage)
+
         if (onActiveTabChange) {
             onActiveTabChange(tab);
         }
-        
+
         if (tab === 'me') {
             try {
                 setLoading(true);
@@ -31,7 +31,7 @@ export default function ContactForm({
                     phone: meData?.soDienThoai || '',
                     email: meData?.email || '',
                     address: meData?.diaChi || '',
-                    dob: meData?.ngaySinh || '' 
+                    dob: meData?.ngaySinh || ''
                 };
 
                 if (onTabChange) {
@@ -44,18 +44,17 @@ export default function ContactForm({
             }
         } else if (tab === 'other') {
             if (onTabChange) {
-                onTabChange({ 
-                    fullName: '', 
-                    phone: '', 
-                    email: '', 
+                onTabChange({
+                    fullName: '',
+                    phone: '',
+                    email: '',
                     address: '',
-                    dob: '' 
+                    dob: ''
                 });
             }
         }
     };
 
-    // Tự động lấy thông tin khi component mount
     useEffect(() => {
         let isMounted = true;
         const initData = async () => {
@@ -69,9 +68,37 @@ export default function ContactForm({
         };
     }, []);
 
+    // FIX: trước đây có gọi thêm window.fillPassengerFromContact(...) ở đây,
+    // nhưng hàm đó không bao giờ được gán vào `window` ở bất kỳ đâu trong code
+    // (CheckoutPage chỉ giữ fillPassengerFromContact ở local scope qua useCallback),
+    // nên đó là dead code, không làm gì cả. Việc đồng bộ xuống passenger form
+    // đã được xử lý đầy đủ ở CheckoutPage thông qua prop `onChange` / `onDateChange`
+    // bên dưới, nên bỏ hẳn phần gọi window.* cho gọn và tránh nhầm lẫn khi đọc lại.
+    const handleContactChange = (e) => {
+        const { name, value } = e.target;
+        if (onChange) {
+            onChange({
+                target: {
+                    name,
+                    value
+                }
+            });
+        }
+    };
+
+    const handleDateChange = (value) => {
+        if (onChange) {
+            onChange({
+                target: {
+                    name: 'dob',
+                    value: value
+                }
+            });
+        }
+    };
+
     return (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm relative">
-            {/* Loading overlay */}
             {loading && (
                 <div className="absolute inset-0 bg-white/70 backdrop-blur-sm rounded-3xl flex items-center justify-center z-10">
                     <div className="flex flex-col items-center gap-3">
@@ -81,20 +108,18 @@ export default function ContactForm({
                 </div>
             )}
 
-            {/* Header với tabs */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
                 <h2 className="text-xl font-bold text-slate-900">Thông tin liên lạc</h2>
-                
+
                 <div className="flex p-1 bg-slate-100 rounded-xl self-start sm:self-auto">
                     <button
                         type="button"
                         onClick={() => handleTabChange('me')}
                         disabled={loading}
-                        className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                            activeTab === 'me'
+                        className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'me'
                                 ? 'bg-white text-slate-900 shadow-sm'
                                 : 'text-slate-600 hover:text-slate-900'
-                        }`}
+                            }`}
                     >
                         Thông tin tài khoản
                     </button>
@@ -102,60 +127,83 @@ export default function ContactForm({
                         type="button"
                         onClick={() => handleTabChange('other')}
                         disabled={loading}
-                        className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                            activeTab === 'other'
+                        className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'other'
                                 ? 'bg-white text-slate-900 shadow-sm'
                                 : 'text-slate-600 hover:text-slate-900'
-                        }`}
+                            }`}
                     >
                         Đặt giúp người khác
                     </button>
                 </div>
             </div>
-            
-            {/* Form fields */}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                 <InputField
                     label="Họ tên"
                     name="fullName"
                     value={contact.fullName || ''}
-                    onChange={onChange}
+                    onChange={handleContactChange}
                     placeholder="Ví dụ: Nguyễn Văn A"
-                    error={errors.fullName} 
+                    error={errors.fullName}
                     disabled={activeTab === 'me'}
+                    required={activeTab === 'other'}
                 />
-                
+
                 <InputField
                     label="Số điện thoại"
                     name="phone"
                     value={contact.phone || ''}
-                    onChange={onChange}
+                    onChange={handleContactChange}
                     placeholder="Ví dụ: 0123456789"
                     error={errors.phone}
                     disabled={activeTab === 'me'}
+                    required={activeTab === 'other'}
                 />
-                
+
                 <InputField
                     label="Email"
                     name="email"
                     type="email"
                     value={contact.email || ''}
-                    onChange={onChange}
+                    onChange={handleContactChange}
                     placeholder="Ví dụ: email@example.com"
                     error={errors.email}
                     disabled={activeTab === 'me'}
+                    required={activeTab === 'other'}
                 />
-                
-                <InputField
-                    label="Địa chỉ"
-                    name="address"
-                    value={contact.address || ''}
-                    onChange={onChange}
-                    placeholder="Ví dụ: 65 Huỳnh Thúc Kháng, Quận 1, TP.HCM"
-                    error={errors.address}
+
+                <DatePicker
+                    label="Ngày sinh"
+                    value={contact.dob || ''}
+                    onChange={handleDateChange}
+                    minDate={new Date(1900, 0, 1)}
+                    maxDate={new Date()}
+                    placeholderText="Chọn ngày sinh"
+                    error={errors.dob}
                     disabled={activeTab === 'me'}
+                    required={activeTab === 'other'}
                 />
+
+                <div className="md:col-span-2">
+                    <InputField
+                        label="Địa chỉ"
+                        name="address"
+                        value={contact.address || ''}
+                        onChange={handleContactChange}
+                        placeholder="Ví dụ: 65 Huỳnh Thúc Kháng, Phường Sài Gòn, TP.HCM"
+                        error={errors.address}
+                        disabled={activeTab === 'me'}
+                    />
+                </div>
             </div>
+
+            {activeTab === 'other' && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                    <p className="text-xs text-blue-600 flex items-center gap-2">
+                        Thông tin bạn nhập sẽ tự động được điền vào hành khách đầu tiên (Người lớn 1).
+                    </p>
+                </div>
+            )}
         </div>
     );
 }

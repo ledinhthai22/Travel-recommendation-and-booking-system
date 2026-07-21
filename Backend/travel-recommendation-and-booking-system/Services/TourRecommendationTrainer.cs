@@ -14,9 +14,9 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly AppDbContext _context;
         private readonly MLContext _mlContext = new MLContext(seed: 42);
 
-        private const int MIN_ROWS_TO_TRAIN = 3;
+        private const int MIN_ROWS_TO_TRAIN = 20;
         private const int MIN_INTERACTIONS_PER_USER = 1;
-        private const int TOP_N_PER_USER = 50;
+        private const int TOP_N_PER_USER = 30;
 
         public TourRecommendationTrainer(AppDbContext context)
         {
@@ -25,7 +25,6 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<TrainResult> TrainAndSaveAsync(string outputPath = "Models/tour-recommender.zip")
         {
-            //  Gom dữ liệu tương tác thô
             var views = await _context.TrangThaiTuongTacs
                 .Where(t => t.DaXemChiTiet)
                 .Select(t => new { t.MaNguoiDung, t.MaTour, Label = RecommendationWeights.ViewTour })

@@ -18,5 +18,6 @@
         public const string CTLichTrinh = "ChiTietLichTrinh";
         public const string LoaiHinhTour = "LoaiHinhTour";
         public const string DonDatTour = "DonDatTour";
+        public const string ThanhToan = "ThanhToan";
     }
 }

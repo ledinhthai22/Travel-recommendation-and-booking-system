@@ -38,15 +38,14 @@ namespace travel_recommendation_and_booking_system.Helper
 
             string rawData = queryString.ToString().TrimEnd('&');
             string vnpSecureHash = HmacSha512(hashSecret, rawData);
-            Console.WriteLine("===== CREATE RAW =====");
+   
             Console.WriteLine(rawData);
 
-            Console.WriteLine("===== CREATE HASH =====");
             Console.WriteLine(vnpSecureHash);
             return $"{baseUrl}?{rawData}&vnp_SecureHash={vnpSecureHash}";
         }
 
-        // Kiểm tra xem chữ ký từ VNPay gửi về có hợp lệ không (Chống sửa đổi dữ liệu)
+        // Kiểm tra xem chữ ký từ VNPay gửi về có hợp lệ không (Chống fake bill)
         public bool ValidateSignature(string inputHash, string hashSecret)
         {
             var data = new List<string>();
@@ -75,7 +74,7 @@ namespace travel_recommendation_and_booking_system.Helper
                 inputHash,
                 StringComparison.InvariantCultureIgnoreCase);
         }
-        // Thuật toán băm mã hóa HMAC-SHA512 chuẩn của cổng VNPay đời mới
+        // Thuật toán băm mã hóa HMAC-SHA512 doc vnpay
         private string HmacSha512(string key, string inputData)
         {
             var hash = new StringBuilder();

@@ -33,5 +33,6 @@ namespace travel_recommendation_and_booking_system.Controllers.Customer
                 return StatusCode(500, new { message = "Có lỗi xảy ra: " + ex.Message });
             }
         }
+
     }
 }

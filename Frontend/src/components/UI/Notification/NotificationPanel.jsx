@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
     Bell, Calendar, Mail, Newspaper,
-    CreditCard, Tag, MessageSquare, ShieldAlert, CheckCircle2
+    CreditCard, Tag, MessageSquare, ShieldAlert, CheckCircle2, X
 } from "lucide-react";
 import NotificationService from "~/Services/NotificationService";
-import { connection, ensureConnectionStarted } from "~/Services/signalRService";
+import { connection, ensureConnectionStarted, joinNotificationGroup, leaveNotificationGroup } from "~/Services/signalRService";
 import useAuth from "~/Hooks/useAuth";
-import { show } from "~/utils/Toast";
 
 const NotificationType = {
     Booking: 1,
@@ -24,9 +23,11 @@ const NotificationPanel = () => {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [signalRReady, setSignalRReady] = useState(false);
 
     const panelRef = useRef(null);
     const isFirstLoad = useRef(true);
+    const signalRSetupDone = useRef(false);
 
     const getNotificationStyle = (type) => {
         switch (type) {
@@ -50,17 +51,20 @@ const NotificationPanel = () => {
     };
 
     const mapNotification = useCallback((n) => ({
-        id: n.maThongBao,
-        title: n.tieuDe,
-        message: n.noiDung,
-        time: n.ngayTao,
-        read: n.daDoc,
-        type: n.loaiThongBao,
-        link: n.linkChiTiet
+        id: n.maThongBao || n.id,
+        title: n.tieuDe || n.title,
+        message: n.noiDung || n.message,
+        time: n.ngayTao || n.createdAt || new Date().toISOString(),
+        read: n.daDoc || n.isRead || false,
+        type: n.loaiThongBao || n.type || NotificationType.System,
+        link: n.linkChiTiet || n.link || null
     }), []);
 
     const formatNotificationTime = (dateString) => {
+        if (!dateString) return "";
         const date = new Date(dateString);
+        if (isNaN(date.getTime())) return "";
+
         const now = new Date();
         const diff = now - date;
         const minutes = Math.floor(diff / 60000);
@@ -108,75 +112,40 @@ const NotificationPanel = () => {
         });
     }, [loadNotifications, loadUnreadCount]);
 
-    useEffect(() => {
-        let mounted = true;
-        const userId = isStaff ? user?.maNhanVien : user?.maNguoiDung;
+    const setupSignalR = useCallback(async () => {
+        if (signalRSetupDone.current) return;
+        if (!user) return;
 
-        const setupSignalR = async () => {
-            try {
-                await ensureConnectionStarted();
-                if (!mounted) return;
+        try {
+            await ensureConnectionStarted();
+            if (connection.state !== "Connected") return;
 
-                if (isStaff) {
-                    await connection.invoke("JoinAdminGroup");
-                    await connection.invoke("JoinStaffGroup", String(userId));
-                    await connection.invoke("JoinGroup", `STAFF_${userId}`);
-                } else if (userId) {
-                    await connection.invoke("JoinUserGroup", String(userId));
-                }
-            } catch (err) {
-                console.error("SignalR invoke error:", err);
-            }
-        };
-
-        if (user) {
-            setupSignalR();
-        }
-
-        const handleReconnect = () => {
-            if (mounted) setupSignalR();
-        };
-
-        connection.onreconnected(handleReconnect);
-
-        connection.on("JoinedGroup", (groupName) => {
-            console.log(`Kết nối realtime thành công tới group: ${groupName}`);
-        });
-
-        return () => {
-            mounted = false;
+            // Đăng ký trước khi invoke join group, tránh miss event JoinedGroup
+            // do server phản hồi gần như ngay lập tức sau invoke.
             connection.off("JoinedGroup");
+            connection.on("JoinedGroup", () => {});
 
-            if (connection.state === "Connected") {
-                if (isStaff) {
-                    if (userId) {
-                        connection.invoke("LeaveStaffGroup", String(userId)).catch(console.error);
-                        connection.invoke("LeaveGroup", `STAFF_${userId}`).catch(console.error);
-                    }
-                    connection.invoke("LeaveAdminGroup").catch(console.error);
-                } else if (userId) {
-                    connection.invoke("LeaveUserGroup", String(userId)).catch(console.error);
-                }
-            }
-        };
+            const userId = isStaff ? user?.maNhanVien : user?.maNguoiDung;
+            const role = user?.role === 1 ? "admin" : (isStaff ? "staff" : "user");
+
+            await joinNotificationGroup(role, userId);
+
+            signalRSetupDone.current = true;
+            setSignalRReady(true);
+        } catch (err) {
+            console.error('NotificationPanel: SignalR setup error:', err);
+        }
     }, [user, isStaff]);
 
-    useEffect(() => {
+    const setupSignalREvents = useCallback(() => {
+        if (!signalRReady) return;
+
         const handleReceiveNotification = (payload) => {
             const newNoti = mapNotification(payload);
-
             setNotifications(prev => {
                 if (prev.some(n => n.id === newNoti.id)) return prev;
                 setUnreadCount(count => count + 1);
                 return [newNoti, ...prev];
-            });
-
-            const style = getNotificationStyle(newNoti.type);
-            show({
-                icon: style.icon,
-                title: newNoti.title,
-                message: newNoti.message,
-                borderClass: "border-sky-100",
             });
         };
 
@@ -184,35 +153,66 @@ const NotificationPanel = () => {
             const newNoti = {
                 id: Date.now(),
                 title: "Đơn đặt tour mới",
-                message: `Đơn ${payload.maDatCho} - ${payload.tongTien?.toLocaleString() || 0}đ`,
+                message: `Đơn ${payload.maDatCho || payload.maDatCho} - ${(payload.tongTien || 0)?.toLocaleString() || 0}đ`,
                 time: new Date().toISOString(),
                 read: false,
                 type: NotificationType.Booking,
                 link: "/Quan-ly/Don-dat-cac-chuyen-di"
             };
-
             setNotifications(prev => {
                 if (prev.some(n => n.id === newNoti.id)) return prev;
                 setUnreadCount(count => count + 1);
                 return [newNoti, ...prev];
             });
-
-            show({
-                icon: <Calendar size={16} />,
-                title: newNoti.title,
-                message: newNoti.message,
-                borderClass: "border-sky-100",
-            });
         };
 
+        connection.off("ReceiveNotification");
+        connection.off("BookingCreated");
+
         connection.on("ReceiveNotification", handleReceiveNotification);
-        connection.on("BookingCreated", handleBookingCreated);
+
+        if (isStaff) {
+            connection.on("BookingCreated", handleBookingCreated);
+        }
+
+        const handleReconnect = () => {
+            signalRSetupDone.current = false;
+            setSignalRReady(false);
+            setupSignalR();
+        };
+
+        connection.onreconnected(handleReconnect);
 
         return () => {
             connection.off("ReceiveNotification", handleReceiveNotification);
             connection.off("BookingCreated", handleBookingCreated);
+            connection.onreconnected(null);
         };
-    }, [mapNotification]);
+    }, [signalRReady, mapNotification, isStaff, setupSignalR]);
+
+    useEffect(() => {
+        if (user) setupSignalR();
+    }, [user, setupSignalR]);
+
+    useEffect(() => {
+        if (signalRReady) {
+            const cleanup = setupSignalREvents();
+            return cleanup;
+        }
+    }, [signalRReady, setupSignalREvents]);
+
+    useEffect(() => {
+        return () => {
+            if (connection.state === "Connected" && user) {
+                const userId = isStaff ? user?.maNhanVien : user?.maNguoiDung;
+                const role = user?.role === 1 ? "admin" : (isStaff ? "staff" : "user");
+                leaveNotificationGroup(role, userId);
+            }
+            connection.off("JoinedGroup");
+            signalRSetupDone.current = false;
+            setSignalRReady(false);
+        };
+    }, [user, isStaff]);
 
     const handleMarkAllAsRead = async () => {
         if (unreadCount === 0) return;
@@ -244,7 +244,9 @@ const NotificationPanel = () => {
 
     useEffect(() => {
         const handleClickOutside = (e) => {
-            if (panelRef.current && !panelRef.current.contains(e.target)) setIsOpen(false);
+            if (panelRef.current && !panelRef.current.contains(e.target)) {
+                setIsOpen(false);
+            }
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -253,14 +255,19 @@ const NotificationPanel = () => {
     return (
         <div className="relative inline-block text-left" ref={panelRef}>
             <button
+                type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 focus:outline-none cursor-pointer
-                ${isOpen ? "text-sky-600" : "text-slate-600 hover:bg-slate-50"}`}
+                aria-label="Thông báo"
+                className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-200 focus:outline-none cursor-pointer ${
+                    isOpen ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:bg-slate-50"
+                }`}
             >
-                <span className="relative inline-flex">
-                    <Bell size={16} />
+                <span className="relative inline-flex h-5 w-5 items-center justify-center">
+                    <Bell size={18} strokeWidth={2} className="shrink-0" />
                     {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+                        <span className="absolute -top-1.5 -right-1.5 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white">
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
                     )}
                 </span>
             </button>
@@ -273,7 +280,11 @@ const NotificationPanel = () => {
                             <p className="text-xs text-slate-500 mt-0.5">Bạn có {unreadCount} thông báo chưa đọc</p>
                         </div>
                         {unreadCount > 0 && (
-                            <button onClick={handleMarkAllAsRead} className="flex items-center gap-1 text-xs font-medium text-sky-600 bg-sky-50 border border-sky-100 px-2.5 py-1.5 rounded-lg hover:bg-sky-100 transition-colors">
+                            <button
+                                type="button"
+                                onClick={handleMarkAllAsRead}
+                                className="flex items-center gap-1 text-xs font-medium text-sky-600 bg-sky-50 border border-sky-100 px-2.5 py-1.5 rounded-lg hover:bg-sky-100 transition-colors"
+                            >
                                 <CheckCircle2 size={13} /> Đọc tất cả
                             </button>
                         )}
@@ -287,7 +298,9 @@ const NotificationPanel = () => {
                             </div>
                         ) : notifications.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 text-slate-400 text-center">
+                                <Bell size={32} className="text-slate-300 mb-2" />
                                 <p className="text-sm font-medium text-slate-700">Hộp thư trống!</p>
+                                <p className="text-xs text-slate-400 mt-1">Bạn chưa có thông báo nào</p>
                             </div>
                         ) : (
                             notifications.map(noti => {
@@ -296,20 +309,28 @@ const NotificationPanel = () => {
                                     <div
                                         key={noti.id}
                                         onClick={() => handleMarkOneAsRead(noti)}
-                                        className={`flex gap-3.5 p-4 cursor-pointer transition-all duration-200 relative ${!noti.read ? "bg-sky-50/40 hover:bg-sky-50/70" : "hover:bg-slate-50"}`}
+                                        className={`flex gap-3.5 p-4 cursor-pointer transition-all duration-200 relative ${
+                                            !noti.read ? "bg-sky-50/40 hover:bg-sky-50/70" : "hover:bg-slate-50"
+                                        }`}
                                     >
                                         <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border shadow-sm ${style.bg}`}>
                                             {style.icon}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-start justify-between gap-2">
-                                                <p className={`text-sm leading-snug break-words ${!noti.read ? "font-semibold text-slate-900" : "font-normal text-slate-700"}`}>
+                                                <p className={`text-sm leading-snug break-words ${
+                                                    !noti.read ? "font-semibold text-slate-900" : "font-normal text-slate-700"
+                                                }`}>
                                                     {noti.title}
                                                 </p>
                                                 {!noti.read && <span className="h-2 w-2 rounded-full bg-sky-500 shrink-0 mt-1.5" />}
                                             </div>
-                                            <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed break-words">{noti.message}</p>
-                                            <p className="text-[11px] font-medium text-slate-400 mt-2">{formatNotificationTime(noti.time)}</p>
+                                            <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed break-words">
+                                                {noti.message}
+                                            </p>
+                                            <p className="text-[11px] font-medium text-slate-400 mt-2">
+                                                {formatNotificationTime(noti.time)}
+                                            </p>
                                         </div>
                                     </div>
                                 );

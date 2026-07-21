@@ -91,7 +91,7 @@ export default function SearchPage() {
 
             // ✅ SỬ DỤNG HÀM MAP ĐỂ CHUYỂN ĐỔI DỮ LIỆU
             const items = (res?.items || []).map(mapSearchApiTourToCard);
-            
+
             setTours(items);
             setTotalItems(res?.totalItems || 0);
             setTotalPages(Math.max(1, Math.ceil((res?.totalItems || 0) / PAGE_SIZE)));
@@ -251,15 +251,17 @@ export default function SearchPage() {
                         .custom-search-datepicker span.absolute { left: 0px !important; }
                     `}</style>
                 </form>
+                <div className="flex justify-center">
+                    <TourFilterBar
+                        minPrice={minPrice} maxPrice={maxPrice}
+                        setMinPrice={setMinPrice} setMaxPrice={setMaxPrice}
+                        dayFilters={dayFilters} setDayFilters={setDayFilters}
+                        category={category} setCategory={setCategory}
+                        province={searchDiemDen} setProvince={setSearchDiemDen}
+                        onReset={resetAllFilters}
+                    />
+                </div>
 
-                <TourFilterBar
-                    minPrice={minPrice} maxPrice={maxPrice}
-                    setMinPrice={setMinPrice} setMaxPrice={setMaxPrice}
-                    dayFilters={dayFilters} setDayFilters={setDayFilters}
-                    category={category} setCategory={setCategory}
-                    province={searchDiemDen} setProvince={setSearchDiemDen}
-                    onReset={resetAllFilters}
-                />
 
                 <main className="min-w-0 relative">
                     {initialLoading ? (
@@ -286,7 +288,7 @@ export default function SearchPage() {
                                 {tours.map((tour) => (
                                     <TourCard
                                         key={tour.id}
-                                        {...tour} // ✅ TRUYỀN TOÀN BỘ PROPS ĐÃ ĐƯỢC MAP
+                                        {...tour}
                                     />
                                 ))}
                             </div>

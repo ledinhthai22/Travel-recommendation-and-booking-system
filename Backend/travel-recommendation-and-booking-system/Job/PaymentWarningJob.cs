@@ -1,130 +1,158 @@
-﻿using Hangfire;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using travel_recommendation_and_booking_system.Constants;
 using travel_recommendation_and_booking_system.Data;
-using travel_recommendation_and_booking_system.DTOs.Log;
-using travel_recommendation_and_booking_system.DTOs.LogSystem;
 using travel_recommendation_and_booking_system.DTOs.Notifications;
 using travel_recommendation_and_booking_system.Interfaces;
+using travel_recommendation_and_booking_system.Models;
 
 namespace travel_recommendation_and_booking_system.Job
 {
+    /// <summary>
+    /// Job xử lý nhắc thanh toán và gắn cờ công nợ
+    /// Các chức năng tự động hủy và cập nhật trạng thái đã chuyển sang BookingStatusJob
+    /// </summary>
     public class PaymentWarningJob
     {
         private readonly AppDbContext _context;
         private readonly IEmailService _emailService;
-        private readonly ILogService _logService;
-        private readonly ICurrentUserService _currentUserService;
         private readonly INotificationService _notificationService;
+        private readonly ILogger<PaymentWarningJob> _logger;
 
-        public PaymentWarningJob(AppDbContext context, IEmailService emailService, ILogService logService, ICurrentUserService currentUserService, INotificationService notificationService)
+        public PaymentWarningJob(
+            AppDbContext context,
+            IEmailService emailService,
+            INotificationService notificationService,
+            ILogger<PaymentWarningJob> logger)
         {
             _context = context;
             _emailService = emailService;
-            _logService = logService;
-            _currentUserService = currentUserService;
             _notificationService = notificationService;
+            _logger = logger;
         }
 
+        #region 1. Nhắc thanh toán trước 7 ngày
+
+        /// <summary>
+        /// Gửi email nhắc thanh toán cho các đơn còn nợ trước 7 ngày khởi hành
+        /// </summary>
         public async Task SendPaymentReminders()
         {
-            var targetDate = DateTime.Now.Date.AddDays(7);
+            var targetDate = DateTime.Today.AddDays(7);
             var nextDate = targetDate.AddDays(1);
 
+            // Sử dụng điều kiện trực tiếp để EF có thể dịch sang SQL
             var bookings = await _context.DonDatTours
-                .Include(d => d.ChuyenKhoiHanh)
-                .Include(d => d.ThanhToans)
-                .Include(d => d.NguoiDung)
-               .Where(d =>
-                    d.TrangThaiDon == 1 &&  // chờ duyệt = chưa thu tiền
-                    d.ThanhToans.Any(t => t.PhuongThucThanhToan == 2 && t.TrangThaiThanhToan == 0) &&
-                    d.ChuyenKhoiHanh!.NgayKhoiHanh >= targetDate &&
-                    d.ChuyenKhoiHanh!.NgayKhoiHanh < nextDate)
+                .Include(x => x.NguoiDung)
+                .Include(x => x.ChuyenKhoiHanh)
+                .Where(x =>
+                    x.TrangThaiDon >= 1 && x.TrangThaiDon <= 4 // IsOrderActive
+                    && x.TrangThaiTaiChinh != BookingConstants.TC_DA_THANH_TOAN_DU // Chưa thanh toán đủ
+                    && x.SoTienDaThanhToan < x.TongTien
+                    && x.ChuyenKhoiHanh != null
+                    && x.ChuyenKhoiHanh.NgayKhoiHanh >= targetDate
+                    && x.ChuyenKhoiHanh.NgayKhoiHanh < nextDate)
                 .ToListAsync();
 
-            Console.WriteLine($"[Reminder 7 ngày] Tìm thấy {bookings.Count} đơn cần nhắc.");
+            if (!bookings.Any())
+            {
+                _logger.LogInformation("[PaymentWarningJob] Không có đơn nào cần nhắc thanh toán.");
+                return;
+            }
 
-            foreach (var order in bookings)
+            int successCount = 0;
+            int failCount = 0;
+
+            foreach (var booking in bookings)
             {
                 try
                 {
-                    if (!string.IsNullOrWhiteSpace(order.NguoiDung?.Email))
+                    if (!string.IsNullOrWhiteSpace(booking.NguoiDung?.Email))
                     {
-                        await _emailService.SendPaymentReminderAsync(order);
-                        Console.WriteLine($"[Reminder 7 ngày] Đã gửi mail cho đơn {order.MaDatCho}");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"[Reminder] Không tìm thấy email cho đơn {order.MaDatCho}");
+                        await _emailService.SendPaymentReminderAsync(booking);
+                        successCount++;
+                        _logger.LogInformation($"[PaymentWarningJob] Đã gửi nhắc thanh toán cho đơn {booking.MaDatCho}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[Reminder] Lỗi gửi mail đơn {order.MaDatCho}: {ex.Message}");
+                    failCount++;
+                    _logger.LogError(ex, $"[PaymentWarningJob] Lỗi gửi mail nhắc thanh toán cho đơn {booking.MaDatCho}");
                 }
             }
+
+            _logger.LogInformation($"[PaymentWarningJob] Đã gửi nhắc thanh toán: thành công {successCount}, thất bại {failCount}");
         }
 
+        #endregion
 
-        public async Task CancelExpiredCashBookings()
+        #region 2. Gắn cờ công nợ
+
+        /// <summary>
+        /// Gắn cờ cảnh báo công nợ cho các đơn còn nợ trong vòng 7 ngày khởi hành
+        /// </summary>
+        public async Task FlagOverdueDeposits()
         {
-            var deadlineDate = DateTime.Now.Date.AddDays(3);
+            var deadline = DateTime.Today.AddDays(7);
 
-            var bookingsToCancel = await _context.DonDatTours
-                .Include(d => d.ChuyenKhoiHanh)
-                .Include(d => d.ThanhToans)
-                .Include(d => d.NguoiDung)
-                .Where(d =>
-                    d.TrangThaiDon == 1 &&
-                    d.ThanhToans.Any(t => t.PhuongThucThanhToan == 2 && t.TrangThaiThanhToan == 0) &&
-                    d.ChuyenKhoiHanh!.NgayKhoiHanh < deadlineDate)
+            // Sử dụng điều kiện trực tiếp để EF có thể dịch sang SQL
+            var bookings = await _context.DonDatTours
+                .Include(x => x.ChuyenKhoiHanh)
+                .Where(x =>
+                    x.TrangThaiDon >= 1 && x.TrangThaiDon <= 4 // IsOrderActive
+                    && x.TrangThaiTaiChinh != BookingConstants.TC_DA_THANH_TOAN_DU // Chưa thanh toán đủ
+                    && !x.CoCanhBaoCongNo
+                    && x.ChuyenKhoiHanh != null
+                    && x.ChuyenKhoiHanh.NgayKhoiHanh <= deadline
+                    && x.ChuyenKhoiHanh.NgayKhoiHanh > DateTime.Now)
                 .ToListAsync();
 
-            Console.WriteLine($"[Hủy đơn] Tìm thấy {bookingsToCancel.Count} đơn cần hủy.");
-
-            const string lyDoHuyTuDong = "Hệ thống tự động hủy do quá hạn thanh toán tiền mặt (3 ngày trước khởi hành)";
-
-            foreach (var order in bookingsToCancel)
+            if (!bookings.Any())
             {
-                try
-                {
-                    var oldStatusDon = order.TrangThaiDon;
-
-                    // Hủy đơn
-                    order.TrangThaiDon = 4;
-                    order.LyDoHuy = lyDoHuyTuDong;
-                    order.NgayCapNhat = DateTime.Now;
-
-                    // Cộng lại số chỗ
-                    int tongKhach = order.SoNguoiLon + order.SoTreEm + order.SoEmBe;
-                    order.ChuyenKhoiHanh!.SoChoDaDat = Math.Max(0, order.ChuyenKhoiHanh.SoChoDaDat - tongKhach);
-
-                    await _context.SaveChangesAsync();
-
-                    Console.WriteLine($"[Hủy đơn] Đã hủy {order.MaDatCho}, hoàn {tongKhach} chỗ cho chuyến {order.ChuyenKhoiHanh.MaChuyenCode}. SoChoDaDat còn: {order.ChuyenKhoiHanh.SoChoDaDat}");
-
-                    // Thông báo real-time trong hệ thống
-                    await _notificationService.CreateForUserAsync(
-                        order.MaNguoiDung,
-                        new CreateNotificationDTO
-                        {
-                            TieuDe = "Đơn đặt tour đã bị hủy",
-                            NoiDung = $"Đơn {order.MaDatCho} đã bị hủy tự động do quá hạn thanh toán tiền mặt.",
-                            LoaiThongBao = (int)NotificationType.Booking,
-                            LinkChiTiet = $"/Thong-Tin-Ca-Nhan"
-                        });
-
-                    // Email
-                    if (!string.IsNullOrWhiteSpace(order.NguoiDung?.Email))
-                    {
-                        await _emailService.SendBookingCancelledAsync(order);
-                    }
-
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[Hủy] Lỗi hủy đơn {order.MaDatCho}: {ex.Message}");
-                }
+                _logger.LogInformation("[PaymentWarningJob] Không có đơn nào cần gắn cờ công nợ.");
+                return;
             }
+
+            foreach (var booking in bookings)
+            {
+                booking.CoCanhBaoCongNo = true;
+                booking.NgayGanCoCanhBao = DateTime.Now;
+                booking.NgayCapNhat = DateTime.Now;
+
+                _logger.LogInformation($"[PaymentWarningJob] Đã gắn cờ công nợ cho đơn {booking.MaDatCho}");
+            }
+
+            await _context.SaveChangesAsync();
+            _logger.LogInformation($"[PaymentWarningJob] Đã gắn cờ công nợ cho {bookings.Count} đơn");
         }
+
+        #endregion
+
+        #region 3. Tự động hủy đơn quá hạn (ĐÃ CHUYỂN - KHÔNG CÒN SỬ DỤNG)
+
+        /// <summary>
+        /// [DEPRECATED] Phương thức này đã được chuyển sang BookingStatusJob.AutoCancelExpiredDepositsAsync()
+        /// </summary>
+        [Obsolete("Đã chuyển sang BookingStatusJob.AutoCancelExpiredDepositsAsync()")]
+        public async Task CancelExpiredBookings()
+        {
+            _logger.LogWarning("[PaymentWarningJob] CancelExpiredBookings đã bị deprecated, sử dụng BookingStatusJob.AutoCancelExpiredDepositsAsync()");
+            await Task.CompletedTask;
+        }
+
+        #endregion
+
+        #region 4. Cập nhật trạng thái tour (ĐÃ CHUYỂN - KHÔNG CÒN SỬ DỤNG)
+
+        /// <summary>
+        /// [DEPRECATED] Phương thức này đã được chuyển sang BookingStatusJob
+        /// </summary>
+        [Obsolete("Đã chuyển sang BookingStatusJob.UpdateToInProgressAsync() và AutoCompleteBookingsAsync()")]
+        public async Task UpdateBookingStatus()
+        {
+            _logger.LogWarning("[PaymentWarningJob] UpdateBookingStatus đã bị deprecated, sử dụng BookingStatusJob");
+            await Task.CompletedTask;
+        }
+
+        #endregion
     }
 }

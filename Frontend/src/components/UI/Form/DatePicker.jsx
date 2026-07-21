@@ -34,12 +34,24 @@ const DatePicker = ({
     const containerRef = useRef(null);
     const inputRef = useRef(null);
     const popupRef = useRef(null);
-    // ✅ FIX: Flag để biết user đang tương tác với SelectField
     const isSelectingYear = useRef(false);
     const [isOpen, setIsOpen] = useState(false);
     const [popupStyle, setPopupStyle] = useState({});
 
-    const dateValue = typeof value === "string" && value ? parseISO(value) : value;
+    // Helper function để parse date an toàn
+    const safeParseDate = (date) => {
+        if (!date) return null;
+        if (date instanceof Date && isValid(date)) return date;
+        if (typeof date === "string") {
+            const parsed = parseISO(date);
+            if (isValid(parsed)) return parsed;
+        }
+        return null;
+    };
+
+    const dateValue = safeParseDate(value);
+    const safeMinDate = safeParseDate(minDate);
+    const safeMaxDate = safeParseDate(maxDate);
 
     const [currentMonth, setCurrentMonth] = useState(
         dateValue instanceof Date && isValid(dateValue) ? dateValue : new Date()
@@ -84,7 +96,6 @@ const DatePicker = ({
 
     useEffect(() => {
         const handleClickOutside = (event) => {
-            // ✅ FIX: Nếu đang tương tác với year select thì bỏ qua hoàn toàn
             if (isSelectingYear.current) return;
 
             const clickedInsideContainer = containerRef.current?.contains(event.target);
@@ -102,12 +113,23 @@ const DatePicker = ({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [isOpen, onBlur]);
 
-    const effectiveMinDate = minDate ?? (disableToday ? startOfDay(addDays(new Date(), 1)) : null);
+    // Xác định min date hiệu quả
+    const getEffectiveMinDate = () => {
+        if (disableToday) {
+            return startOfDay(addDays(new Date(), 1));
+        }
+        if (safeMinDate) {
+            return startOfDay(safeMinDate);
+        }
+        return null;
+    };
+
+    const effectiveMinDate = getEffectiveMinDate();
 
     const isDateDisabled = (date) => {
         const d = startOfDay(date);
         if (effectiveMinDate && d < effectiveMinDate) return true;
-        if (maxDate && d > startOfDay(maxDate)) return true;
+        if (safeMaxDate && d > startOfDay(safeMaxDate)) return true;
         return false;
     };
 
@@ -117,15 +139,33 @@ const DatePicker = ({
         setIsOpen(false);
     };
 
-    const startYear = minDate ? minDate.getFullYear() : 1950;
-    const endYear = maxDate ? maxDate.getFullYear() : new Date().getFullYear() + 10;
+    // Xác định năm bắt đầu và kết thúc an toàn
+    const getStartYear = () => {
+        if (safeMinDate && safeMinDate instanceof Date && isValid(safeMinDate)) {
+            return safeMinDate.getFullYear();
+        }
+        return 1950;
+    };
+
+    const getEndYear = () => {
+        if (safeMaxDate && safeMaxDate instanceof Date && isValid(safeMaxDate)) {
+            return safeMaxDate.getFullYear();
+        }
+        return new Date().getFullYear() + 10;
+    };
+
+    const startYear = getStartYear();
+    const endYear = getEndYear();
     const yearOptions = [];
     for (let y = endYear; y >= startYear; y--) {
         yearOptions.push({ value: String(y), label: `Năm ${y}` });
     }
 
     const handleYearChange = (selectedYearStr) => {
-        setCurrentMonth(setYear(currentMonth, parseInt(selectedYearStr, 10)));
+        const year = parseInt(selectedYearStr, 10);
+        if (!isNaN(year)) {
+            setCurrentMonth(setYear(currentMonth, year));
+        }
     };
 
     const daysInMonth = eachDayOfInterval({
@@ -162,7 +202,6 @@ const DatePicker = ({
                         {format(currentMonth, "MMMM", { locale: vi })}
                     </span>
 
-                    {/* ✅ FIX: onMouseDown stopPropagation để event không lan ra document listener */}
                     <div
                         className="w-[130px]"
                         onMouseDown={(e) => {
@@ -170,7 +209,6 @@ const DatePicker = ({
                             isSelectingYear.current = true;
                         }}
                         onMouseUp={() => {
-                            // Reset sau một tick để click handler của document không bị ảnh hưởng
                             setTimeout(() => {
                                 isSelectingYear.current = false;
                             }, 0);
@@ -282,7 +320,9 @@ const DatePicker = ({
                         if (!disabled) {
                             if (!value) {
                                 const today = new Date();
-                                const defaultDate = minDate && today < startOfDay(minDate) ? minDate : today;
+                                const defaultDate = safeMinDate && today < startOfDay(safeMinDate) 
+                                    ? safeMinDate 
+                                    : today;
                                 onChange?.(format(defaultDate, "yyyy-MM-dd"));
                             }
                             updatePopupPosition();

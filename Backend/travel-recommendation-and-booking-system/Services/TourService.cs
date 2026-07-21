@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq.Expressions;
 using System.Text;
 using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
@@ -138,6 +139,86 @@ namespace travel_recommendation_and_booking_system.Services
             ValidateContinuousScheduleDay(dto.LichTrinh);
             ValidateTourDuration(dto.TourInfo.Ngay, dto.LichTrinh);
 
+            // ===== Batch: validate khách sạn (1 query thay vì N query trong foreach) =====
+            var hotelIds = dto.LichTrinh
+                .Where(s => s.MaKhachSan.HasValue && s.MaKhachSan > 0)
+                .Select(s => s.MaKhachSan!.Value)
+                .Distinct()
+                .ToList();
+
+            var validHotelIds = hotelIds.Any()
+                ? (await _context.KhachSans
+                    .Where(x => hotelIds.Contains(x.MaKhachSan) && x.NgayXoa == null && x.TrangThai)
+                    .Select(x => x.MaKhachSan)
+                    .ToListAsync())
+                    .ToHashSet()
+                : new HashSet<int>();
+
+            foreach (var s in dto.LichTrinh)
+            {
+                if (s.MaKhachSan.HasValue && s.MaKhachSan > 0 && !validHotelIds.Contains(s.MaKhachSan.Value))
+                    throw new Exception($"Khách sạn ngày {s.SoThuTuNgay} không hợp lệ.");
+            }
+
+            // ===== Batch: validate địa điểm (1 query thay vì N x M query trong foreach lồng nhau) =====
+            var locationIds = dto.LichTrinh
+                .SelectMany(s => s.ChiTietLichTrinh ?? new List<ScheduleDetailsDTO>())
+                .Where(d => d.MaDiaDiem.HasValue && d.MaDiaDiem > 0)
+                .Select(d => d.MaDiaDiem!.Value)
+                .Distinct()
+                .ToList();
+            var validLocationDict = new Dictionary<int, string>();
+
+            if (locationIds.Any())
+            {
+                var validLocations = await _context.DiaDiems
+                    .Where(x => locationIds.Contains(x.MaDiaDiem) && x.NgayXoa == null && x.TrangThai)
+                    .Select(x => new { x.MaDiaDiem, x.TenDiaDiem })
+                    .ToListAsync();
+
+                validLocationDict = validLocations
+                    .ToDictionary(x => x.MaDiaDiem, x => x.TenDiaDiem);
+            }
+
+            foreach (var s in dto.LichTrinh)
+            {
+                foreach (var d in s.ChiTietLichTrinh ?? new List<ScheduleDetailsDTO>())
+                {
+                    if (d.MaDiaDiem.HasValue && d.MaDiaDiem > 0 && !validLocationDict.ContainsKey(d.MaDiaDiem.Value))
+                        throw new Exception($"Địa điểm {d.MaDiaDiem} không tồn tại hoặc đã ngưng hoạt động.");
+                }
+            }
+
+            // ===== Batch: validate trùng ngày khởi hành ngay trong danh sách gửi lên (tour mới nên không cần query DB) =====
+            if (dto.ChuyenKhoiHanhs != null && dto.ChuyenKhoiHanhs.Any())
+            {
+                var dupDates = dto.ChuyenKhoiHanhs
+                    .GroupBy(x => x.ChuyenKhoiHanh.NgayKhoiHanh.Date)
+                    .Where(g => g.Count() > 1)
+                    .Select(g => g.Key)
+                    .ToList();
+
+                if (dupDates.Any())
+                    throw new Exception($"Trùng ngày khởi hành trong danh sách: {string.Join(", ", dupDates.Select(d => d.ToString("dd/MM/yyyy")))}");
+            }
+
+            // ===== Batch: lấy tên phương tiện 1 lần cho tất cả chuyến =====
+            var vehicleIds = dto.ChuyenKhoiHanhs?
+                .Select(x => x.ChuyenKhoiHanh.MaPhuongTien)
+                .Distinct()
+                .ToList() ?? new List<int>();
+
+            var vehicleNames = vehicleIds.Any()
+                ? await _context.PhuongTiens
+                    .Where(p => vehicleIds.Contains(p.MaPhuongTien))
+                    .ToDictionaryAsync(p => p.MaPhuongTien, p => p.TenPhuongTien)
+                : new Dictionary<int, string>();
+
+            // ===== Batch: sinh mã chuyến (MaChuyenCode) 1 lần cho toàn bộ danh sách =====
+            var generatedCodes = dto.ChuyenKhoiHanhs != null && dto.ChuyenKhoiHanhs.Any()
+                ? await GenerateUniqueCodesAsync(dto.ChuyenKhoiHanhs, vehicleNames)
+                : new Dictionary<int, string>();
+
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
@@ -178,26 +259,14 @@ namespace travel_recommendation_and_booking_system.Services
                                 tourEntity.MaTour,
                                 schedule.TenLichTrinh,
                                 schedule.ChiTietLichTrinh,
-                                schedule.SoThuTuNgay
+                                schedule.SoThuTuNgay,
+                                validLocationDict
                             );
                         }
                         imageIndex++;
                     }
 
-                    if (schedule.MaKhachSan.HasValue && schedule.MaKhachSan > 0)
-                    {
-                        var hotel = await _context.KhachSans
-                            .FirstOrDefaultAsync(x =>
-                                x.MaKhachSan == schedule.MaKhachSan &&
-                                x.NgayXoa == null &&
-                                x.TrangThai);
-
-                        if (hotel == null)
-                        {
-                            throw new Exception(
-                                $"Khách sạn ngày {schedule.SoThuTuNgay} không hợp lệ.");
-                        }
-                    }
+                    // Đã validate khách sạn ở batch phía trên, không cần query lại ở đây
 
                     var schEntity = new LichTrinh
                     {
@@ -221,20 +290,7 @@ namespace travel_recommendation_and_booking_system.Services
                     {
                         foreach (var detail in schedule.ChiTietLichTrinh)
                         {
-                            if (detail.MaDiaDiem.HasValue && detail.MaDiaDiem > 0)
-                            {
-                                var location = await _context.DiaDiems
-                                    .FirstOrDefaultAsync(x =>
-                                        x.MaDiaDiem == detail.MaDiaDiem &&
-                                        x.NgayXoa == null &&
-                                        x.TrangThai);
-
-                                if (location == null)
-                                {
-                                    throw new Exception(
-                                        $"Địa điểm {detail.MaDiaDiem} không tồn tại hoặc đã ngưng hoạt động.");
-                                }
-                            }
+                            // Đã validate địa điểm ở batch phía trên, không cần query lại ở đây
 
                             _context.CTLichTrinhs.Add(new CTLichTrinh
                             {
@@ -257,8 +313,9 @@ namespace travel_recommendation_and_booking_system.Services
 
                 if (dto.ChuyenKhoiHanhs != null)
                 {
-                    foreach (var dep in dto.ChuyenKhoiHanhs)
+                    for (int i = 0; i < dto.ChuyenKhoiHanhs.Count; i++)
                     {
+                        var dep = dto.ChuyenKhoiHanhs[i];
                         var chuyen = dep.ChuyenKhoiHanh;
 
                         ValidateEndDateWithSchedule(chuyen, dto.LichTrinh);
@@ -269,15 +326,8 @@ namespace travel_recommendation_and_booking_system.Services
                         if (dep.DanhSachGia == null || !dep.DanhSachGia.Any())
                             throw new Exception("Chuyến khởi hành: Phải có ít nhất 1 mức giá.");
 
-                        await ValidateDuplicateDeparture(dep);
-
-                        bool TrongNuoc = true;
-                        var tenPhuongTien = await GetTenPhuongTienAsync(chuyen.MaPhuongTien);
-                        var maChuyenCode = await GenerateUniqueCodeAsync(
-                            TrongNuoc,
-                            chuyen.DiemKhoiHanh,
-                            tenPhuongTien,
-                            chuyen.NgayKhoiHanh);
+                        // Mã chuyến đã được sinh sẵn theo batch phía trên (không còn do-while AnyAsync ở đây)
+                        var maChuyenCode = generatedCodes[i];
 
                         var depEntity = new ChuyenKhoiHanh
                         {
@@ -318,8 +368,6 @@ namespace travel_recommendation_and_booking_system.Services
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
-
-                // Tour mới ảnh hưởng các danh sách tổng hợp (featured, paged, newly-updated...)
                 _tourCache.InvalidateLists();
 
                 await _logService.LoggingAsync(new LogDTO
@@ -350,6 +398,82 @@ namespace travel_recommendation_and_booking_system.Services
             }
         }
 
+        /// <summary>
+        /// Sinh mã MaChuyenCode cho toàn bộ danh sách chuyến khởi hành chỉ với 1 query DB,
+        /// thay vì gọi CountAsync + do-while AnyAsync cho từng chuyến như trước.
+        /// </summary>
+        private async Task<Dictionary<int, string>> GenerateUniqueCodesAsync(
+            List<DepartureFullDTO> departures,
+            Dictionary<int, string> vehicleNames)
+        {
+            const bool trongNuoc = true;
+            var prefixByIndex = new string[departures.Count];
+            var indicesByPrefix = new Dictionary<string, List<int>>();
+
+            for (int i = 0; i < departures.Count; i++)
+            {
+                var chuyen = departures[i].ChuyenKhoiHanh;
+                var regionCode = trongNuoc ? "TN" : "NN";
+                var locationCode = LocationCodeMap.GetValueOrDefault(chuyen.DiemKhoiHanh?.Trim() ?? "", "XX");
+                var tenPhuongTien = vehicleNames.GetValueOrDefault(chuyen.MaPhuongTien, "");
+                var vehicleCode = VehicleCodeMap.GetValueOrDefault(tenPhuongTien?.Trim() ?? "", "XX");
+                var dateCode = chuyen.NgayKhoiHanh.ToString("ddMMyy");
+                var prefix = $"{regionCode}-{locationCode}-{vehicleCode}-{dateCode}-";
+
+                prefixByIndex[i] = prefix;
+                if (!indicesByPrefix.TryGetValue(prefix, out var list))
+                    indicesByPrefix[prefix] = list = new List<int>();
+                list.Add(i);
+            }
+
+            // 1 query duy nhất lấy toàn bộ mã đã tồn tại khớp bất kỳ prefix nào
+            var predicate = BuildPrefixOrPredicate(indicesByPrefix.Keys.ToList());
+            var existingCodes = (await _context.ChuyenKhoiHanhs
+                .Where(predicate)
+                .Select(c => c.MaChuyenCode)
+                .ToListAsync())
+                .ToHashSet();
+
+            var result = new Dictionary<int, string>();
+
+            foreach (var (prefix, indices) in indicesByPrefix)
+            {
+                int seq = existingCodes.Count(c => c.StartsWith(prefix)) + 1;
+
+                foreach (var idx in indices)
+                {
+                    string code;
+                    do
+                    {
+                        code = $"{prefix}{seq:D3}";
+                        seq++;
+                    }
+                    while (existingCodes.Contains(code));
+
+                    existingCodes.Add(code); // reserve ngay để tránh trùng trong cùng batch
+                    result[idx] = code;
+                }
+            }
+
+            return result;
+        }
+
+        private static Expression<Func<ChuyenKhoiHanh, bool>> BuildPrefixOrPredicate(List<string> prefixes)
+        {
+            var param = Expression.Parameter(typeof(ChuyenKhoiHanh), "c");
+            var property = Expression.Property(param, nameof(ChuyenKhoiHanh.MaChuyenCode));
+            var startsWithMethod = typeof(string).GetMethod("StartsWith", new[] { typeof(string) })!;
+
+            Expression? body = null;
+            foreach (var prefix in prefixes)
+            {
+                var call = Expression.Call(property, startsWithMethod, Expression.Constant(prefix));
+                body = body == null ? call : Expression.OrElse(body, call);
+            }
+
+            return Expression.Lambda<Func<ChuyenKhoiHanh, bool>>(body!, param);
+        }
+
 
         public async Task<bool> UpdateFullTourAsync(int tourId, TourFullCreateDTO dto, List<IFormFile> images, List<IFormFile> scheduleImages)
         {
@@ -376,15 +500,6 @@ namespace travel_recommendation_and_booking_system.Services
                     throw new Exception("Tour đã có khách đặt, không được thay đổi thông tin.");
                 }
 
-
-                //if (hasAnyDeparture)
-                //{
-
-                //    if (existingTour.Ngay != dto.TourInfo.Ngay || existingTour.Dem != dto.TourInfo.Dem)
-                //    {
-                //        throw new Exception("Tour đã có chuyến khởi hành, không được thay đổi số ngày/đêm.");
-                //    }
-                //}
 
                 var oldData = new
                 {
@@ -449,7 +564,6 @@ namespace travel_recommendation_and_booking_system.Services
                 throw;
             }
         }
-
 
         public async Task<TourReponseDTO?> GetTourDetailAsync(int tourId)
         {
@@ -554,6 +668,7 @@ namespace travel_recommendation_and_booking_system.Services
             _cache.Set(cacheKey, result, DetailCacheDuration);
             return result;
         }
+
 
         public async Task<TourReponseDTO?> GetTourDetailBySlugAsync(string slug)
         {
@@ -1395,23 +1510,29 @@ namespace travel_recommendation_and_booking_system.Services
                 .FirstOrDefaultAsync(t => t.MaTour == id);
         }
 
-        private async Task<string> SaveScheduleImageAsync(IFormFile file, int maTour, string tenLichTrinh, List<ScheduleDetailsDTO>? chiTietLichTrinhs, int soThuTuNgay)
+        private async Task<string> SaveScheduleImageAsync(
+            IFormFile file,
+            int maTour,
+            string tenLichTrinh,
+            List<ScheduleDetailsDTO>? chiTietLichTrinhs,
+            int soThuTuNgay,
+            Dictionary<int, string> preloadedLocations)
         {
             if (file == null || file.Length == 0) return DEFAULT_SCHEDULE_IMAGE;
 
             ValidateImage(file, soThuTuNgay);
 
-            var detailLocationIds = chiTietLichTrinhs?
+            var firstLocationId = chiTietLichTrinhs?
                 .Where(x => x.MaDiaDiem.HasValue && x.MaDiaDiem > 0)
                 .Select(x => x.MaDiaDiem!.Value)
-                .Distinct()
-                .ToList() ?? new List<int>();
+                .OrderBy(id => id)
+                .FirstOrDefault();
 
-            var tenDiemThamQuan = await _context.DiaDiems
-                .Where(x => detailLocationIds.Contains(x.MaDiaDiem))
-                .OrderBy(x => x.MaDiaDiem)
-                .Select(x => x.TenDiaDiem)
-                .FirstOrDefaultAsync();
+            // Dùng dict đã nạp sẵn ở batch validate phía trên, không query lại DiaDiems ở đây
+            string? tenDiemThamQuan = firstLocationId.HasValue &&
+                preloadedLocations.TryGetValue(firstLocationId.Value, out var name)
+                ? name
+                : null;
 
             string timeStamp = DateTime.Now.ToString("ssmmHHddMMyyyy");
             string safeTenLichTrinh = ToSafeFileName(tenLichTrinh);
@@ -1883,7 +2004,8 @@ namespace travel_recommendation_and_booking_system.Services
             {
                 query = query.Where(t => t.Ngay >= request.NgayTu.Value);
             }
-            if (!string.IsNullOrEmpty(request.DiemDen))
+
+            if (!string.IsNullOrWhiteSpace(request.DiemDen))
             {
                 var diemDenParam = request.DiemDen.Trim();
 
@@ -1896,26 +2018,29 @@ namespace travel_recommendation_and_booking_system.Services
                     .Select(ct => ct.LichTrinh.MaTour)
                     .Distinct();
 
-                query = query.Where(t => maTourHopLe.Contains(t.MaTour));
+                query = query.Where(t =>
+                    maTourHopLe.Contains(t.MaTour) ||
+                    t.ChuyenKhoiHanhs.Any(c =>
+                        c.NgayXoa == null &&
+                        c.TrangThai == 1 &&
+                        EF.Functions.Like(c.DiemDen, $"%{diemDenParam}%")));
             }
 
-            if (request.MinPrice.HasValue)
+            if (request.MinPrice.HasValue || request.MaxPrice.HasValue)
             {
                 query = query.Where(t =>
-                    t.ChuyenKhoiHanhs.SelectMany(c => c.GiaChuyens)
-                     .Any(g => g.GiaNguoiLon >= request.MinPrice));
-            }
-
-            if (request.MaxPrice.HasValue)
-            {
-                query = query.Where(t =>
-                    t.ChuyenKhoiHanhs.SelectMany(c => c.GiaChuyens)
-                     .Any(g => g.GiaNguoiLon <= request.MaxPrice));
+                    t.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null && c.TrangThai == 1)
+                        .SelectMany(c => c.GiaChuyens)
+                        .Any(g => g.NgayXoa == null &&
+                                  (!request.MinPrice.HasValue || g.GiaNguoiLon >= request.MinPrice.Value) &&
+                                  (!request.MaxPrice.HasValue || g.GiaNguoiLon <= request.MaxPrice.Value)));
             }
 
             var totalRecords = await query.CountAsync();
             var data = await query
                 .OrderByDescending(t => t.LuotDat)
+                .ThenBy(t => t.TenTour)
                 .Skip((request.PageNumber - 1) * request.PageSize)
                 .Take(request.PageSize)
                 .Select(t => new TourCardDTO
@@ -1931,8 +2056,11 @@ namespace travel_recommendation_and_booking_system.Services
                     LuotXem = t.LuotXem,
 
                     GiaChuyen = t.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null && c.TrangThai == 1)
                         .SelectMany(c => c.GiaChuyens)
-                        .Min(g => (decimal?)g.GiaNguoiLon) ?? 0,
+                        .Where(g => g.NgayXoa == null)
+                        .Select(g => (decimal?)g.GiaNguoiLon)
+                        .Min() ?? 0,
 
                     DuongDanAnh = t.HinhAnhTours
                         .Where(x => x.AnhChinh)
@@ -1940,9 +2068,10 @@ namespace travel_recommendation_and_booking_system.Services
                         .FirstOrDefault(),
 
                     DiemDen = t.ChuyenKhoiHanhs
-                        .Where(c => c.NgayXoa == null)
+                        .Where(c => c.NgayXoa == null && c.TrangThai == 1)
+                        .OrderBy(c => c.NgayKhoiHanh)
                         .Select(c => c.DiemDen)
-                        .FirstOrDefault(),
+                        .FirstOrDefault() ?? "",
 
                     SoDanhGia = t.DanhGias.Count(),
                     DiemDanhGia = t.DanhGias.Any() ? Math.Round(t.DanhGias.Average(d => d.DiemDanhGia), 1) : 0
@@ -1988,21 +2117,23 @@ namespace travel_recommendation_and_booking_system.Services
 
             if (!string.IsNullOrWhiteSpace(request.DiemDen))
             {
-                var diemDen = request.DiemDen.Trim().ToLower();
+                var diemDenParam = request.DiemDen.Trim();
+
+                var maTourHopLe = _context.CTLichTrinhs
+                    .Where(ct => ct.LichTrinh.NgayXoa == null &&
+                                 ct.DiaDiem.NgayXoa == null &&
+                                 (ct.DiaDiem.TenDiaDiem.Contains(diemDenParam) ||
+                                  ct.DiaDiem.Slug.Contains(diemDenParam) ||
+                                  ct.DiaDiem.TinhThanh.Contains(diemDenParam)))
+                    .Select(ct => ct.LichTrinh.MaTour)
+                    .Distinct();
 
                 query = query.Where(t =>
+                    maTourHopLe.Contains(t.MaTour) ||
                     t.ChuyenKhoiHanhs.Any(c =>
                         c.NgayXoa == null &&
                         c.TrangThai == 1 &&
-                        EF.Functions.Like(c.DiemDen, $"%{diemDen}%"))
-                    ||
-                    t.LichTrinhs.Any(l =>
-                        l.NgayXoa == null &&
-                        l.CTLichTrinhs.Any(ct =>
-                            ct.DiaDiem.NgayXoa == null &&
-                            EF.Functions.Like(ct.DiaDiem.TinhThanh, $"%{diemDen}%")
-                        ))
-                );
+                        EF.Functions.Like(c.DiemDen, $"%{diemDenParam}%")));
             }
 
             if (request.NgayDi.HasValue || request.NgayVe.HasValue)

@@ -1,5 +1,4 @@
-﻿
-using System.Text;
+﻿using System.Text;
 using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -23,10 +22,8 @@ namespace travel_recommendation_and_booking_system
         {
             var builder = WebApplication.CreateBuilder(args);
             QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
-            // Add services to the container.
 
             builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
 
             builder.Services.AddSwaggerGen(c =>
@@ -56,7 +53,9 @@ namespace travel_recommendation_and_booking_system
                     }
                 });
             });
+
             builder.Services.AddSignalR();
+
             builder.Services.AddHangfire(config =>
             {
                 config.UseSqlServerStorage(
@@ -64,7 +63,24 @@ namespace travel_recommendation_and_booking_system
             });
 
             builder.Services.AddHangfireServer();
-            builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            builder.Services.AddDbContext<AppDbContext>(options =>
+            {
+                options.UseSqlServer(
+                    builder.Configuration.GetConnectionString("DefaultConnection"),
+                    sqlOptions =>
+                    {
+                        sqlOptions.UseQuerySplittingBehavior(
+                            QuerySplittingBehavior.SplitQuery);
+                    });
+
+                if (builder.Environment.IsDevelopment())
+                {
+                    options.EnableDetailedErrors();
+                    options.EnableSensitiveDataLogging();
+                }
+            });
+
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IContactService, ContactService>();
             builder.Services.AddScoped<IEmailService, EmailService>();
@@ -95,20 +111,28 @@ namespace travel_recommendation_and_booking_system
             builder.Services.AddScoped<IStatisticService, StatisticService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+            builder.Services.AddScoped<IPaymentService, PaymentService>();
+            builder.Services.AddScoped<IRefundService, RefundService>();
             builder.Services.AddScoped<PromotionStatusJob>();
             builder.Services.AddScoped<BookingEmailJob>();
             builder.Services.AddScoped<PaymentWarningJob>();
-            builder.Services.AddTransient<GeminiService>();
+            builder.Services.AddScoped<BookingStatusJob>();
             builder.Services.AddScoped<TrainRecommendationModelJob>();
+            builder.Services.AddScoped<CleanExpiredReservationsJob>();
+            builder.Services.AddScoped<DepartureChangeStatus>();
+            builder.Services.AddScoped<CleanSystemLogJob>();
+
+            builder.Services.AddTransient<GeminiService>();
             builder.Services.AddScoped<IDashboardNotifier, DashboardNotifier>();
             builder.Services.AddScoped<ITourCacheService, TourCacheService>();
             builder.Services.AddScoped<IWebInfoCacheService, WebInfoCacheService>();
             builder.Services.AddScoped<IBannerCacheService, BannerCacheService>();
             builder.Services.AddHttpContextAccessor();
             builder.Services.Configure<VnPayConfig>(builder.Configuration.GetSection("VNPay"));
-            builder.Services.AddScoped<IPaymentService, PaymentService>();
+
             var jwtSettings = builder.Configuration.GetSection("Jwt");
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
+
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -130,6 +154,7 @@ namespace travel_recommendation_and_booking_system
                     IssuerSigningKey = new SymmetricSecurityKey(key),
                     ClockSkew = TimeSpan.Zero
                 };
+
                 options.Events = new JwtBearerEvents
                 {
                     OnMessageReceived = context =>
@@ -166,6 +191,7 @@ namespace travel_recommendation_and_booking_system
                     }
                 };
             });
+
             builder.Services.AddAuthorization(options =>
             {
                 options.AddPolicy("AdminOnly",
@@ -177,6 +203,7 @@ namespace travel_recommendation_and_booking_system
                 options.AddPolicy("Admin&Staff",
                     policy => policy.RequireRole("1", "2"));
             });
+
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("ReactPolicy",
@@ -189,10 +216,10 @@ namespace travel_recommendation_and_booking_system
                               .WithExposedHeaders("Content-Disposition");
                     });
             });
-            builder.Services.AddAuthorization();
-            builder.Services.AddHttpContextAccessor();
+
             builder.Services.AddHttpClient();
             builder.Services.AddMemoryCache();
+
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
@@ -200,24 +227,29 @@ namespace travel_recommendation_and_booking_system
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+
             app.UseHangfireDashboard("/hangfire");
             app.UseCors("ReactPolicy");
             app.UseStaticFiles();
             app.UseHttpsRedirection();
-            app.UseRequestLogging();
             app.UseExceptionError();
+            app.UseRequestLogging();
+            
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
+
             app.UseCustomHangfireJobs();
             app.UseCustomHangfireReview();
             app.UseCleanExpriedReservationsJob();
             app.UseDepartureChangeStatusJob();
             app.UseCleanSystemLogJob();
-            app.UsePaymentWarningJobs();
             app.UseTrainRecommendationModelJob();
-            app.UseCompleteTourBookingJob();
+            app.UsePaymentWarningJobs();
+            app.UseBookingStatusJobs();
+
             app.MapHub<TravelRecommendationHub>("/TravelRecommendationHub");
+
             app.Run();
         }
     }

@@ -1,7 +1,7 @@
-﻿// Models/PaymentPayload.cs
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json;
+using travel_recommendation_and_booking_system.DTOs.Payment;
+using travel_recommendation_and_booking_system.DTOs.TourBooking;
 
 namespace travel_recommendation_and_booking_system.Models
 {
@@ -9,42 +9,58 @@ namespace travel_recommendation_and_booking_system.Models
     public class PaymentPayload
     {
         [Key]
-        public int Id { get; set; }
-
-        public int MaGiuCho { get; set; }
+        public int MaPaymentPayload { get; set; }
+        public int? MaGiuCho { get; set; }
+        public int? MaDonDatTour { get; set; }
         public int MaNguoiDung { get; set; }
         public int MaChuyen { get; set; }
+
+
         public int SoNguoiLon { get; set; }
         public int SoTreEm { get; set; }
         public int SoEmBe { get; set; }
+
         public int? MaUuDai { get; set; }
+
         public decimal TongTienGoc { get; set; }
-        public string? GhiChu { get; set; }
-        public DateTime NgayTao { get; set; } = DateTime.Now;
-
-        public DateTime? NgayBatDauThanhToan { get; set; }
-        [MaxLength(50)]
+        public int TyLeThanhToan { get; set; }
+        public int LoaiGiaoDich { get; set; } // 1: Đặt mới, 2: Thanh toán còn lại
+ 
         public string? TxnRef { get; set; }
+        public DateTime? NgayBatDauThanhToan { get; set; }
 
-        // Lưu danh sách hành khách dạng JSON
-        public string DanhSachHanhKhachJson { get; set; } = "[]";
+        public string? GhiChu { get; set; }
+
+        public string? HoTenLienHe { get; set; }
+        public string? SoDienThoaiLienHe { get; set; }
+        public string? EmailLienHe { get; set; }
+        public string? DiaChiLienHe { get; set; }
+
+        public bool DaXuLy { get; set; }
+
+        public string? DanhSachHanhKhachJson { get; set; }
 
         [NotMapped]
-        public List<HanhKhachPayload> DanhSachHanhKhach
+        public List<KhachHangDTO>? DanhSachHanhKhach
         {
-            get => JsonSerializer.Deserialize<List<HanhKhachPayload>>(DanhSachHanhKhachJson) ?? new();
-            set => DanhSachHanhKhachJson = JsonSerializer.Serialize(value);
+            get => string.IsNullOrEmpty(DanhSachHanhKhachJson)
+                ? new List<KhachHangDTO>()
+                : System.Text.Json.JsonSerializer.Deserialize<List<KhachHangDTO>>(DanhSachHanhKhachJson);
+            set => DanhSachHanhKhachJson = value == null
+                ? null
+                : System.Text.Json.JsonSerializer.Serialize(value);
         }
-    }
 
-    public class HanhKhachPayload
-    {
-        public string HoTen { get; set; } = "";
-        public string? SoDienThoai { get; set; }
-        public string? Email { get; set; }
-        public DateTime? NgaySinh { get; set; }
-        public bool PhongDon { get; set; }
-        public bool GioiTinh { get; set; }
-        public int LoaiKhach { get; set; }
+        [ForeignKey(nameof(MaGiuCho))]
+        public virtual GiuCho? GiuCho { get; set; }
+
+        [ForeignKey(nameof(MaDonDatTour))]
+        public virtual DonDatTour? DonDatTour { get; set; }
+
+        [ForeignKey(nameof(MaNguoiDung))]
+        public virtual NguoiDung? NguoiDung { get; set; }
+
+        [ForeignKey(nameof(MaChuyen))]
+        public virtual ChuyenKhoiHanh? ChuyenKhoiHanh { get; set; }
     }
 }

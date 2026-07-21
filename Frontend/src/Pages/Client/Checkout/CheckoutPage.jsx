@@ -9,14 +9,28 @@ import TourSummaryCard from "~/components/Checkout/TourSummaryCard";
 import InputField from "~/components/UI/Form/InputField";
 import Loading from "~/components/Common/Loading";
 import { formatCurrency } from "~/Helper/FormatCurrency";
-import { toastError, toastSuccess } from "~/utils/Toast";
+import { toastError, toastSuccess, toastWarning } from "~/utils/Toast";
 import { getErrorMessage } from "~/utils/errorHelper";
 import { createBookingClientApi, reserveSeatsApi, releaseReservationApi } from "~/Services/TourBookingService";
 import useAuth from "~/Hooks/useAuth";
 
 const PAYMENT_METHOD = { VNPAY: 1, TIEN_MAT: 2, CHUYEN_KHOAN: 3 };
+const DEPOSIT_OPTIONS = [30, 50, 100];
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 10 * 60 * 1000;
+
+const ORDER_STATUS = {
+    CHO_THANH_TOAN_COC: 1,
+    CHO_DUYET: 2,
+    DA_DUYET: 3,
+    DANG_DIEN_RA: 4,
+    HOAN_TAT: 5,
+    CHO_XU_LY_HUY: 6,
+    DA_HUY_DANG_HOAN_TIEN: 7,
+    DA_HUY_DA_HOAN_TIEN: 8,
+    DA_HUY_MAT_COC: 9,
+    HUY_KHONG_HOAN_TIEN: 10
+};
 
 function formatDate(dateString) {
     if (!dateString) return "-";
@@ -43,17 +57,18 @@ export default function CheckoutPage() {
     const [singleRooms, setSingleRooms] = useState({});
     const [contactErrors, setContactErrors] = useState({});
     const [passengerErrors, setPassengerErrors] = useState({});
-    const [contact, setContact] = useState({ fullName: "", phone: "", email: "", address: "" });
+    const [contact, setContact] = useState({ fullName: "", phone: "", email: "", address: "", dob: "" });
     const [passengers, setPassengers] = useState({ adults: 1, children: 0, toddlers: 0 });
     const [promoCode, setPromoCode] = useState("");
     const [note, setNote] = useState("");
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHOD.VNPAY);
+    const [depositRate, setDepositRate] = useState(100);
     const [vnpayLoading, setVnpayLoading] = useState(false);
     const [holdId, setHoldId] = useState(null);
     const [vnpayUrl, setVnpayUrl] = useState(null);
     const [txnRef, setTxnRef] = useState(null);
-    const [isProcessing, setIsProcessing] = useState(false);
+    const [isReserving, setIsReserving] = useState(false);
     const [activeTab, setActiveTab] = useState('me');
     const [showProfileWarning, setShowProfileWarning] = useState(false);
     const [profileMissingFields, setProfileMissingFields] = useState([]);
@@ -61,11 +76,19 @@ export default function CheckoutPage() {
     useEffect(() => {
         const data = sessionStorage.getItem("bookingData");
         if (data) {
-            const parsed = JSON.parse(data);
-            setBookingData(parsed);
-            setPassengers(parsed.passengers ?? { adults: 1, children: 0, toddlers: 0 });
+            try {
+                const parsed = JSON.parse(data);
+                setBookingData(parsed);
+                setPassengers(parsed.passengers ?? { adults: 1, children: 0, toddlers: 0 });
+            } catch (error) {
+                toastError("Lỗi dữ liệu", "Không thể đọc thông tin đặt tour");
+                navigate("/");
+            }
+        } else {
+            toastWarning("Chưa có dữ liệu", "Vui lòng chọn tour trước khi đặt");
+            navigate("/");
         }
-    }, []);
+    }, [navigate]);
 
     useEffect(() => {
         setSingleRooms((prev) => {
@@ -86,45 +109,88 @@ export default function CheckoutPage() {
     useEffect(() => {
         return () => {
             if (holdId) {
-                const storedUser = JSON.parse(localStorage.getItem("user"));
-                if (storedUser?.maNguoiDung) {
-                    releaseReservationApi(storedUser.maNguoiDung, holdId).catch(() => { });
-                }
+                releaseReservationApi(holdId).catch(() => {});
             }
         };
     }, [holdId]);
 
+    const fillPassengerFromContact = useCallback((contactData) => {
+        if (!contactData) return;
+
+        const firstAdultKey = `adults-0`;
+        const dob = contactData.dob || '';
+        const fullName = contactData.fullName || '';
+        const phone = contactData.phone || '';
+        const email = contactData.email || '';
+
+        setPassengerDetails(prev => {
+            const existing = prev[firstAdultKey] || {};
+            const manuallyEdited = existing.fullName && existing.isFilledFromContact === false;
+
+            if (activeTab === 'other' && !manuallyEdited) {
+                return {
+                    ...prev,
+                    [firstAdultKey]: {
+                        ...existing,
+                        fullName: fullName,
+                        phone: phone,
+                        email: email,
+                        dob: dob,
+                        gender: existing.gender || "Nam",
+                        isSaved: true,
+                        isAutoFilled: false,
+                        isFilledFromContact: true
+                    }
+                };
+            }
+            return prev;
+        });
+    }, [activeTab]);
+
     const checkProfileComplete = () => {
         const missing = [];
-        if (!contact.fullName || contact.fullName.trim() === '') {
-            missing.push('Họ tên');
-        }
-        if (!contact.phone || contact.phone.trim() === '') {
-            missing.push('Số điện thoại');
-        }
-        if (!contact.email || contact.email.trim() === '') {
-            missing.push('Email');
-        }
-        if (!contact.address || contact.address.trim() === '') {
-            missing.push('Địa chỉ');
-        }
+        if (!contact.fullName?.trim()) missing.push("Họ tên");
+        if (!contact.phone?.trim()) missing.push("Số điện thoại");
+        if (!contact.email?.trim()) missing.push("Email");
+        if (!contact.address?.trim()) missing.push("Địa chỉ");
         return missing;
     };
 
     const handleTabChange = (tab) => {
         setActiveTab(tab);
-        if (tab === 'other') {
-            setContactErrors({});
-        } else if (tab === 'me') {
-            setContactErrors({});
+        setContactErrors({});
+        if (tab === 'other' && contact.fullName) {
+            fillPassengerFromContact(contact);
         }
     };
 
     const handleContactChange = (e) => {
         const { name, value } = e.target;
-        setContact((prev) => ({ ...prev, [name]: value }));
+        const updatedContact = { ...contact, [name]: value };
+        setContact(updatedContact);
+
         if (contactErrors[name]) {
             setContactErrors((prev) => ({ ...prev, [name]: undefined }));
+        }
+
+        if (activeTab === 'other' && name !== 'address') {
+            fillPassengerFromContact(updatedContact);
+        }
+    };
+
+    const handleContactDateChange = (value) => {
+        const updatedContact = { ...contact, dob: value };
+        setContact(updatedContact);
+        if (activeTab === 'other') {
+            fillPassengerFromContact(updatedContact);
+        }
+    };
+
+    const handleContactTabChange = (newContactData) => {
+        setContact(newContactData);
+        setContactErrors({});
+        if (activeTab === 'other' && newContactData.fullName) {
+            fillPassengerFromContact(newContactData);
         }
     };
 
@@ -144,6 +210,7 @@ export default function CheckoutPage() {
             }
         } else if (step === 2) {
             setPaymentMethod(PAYMENT_METHOD.VNPAY);
+            setDepositRate(100);
             setShowPaymentModal(true);
         }
     };
@@ -169,13 +236,17 @@ export default function CheckoutPage() {
         );
     }, [bookingData, passengers, singleRoomCount]);
 
+    const amountDueNow = useMemo(
+        () => Math.round((totalPrice * depositRate) / 100),
+        [totalPrice, depositRate]
+    );
+
     const passengerList = useMemo(
-        () =>
-            Object.entries(passengerDetails).map(([key, p]) => ({
-                key,
-                ...p,
-                singleRoom: singleRooms[key] || false,
-            })),
+        () => Object.entries(passengerDetails).map(([key, p]) => ({
+            key,
+            ...p,
+            singleRoom: singleRooms[key] || false,
+        })),
         [passengerDetails, singleRooms]
     );
 
@@ -184,12 +255,28 @@ export default function CheckoutPage() {
         const contactErr = {};
         const passengerErr = {};
 
-        if (!contact.fullName.trim()) contactErr.fullName = "Vui lòng nhập họ tên";
-        if (!contact.phone.trim()) contactErr.phone = "Vui lòng nhập số điện thoại";
-        else if (!/^0\d{9}$/.test(contact.phone)) contactErr.phone = "Số điện thoại không hợp lệ";
-        if (!contact.email.trim()) contactErr.email = "Vui lòng nhập email";
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) contactErr.email = "Email không hợp lệ";
-        if (!contact.address.trim()) contactErr.address = "Vui lòng nhập địa chỉ";
+        if (!contact.fullName?.trim()) {
+            contactErr.fullName = "Vui lòng nhập họ tên";
+            valid = false;
+        }
+        if (!contact.phone?.trim()) {
+            contactErr.phone = "Vui lòng nhập số điện thoại";
+            valid = false;
+        } else if (!/^0\d{9}$/.test(contact.phone)) {
+            contactErr.phone = "Số điện thoại không hợp lệ";
+            valid = false;
+        }
+        if (!contact.email?.trim()) {
+            contactErr.email = "Vui lòng nhập email";
+            valid = false;
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
+            contactErr.email = "Email không hợp lệ";
+            valid = false;
+        }
+        if (!contact.address?.trim()) {
+            contactErr.address = "Vui lòng nhập địa chỉ";
+            valid = false;
+        }
 
         const checkPassenger = (key) => {
             const p = passengerDetails[key] ?? {};
@@ -201,15 +288,29 @@ export default function CheckoutPage() {
                 !!p.fullName?.trim() &&
                 !!p.dob;
 
-            if (!isFirstAdultAutoFilled) {
-                if (!p.fullName?.trim()) err.fullName = "Nhập họ tên";
-                if (!p.dob) err.dob = "Chọn ngày sinh";
-                if (p.phone && !/^0\d{9}$/.test(p.phone)) err.phone = "SĐT không hợp lệ";
+            const isFilledFromContact = key === 'adults-0' &&
+                activeTab === 'other' &&
+                p.isFilledFromContact === true &&
+                !!p.fullName?.trim() &&
+                !!p.dob;
+
+            if (!isFirstAdultAutoFilled && !isFilledFromContact) {
+                if (!p.fullName?.trim()) {
+                    err.fullName = "Nhập họ tên";
+                    valid = false;
+                }
+                if (!p.dob) {
+                    err.dob = "Chọn ngày sinh";
+                    valid = false;
+                }
+                if (p.phone && !/^0\d{9}$/.test(p.phone)) {
+                    err.phone = "SĐT không hợp lệ";
+                    valid = false;
+                }
             }
 
             if (Object.keys(err).length > 0) {
                 passengerErr[key] = err;
-                valid = false;
             }
         };
 
@@ -217,7 +318,6 @@ export default function CheckoutPage() {
         for (let i = 0; i < passengers.children; i++) checkPassenger(`children-${i}`);
         for (let i = 0; i < passengers.toddlers; i++) checkPassenger(`toddlers-${i}`);
 
-        if (Object.keys(contactErr).length > 0) valid = false;
         setContactErrors(contactErr);
         setPassengerErrors(passengerErr);
 
@@ -236,54 +336,71 @@ export default function CheckoutPage() {
             if (key.startsWith("children")) loaiKhach = 2;
             if (key.startsWith("toddlers")) loaiKhach = 3;
             return {
-                hoTen: value.fullName,
+                hoTen: value.fullName || "",
                 soDienThoai: value.phone || "",
-                email: contact.email,
-                ngaySinh: value.dob,
+                email: contact.email || "",
+                ngaySinh: value.dob || new Date().toISOString().split('T')[0],
                 gioiTinh: value.gender === "Nam",
                 loaiKhach,
                 phongDon: singleRooms[key] || false,
             };
         });
 
-    const buildBookingDto = () => ({
+    const buildBookingDto = (method) => ({
         maChuyen: bookingData.maChuyen,
         maUuDai: null,
         soNguoiLon: passengers.adults,
         soTreEm: passengers.children,
         soEmBe: passengers.toddlers,
-        ghiChu: note,
+        ghiChu: note || "",
         danhSachHanhKhach: buildPassengerList(),
-        hoTenLienHe: contact.fullName,
-        soDienThoaiLienHe: contact.phone,
-        emailLienHe: contact.email,
-        diaChiLienHe: contact.address,
-        phuongThucThanhToan: paymentMethod,
+        hoTenLienHe: contact.fullName || "",
+        soDienThoaiLienHe: contact.phone || "",
+        emailLienHe: contact.email || "",
+        diaChiLienHe: contact.address || "",
+        phuongThucThanhToan: method,
     });
 
     const onSubmit = async () => {
         if (!validate()) return;
+        if (isReserving) return;
+
+        setIsReserving(true);
+        
         try {
-            const storedUser = JSON.parse(localStorage.getItem("user"));
-            const reserve = await reserveSeatsApi(storedUser.maNguoiDung, {
+            const reserveDto = {
                 maChuyen: bookingData.maChuyen,
-                soNguoiLon: passengers.adults,
-                soTreEm: passengers.children,
-                soEmBe: passengers.toddlers,
-            });
-            setHoldId(reserve.data.maGiuCho);
+                soNguoiLon: passengers.adults || 0,
+                soTreEm: passengers.children || 0,
+                soEmBe: passengers.toddlers || 0,
+            };
+
+            const response = await reserveSeatsApi(reserveDto);
+
+            if (!response || !response.maGiuCho) {
+                throw new Error("Không nhận được mã giữ chỗ");
+            }
+
+            setHoldId(response.maGiuCho);
             setStep(2);
+            
+          
         } catch (err) {
-            toastError("Không thể giữ chỗ", getErrorMessage(err));
+            const errorMsg = err.response?.data?.message || err.message || "Không thể giữ chỗ";
+           
+        } finally {
+            setIsReserving(false);
         }
     };
 
     const handleBack = async () => {
         if (step === 2 && holdId) {
             try {
-                const storedUser = JSON.parse(localStorage.getItem("user"));
-                await releaseReservationApi(storedUser.maNguoiDung, holdId);
-            } catch { }
+                await releaseReservationApi(holdId);
+                toastSuccess("Đã hủy giữ chỗ", "Bạn có thể đặt lại tour sau.");
+            } catch {
+                console.warn("Release reservation error");
+            }
             setHoldId(null);
         }
         if (step === 2) {
@@ -297,28 +414,45 @@ export default function CheckoutPage() {
 
     const handleConfirmPayment = async () => {
         if (!holdId || !bookingData) {
-            toastError("Phiên giữ chỗ không hợp lệ. Vui lòng thử lại từ đầu.");
+            toastError("Lỗi phiên làm việc", "Phiên giữ chỗ không hợp lệ. Vui lòng thử lại.");
             return;
         }
-        setIsProcessing(true);
 
         if (paymentMethod === PAYMENT_METHOD.TIEN_MAT || paymentMethod === PAYMENT_METHOD.CHUYEN_KHOAN) {
             try {
-                const storedUser = JSON.parse(localStorage.getItem("user"));
-                await createBookingClientApi(storedUser.maNguoiDung, buildBookingDto(), holdId);
-                sessionStorage.removeItem("bookingData");
-                const methodName = paymentMethod === PAYMENT_METHOD.TIEN_MAT ? "cash" : "transfer";
-                toastSuccess("Đặt tour thành công", "Chúng tôi sẽ liên hệ xác nhận với bạn sớm nhất.");
-                navigate("/dat-tour-thanh-cong", { state: { method: methodName, hold: holdId } });
+                const dto = buildBookingDto(paymentMethod);
+                const response = await createBookingClientApi(dto, holdId);
+
+                if (response?.id) {
+                    sessionStorage.removeItem("bookingData");
+                    const methodName = paymentMethod === PAYMENT_METHOD.TIEN_MAT ? "Tiền mặt" : "Chuyển khoản";
+
+                    toastSuccess(
+                        "Đặt tour thành công",
+                        `Đơn hàng đã được tạo và đang chờ xác nhận thanh toán ${methodName}.`
+                    );
+
+                    navigate("/dat-tour-thanh-cong", {
+                        state: {
+                            method: paymentMethod === PAYMENT_METHOD.TIEN_MAT ? "cash" : "transfer",
+                            hold: holdId,
+                            orderId: response.id,
+                            status: ORDER_STATUS.CHO_DUYET
+                        }
+                    });
+                } else {
+                    toastError("Tạo đơn thất bại", response?.message || "Không nhận được phản hồi.");
+                }
             } catch (err) {
-                toastError("Tạo đơn thất bại", getErrorMessage(err));
-                setIsProcessing(false);
+                const errorMsg = err.response?.data?.message || err.message || "Không thể tạo đơn";
+                toastError("Tạo đơn thất bại", errorMsg);
             }
             return;
         }
 
         if (paymentMethod === PAYMENT_METHOD.VNPAY) {
             setVnpayLoading(true);
+            
             const paymentPayload = {
                 maGiuCho: holdId,
                 maChuyen: bookingData.maChuyen,
@@ -327,28 +461,51 @@ export default function CheckoutPage() {
                 soTreEm: passengers.children,
                 soEmBe: passengers.toddlers,
                 maUuDai: null,
-                ghiChu: note,
+                ghiChu: note || "",
+                tyLeThanhToan: depositRate,
                 danhSachHanhKhach: buildPassengerList(),
+                hoTenLienHe: contact.fullName || "",
+                soDienThoaiLienHe: contact.phone || "",
+                emailLienHe: contact.email || "",
+                diaChiLienHe: contact.address || "",
             };
+
             try {
+                const token = localStorage.getItem("token");
+                if (!token) {
+                    toastError("Chưa đăng nhập", "Vui lòng đăng nhập để thanh toán.");
+                    setVnpayLoading(false);
+                    return;
+                }
+
                 const res = await fetch("https://localhost:7016/api/client/payment/create-payment", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
                     body: JSON.stringify(paymentPayload),
                 });
+
                 const data = await res.json();
-                if (data.paymentUrl && data.txnRef) {
+
+                if (res.ok && data.paymentUrl && data.txnRef) {
+                    setShowPaymentModal(false);
                     setTxnRef(data.txnRef);
                     setVnpayUrl(data.paymentUrl);
-                    setShowPaymentModal(false);
+                    
+                    toastSuccess(
+                        "Chuyển đến VNPay",
+                        "Cửa sổ thanh toán VNPay sẽ được mở."
+                    );
                 } else {
-                    toastError("Lỗi cổng thanh toán VNPay", "Không tạo được liên kết thanh toán.");
+                    toastError("Lỗi thanh toán VNPay", data.message || "Không tạo được liên kết.");
+                    setVnpayLoading(false);
                 }
-            } catch {
-                toastError("Lỗi kết nối", "Không thể kết nối tới cổng thanh toán VNPay.");
-            } finally {
+            } catch (error) {
+                console.error("VNPay error:", error);
+                toastError("Lỗi kết nối", "Không thể kết nối đến cổng thanh toán VNPay.");
                 setVnpayLoading(false);
-                setIsProcessing(false);
             }
         }
     };
@@ -359,8 +516,34 @@ export default function CheckoutPage() {
         setShowPaymentModal(false);
         setVnpayLoading(false);
         setHoldId(null);
-        navigate("/dat-tour-thanh-cong", { state: { method: "vnpay" } });
-    }, [navigate]);
+
+        sessionStorage.removeItem("bookingData");
+
+        toastSuccess(
+            "Thanh toán thành công",
+            "Đơn hàng đã được thanh toán thành công qua VNPay."
+        );
+
+        navigate("/dat-tour-thanh-cong", {
+            state: {
+                method: "vnpay",
+                depositRate,
+                status: ORDER_STATUS.DA_DUYET
+            }
+        });
+    }, [navigate, depositRate]);
+
+    const handlePaymentFailed = useCallback(() => {
+        setVnpayUrl(null);
+        setTxnRef(null);
+        setVnpayLoading(false);
+        setShowPaymentModal(false);
+
+        toastError(
+            "Thanh toán thất bại",
+            "Giao dịch chưa hoàn tất. Vui lòng thử lại."
+        );
+    }, []);
 
     if (!bookingData) return <Loading />;
 
@@ -375,12 +558,10 @@ export default function CheckoutPage() {
                                 <ContactForm
                                     contact={contact}
                                     onChange={handleContactChange}
-                                    onTabChange={(newContactData) => {
-                                        setContact(newContactData);
-                                        setContactErrors({});
-                                    }}
+                                    onTabChange={handleContactTabChange}
                                     errors={contactErrors}
                                     onActiveTabChange={handleTabChange}
+                                    onDateChange={handleContactDateChange}
                                 />
                                 <PassengerForm
                                     passengers={passengers}
@@ -529,6 +710,7 @@ export default function CheckoutPage() {
                             singleRoomCount={singleRoomCount}
                             step={step}
                             onProceed={handleProceed}
+                            isReserving={isReserving}
                         />
                     </div>
                 </div>
@@ -546,8 +728,11 @@ export default function CheckoutPage() {
                 <PaymentModal
                     paymentMethod={paymentMethod}
                     setPaymentMethod={setPaymentMethod}
+                    depositRate={depositRate}
+                    setDepositRate={setDepositRate}
                     vnpayLoading={vnpayLoading}
                     totalPrice={totalPrice}
+                    amountDueNow={amountDueNow}
                     onClose={() => setShowPaymentModal(false)}
                     onConfirm={handleConfirmPayment}
                     bookingData={bookingData}
@@ -559,18 +744,8 @@ export default function CheckoutPage() {
                     url={vnpayUrl}
                     txnRef={txnRef}
                     onSuccess={handlePaymentSuccess}
-                    onClose={() => { setVnpayUrl(null); setTxnRef(null); }}
+                    onClose={handlePaymentFailed}
                 />
-            )}
-
-            {isProcessing && (
-                <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center">
-                    <div className="bg-white rounded-3xl p-8 flex flex-col items-center shadow-2xl">
-                        <div className="w-16 h-16 border-4 border-sky-200 border-t-sky-500 rounded-full animate-spin mb-6" />
-                        <p className="text-lg font-semibold text-slate-800">Đang tạo đơn đặt tour...</p>
-                        <p className="text-sm text-slate-500 mt-2">Vui lòng không đóng trang</p>
-                    </div>
-                </div>
             )}
         </div>
     );
@@ -585,15 +760,11 @@ function ProfileWarningModal({ missingFields, onClose, onUpdate }) {
                         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 mb-3">
                             <AlertCircle size={32} className="text-amber-500" />
                         </div>
-                        <h3 className="text-center text-xl font-bold text-slate-800">
-                            Thông tin tài khoản chưa đầy đủ
-                        </h3>
+                        <h3 className="text-center text-xl font-bold text-slate-800">Thông tin tài khoản chưa đầy đủ</h3>
                     </div>
-                    
                     <p className="text-center text-sm text-slate-500 leading-relaxed mt-3">
                         Bạn đang sử dụng thông tin từ tài khoản nhưng thông tin chưa được cập nhật:
                     </p>
-                    
                     <div className="mt-4 space-y-2">
                         {missingFields.map((field, index) => (
                             <div key={index} className="flex items-center gap-3 bg-slate-50 rounded-xl px-4 py-2.5 border border-slate-100">
@@ -601,18 +772,11 @@ function ProfileWarningModal({ missingFields, onClose, onUpdate }) {
                             </div>
                         ))}
                     </div>
-                    
                     <div className="mt-6 flex flex-row gap-3">
-                        <button
-                            onClick={onUpdate}
-                            className="flex-1 rounded-xl bg-sky-500 py-2 font-semibold text-white shadow-md shadow-sky-500/15 hover:bg-sky-600 transition"
-                        >
+                        <button onClick={onUpdate} className="flex-1 rounded-xl bg-sky-500 py-2 font-semibold text-white shadow-md shadow-sky-500/15 hover:bg-sky-600 transition">
                             Cập nhật ngay
                         </button>
-                        <button
-                            onClick={onClose}
-                            className="flex-1 rounded-xl border border-slate-200 py-2 font-medium text-slate-600 hover:bg-slate-50 transition"
-                        >
+                        <button onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-2 font-medium text-slate-600 hover:bg-slate-50 transition">
                             Để sau
                         </button>
                     </div>
@@ -634,7 +798,7 @@ function InfoCell({ label, value }) {
 function SummaryRow({ label, value }) {
     return (
         <div className="flex justify-between py-1">
-            <span className="text-slate-500">{label}:</span>
+            <span className="text-slate-500">{label}</span>
             <span>{value}</span>
         </div>
     );
@@ -653,7 +817,12 @@ function PassengerTypeBadge({ label }) {
     );
 }
 
-function PaymentModal({ paymentMethod, setPaymentMethod, vnpayLoading, totalPrice, onClose, onConfirm, bookingData }) {
+function PaymentModal({
+    paymentMethod, setPaymentMethod,
+    depositRate, setDepositRate,
+    vnpayLoading, totalPrice, amountDueNow,
+    onClose, onConfirm, bookingData
+}) {
     const daysUntilDeparture = useMemo(
         () => calcDaysUntilDeparture(bookingData?.ngayKhoiHanh),
         [bookingData]
@@ -681,10 +850,7 @@ function PaymentModal({ paymentMethod, setPaymentMethod, vnpayLoading, totalPric
             <div className="w-full max-w-2xl rounded-3xl bg-white shadow-xl overflow-hidden">
                 <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
                     <h2 className="text-xl font-bold text-slate-900">Chọn hình thức thanh toán</h2>
-                    <button
-                        onClick={onClose}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-                    >
+                    <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition">
                         <X size={20} />
                     </button>
                 </div>
@@ -707,14 +873,12 @@ function PaymentModal({ paymentMethod, setPaymentMethod, vnpayLoading, totalPric
                                 >
                                     {opt.icon}
                                 </div>
-
                                 <div className="flex-1 min-w-0">
                                     <p className="font-semibold text-slate-800 text-sm">{opt.label}</p>
                                     {isSelected && (
                                         <p className="mt-0.5 text-xs text-slate-500 leading-relaxed">{opt.desc}</p>
                                     )}
                                 </div>
-
                                 <div className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors
                                     ${isSelected ? "border-sky-500 bg-sky-500" : "border-slate-300"}`}
                                 />
@@ -722,9 +886,57 @@ function PaymentModal({ paymentMethod, setPaymentMethod, vnpayLoading, totalPric
                         );
                     })}
 
+                    {paymentMethod === PAYMENT_METHOD.VNPAY && (
+                        <div className="rounded-2xl border border-slate-200 p-4">
+                            <p className="mb-3 text-sm font-semibold text-slate-800">Chọn mức thanh toán</p>
+                            <div className="grid grid-cols-3 gap-3">
+                                {DEPOSIT_OPTIONS.map((rate) => {
+                                    const isSelected = depositRate === rate;
+                                    return (
+                                        <button
+                                            key={rate}
+                                            type="button"
+                                            onClick={() => setDepositRate(rate)}
+                                            className={`rounded-xl border py-2.5 text-sm font-semibold transition
+                                                ${isSelected
+                                                    ? "border-sky-500 bg-sky-50 text-sky-600 ring-1 ring-sky-200"
+                                                    : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                                                }`}
+                                        >
+                                            {rate === 100 ? "Thanh toán 100%" : `Đặt cọc ${rate}%`}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="mt-4 space-y-1.5 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Trị giá đơn đặt</span>
+                                    <span className="font-medium">{formatCurrency(totalPrice)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Thanh toán ngay ({depositRate}%)</span>
+                                    <span className="font-bold text-sky-600">{formatCurrency(amountDueNow)}</span>
+                                </div>
+                                {depositRate < 100 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Còn lại (trả sau)</span>
+                                        <span className="font-medium text-amber-600">{formatCurrency(totalPrice - amountDueNow)}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {depositRate < 100 && (
+                                <p className="mt-3 text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5">
+                                    Sau khi đặt cọc, bạn cần thanh toán phần còn lại trước ngày khởi hành.
+                                </p>
+                            )}
+                        </div>
+                    )}
+
                     {!canPayCash && (
                         <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5">
-                            ⚠️ Chuyến khởi hành trong vòng 3 ngày — chỉ chấp nhận thanh toán trực tuyến qua VNPay.
+                            Chuyến khởi hành trong vòng 3 ngày — chỉ chấp nhận thanh toán trực tuyến qua VNPay.
                         </p>
                     )}
                 </div>
@@ -755,15 +967,74 @@ function VNPayWaitingModal({ url, txnRef, onSuccess, onClose }) {
     }, []);
 
     const closePopup = useCallback(() => {
-        if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+        if (popupRef.current && !popupRef.current.closed) {
+            popupRef.current.close();
+        }
     }, []);
 
-    const checkPopupClosed = useCallback(() => {
-        if (popupRef.current && popupRef.current.closed) {
-            stopPolling();
+    const openPopup = useCallback(() => {
+        try {
+            if (popupRef.current && !popupRef.current.closed) {
+                popupRef.current.focus();
+                return;
+            }
+
+            const w = 820;
+            const h = 680;
+            const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
+            const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
+            
+            popupRef.current = window.open(
+                url,
+                "vnpay_payment",
+                `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no`
+            );
+
+            if (!popupRef.current) {
+                toastError("Popup bị chặn", "Vui lòng cho phép popup hoặc bấm vào link để mở.");
+                onClose();
+            } else {
+                popupRef.current.focus();
+            }
+        } catch (error) {
+            console.error("Open popup error:", error);
+            toastError("Lỗi mở popup", "Không thể mở cửa sổ thanh toán.");
             onClose();
         }
-    }, [stopPolling, onClose]);
+    }, [url, onClose]);
+
+    const startPolling = useCallback(() => {
+        stopPolling();
+        
+        pollRef.current = setInterval(async () => {
+            if (calledRef.current) return;
+            try {
+                const res = await fetch(`https://localhost:7016/api/client/payment/status/${txnRef}`);
+                const data = await res.json();
+                
+                if (data.status === "SUCCESS") {
+                    calledRef.current = true;
+                    stopPolling();
+                    closePopup();
+                    onSuccess();
+                } else if (data.status === "FAILED") {
+                    calledRef.current = true;
+                    stopPolling();
+                    closePopup();
+                    onClose();
+                }
+            } catch (error) {
+                console.error("Polling error:", error);
+            }
+        }, POLL_INTERVAL_MS);
+
+        timeoutRef.current = setTimeout(() => {
+            if (calledRef.current) return;
+            stopPolling();
+            closePopup();
+            onClose();
+        }, POLL_TIMEOUT_MS);
+    }, [txnRef, onSuccess, onClose, stopPolling, closePopup]);
 
     useEffect(() => {
         const handleMessage = (event) => {
@@ -780,49 +1051,12 @@ function VNPayWaitingModal({ url, txnRef, onSuccess, onClose }) {
         return () => window.removeEventListener("message", handleMessage);
     }, [onSuccess, stopPolling, closePopup]);
 
-    const startPolling = useCallback(() => {
-        stopPolling();
-        pollRef.current = setInterval(async () => {
-            if (calledRef.current) return;
-            try {
-                const res = await fetch(`https://localhost:7016/api/client/payment/status/${txnRef}`);
-                const data = await res.json();
-                if (data.status === "SUCCESS") {
-                    calledRef.current = true;
-                    stopPolling();
-                    closePopup();
-                    onSuccess();
-                } else if (data.status === "FAILED") {
-                    calledRef.current = true;
-                    stopPolling();
-                    closePopup();
-                    onClose();
-                }
-            } catch { }
-        }, POLL_INTERVAL_MS);
-
-        timeoutRef.current = setTimeout(() => {
-            if (calledRef.current) return;
+    const checkPopupClosed = useCallback(() => {
+        if (popupRef.current && popupRef.current.closed) {
             stopPolling();
-            closePopup();
             onClose();
-        }, POLL_TIMEOUT_MS);
-    }, [txnRef, onSuccess, onClose, stopPolling, closePopup]);
-
-    const openPopup = useCallback(() => {
-        if (popupRef.current && !popupRef.current.closed) {
-            popupRef.current.focus();
-            return;
         }
-        const w = 820, h = 680;
-        const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
-        const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
-        popupRef.current = window.open(
-            url,
-            "vnpay_payment",
-            `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no`
-        );
-    }, [url]);
+    }, [stopPolling, onClose]);
 
     useEffect(() => {
         const interval = setInterval(checkPopupClosed, 1000);
@@ -830,10 +1064,18 @@ function VNPayWaitingModal({ url, txnRef, onSuccess, onClose }) {
     }, [checkPopupClosed]);
 
     useEffect(() => {
-        openPopup();
-        startPolling();
-        return () => stopPolling();
-    }, [openPopup, startPolling, stopPolling]);
+        if (url) {
+            const timer = setTimeout(() => {
+                openPopup();
+                startPolling();
+            }, 500);
+            
+            return () => {
+                clearTimeout(timer);
+                stopPolling();
+            };
+        }
+    }, [url, openPopup, startPolling, stopPolling]);
 
     return (
         <div className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4">
@@ -864,7 +1106,10 @@ function VNPayWaitingModal({ url, txnRef, onSuccess, onClose }) {
                     <div>
                         <p className="font-bold text-slate-800 text-lg">Đang chờ thanh toán...</p>
                         <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
-                            Cửa sổ VNPay đã được mở.<br />Vui lòng hoàn tất thanh toán trong cửa sổ đó.
+                            Cửa sổ VNPay đã được mở.<br />Vui lòng hoàn tất thanh toán.
+                        </p>
+                        <p className="text-xs text-slate-400 mt-2">
+                            Mã giao dịch: <span className="font-mono font-medium">{txnRef}</span>
                         </p>
                     </div>
                     <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 text-xs text-amber-700 text-left flex gap-2">

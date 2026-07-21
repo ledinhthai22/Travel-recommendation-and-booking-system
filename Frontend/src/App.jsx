@@ -83,7 +83,6 @@ function App() {
                     onClose={() => setShowLoginModal(false)}
                 />
                 <Routes>
-                    {/* ── Client routes ── */}
                     <Route path="/" element={<MainLayout />}>
                         <Route index element={<HomePage />} />
                         <Route path="Cac-Chuyen-Di" element={<ToursPage />} />
@@ -99,8 +98,6 @@ function App() {
                             <Route path="dat-tour-thanh-cong" element={<BookingSuccessPage />} />
                         </Route>
                     </Route>
-
-                    {/* ── Admin routes (role 1 & 2) ── */}
                     <Route element={<ProtectedRoute allowedRoles={['1', '2']} />}>
                         <Route path="/Quan-ly" element={<AdminLayout />}>
                             <Route index element={<AdminIndexPage />} />
@@ -121,8 +118,6 @@ function App() {
                             <Route path="Lien-he" element={<ContactManager />} />
                         </Route>
                     </Route>
-
-                    {/* ── Admin routes (role 1 only) ── */}
                     <Route element={<ProtectedRoute allowedRoles={['1']} />}>
                         <Route path="/Quan-ly" element={<AdminLayout />}>
                             <Route path="Nhan-vien" element={<StaffManager />} />

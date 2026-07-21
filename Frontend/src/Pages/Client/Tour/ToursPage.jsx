@@ -240,26 +240,28 @@ export default function Tours() {
                     <div className="mb-8 mt-5 flex justify-center">
                         <div className="flex flex-wrap items-center justify-center gap-4">
                             {/* Search */}
-                            <div className="relative w-[400px]">
-                                <label className="text-xs font-bold uppercase tracking-wider text-slate-600" >Tìm kiếm</label>
-                                <InputField
-                                    type="text"
-                                    value={search}
-                                    Icon={Search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Tìm theo tên tour..."
-                                    className="h-[38px] w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-9 text-sm outline-none transition focus:border-[#0EA5E5] focus:ring-2 focus:ring-sky-100"
-                                />
+                            <div className="w-[400px]">
+                                <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Tìm kiếm</label>
+                                <div className="relative mt-1">
+                                    <InputField
+                                        type="text"
+                                        value={search}
+                                        Icon={Search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        placeholder="Tìm theo tên tour..."
+                                        className="h-[38px] w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-9 text-sm outline-none transition focus:border-[#0EA5E5] focus:ring-2 focus:ring-sky-100"
+                                    />
 
-                                {search && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setSearch("")}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                                    >
-                                        <X size={16} />
-                                    </button>
-                                )}
+                                    {search && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setSearch("")}
+                                            className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center justify-center text-slate-400 hover:text-slate-600"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Filter */}

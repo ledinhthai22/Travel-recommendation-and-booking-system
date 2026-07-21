@@ -64,8 +64,7 @@ export default function TypeLocationManager() {
     const columns = [
         {
             name: "STT",
-            width: "80px",
-            center: true,
+            width: "200px",
             cell: (_, index) => index + 1
         },
         {
@@ -76,7 +75,7 @@ export default function TypeLocationManager() {
         {
             name: "Thao tác",
             width: "150px",
-            center: true,
+            center: 'true',
             cell: (row) => (
                 <RowActionsButton
                     onEdit={() => setUpdateConfig({ isOpen: true, data: row })}

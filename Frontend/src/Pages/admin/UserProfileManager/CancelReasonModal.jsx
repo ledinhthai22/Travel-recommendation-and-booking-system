@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
+import { toastError } from "~/utils/Toast";
 
 const CANCEL_REASONS = [
     "Tôi thay đổi lịch trình cá nhân",
@@ -30,6 +31,13 @@ export default function CancelReasonModal({ isOpen, onClose, onConfirm, isLoadin
 
         if (isOther && !finalReason) {
             setError("Vui lòng nhập lý do hủy.");
+            toastError("Vui lòng nhập lý do hủy");
+            return;
+        }
+
+        if (!isOther && !selectedReason) {
+            setError("Vui lòng chọn lý do hủy.");
+            toastError("Vui lòng chọn lý do hủy");
             return;
         }
 
@@ -73,7 +81,6 @@ export default function CancelReasonModal({ isOpen, onClose, onConfirm, isLoadin
                                         : "border-slate-200 text-slate-600 hover:bg-slate-50"
                                 }`}
                             >
-                                {/* 1. Thẻ input gốc được ẩn đi bằng sr-only */}
                                 <input
                                     type="radio"
                                     name="cancel-reason"
@@ -83,7 +90,6 @@ export default function CancelReasonModal({ isOpen, onClose, onConfirm, isLoadin
                                     className="sr-only"
                                 />
 
-                                {/* 2. Vòng tròn Radio giả lập tự tạo hoàn toàn bằng Tailwind */}
                                 <div
                                     className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-150 ${
                                         isChecked
@@ -91,7 +97,6 @@ export default function CancelReasonModal({ isOpen, onClose, onConfirm, isLoadin
                                             : "border-slate-300 bg-white"
                                     }`}
                                 >
-                                    {/* Chấm xanh ở giữa xuất hiện khi checked */}
                                     <div
                                         className={`w-2 h-2 rounded-full bg-sky-500 transition-all duration-150 ${
                                             isChecked ? "scale-100 opacity-100" : "scale-0 opacity-0"
@@ -117,6 +122,10 @@ export default function CancelReasonModal({ isOpen, onClose, onConfirm, isLoadin
                         />
                         {error && <p className="text-xs text-rose-500 mt-1">{error}</p>}
                     </div>
+                )}
+
+                {!isOther && error && (
+                    <p className="text-xs text-rose-500 mb-3">{error}</p>
                 )}
 
                 <div className="flex gap-3 mt-5">

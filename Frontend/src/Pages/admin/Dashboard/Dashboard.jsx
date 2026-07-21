@@ -1,8 +1,11 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { Ticket, DollarSign, Users, Luggage, Calendar, TrendingUp, TrendingDown, Download } from "lucide-react";
+import {
+    Ticket, DollarSign, Users, Luggage, Calendar, TrendingUp, TrendingDown,
+    Download, BarChart3, PieChart as PieChartIcon, Cake, Receipt, ArrowRight
+} from "lucide-react";
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    PieChart, Pie, Cell, LineChart, Line,
+    PieChart, Pie, Cell,
 } from "recharts";
 import { Link } from "react-router-dom";
 import StatisticService from "~/Services/StatisticService";
@@ -12,8 +15,37 @@ import { getErrorMessage } from "~/utils/errorHelper";
 import { formatCurrency } from "~/Helper/FormatCurrency";
 import { connection, joinNotificationGroup } from "~/Services/signalRService";
 
+// Trạng thái đơn mới (chỉ 6 trạng thái)
+const ORDER_STATUS = {
+    1: { text: 'Chờ thanh toán', color: '#F59E0B', bgColor: '#FEF3C7' },
+    2: { text: 'Chờ duyệt', color: '#3B82F6', bgColor: '#DBEAFE' },
+    3: { text: 'Đã duyệt', color: '#0EA5E9', bgColor: '#E0F2FE' },
+    4: { text: 'Đang diễn ra', color: '#6366F1', bgColor: '#E0E7FF' },
+    5: { text: 'Hoàn tất', color: '#10B981', bgColor: '#D1FAE5' },
+    6: { text: 'Đã hủy', color: '#EF4444', bgColor: '#FEE2E2' },
+};
+
+// Trạng thái tài chính
+const FINANCIAL_STATUS = {
+    0: { text: 'Chưa thanh toán', color: '#94A3B8' },
+    1: { text: 'Đã đặt cọc', color: '#F59E0B' },
+    2: { text: 'Đã thanh toán đủ', color: '#10B981' },
+    3: { text: 'Đang hoàn tiền', color: '#8B5CF6' },
+    4: { text: 'Đã hoàn tiền', color: '#059669' },
+    5: { text: 'Mất cọc', color: '#EF4444' },
+};
+
+// Trạng thái thanh toán
+const PAYMENT_STATUS = {
+    0: { text: 'Chờ xử lý', color: '#F59E0B' },
+    1: { text: 'Thành công', color: '#10B981' },
+    2: { text: 'Thất bại', color: '#EF4444' },
+    3: { text: 'Đã hủy', color: '#94A3B8' },
+};
+
 const PIE_PALETTE = ["#0EA5E9", "#8B5CF6", "#F59E0B", "#10B981", "#F43F5E", "#64748B"];
 const colorAt = (i) => PIE_PALETTE[i % PIE_PALETTE.length];
+
 const formatVND = (value) => {
     const num = Number(value) || 0;
     const abs = Math.abs(num);
@@ -29,7 +61,29 @@ const formatVND = (value) => {
     return num.toLocaleString("vi-VN");
 };
 
-const shortMonth = (month) => (typeof month === "string" ? month.replace("Tháng ", "T") : month);
+// Helper lấy tên trạng thái đơn
+const getOrderStatusText = (status) => {
+    return ORDER_STATUS[status]?.text || 'Không xác định';
+};
+
+// Helper lấy màu trạng thái đơn
+const getOrderStatusColor = (status) => {
+    return ORDER_STATUS[status]?.color || '#94A3B8';
+};
+
+// Helper lấy bgColor trạng thái đơn
+const getOrderStatusBgColor = (status) => {
+    return ORDER_STATUS[status]?.bgColor || '#F1F5F9';
+};
+
+// Helper kiểm tra đơn đã hủy
+const isOrderCancelled = (status) => status === 6;
+
+// Helper kiểm tra đơn đang hoàn tiền
+const isOrderRefunding = (status) => status === 4; // Trạng thái tài chính
+
+// Helper kiểm tra đơn đã hoàn tiền
+const isOrderRefunded = (status) => status === 5; // Trạng thái tài chính
 
 const CustomTooltip = ({ active, payload, label, unit = "", formatter }) => {
     if (active && payload && payload.length) {
@@ -75,23 +129,24 @@ const PieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
     );
 };
 
-const KpiCard = React.memo(function KpiCard({ icon: Icon, color, label, value, delta, deltaType }) {
+const KpiCard = React.memo(function KpiCard({ icon: Icon, color, softColor, label, value, delta, deltaType, contextLabel }) {
     return (
-        <div className="bg-white rounded-3xl border border-slate-200 p-5 flex flex-col gap-4">
+        <div className="group bg-white rounded-3xl border border-slate-200 p-5 flex flex-col gap-4 hover:shadow-md hover:border-slate-300 transition-all">
             <div className="flex items-start justify-between">
-                <div className={`w-11 h-11 rounded-xl ${color} text-white flex items-center justify-center`}>
-                    <Icon size={20} />
+                <div className={`w-12 h-12 rounded-2xl ${softColor} flex items-center justify-center`}>
+                    <div className={`w-9 h-9 rounded-xl ${color} text-white flex items-center justify-center shadow-sm`}>
+                        <Icon size={18} />
+                    </div>
                 </div>
-                <span className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${deltaType === "up" ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"
-                    }`}>
+                <span className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${deltaType === "up" ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"}`}>
                     {deltaType === "up" ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                     {delta}
                 </span>
             </div>
             <div>
                 <p className="text-sm text-slate-500 mb-1">{label}</p>
-                <h3 className="text-2xl font-bold text-slate-800">{value}</h3>
-                <p className="text-xs text-slate-400 mt-1">so với tháng trước</p>
+                <h3 className="text-2xl font-bold text-slate-800 tracking-tight">{value}</h3>
+                <p className="text-xs text-slate-400 mt-1">{contextLabel}</p>
             </div>
         </div>
     );
@@ -99,13 +154,19 @@ const KpiCard = React.memo(function KpiCard({ icon: Icon, color, label, value, d
 
 const StatusBadge = ({ status }) => {
     const map = {
-        "Thành công": "bg-emerald-50 text-emerald-700",
-        "Chờ thanh toán": "bg-amber-50 text-amber-700",
-        "Thất bại": "bg-red-50 text-red-600",
-        "Hoàn tiền": "bg-sky-50 text-sky-700",
+        "Chờ thanh toán": "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+        "Chờ duyệt": "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
+        "Đã duyệt": "bg-sky-50 text-sky-700 ring-1 ring-sky-200",
+        "Đang diễn ra": "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200",
+        "Hoàn tất": "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+        "Đã hủy": "bg-red-50 text-red-600 ring-1 ring-red-200",
+        "Thành công": "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+        "Chờ xử lý": "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+        "Thất bại": "bg-red-50 text-red-600 ring-1 ring-red-200",
+        "Đã hủy": "bg-gray-50 text-gray-600 ring-1 ring-gray-200",
     };
     return (
-        <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${map[status] ?? "bg-slate-50 text-slate-500"}`}>
+        <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${map[status] ?? "bg-slate-50 text-slate-500 ring-1 ring-slate-200"}`}>
             {status}
         </span>
     );
@@ -125,6 +186,21 @@ const PieLegend = ({ data }) => (
     </div>
 );
 
+const SectionHeader = ({ icon: Icon, iconColor, title, subtitle, action }) => (
+    <div className="flex items-center justify-between mb-5 gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-9 h-9 rounded-xl ${iconColor} flex items-center justify-center shrink-0`}>
+                <Icon size={16} className="text-white" />
+            </div>
+            <div className="min-w-0">
+                <h3 className="font-semibold text-slate-800 text-base truncate">{title}</h3>
+                <p className="text-xs text-slate-400 mt-0.5 truncate">{subtitle}</p>
+            </div>
+        </div>
+        {action}
+    </div>
+);
+
 const renderDelta = (growth) => {
     if (growth === null || growth === undefined) return "Mới";
     return `${growth >= 0 ? "+" : ""}${growth}%`;
@@ -134,64 +210,150 @@ const deltaTypeOf = (growth) => (growth == null || growth >= 0 ? "up" : "down");
 
 export default function Dashboard() {
     const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    
     const [selectedYear, setSelectedYear] = useState(String(currentYear));
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+    const [selectedMonth, setSelectedMonth] = useState(null);
     const [overview, setOverview] = useState(null);
     const [revenueData, setRevenueData] = useState([]);
     const [orderStatusData, setOrderStatusData] = useState([]);
-    const [newCustomersData, setNewCustomersData] = useState([]);
     const [topToursData, setTopToursData] = useState([]);
     const [ageGroupData, setAgeGroupData] = useState([]);
     const [recentTransactions, setRecentTransactions] = useState([]);
 
     const [loadingDashboard, setLoadingDashboard] = useState(true);
-    const [exportMode, setExportMode] = useState("month"); // "month" | "year"
+    const [exportMode, setExportMode] = useState("month");
     const [isExporting, setIsExporting] = useState(false);
 
     const isFirstLoadRef = useRef(true);
     const debounceTimerRef = useRef(null);
 
+    const periodLabel = selectedMonth ? `Tháng ${selectedMonth}/${selectedYear}` : `Năm ${selectedYear}`;
+
+    const monthOptions = useMemo(() => {
+        const isCurrentYear = Number(selectedYear) === currentYear;
+        const maxMonth = isCurrentYear ? currentMonth : 12;
+        
+        const options = [
+            { value: "", label: "Tất cả tháng" }
+        ];
+        
+        for (let i = 1; i <= maxMonth; i++) {
+            options.push({
+                value: i,
+                label: `Tháng ${i}`
+            });
+        }
+        
+        return options;
+    }, [selectedYear, currentYear, currentMonth]);
+
+    useEffect(() => {
+        const isCurrentYear = Number(selectedYear) === currentYear;
+        const maxMonth = isCurrentYear ? currentMonth : 12;
+        
+        if (selectedMonth !== null && selectedMonth > maxMonth) {
+            setSelectedMonth(null);
+        }
+    }, [selectedYear, selectedMonth, currentYear, currentMonth]);
+
+    const yearOptions = useMemo(() => {
+        const years = [];
+        const startYear = currentYear - 4;
+        for (let y = currentYear; y >= startYear; y--) {
+            years.push({ value: String(y), label: `Năm ${y}` });
+        }
+        return years;
+    }, [currentYear]);
+
     const fetchDashboardData = useCallback(async () => {
         if (isFirstLoadRef.current) setLoadingDashboard(true);
         try {
+            const year = Number(selectedYear);
+            const month = selectedMonth;
+
             const [
                 overviewRes,
                 revenueRes,
                 orderStatusRes,
                 topToursRes,
                 ageGroupsRes,
-                newCustomersRes,
                 recentTransactionsRes,
             ] = await Promise.all([
-                StatisticService.getOverview(Number(selectedYear), selectedMonth),
-                StatisticService.getRevenueChart(Number(selectedYear)),
-                StatisticService.getOrderStatus(Number(selectedYear), selectedMonth),
-                StatisticService.getTopTours(5, Number(selectedYear), selectedMonth),
-                StatisticService.getAgeGroups(),
-                StatisticService.getNewCustomersTrend(Number(selectedYear)),
-                StatisticService.getRecentTransactions(6),
+                StatisticService.getOverview(year, month),
+                StatisticService.getRevenueChart(year, month),
+                StatisticService.getOrderStatus(year, month),
+                StatisticService.getTopTours(5, year, month),
+                StatisticService.getAgeGroups(year, month),
+                StatisticService.getRecentTransactions(6, year, month),
             ]);
 
             setOverview(overviewRes);
 
-            setRevenueData(revenueRes?.data ?? []);
+            // Xử lý dữ liệu doanh thu
+            let formattedRevenue = revenueRes?.data ?? [];
+            if (month && formattedRevenue.length > 0) {
+                const daysInMonth = new Date(year, month, 0).getDate();
+                const lookup = {};
+                formattedRevenue.forEach(item => {
+                    const dayMatch = item.month?.match(/\d+/);
+                    if (dayMatch) {
+                        lookup[parseInt(dayMatch[0])] = item.revenue || 0;
+                    }
+                });
+                
+                formattedRevenue = [];
+                for (let d = 1; d <= daysInMonth; d++) {
+                    formattedRevenue.push({
+                        month: d,
+                        revenue: lookup[d] || 0
+                    });
+                }
+            } else if (!month) {
+                const lookup = {};
+                formattedRevenue.forEach(item => {
+                    const monthMatch = item.month?.match(/\d+/);
+                    if (monthMatch) {
+                        lookup[parseInt(monthMatch[0])] = item.revenue || 0;
+                    }
+                });
+                
+                formattedRevenue = [];
+                for (let m = 1; m <= 12; m++) {
+                    formattedRevenue.push({
+                        month: m,
+                        revenue: lookup[m] || 0
+                    });
+                }
+            }
+            
+            setRevenueData(formattedRevenue);
 
+            // Map dữ liệu trạng thái đơn
             setOrderStatusData(
-                (orderStatusRes || []).map((d, i) => ({
-                    name: d.statusName ?? d.status ?? d.name ?? d.trangThai,
-                    value: d.percentage ?? d.percent ?? d.value ?? 0,
-                    color: d.color ?? colorAt(i),
-                }))
+                (orderStatusRes || []).map((d) => {
+                    const statusCode = d.statusCode || d.id || d.maTrangThai;
+                    const statusName = statusCode ? getOrderStatusText(statusCode) : (d.statusName ?? d.status ?? d.name ?? d.trangThai);
+                    const statusColor = statusCode ? getOrderStatusColor(statusCode) : colorAt(statusCode || 0);
+                    
+                    return {
+                        name: statusName,
+                        value: d.percentage ?? d.percent ?? d.value ?? 0,
+                        color: d.color ?? statusColor,
+                    };
+                })
             );
 
+            // Map dữ liệu top tours
             setTopToursData(
                 (topToursRes || []).map((d, i) => ({
                     name: d.tenTour ?? d.name ?? d.tourName,
-                    booked: d.bookedCount ?? d.soLuotDat ?? d.booked ?? d.bookingCount ?? 0,
+                    booked: Math.round(d.bookedCount ?? d.soLuotDat ?? d.booked ?? d.bookingCount ?? 0),
                     color: d.color ?? colorAt(i),
                 }))
             );
 
+            // Map dữ liệu độ tuổi
             setAgeGroupData(
                 (ageGroupsRes || []).map((d, i) => ({
                     name: d.groupName,
@@ -200,33 +362,28 @@ export default function Dashboard() {
                 }))
             );
 
-            {
-                const fullYear = Array.from({ length: 12 }, (_, i) => ({
-                    month: `Tháng ${i + 1}`,
-                    customers: 0,
-                }));
-                (newCustomersRes || []).forEach((d) => {
-                    const idx = fullYear.findIndex((m) => m.month === d.month);
-                    if (idx !== -1) fullYear[idx].customers = d.customerCount ?? 0;
-                });
-                setNewCustomersData(fullYear);
-            }
-
+            // Map dữ liệu giao dịch gần đây
             setRecentTransactions(
-                (recentTransactionsRes || []).map((t) => ({
-                    id: `#${t.maDon}`,
-                    customer: t.customerName,
-                    tour: t.tourName,
-                    amount: (t.amount ?? 0).toLocaleString("vi-VN") + "đ",
-                    status: t.status,
-                    time: t.time
-                        ? new Date(t.time).toLocaleString("vi-VN", {
-                            day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-                        })
-                        : "",
-                }))
+                (recentTransactionsRes || []).map((t) => {
+                    const statusCode = t.statusCode || t.trangThaiDon;
+                    const statusText = statusCode ? getOrderStatusText(statusCode) : (t.status ?? 'Không xác định');
+                    
+                    return {
+                        id: `#${t.maDon}`,
+                        customer: t.customerName || 'Khách vãng lai',
+                        tour: t.tourName || '—',
+                        amount: (t.amount ?? 0).toLocaleString("vi-VN") + "đ",
+                        status: statusText,
+                        time: t.time
+                            ? new Date(t.time).toLocaleString("vi-VN", {
+                                day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                            })
+                            : "",
+                    };
+                })
             );
         } catch (error) {
+            console.error('Dashboard fetch error:', error);
             toastError(getErrorMessage(error));
         } finally {
             setLoadingDashboard(false);
@@ -253,8 +410,6 @@ export default function Dashboard() {
         const handleDashboardChanged = (payload) => {
             if (!mounted) return;
 
-            // Gom nhiều sự kiện dồn dập trong khoảng thời gian ngắn
-            // thành một lần refetch duy nhất, tránh gọi API liên tục.
             clearTimeout(debounceTimerRef.current);
             debounceTimerRef.current = setTimeout(() => {
                 fetchDashboardDataRef.current();
@@ -267,32 +422,23 @@ export default function Dashboard() {
             mounted = false;
             clearTimeout(debounceTimerRef.current);
             connection.off("DashboardChanged", handleDashboardChanged);
-
         };
     }, []);
 
-    const handleMonthChange = useCallback((val) => setSelectedMonth(Number(val)), []);
-    const handleYearChange = useCallback((val) => setSelectedYear(val), []);
+    const handleMonthChange = useCallback((val) => {
+        setSelectedMonth(val === "" ? null : Number(val));
+    }, []);
 
-    const monthOptions = useMemo(() => (
-        Array.from({ length: 12 }, (_, i) => ({
-            value: i + 1,
-            label: `Tháng ${i + 1}`,
-        }))
-    ), []);
+    const handleYearChange = useCallback((val) => {
+        setSelectedYear(val);
+    }, []);
 
-    const yearOptions = useMemo(() => (
-        Array.from({ length: 5 }, (_, i) => {
-            const y = currentYear - i;
-            return { value: String(y), label: `Năm ${y}` };
-        })
-    ), [currentYear]);
     const handleExport = useCallback(async () => {
         setIsExporting(true);
         try {
             await StatisticService.exportReport(
                 Number(selectedYear),
-                exportMode === "month" ? selectedMonth : undefined
+                exportMode === "month" && selectedMonth !== null ? selectedMonth : undefined
             );
         } catch (error) {
             toastError(getErrorMessage(error));
@@ -301,10 +447,17 @@ export default function Dashboard() {
         }
     }, [selectedYear, selectedMonth, exportMode]);
 
+    const formatXAxisTick = (value) => {
+        if (selectedMonth) {
+            return value;
+        }
+        return `T${value}`;
+    };
+
     return (
-        <div className="min-h-screen p-4 space-y-6 overflow-x-hidden relative">
+        <div className="min-h-screen  p-4 md:p-6 space-y-6 overflow-x-hidden relative">
             {loadingDashboard && (
-                <div className="absolute inset-0 bg-white/60 z-40 flex items-start justify-center pt-24">
+                <div className="fixed inset-0 z-40 flex items-start justify-center pt-24">
                     <div className="bg-white px-5 py-3 rounded-2xl shadow-lg border border-slate-100 flex items-center gap-3">
                         <div className="w-5 h-5 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
                         <span className="text-sm text-slate-600 font-medium">Đang tải dữ liệu thống kê...</span>
@@ -313,111 +466,157 @@ export default function Dashboard() {
             )}
 
             {/* HEADER */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-800">Tổng quan</h1>
-                    <p className="text-slate-500 mt-1">Chào mừng bạn trở lại, Admin!</p>
-                </div>
-
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <div className="w-50">
-                        <SelectField
-                            value={exportMode}
-                            onChange={setExportMode}
-                            options={[
-                                { value: "month", label: "Xuất theo tháng" },
-                                { value: "year", label: "Xuất theo năm" },
-                            ]}
-                            placeholder="Chế độ xuất..."
-                        />
+            <div className="bg-white rounded-3xl border border-slate-200 p-5 md:p-6">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Tổng quan</h1>
+                            <p className="text-slate-500 text-sm mt-0.5">Chào mừng bạn trở lại</p>
+                        </div>
                     </div>
 
-                    <button
-                        onClick={handleExport}
-                        disabled={isExporting}
-                        className="flex items-center gap-2 bg-white hover:bg-slate-50 text-green-700 font-medium text-sm px-4 py-3 rounded-xl border border-slate-200 shadow-sm transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isExporting ? (
-                            <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                            <Download size={16} className="text-green" />
-                        )}
-                        <span>{isExporting ? "Đang xuất..." : "Xuất thống kê"}</span>
-                    </button>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+                        <div className="flex items-center gap-2 flex-1 sm:flex-none">
+                            <div className="w-full sm:w-60">
+                                <SelectField
+                                    value={selectedMonth === null ? "" : selectedMonth}
+                                    onChange={handleMonthChange}
+                                    options={monthOptions}
+                                    IconComponent={Calendar}
+                                    placeholder="Chọn tháng..."
+                                />
+                            </div>
+                            <div className="w-full sm:w-50">
+                                <SelectField
+                                    value={selectedYear}
+                                    onChange={handleYearChange}
+                                    options={yearOptions}
+                                    IconComponent={Calendar}
+                                    placeholder="Chọn năm..."
+                                />
+                            </div>
+                        </div>
 
-                    <div className="w-40">
-                        <SelectField
-                            value={selectedMonth}
-                            onChange={handleMonthChange}
-                            options={monthOptions}
-                            IconComponent={Calendar}
-                            placeholder="Chọn tháng..."
-                        />
-                    </div>
+                        <div className="hidden sm:block w-px h-9 bg-slate-200" />
 
-                    <div className="w-44">
-                        <SelectField
-                            value={selectedYear}
-                            onChange={handleYearChange}
-                            options={yearOptions}
-                            IconComponent={Calendar}
-                            placeholder="Chọn năm..."
-                        />
+                        <div className="flex items-center gap-2">
+                            <div className="w-full sm:w-50">
+                                <SelectField
+                                    value={exportMode}
+                                    onChange={setExportMode}
+                                    options={[
+                                        { value: "month", label: "Xuất theo tháng" },
+                                        { value: "year", label: "Xuất theo năm" },
+                                    ]}
+                                    placeholder="Chế độ xuất..."
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleExport}
+                                disabled={isExporting}
+                                className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm px-4 py-2.5 rounded-xl shadow-sm transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                            >
+                                {isExporting ? (
+                                    <div className="w-4 h-4 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <Download size={16} />
+                                )}
+                                <span>{isExporting ? "Đang xuất..." : "Xuất thống kê"}</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-
-                <KpiCard icon={Ticket} color="bg-sky-500" label="Tổng đặt tour"
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-5">
+                <KpiCard 
+                    icon={Ticket} 
+                    color="bg-sky-500"
+                    softColor="bg-sky-50"
+                    label="Tổng đặt tour"
                     value={(overview?.totalBookings ?? 0).toLocaleString()}
                     delta={renderDelta(overview?.bookingGrowthPercent)}
-                    deltaType={deltaTypeOf(overview?.bookingGrowthPercent)} />
-                <KpiCard icon={DollarSign} color="bg-emerald-500" label="Doanh thu"
+                    deltaType={deltaTypeOf(overview?.bookingGrowthPercent)}
+                    contextLabel={selectedMonth ? "so với tháng trước" : "so với năm trước"}
+                />
+                <KpiCard 
+                    icon={DollarSign} 
+                    color="bg-emerald-500"
+                    softColor="bg-emerald-50"
+                    label="Doanh thu"
                     value={formatCurrency(overview?.totalRevenue)}
                     delta={renderDelta(overview?.revenueGrowthPercent)}
-                    deltaType={deltaTypeOf(overview?.revenueGrowthPercent)} />
-                <KpiCard icon={Users} color="bg-purple-500" label="Số lượng hành khách"
-                    value={(overview?.newCustomersThisMonth ?? 0).toLocaleString()}
-                    delta={renderDelta(overview?.newCustomersGrowthPercent)}
-                    deltaType={deltaTypeOf(overview?.newCustomersGrowthPercent)} />
-                <KpiCard icon={Luggage} color="bg-amber-500" label="Tour đang diễn ra"
+                    deltaType={deltaTypeOf(overview?.revenueGrowthPercent)}
+                    contextLabel={selectedMonth ? "so với tháng trước" : "so với năm trước"}
+                />
+                <KpiCard 
+                    icon={Users} 
+                    color="bg-purple-500"
+                    softColor="bg-purple-50"
+                    label="Số lượng hành khách"
+                    value={(overview?.totalPassengers ?? 0).toLocaleString()}
+                    delta={renderDelta(overview?.passengerGrowthPercent)}
+                    deltaType={deltaTypeOf(overview?.passengerGrowthPercent)}
+                    contextLabel={selectedMonth ? "so với tháng trước" : "so với năm trước"}
+                />
+                <KpiCard 
+                    icon={Luggage} 
+                    color="bg-amber-500"
+                    softColor="bg-amber-50"
+                    label="Tour đang diễn ra"
                     value={(overview?.activeTours ?? 0).toLocaleString()}
                     delta={renderDelta(overview?.activeToursGrowthPercent)}
-                    deltaType={deltaTypeOf(overview?.activeToursGrowthPercent)} />
+                    deltaType={deltaTypeOf(overview?.activeToursGrowthPercent)}
+                    contextLabel={selectedMonth ? "so với tháng trước" : "so với năm trước"}
+                />
             </div>
 
             {/* ROW 2: Bar Chart + Pie Trạng thái */}
-            <div className="grid grid-cols-12 gap-5">
-                <div className="col-span-12 lg:col-span-8 bg-white rounded-3xl border border-slate-200 p-6 min-w-0">
-                    <div className="mb-5">
-                        <h3 className="font-semibold text-slate-800 text-base">Doanh thu theo tháng</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">Đơn vị: đồng · Năm {selectedYear}</p>
-                    </div>
+            <div className="grid grid-cols-12 gap-4 md:gap-5">
+                <div className="col-span-12 lg:col-span-8 bg-white rounded-3xl border border-slate-200 p-5 md:p-6 min-w-0">
+                    <SectionHeader
+                        icon={BarChart3}
+                        iconColor="bg-sky-500"
+                        title="Doanh thu"
+                        subtitle={selectedMonth ? `Tháng ${selectedMonth} · Năm ${selectedYear} (theo ngày)` : `Năm ${selectedYear} (theo tháng)`}
+                    />
                     <div className="h-[280px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={revenueData} barSize={28} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                            <BarChart data={revenueData} barSize={selectedMonth ? 8 : 28} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                                 <CartesianGrid vertical={false} stroke="#F1F5F9" />
-
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} interval={0}
-                                    tickFormatter={shortMonth} tick={{ fontSize: 12, fill: "#94A3B8" }} />
-
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94A3B8" }}
-                                    tickFormatter={formatVND} />
-                                {/* Tooltip vẫn giữ số đầy đủ (toLocaleString) để chính xác
-                                    khi hover, chỉ trục Y mới cần gọn. */}
-                                <Tooltip content={<CustomTooltip unit="đ" formatter={(v) => v.toLocaleString("vi-VN")} />} cursor={{ fill: "#F8FAFC" }} />
+                                <XAxis 
+                                    dataKey="month" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    interval={selectedMonth ? Math.floor(revenueData.length / 15) : 0}
+                                    tickFormatter={formatXAxisTick}
+                                    tick={{ fontSize: 12, fill: "#94A3B8" }} 
+                                />
+                                <YAxis 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{ fontSize: 12, fill: "#94A3B8" }}
+                                    tickFormatter={formatVND} 
+                                />
+                                <Tooltip 
+                                    content={<CustomTooltip unit="đ" formatter={(v) => v.toLocaleString("vi-VN")} />} 
+                                    cursor={{ fill: "#F8FAFC" }} 
+                                />
                                 <Bar dataKey="revenue" fill="#0EA5E9" radius={[6, 6, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                <div className="col-span-12 lg:col-span-4 bg-white rounded-3xl border border-slate-200 p-6 min-w-0">
-                    <div className="mb-4">
-                        <h3 className="font-semibold text-slate-800 text-base">Trạng thái đơn hàng</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">Phân bố theo trạng thái (%)</p>
-                    </div>
+                <div className="col-span-12 lg:col-span-4 bg-white rounded-3xl border border-slate-200 p-5 md:p-6 min-w-0">
+                    <SectionHeader
+                        icon={PieChartIcon}
+                        iconColor="bg-violet-500"
+                        title="Trạng thái đơn hàng"
+                        subtitle={periodLabel}
+                    />
                     <div className="h-[220px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -441,63 +640,61 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-12 gap-5">
-                <div className="col-span-12 lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 min-w-0">
-                    <div className="flex items-center justify-between mb-5">
-                        <div>
-                            <h3 className="font-semibold text-slate-800 text-base">Khách hàng mới</h3>
-                            <p className="text-xs text-slate-400 mt-0.5">Lượt đăng ký mới theo tháng · Năm {selectedYear}</p>
-                        </div>
-                    </div>
-                    <div className="h-[280px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={newCustomersData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                                <CartesianGrid vertical={false} stroke="#F1F5F9" />
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} interval={0}
-                                    tickFormatter={shortMonth} tick={{ fontSize: 12, fill: "#94A3B8" }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94A3B8" }} />
-                                <Tooltip content={<CustomTooltip unit=" khách" />} />
-                                <Line type="monotone" dataKey="customers" stroke="#8B5CF6" strokeWidth={2.5}
-                                    dot={{ r: 3, fill: "#8B5CF6", strokeWidth: 0 }} activeDot={{ r: 5 }} />
-                            </LineChart>
-                        </ResponsiveContainer>
+            {/* ROW 3: Top Tours (full width) + Độ tuổi khách hàng */}
+            <div className="grid grid-cols-12 gap-4 md:gap-5">
+                <div className="col-span-12 lg:col-span-8 bg-white rounded-3xl border border-slate-200 p-5 md:p-6 min-w-0">
+                    <SectionHeader
+                        icon={Luggage}
+                        iconColor="bg-amber-500"
+                        title="Top tour bán chạy"
+                        subtitle={periodLabel}
+                    />
+                    <div className="h-[300px] w-full">
+                        {topToursData.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center text-center gap-2">
+                                <Luggage size={28} className="text-slate-300" />
+                                <p className="text-sm text-slate-400">Chưa có dữ liệu tour trong kỳ này</p>
+                            </div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={topToursData} layout="vertical" barSize={20}
+                                    margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
+                                    <CartesianGrid horizontal={false} stroke="#F1F5F9" />
+                                    <XAxis 
+                                        type="number" 
+                                        axisLine={false} 
+                                        tickLine={false} 
+                                        tick={{ fontSize: 11, fill: "#94A3B8" }}
+                                        allowDecimals={false}
+                                        domain={[0, 'dataMax + 1']}
+                                    />
+                                    <YAxis 
+                                        type="category" 
+                                        dataKey="name" 
+                                        width={180} 
+                                        axisLine={false} 
+                                        tickLine={false}
+                                        tick={{ fontSize: 11, fill: "#334155" }} 
+                                    />
+                                    <Tooltip content={<CustomTooltip unit=" lượt" />} cursor={{ fill: "#F8FAFC" }} />
+                                    <Bar dataKey="booked" radius={[0, 6, 6, 0]}>
+                                        {topToursData.map((entry, index) => (
+                                            <Cell key={index} fill={entry.color} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
                     </div>
                 </div>
 
-                <div className="col-span-12 lg:col-span-5 bg-white rounded-3xl border border-slate-200 p-6 min-w-0">
-                    <div className="mb-5">
-                        <h3 className="font-semibold text-slate-800 text-base">Top tour bán chạy</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                            Lượt đặt trong tháng {selectedMonth}/{selectedYear}
-                        </p>
-                    </div>
-                    <div className="h-[280px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={topToursData} layout="vertical" barSize={18}
-                                margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
-                                <CartesianGrid horizontal={false} stroke="#F1F5F9" />
-                                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#94A3B8" }} />
-                                <YAxis type="category" dataKey="name" width={136} axisLine={false} tickLine={false}
-                                    tick={{ fontSize: 11, fill: "#334155" }} />
-                                <Tooltip content={<CustomTooltip unit=" lượt" />} cursor={{ fill: "#F8FAFC" }} />
-                                <Bar dataKey="booked" radius={[0, 6, 6, 0]}>
-                                    {topToursData.map((entry, index) => (
-                                        <Cell key={index} fill={entry.color} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            </div>
-
-            {/* ROW 4: Pie Độ tuổi + Bảng giao dịch */}
-            <div className="grid grid-cols-12 gap-5">
-                <div className="col-span-12 lg:col-span-4 bg-white rounded-3xl border border-slate-200 p-6 min-w-0">
-                    <div className="mb-4">
-                        <h3 className="font-semibold text-slate-800 text-base">Độ tuổi khách hàng</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">Phân bố nhóm tuổi tham gia tour (%)</p>
-                    </div>
+                <div className="col-span-12 lg:col-span-4 bg-white rounded-3xl border border-slate-200 p-5 md:p-6 min-w-0">
+                    <SectionHeader
+                        icon={Cake}
+                        iconColor="bg-pink-500"
+                        title="Độ tuổi khách hàng"
+                        subtitle={periodLabel}
+                    />
                     <div className="h-[220px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -527,19 +724,27 @@ export default function Dashboard() {
                         ))}
                     </div>
                 </div>
+            </div>
 
-                <div className="col-span-12 lg:col-span-8 bg-white rounded-3xl border border-slate-200 p-6 min-w-0">
-                    <div className="flex items-center justify-between mb-5">
-                        <div>
-                            <h3 className="font-semibold text-slate-800 text-base">Giao dịch gần đây</h3>
-                            <p className="text-xs text-slate-400 mt-0.5">6 giao dịch mới nhất</p>
-                        </div>
-                        <Link to="/Quan-ly/Don-dat-cac-chuyen-di" className="text-sm text-sky-600 hover:text-sky-700 font-medium">
-                            Xem tất cả
-                        </Link>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
+            {/* ROW 4: Bảng giao dịch gần đây (full width) */}
+            <div className="grid grid-cols-12 gap-4 md:gap-5">
+                <div className="col-span-12 bg-white rounded-3xl border border-slate-200 p-5 md:p-6 min-w-0">
+                    <SectionHeader
+                        icon={Receipt}
+                        iconColor="bg-teal-500"
+                        title="Giao dịch gần đây"
+                        subtitle={periodLabel}
+                        action={
+                            <Link
+                                to="/Quan-ly/Don-dat-cac-chuyen-di"
+                                className="flex items-center gap-1 text-sm text-sky-600 hover:text-sky-700 font-medium shrink-0"
+                            >
+                                Xem tất cả <ArrowRight size={14} />
+                            </Link>
+                        }
+                    />
+                    <div className="overflow-x-auto -mx-1">
+                        <table className="w-full min-w-[640px]">
                             <thead>
                                 <tr className="border-b border-slate-100">
                                     {["Mã đơn", "Khách hàng", "Tour", "Số tiền", "Trạng thái"].map((h) => (
@@ -552,13 +757,16 @@ export default function Dashboard() {
                             <tbody>
                                 {(recentTransactions ?? []).length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="py-10 text-center text-sm text-slate-400">
-                                            Chưa có giao dịch nào gần đây
+                                        <td colSpan={5} className="py-12 text-center">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <Receipt size={28} className="text-slate-300" />
+                                                <span className="text-sm text-slate-400">Chưa có giao dịch nào gần đây</span>
+                                            </div>
                                         </td>
                                     </tr>
                                 ) : (
-                                    (recentTransactions ?? []).slice(0, 4).map((item) => (
-                                        <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                    (recentTransactions ?? []).slice(0, 6).map((item) => (
+                                        <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/80 transition-colors">
                                             <td className="py-3.5 px-2">
                                                 <span className="font-mono text-sm font-semibold text-slate-700">{item.id}</span>
                                                 <div className="text-xs text-slate-400 mt-0.5">{item.time}</div>
@@ -577,7 +785,6 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
-
         </div>
     );
 }

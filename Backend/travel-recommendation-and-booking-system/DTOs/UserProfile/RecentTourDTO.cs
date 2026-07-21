@@ -3,10 +3,32 @@
     public class RecentTourDTO
     {
         public int MaDonDatTour { get; set; }
-        public string DuongDanAnh { get; set; }
-        public string TenTour { get; set; }
-        public string NgayBatDau { get; set; }
-        public string DiaDiem { get; set; }
+        public string MaDatCho { get; set; } = string.Empty;
+        public string DuongDanAnh { get; set; } = string.Empty;
+        public string TenTour { get; set; } = string.Empty;
+        public string NgayBatDau { get; set; } = string.Empty;
+        public string NgayKetThuc { get; set; } = string.Empty;
+        public string DiaDiem { get; set; } = string.Empty;
         public int TrangThai { get; set; }
+        public decimal TongTien { get; set; }
+
+        // Trạng thái tài chính (thay thế TrangThaiCoc)
+        public int TrangThaiTaiChinh { get; set; }
+        public string TenTrangThaiTaiChinh { get; set; } = string.Empty;
+
+        public int TrangThaiThanhToan { get; set; }
+        public string TenTrangThaiThanhToan { get; set; } = string.Empty;
+        public decimal SoTienDaThanhToan { get; set; }
+
+        // Flags hỗ trợ
+        public bool IsChuaThanhToan => TrangThaiTaiChinh == 0;
+        public bool IsDaDatCoc => TrangThaiTaiChinh == 1;
+        public bool IsDaThanhToanDu => TrangThaiTaiChinh == 2;
+        public bool IsDangHoanTien => TrangThaiTaiChinh == 3;
+        public bool IsDaHoanTien => TrangThaiTaiChinh == 4;
+        public bool IsMatCoc => TrangThaiTaiChinh == 5;
+        public bool IsDaHuy => TrangThai == 6;
+        public bool IsHoanTat => TrangThai == 5;
+        public bool IsDangHoatDong => TrangThai >= 1 && TrangThai <= 4;
     }
 }

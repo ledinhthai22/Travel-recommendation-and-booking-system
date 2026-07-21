@@ -148,13 +148,13 @@ export function BookingCard({ tour, departure, hotel, onOpenAuthModal }) {
             </div>
 
             <div className="mt-5 flex gap-2">
-                <button
+                {/* <button
                     onClick={() => setShowContactModal(true)}
                     className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors shrink-0"
                     title="Liên hệ tư vấn"
                 >
                     <Phone size={18} />
-                </button>
+                </button> */}
 
                 <button
                     onClick={handleBooking}
@@ -167,11 +167,11 @@ export function BookingCard({ tour, departure, hotel, onOpenAuthModal }) {
                     {soLuongCho === 0 ? "Hết chỗ" : "Đặt ngay"}
                 </button>
             </div>
-            <ContactModal
+            {/* <ContactModal
                 open={showContactModal}
                 onClose={() => setShowContactModal(false)}
                 tourName={tour.tenTour}
-            />
+            /> */}
         </div>
     );
 }

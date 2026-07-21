@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using DocumentFormat.OpenXml.Spreadsheet;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using travel_recommendation_and_booking_system.DTOs.TourBooking;
 using travel_recommendation_and_booking_system.Interfaces;
 
@@ -6,67 +8,145 @@ namespace travel_recommendation_and_booking_system.Controllers.User
 {
     [Route("api/user/tour-bookings")]
     [ApiController]
+    [Authorize(Policy = "UserOnly")]
     public class UserTourBookingsController : ControllerBase
     {
         private readonly ITourBookingService _service;
         private readonly ICurrentUserService _currentUserService;
-        private readonly ITourRecommendationService _tourRecommendationService;
-        public UserTourBookingsController(ITourBookingService service, ICurrentUserService currentUserService, ITourRecommendationService tourRecommendationService)
+
+        public UserTourBookingsController(
+            ITourBookingService service,
+            ICurrentUserService currentUserService)
         {
             _service = service;
             _currentUserService = currentUserService;
-            _tourRecommendationService = tourRecommendationService;
         }
 
-        [HttpGet("{userId}")]
-        public async Task<IActionResult> GetUserBookings(int userId)
+        [HttpGet]
+        public async Task<IActionResult> GetUserBookings()
         {
-            var result = await _service.GetUserBookingsAsync(userId);
-            return Ok(result);
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var result = await _service.GetUserBookingsAsync(userId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi tải danh sách đặt tour" });
+            }
         }
 
-        [HttpGet("{userId}/{bookingId}")]
-        public async Task<IActionResult> GetDetail(int userId, int bookingId)
+        [HttpGet("{bookingId}")]
+        public async Task<IActionResult> GetDetail(int bookingId)
         {
-            var result = await _service.GetUserBookingDetailAsync(bookingId, userId);
-            if (result == null) return NotFound();
-
-            return Ok(result);
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var result = await _service.GetUserBookingDetailAsync(bookingId, userId);
+                if (result == null)
+                    return NotFound(new { message = "Không tìm thấy đơn đặt tour" });
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi tải chi tiết đơn" });
+            }
         }
 
-
-        [HttpPost("{userId}")]
-        public async Task<IActionResult> CreateBooking(
-            int userId,
-            [FromBody] CreateBookingClientDTO dto,
-            [FromQuery] int? holdId)
+        [HttpPost]
+        public async Task<IActionResult> CreateBooking([FromBody] CreateBookingClientDTO dto, [FromQuery] int? holdId)
         {
-            var id = await _service.CreateBookingByClientAsync(userId, dto, holdId);
-            return Ok(new { id });
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var id = await _service.CreateBookingByClientAsync(userId, dto, holdId);
+                return Ok(new { id, message = "Đặt tour thành công" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi đặt tour" });
+            }
         }
 
-        [HttpPut("{userId}/{bookingId}/cancel")]
-        public async Task<IActionResult> Cancel(int userId, int bookingId)
+        // Trong UserTourBookingsController.cs - ReserveSeats
+        [HttpPost("reserve")]
+        public async Task<IActionResult> ReserveSeats([FromBody] ReserveSeatsDTO dto)
         {
-            var result = await _service.CancelByUserAsync(bookingId, userId);
-            if (!result) return NotFound();
+            var userId = _currentUserService.GetUserId();
+            try
+            {
+              
+                var result = await _service.ReserveSeatsAsync(userId, dto);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                // Log chi tiết lỗi
+                Console.WriteLine($"=== RESERVE SEATS ERROR ===");
+                Console.WriteLine($"Message: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"InnerException: {ex.InnerException.Message}");
+                    Console.WriteLine($"Inner StackTrace: {ex.InnerException.StackTrace}");
+                }
+                Console.WriteLine($"DTO: MaChuyen={dto.MaChuyen}, SoNguoiLon={dto.SoNguoiLon}, SoTreEm={dto.SoTreEm}, SoEmBe={dto.SoEmBe}");
+                Console.WriteLine($"UserId: {userId}");
+                Console.WriteLine($"==========================");
 
-            return Ok(new { message = "Cancelled" });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi giữ chỗ: " + ex.Message });
+            }
         }
 
-
-        [HttpPost("{userId}/reserve")]
-        public async Task<IActionResult> Reserve(int userId, [FromBody] ReserveSeatsDTO dto)
+        [HttpDelete("reserve/{holdId}")]
+        public async Task<IActionResult> ReleaseReservation(int holdId)
         {
-            var result = await _service.ReserveSeatsAsync(userId, dto);
-            return Ok(result);
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                await _service.ReleaseReservationAsync(holdId, userId);
+                return Ok(new { message = "Đã hủy giữ chỗ thành công" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi hủy giữ chỗ" });
+            }
         }
 
-        [HttpDelete("{userId}/reserve/{holdId}")]
-        public async Task<IActionResult> Release(int userId, int holdId)
+        [HttpPost("{bookingId}/cancel")]
+        public async Task<IActionResult> CancelBooking(int bookingId, [FromBody] CancelBookingRequestDTO dto)
         {
-            await _service.ReleaseReservationAsync(holdId, userId);
-            return Ok(new { message = "Released" });
+            try
+            {
+                var userId = _currentUserService.GetUserId();
+                var result = await _service.CancelOrderAsync(bookingId, dto.LyDoHuy);
+                return result ? Ok(new { message = "Hủy đơn thành công" }) : NotFound(new { message = "Không tìm thấy đơn" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi hủy đơn" });
+            }
         }
     }
 }

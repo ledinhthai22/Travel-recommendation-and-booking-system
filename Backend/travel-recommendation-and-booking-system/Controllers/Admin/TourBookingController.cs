@@ -1,32 +1,47 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using System.IO.Compression;
 using travel_recommendation_and_booking_system.DTOs.TourBooking;
 using travel_recommendation_and_booking_system.Interfaces;
-using travel_recommendation_and_booking_system.Services;
 
 namespace travel_recommendation_and_booking_system.Controllers.Admin
 {
     [Route("api/admin/tour-bookings")]
     [ApiController]
+    [Authorize(Policy = "Admin&Staff")]
     public class AdminTourBookingsController : ControllerBase
     {
         private readonly ITourBookingService _service;
+        private readonly IRefundService _refundService;
 
-        public AdminTourBookingsController(ITourBookingService service)
+        public AdminTourBookingsController(
+            ITourBookingService service,
+            IRefundService refundService)
         {
             _service = service;
+            _refundService = refundService;
         }
+
+        #region Booking Management
 
         [HttpGet]
         public async Task<IActionResult> GetPaged(
             string? keyword,
             int? bookingStatus,
             int? paymentStatus,
-            DateTime? bookingDate,
+            DateTime? fromDate,
+            DateTime? toDate,
             int page = 1,
-            int size = 10)
+            int size = 10)      
         {
-            var result = await _service.GetPagedDonDatToursAsync(keyword, bookingStatus, paymentStatus, bookingDate, page, size);
+            var result = await _service.GetPagedDonDatToursAsync(
+                keyword,
+                bookingStatus,
+                paymentStatus,
+                fromDate,
+                toDate,
+                page,
+                size);
             return Ok(result);
         }
 
@@ -34,24 +49,64 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
         public async Task<IActionResult> GetDetail(int id)
         {
             var result = await _service.GetDetailAsync(id);
-            return result == null ? NotFound() : Ok(result);
+            return result == null ? NotFound(new { message = "Không tìm thấy đơn đặt tour" }) : Ok(result);
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateByAdmin([FromBody] CreateBookingAdminDTO dto)
         {
-            var id = await _service.CreateBookingByAdminAsync(dto);
-            return Ok(new { id, message = "Tạo đơn thành công" });
+            try
+            {
+                var id = await _service.CreateBookingByAdminAsync(dto);
+                return Ok(new { id, message = "Tạo đơn thành công" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi tạo đơn" });
+            }
+        }
+
+        [HttpPut]
+        public async Task<IActionResult> UpdateByAdmin([FromBody] UpdateBookingAdminDTO dto)
+        {
+            try
+            {
+                var result = await _service.UpdateBookingByAdminAsync(dto);
+                return Ok(new { success = result, message = "Cập nhật đơn thành công" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpPut("{id}/approve")]
         public async Task<IActionResult> Approve(int id, [FromQuery] int employeeId)
         {
-            var result = await _service.ApproveAsync(id, employeeId);
-            return result ? Ok(new { message = "Đã duyệt đơn" }) : NotFound();
+            try
+            {
+                var result = await _service.ApproveAsync(id, employeeId);
+                return result ? Ok(new { message = "Đã duyệt đơn thành công" }) : NotFound(new { message = "Không tìm thấy đơn" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
-        [HttpPost("cancel/{id}")]
+        [HttpPost("{id}/cancel")]
         public async Task<IActionResult> CancelBooking(int id, [FromQuery] string lyDoHuy)
         {
             try
@@ -66,39 +121,54 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             }
         }
 
-        [HttpPut("{id}/payment-status")]
-        public async Task<IActionResult> UpdatePayment(int id, [FromBody] int status, int maNhanVien)
-        {
-            var result = await _service.UpdatePaymentStatusAsync(id, status, maNhanVien);
-            return result ? Ok(new { message = "Cập nhật thanh toán thành công" }) : NotFound();
-        }
-
         [HttpPut("{id}/complete")]
-        public async Task<IActionResult> Complete(int id)
+        public async Task<IActionResult> CompleteOrder(int id)
         {
-            var result = await _service.UpdateInvoiceStatusAsync(id, 3); // 3 = Hoàn tất
-            return result ? Ok(new { message = "Đã đánh dấu hoàn thành tour" }) : NotFound();
+            try
+            {
+                var result = await _service.CompleteOrderAsync(id);
+                return result ? Ok(new { message = "Đã đánh dấu hoàn thành tour" }) : NotFound(new { message = "Không tìm thấy đơn" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpPut("passenger/{maKhachHang}")]
         public async Task<IActionResult> UpdatePassenger(int maKhachHang, [FromBody] UpdatePassengerDTO dto)
         {
-            var result = await _service.UpdatePassengerAsync(maKhachHang, dto);
-            return result ? Ok(new { message = "Cập nhật hành khách thành công" }) : NotFound();
+            try
+            {
+                var result = await _service.UpdatePassengerAsync(maKhachHang, dto);
+                return result ? Ok(new { message = "Cập nhật hành khách thành công" }) : NotFound(new { message = "Không tìm thấy hành khách" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
-        [HttpPut]
-        public async Task<IActionResult> UpdateByAdmin([FromBody] UpdateBookingAdminDTO dto)
-        {
-            var result = await _service.UpdateBookingByAdminAsync(dto);
-            return Ok(new { success = result });
-        }
+        #endregion
+
+        #region Refund Management (Chuyển sang RefundController)
+
+        // ĐÃ CHUYỂN: Các API hoàn tiền đã được chuyển sang RefundController
+        // - POST {id}/confirm-refund → POST api/admin/refund/confirm-order/{id}
+        // - PUT {id}/payment-status → PUT api/admin/refund/payment-status/{id}
+        // - PUT {id}/deposit-status → PUT api/admin/refund/deposit-status/{id}
+        // - POST {id}/refund-deposit → POST api/admin/refund/refund-deposit/{id}
+        // - PUT {id}/invoice-status → PUT api/admin/refund/invoice-status/{id}
+
+        #endregion
+
+        #region Contract Printing
 
         [HttpPost("print-contract")]
         public async Task<IActionResult> PrintContractsByIds([FromBody] PrintContractByIdsDTO dto)
         {
             if (dto.MaDonDatTours == null || !dto.MaDonDatTours.Any())
-                return BadRequest("Chưa chọn đơn nào.");
+                return BadRequest(new { message = "Chưa chọn đơn nào để in." });
 
             try
             {
@@ -107,11 +177,11 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
 
-        [HttpGet("print-contract/by-chuyen/{maChuyen}")]    
+        [HttpGet("print-contract/by-chuyen/{maChuyen}")]
         public async Task<IActionResult> PrintContractsByChuyen(int maChuyen)
         {
             try
@@ -121,13 +191,14 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
+
         private IActionResult BuildFileResult(List<(byte[] Pdf, string FileName)> files)
         {
             if (files == null || !files.Any())
-                return BadRequest("Không có hợp đồng nào được tạo.");
+                return BadRequest(new { message = "Không có hợp đồng nào được tạo." });
 
             if (files.Count == 1)
             {
@@ -156,5 +227,7 @@ namespace travel_recommendation_and_booking_system.Controllers.Admin
 
             return File(memoryStream.ToArray(), "application/zip");
         }
+
+        #endregion
     }
 }

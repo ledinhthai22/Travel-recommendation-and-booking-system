@@ -1,8 +1,10 @@
 ﻿using DTOs.Page;
 using Microsoft.EntityFrameworkCore;
+using travel_recommendation_and_booking_system.Constants;
 using travel_recommendation_and_booking_system.Data;
 using travel_recommendation_and_booking_system.DTOs.Log;
 using travel_recommendation_and_booking_system.DTOs.LogSystem;
+using travel_recommendation_and_booking_system.DTOs.TourBooking;
 using travel_recommendation_and_booking_system.DTOs.UserProfile;
 using travel_recommendation_and_booking_system.Helpers;
 using travel_recommendation_and_booking_system.Interfaces;
@@ -16,31 +18,54 @@ namespace travel_recommendation_and_booking_system.Services
         private readonly ILogService _logService;
         private readonly ICurrentUserService _currentUserService;
         private readonly IEmailService _emailService;
-        private readonly IPaymentService _paymentService;
-        public UserProfileService(AppDbContext context, ILogService logService, ICurrentUserService currentUserService, IEmailService emailService, IPaymentService paymentService)
+        private readonly IRefundService _refundService;
+
+        public UserProfileService(
+            AppDbContext context,
+            ILogService logService,
+            ICurrentUserService currentUserService,
+            IEmailService emailService,
+            IRefundService refundService)
         {
             _context = context;
             _logService = logService;
             _currentUserService = currentUserService;
             _emailService = emailService;
-            _paymentService = paymentService;
+            _refundService = refundService;
         }
+
+        #region Helper Methods
+
+        private static string GetFinancialStatusName(int status) => BookingConstants.GetFinancialStatusName(status);
+        private static string GetPaymentTypeName(int type) => BookingConstants.GetPaymentTypeName(type);
+        private static string GetPaymentMethodName(int method) => BookingConstants.GetPaymentMethodName(method);
+        private static string GetOrderStatusName(int status) => BookingConstants.GetOrderStatusName(status);
+        private static string GetPaymentStatusName(int status) => BookingConstants.GetPaymentStatusName(status);
+        private static bool IsOrderCancelled(int status) => BookingConstants.IsOrderCancelled(status);
+        private static bool IsOrderCompleted(int status) => BookingConstants.IsOrderCompleted(status);
+        private static bool IsOrderActive(int status) => BookingConstants.IsOrderActive(status);
+
+        #endregion
+
+        #region Profile Management
+
         public async Task<UserProfileReponseDTO?> GetMyProfileAsync(int maNguoiDung)
         {
-            var userProfile = await _context.NguoiDungs.AsNoTracking()
-            .Where(u => u.MaNguoiDung == maNguoiDung && u.NgayXoa == null && u.TrangThai == 1)
-            .Select(u => new UserProfileReponseDTO
-            {
-                MaNguoiDung = u.MaNguoiDung,
-                HoTen = u.HoTen,
-                Email = u.Email,
-                DuongDanAnh = u.DuongDanAnh,
-                DiaChi = u.DiaChi,
-                NgaySinh = u.NgaySinh,
-                SoDienThoai = u.SoDienThoai,
-                GioiTinh = u.GioiTinh
-            })
-            .FirstOrDefaultAsync();
+            var userProfile = await _context.NguoiDungs
+                .AsNoTracking()
+                .Where(u => u.MaNguoiDung == maNguoiDung && u.NgayXoa == null && u.TrangThai == 1)
+                .Select(u => new UserProfileReponseDTO
+                {
+                    MaNguoiDung = u.MaNguoiDung,
+                    HoTen = u.HoTen,
+                    Email = u.Email,
+                    DuongDanAnh = u.DuongDanAnh,
+                    DiaChi = u.DiaChi,
+                    NgaySinh = u.NgaySinh,
+                    SoDienThoai = u.SoDienThoai,
+                    GioiTinh = u.GioiTinh
+                })
+                .FirstOrDefaultAsync();
 
             return userProfile;
         }
@@ -54,6 +79,7 @@ namespace travel_recommendation_and_booking_system.Services
                 throw new Exception("Không tìm thấy thông tin tài khoản.");
 
             var isEmailExist = await _context.NguoiDungs
+                .AsNoTracking()
                 .AnyAsync(u => u.Email == dto.Email && u.MaNguoiDung != maNguoiDung && u.NgayXoa == null);
             if (isEmailExist)
                 throw new Exception("Email này đã được sử dụng bởi tài khoản khác.");
@@ -98,24 +124,14 @@ namespace travel_recommendation_and_booking_system.Services
             user.SoDienThoai = dto.SoDienThoai;
             user.GioiTinh = dto.GioiTinh;
             user.NgayCapNhat = DateTime.Now;
-            var oldData = new
-            {
-                user.HoTen,
-                user.Email,
-                user.DiaChi,
-                user.NgaySinh,
-                user.SoDienThoai,
-                user.GioiTinh,
-                user.NgayCapNhat,
-            };
+
             await _context.SaveChangesAsync();
 
-            var currentUserId = _currentUserService.GetUserId();
             await _logService.LoggingAsync(new LogDTO
             {
                 LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
                 Email = _currentUserService.GetEmail(),
-                MaTaiKhoan = currentUserId,
+                MaTaiKhoan = _currentUserService.GetUserId(),
                 TenHanhDong = ActionLogDTO.CapNhat,
                 TenBangTacDong = TableNameDTO.NguoiDung,
                 MaDoiTuong = user.MaNguoiDung,
@@ -140,52 +156,112 @@ namespace travel_recommendation_and_booking_system.Services
             if (user == null) return false;
 
             bool isOldPasswordValid = BCrypt.Net.BCrypt.Verify(oldPassword, user.MatKhau);
+            if (!isOldPasswordValid) return false;
 
-            if (!isOldPasswordValid)
-            {
-                return false;
-            }
-
-            string newPasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
-
-            user.MatKhau = newPasswordHash;
+            user.MatKhau = BCrypt.Net.BCrypt.HashPassword(newPassword);
             user.NgayCapNhat = DateTime.Now;
 
-            _context.NguoiDungs.Update(user);
             await _context.SaveChangesAsync();
 
             return true;
         }
 
-        public async Task<AccountOverviewDTO> GetAccountOverviewAsync(int userId)
-        {
-            var tongTour = await _context.DonDatTours.CountAsync(d => d.MaNguoiDung == userId);
-            var tongDanhGia = await _context.DanhGias.CountAsync(d => d.MaNguoiDung == userId);
+        #endregion
 
-            var tongTien = await _context.ThanhToans
-                .Where(t => t.DonDatTour.MaNguoiDung == userId && t.TrangThaiThanhToan == 1)
+        #region Account Overview
+
+        public async Task<AccountOverviewDTO> GetAccountOverviewAsync(int userId, int? year = null)
+        {
+            var queryDonDat = _context.DonDatTours
+                .AsNoTracking()
+                .Where(d => d.MaNguoiDung == userId);
+
+            if (year.HasValue)
+            {
+                var startDate = new DateTime(year.Value, 1, 1);
+                var endDate = startDate.AddYears(1);
+                queryDonDat = queryDonDat.Where(d => d.NgayDat >= startDate && d.NgayDat < endDate);
+            }
+
+            var tongTour = await queryDonDat.CountAsync();
+
+            var tongDanhGia = await _context.DanhGias
+                .AsNoTracking()
+                .CountAsync(d => d.MaNguoiDung == userId && d.NgayXoa == null && d.TrangThai == true);
+
+            var tongTienQuery = _context.ThanhToans
+                .AsNoTracking()
+                .Where(t => t.DonDatTour.MaNguoiDung == userId
+                            && t.TrangThaiThanhToan == BookingConstants.TT_THANH_CONG
+                            && t.LoaiThanhToan != BookingConstants.LOAI_HOAN_TIEN);
+
+            if (year.HasValue)
+            {
+                var startDate = new DateTime(year.Value, 1, 1);
+                var endDate = startDate.AddYears(1);
+                tongTienQuery = tongTienQuery.Where(t => t.NgayThanhToan >= startDate && t.NgayThanhToan < endDate);
+            }
+
+            var tongTien = await tongTienQuery
                 .SumAsync(t => (decimal?)t.TongTienThanhToan) ?? 0m;
 
-            var recentTours = await _context.DonDatTours
-                .Include(d => d.ChuyenKhoiHanh)
-                    .ThenInclude(c => c.Tour)
-                        .ThenInclude(t => t.HinhAnhTours)
-                .Where(d => d.MaNguoiDung == userId)
+            var rawRows = await queryDonDat
                 .OrderByDescending(d => d.NgayDat)
                 .Take(5)
-                .Select(d => new RecentTourDTO
+                .Select(d => new
                 {
-                    MaDonDatTour = d.MaDonDatTour,
-                    DuongDanAnh = d.ChuyenKhoiHanh.Tour.HinhAnhTours
-                                .OrderByDescending(a => a.AnhChinh)
-                                .Select(a => a.DuongDanAnh)
-                                .FirstOrDefault() ?? "",
-                    TenTour = d.ChuyenKhoiHanh.Tour.TenTour,
-                    NgayBatDau = d.ChuyenKhoiHanh.NgayKhoiHanh.ToString("dd/MM/yyyy"),
-                    DiaDiem = d.ChuyenKhoiHanh.DiemDen,
-                    TrangThai = d.TrangThaiDon
+                    d.MaDonDatTour,
+                    d.MaDatCho,
+                    DuongDanAnh = d.ChuyenKhoiHanh != null && d.ChuyenKhoiHanh.Tour != null
+                        ? d.ChuyenKhoiHanh.Tour.HinhAnhTours
+                            .OrderByDescending(a => a.AnhChinh)
+                            .Select(a => a.DuongDanAnh)
+                            .FirstOrDefault() ?? ""
+                        : "",
+                    TenTour = d.ChuyenKhoiHanh != null && d.ChuyenKhoiHanh.Tour != null
+                        ? d.ChuyenKhoiHanh.Tour.TenTour
+                        : "",
+                    NgayKhoiHanh = d.ChuyenKhoiHanh != null
+                        ? d.ChuyenKhoiHanh.NgayKhoiHanh
+                        : DateTime.MinValue,
+                    NgayKetThuc = d.ChuyenKhoiHanh != null
+                        ? d.ChuyenKhoiHanh.NgayKetThuc
+                        : DateTime.MinValue,
+                    DiemDen = d.ChuyenKhoiHanh != null
+                        ? d.ChuyenKhoiHanh.DiemDen
+                        : "",
+                    d.TrangThaiDon,
+                    d.TrangThaiTaiChinh,
+                    d.TienCoc,
+                    d.TongTien,
+                    d.SoTienDaThanhToan,
+                    LatestPaymentStatus = d.ThanhToans
+                        .OrderByDescending(p => p.NgayThanhToan)
+                        .Select(p => (int?)p.TrangThaiThanhToan)
+                        .FirstOrDefault()
                 })
                 .ToListAsync();
+
+            var recentTours = rawRows.Select(r => new RecentTourDTO
+            {
+                MaDonDatTour = r.MaDonDatTour,
+                MaDatCho = r.MaDatCho ?? "",
+                DuongDanAnh = r.DuongDanAnh ?? "",
+                TenTour = r.TenTour ?? "",
+                NgayBatDau = r.NgayKhoiHanh != DateTime.MinValue
+                    ? r.NgayKhoiHanh.ToString("dd/MM/yyyy")
+                    : "",
+                DiaDiem = r.DiemDen ?? "",
+                TrangThai = r.TrangThaiDon,
+                TongTien = r.TongTien,
+                TrangThaiTaiChinh = r.TrangThaiTaiChinh,
+                TrangThaiThanhToan = r.LatestPaymentStatus ?? 0,
+                TenTrangThaiTaiChinh = GetFinancialStatusName(r.TrangThaiTaiChinh),
+                NgayKetThuc = r.NgayKetThuc != DateTime.MinValue
+                    ? r.NgayKetThuc.ToString("dd/MM/yyyy")
+                    : "",
+                SoTienDaThanhToan = r.SoTienDaThanhToan
+            }).ToList();
 
             return new AccountOverviewDTO
             {
@@ -196,20 +272,17 @@ namespace travel_recommendation_and_booking_system.Services
             };
         }
 
+        #endregion
+
+        #region Booking History
+
         public async Task<PageDTO<HistoryTourDTO>> GetBookingHistoryAsync(int userId, string searchTerm, int page, int pageSize, int? status)
         {
-            if (page < 1)
-            {
-                page = 1;
-            }
-            if (pageSize < 1)
-            {
-                pageSize = 5;
-            }
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 5;
+
             var query = _context.DonDatTours
-                .Include(d => d.ChuyenKhoiHanh)
-                    .ThenInclude(c => c.Tour)
-                        .ThenInclude(t => t.HinhAnhTours)
+                .AsNoTracking()
                 .Where(d => d.MaNguoiDung == userId)
                 .AsQueryable();
 
@@ -218,8 +291,7 @@ namespace travel_recommendation_and_booking_system.Services
                 searchTerm = searchTerm.ToLower().Trim();
                 query = query.Where(d =>
                     d.ChuyenKhoiHanh.Tour.TenTour.ToLower().Contains(searchTerm) ||
-                    d.MaDatCho.ToLower().Contains(searchTerm)
-                );
+                    d.MaDatCho.ToLower().Contains(searchTerm));
             }
 
             if (status.HasValue)
@@ -229,25 +301,80 @@ namespace travel_recommendation_and_booking_system.Services
 
             var totalItems = await query.CountAsync();
 
-            var tours = await query
+            var rawRows = await query
                 .OrderByDescending(d => d.NgayDat)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(d => new HistoryTourDTO
+                .Select(d => new
                 {
-                    MaDonDatTour = d.MaDonDatTour,
-                    MaDatCho = d.MaDatCho,
-                    DuongDanAnh = d.ChuyenKhoiHanh.Tour.HinhAnhTours
-                                    .OrderByDescending(a => a.AnhChinh)
-                                    .Select(a => a.DuongDanAnh)
-                                    .FirstOrDefault() ?? "",
-                    TenTour = d.ChuyenKhoiHanh.Tour.TenTour,
-                    NgayBatDau = d.ChuyenKhoiHanh.NgayKhoiHanh.ToString("dd/MM/yyyy"),
-                    TrangThai = d.TrangThaiDon,
-                    
-                    
+                    d.MaDonDatTour,
+                    d.MaDatCho,
+                    DuongDanAnh = d.ChuyenKhoiHanh != null && d.ChuyenKhoiHanh.Tour != null
+                        ? d.ChuyenKhoiHanh.Tour.HinhAnhTours
+                            .OrderByDescending(a => a.AnhChinh)
+                            .Select(a => a.DuongDanAnh)
+                            .FirstOrDefault() ?? ""
+                        : "",
+                    TenTour = d.ChuyenKhoiHanh != null && d.ChuyenKhoiHanh.Tour != null
+                        ? d.ChuyenKhoiHanh.Tour.TenTour
+                        : "",
+                    NgayKhoiHanh = d.ChuyenKhoiHanh != null
+                        ? d.ChuyenKhoiHanh.NgayKhoiHanh
+                        : DateTime.MinValue,
+                    NgayKetThuc = d.ChuyenKhoiHanh != null
+                        ? d.ChuyenKhoiHanh.NgayKetThuc
+                        : DateTime.MinValue,
+                    DiemDen = d.ChuyenKhoiHanh != null
+                        ? d.ChuyenKhoiHanh.DiemDen
+                        : "",
+                    d.TrangThaiDon,
+                    d.TrangThaiTaiChinh,
+                    d.TienCoc,
+                    d.TongTien,
+                    d.SoNguoiLon,
+                    d.SoTreEm,
+                    d.SoEmBe,
+                    d.LyDoHuy,
+                    d.NgayCapNhat,
+                    d.NgayHuy,
+                    LatestPaymentStatus = d.ThanhToans
+                        .OrderByDescending(p => p.NgayThanhToan)
+                        .Select(p => (int?)p.TrangThaiThanhToan)
+                        .FirstOrDefault(),
+                    LatestPaymentMethod = d.ThanhToans
+                        .OrderByDescending(t => t.NgayThanhToan)
+                        .Select(t => (int?)t.PhuongThucThanhToan)
+                        .FirstOrDefault()
                 })
                 .ToListAsync();
+
+            var tours = rawRows.Select(r => new HistoryTourDTO
+            {
+                MaDonDatTour = r.MaDonDatTour,
+                MaDatCho = r.MaDatCho ?? "",
+                DuongDanAnh = r.DuongDanAnh ?? "",
+                TenTour = r.TenTour ?? "",
+                NgayBatDau = r.NgayKhoiHanh != DateTime.MinValue
+                    ? r.NgayKhoiHanh.ToString("dd/MM/yyyy")
+                    : "",
+                NgayKetThuc = r.NgayKetThuc != DateTime.MinValue
+                    ? r.NgayKetThuc.ToString("dd/MM/yyyy")
+                    : "",
+                DiemDen = r.DiemDen ?? "",
+                TongTien = r.TongTien,
+                TrangThai = r.TrangThaiDon,
+                TrangThaiTaiChinh = r.TrangThaiTaiChinh,
+                TrangThaiThanhToan = r.LatestPaymentStatus ?? 0,
+                TenTrangThaiTaiChinh = GetFinancialStatusName(r.TrangThaiTaiChinh),
+                SoNguoiLon = r.SoNguoiLon,
+                SoTreEm = r.SoTreEm,
+                SoEmBe = r.SoEmBe,
+                PhuongThucThanhToan = r.LatestPaymentMethod.HasValue
+                    ? GetPaymentMethodName(r.LatestPaymentMethod.Value)
+                    : "Chưa thanh toán",
+                LyDoHuy = r.LyDoHuy,
+                NgayHuy = IsOrderCancelled(r.TrangThaiDon) ? r.NgayHuy ?? r.NgayCapNhat : null
+            }).ToList();
 
             return new PageDTO<HistoryTourDTO>
             {
@@ -260,36 +387,98 @@ namespace travel_recommendation_and_booking_system.Services
 
         public async Task<HistoryTourDetailDTO?> GetBookingDetailAsync(int userid, int maDonDatTour)
         {
-            var query = await _context.DonDatTours
+            var data = await _context.DonDatTours
+                .AsNoTracking()
                 .Include(d => d.ChuyenKhoiHanh)
-                .ThenInclude(c => c.Tour)
-                .ThenInclude(d => d.DanhGias)
+                    .ThenInclude(c => c.Tour)
+                    .ThenInclude(t => t.HinhAnhTours)
+                .Include(d => d.ChuyenKhoiHanh)
+                    .ThenInclude(c => c.NhanVien)
+                .Include(d => d.UuDai)
                 .Include(d => d.ThanhToans)
+                .Include(d => d.KhachHangs)
                 .Where(d => d.MaDonDatTour == maDonDatTour && d.MaNguoiDung == userid)
-                .Select(d => new HistoryTourDetailDTO
-                {
-                    MaTour = d.ChuyenKhoiHanh!.MaTour,
-                    MaNguoiDung = d.MaNguoiDung,
-                    MaDonDatTour = d.MaDonDatTour,
-                    MaDatCho = d.MaDatCho,
-                    TrangThai = d.TrangThaiDon,
-                    NgayDat = d.NgayDat.ToString("dd/MM/yyyy HH:mm"),
-                    TenTour = d.ChuyenKhoiHanh.Tour.TenTour,
-                    NgayKhoiHanh = d.ChuyenKhoiHanh.NgayKhoiHanh.ToString("dd/MM/yyyy"),
-                    NgayKetThuc = d.ChuyenKhoiHanh.NgayKetThuc.ToString("dd/MM/yyyy"),
-                    DiaDiem = d.ChuyenKhoiHanh.DiemDen,
-                    SoLuongNguoiLon = d.SoNguoiLon,
-                    SoLuongTreEm = d.SoTreEm,
-                    SoLuongEmBe = d.SoEmBe,
-                    TongTien = d.TongTien,
-                    PhuongThucThanhToan = d.ThanhToans.FirstOrDefault() == null ? "Chưa thanh toán" :
-                        (d.ThanhToans.FirstOrDefault().PhuongThucThanhToan == 1 ? "VNPay" :
-                        (d.ThanhToans.FirstOrDefault().PhuongThucThanhToan == 2 ? "Tiền mặt" : "Chuyển khoản")),
-                    DaDanhGia = d.ChuyenKhoiHanh.Tour.DanhGias.Any(dg => dg.MaNguoiDung == userid)
-                })
                 .FirstOrDefaultAsync();
-            return query;
+
+            if (data == null) return null;
+
+            var latestPayment = data.ThanhToans?
+                .OrderByDescending(p => p.NgayThanhToan)
+                .FirstOrDefault();
+            var latestPaymentStatus = latestPayment?.TrangThaiThanhToan ?? 0;
+
+            var daDanhGia = await _context.DanhGias
+                .AnyAsync(dg => dg.MaNguoiDung == userid
+                    && dg.MaTour == data.ChuyenKhoiHanh.MaTour
+                    && dg.NgayXoa == null
+                    && dg.TrangThai == true);
+
+            return new HistoryTourDetailDTO
+            {
+                MaTour = data.ChuyenKhoiHanh!.MaTour,
+                MaNguoiDung = data.MaNguoiDung,
+                MaDonDatTour = data.MaDonDatTour,
+                MaDatCho = data.MaDatCho,
+                TrangThai = data.TrangThaiDon,
+                TenTrangThai = GetOrderStatusName(data.TrangThaiDon),
+                NgayDat = data.NgayDat.ToString("dd/MM/yyyy HH:mm"),
+                TenTour = data.ChuyenKhoiHanh.Tour.TenTour,
+                NgayKhoiHanh = data.ChuyenKhoiHanh.NgayKhoiHanh.ToString("dd/MM/yyyy"),
+                NgayKetThuc = data.ChuyenKhoiHanh.NgayKetThuc.ToString("dd/MM/yyyy"),
+                DiaDiem = data.ChuyenKhoiHanh.DiemDen,
+                SoLuongNguoiLon = data.SoNguoiLon,
+                SoLuongTreEm = data.SoTreEm,
+                SoLuongEmBe = data.SoEmBe,
+                TongTien = data.TongTien,
+                TienCoc = data.TienCoc,
+                SoTienDaThanhToan = data.SoTienDaThanhToan,
+                TrangThaiTaiChinh = data.TrangThaiTaiChinh,
+                TenTrangThaiTaiChinh = GetFinancialStatusName(data.TrangThaiTaiChinh),
+                TrangThaiThanhToan = latestPaymentStatus,
+                TenTrangThaiThanhToan = GetPaymentStatusName(latestPaymentStatus),
+                DaDanhGia = daDanhGia,
+                LyDoHuy = data.LyDoHuy,
+                NgayHuy = IsOrderCancelled(data.TrangThaiDon) ? data.NgayHuy : null,
+                GhiChu = data.GhiChu,
+                MaChuyen = data.MaChuyen,
+                MaChuyenCode = data.ChuyenKhoiHanh.MaChuyenCode,
+                DiemKhoiHanh = data.ChuyenKhoiHanh.DiemKhoiHanh,
+                PhuongThucThanhToan = data.ThanhToans.FirstOrDefault() != null
+                    ? GetPaymentMethodName(data.ThanhToans.First().PhuongThucThanhToan)
+                    : "Chưa thanh toán",
+                DanhSachHanhKhach = data.KhachHangs.Select(k => new UserKhachHangDTO
+                {
+                    MaKhachHang = k.MaKhachHang,
+                    HoTen = k.HoTen,
+                    SoDienThoai = k.SoDienThoai,
+                    Email = k.Email,
+                    NgaySinh = k.NgaySinh,
+                    GioiTinh = k.GioiTinh,
+                    LoaiKhach = k.LoaiKhach,
+                    PhongDon = k.PhongDon
+                }).ToList(),
+                LichSuThanhToan = data.ThanhToans
+                    .OrderByDescending(t => t.NgayThanhToan)
+                    .Select(t => new HistoryThanhToanDTO
+                    {
+                        MaThanhToan = t.MaThanhToan,
+                        PhuongThucThanhToan = GetPaymentMethodName(t.PhuongThucThanhToan),
+                        TongTienThanhToan = t.TongTienThanhToan,
+                        NgayThanhToan = t.NgayThanhToan.ToString("dd/MM/yyyy HH:mm"),
+                        TrangThaiThanhToan = t.TrangThaiThanhToan,
+                        TenTrangThaiThanhToan = GetPaymentStatusName(t.TrangThaiThanhToan),
+                        LoaiThanhToan = t.LoaiThanhToan,
+                        TenLoaiThanhToan = GetPaymentTypeName(t.LoaiThanhToan),
+                        SoTienHoan = t.SoTienHoan,
+                        MaGiaoDich = t.MaGiaoDich,
+                        NoiDung = t.NoiDung
+                    }).ToList()
+            };
         }
+
+        #endregion
+
+        #region Cancel Booking - User hủy trực tiếp
 
         public async Task<bool> CancelBookingAsync(int userId, int maDonDatTour, string lyDoHuy)
         {
@@ -299,134 +488,254 @@ namespace travel_recommendation_and_booking_system.Services
             var booking = await _context.DonDatTours
                 .Include(d => d.ChuyenKhoiHanh)
                 .Include(d => d.ThanhToans)
+                .Include(d => d.NguoiDung)
                 .FirstOrDefaultAsync(d => d.MaDonDatTour == maDonDatTour && d.MaNguoiDung == userId);
 
             if (booking == null)
                 throw new Exception("Không tìm thấy đơn đặt tour.");
 
-            if (booking.TrangThaiDon == 3)
+            if (IsOrderCompleted(booking.TrangThaiDon))
                 throw new Exception("Đơn đã hoàn tất, không thể hủy.");
-            if (booking.TrangThaiDon == 4)
-                throw new Exception("Đơn đã được hủy trước đó.");
-            if (booking.TrangThaiDon != 1 && booking.TrangThaiDon != 2)
+
+            if (IsOrderCancelled(booking.TrangThaiDon))
+                throw new Exception("Đơn đã được xử lý hủy hoặc đã hủy.");
+
+            if (!IsOrderActive(booking.TrangThaiDon))
                 throw new Exception("Đơn hàng không thể hủy ở trạng thái hiện tại.");
+
+            if (!BookingConstants.CanUserCancel(booking.TrangThaiDon, booking.ChuyenKhoiHanh.NgayKhoiHanh))
+                throw new Exception("Không thể hủy đơn ở trạng thái hiện tại hoặc đã quá hạn hủy.");
 
             var chuyen = booking.ChuyenKhoiHanh;
             var now = DateTime.Now;
 
             if (chuyen.NgayKhoiHanh <= now && now <= chuyen.NgayKetThuc)
                 throw new Exception("Tour đang diễn ra, không thể hủy.");
+
             if (chuyen.NgayKetThuc < now)
                 throw new Exception("Tour đã kết thúc, không thể hủy.");
-            if (chuyen.NgayKhoiHanh <= now.AddDays(3))
-                throw new Exception("Không thể hủy tour trong vòng 3 ngày trước khởi hành.");
 
-            var thanhToanThanhCong = booking.ThanhToans
-                .Where(t => t.TrangThaiThanhToan == 1)
+            var daysBeforeDeparture = (chuyen.NgayKhoiHanh - now).TotalDays;
+            if (daysBeforeDeparture < BookingConstants.CANCELLATION_DEADLINE_DAYS)
+                throw new Exception($"Không thể hủy tour trong vòng {BookingConstants.CANCELLATION_DEADLINE_DAYS} ngày trước khởi hành.");
+
+            var oldStatus = booking.TrangThaiDon;
+            var oldFinancialStatus = booking.TrangThaiTaiChinh;
+            var successfulPayment = booking.ThanhToans
+                .Where(t => t.TrangThaiThanhToan == BookingConstants.TT_THANH_CONG && t.LoaiThanhToan != BookingConstants.LOAI_HOAN_TIEN)
                 .OrderByDescending(t => t.NgayThanhToan)
                 .FirstOrDefault();
+
+            decimal refundAmount = 0;
+            decimal refundRate = 0;
 
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                booking.TrangThaiDon = 4;
-                booking.LyDoHuy = lyDoHuy.Trim();
-                booking.NgayCapNhat = now;
-                _context.DonDatTours.Update(booking);
+                var policy = RefundPolicyEngine.CalculateRefundPolicy(chuyen.NgayKhoiHanh, now);
 
-            
                 var soKhach = booking.SoNguoiLon + booking.SoTreEm + booking.SoEmBe;
-                chuyen.SoChoDaDat -= soKhach;
-
-                if (thanhToanThanhCong != null)
+                if (booking.ChuyenKhoiHanh != null)
                 {
-                    decimal tyLeHoan = RefundHelper.TinhTyLeHoanTien(chuyen.NgayKhoiHanh, now);
-                    decimal soTienHoan = Math.Round(thanhToanThanhCong.TongTienThanhToan * tyLeHoan, 0);
-
-                    if (soTienHoan > 0)
-                    {
-                        thanhToanThanhCong.SoTienHoan = soTienHoan;
-                        thanhToanThanhCong.TrangThaiThanhToan = 4;
-                        _context.ThanhToans.Update(thanhToanThanhCong);
-                    }
-                  
+                    booking.ChuyenKhoiHanh.SoChoDaDat -= soKhach;
                 }
+
+                booking.LyDoHuy = lyDoHuy.Trim();
+                booking.NgayHuy = now;
+                booking.NgayCapNhat = now;
+                booking.TrangThaiDon = BookingConstants.DON_DA_HUY;
+
+                decimal baseAmount = 0;
+                int paymentMethodForRefund = 1;
+
+                if (successfulPayment != null && successfulPayment.TongTienThanhToan > 0)
+                {
+                    baseAmount = successfulPayment.TongTienThanhToan;
+                    paymentMethodForRefund = successfulPayment.PhuongThucThanhToan;
+                }
+                else if (booking.SoTienDaThanhToan > 0)
+                {
+                    baseAmount = booking.SoTienDaThanhToan;
+                    paymentMethodForRefund = 1;
+                }
+
+                if (baseAmount > 0)
+                {
+                    refundRate = policy.RefundRate;
+                    refundAmount = Math.Round(baseAmount * refundRate, 0);
+
+                    if (refundAmount > 0)
+                    {
+                        if (refundAmount <= 0)
+                            throw new InvalidOperationException("Số tiền hoàn tính toán không hợp lệ.");
+
+                        var refundPayment = new ThanhToan
+                        {
+                            MaDonDatTour = booking.MaDonDatTour,
+                            PhuongThucThanhToan = paymentMethodForRefund,
+                            TongTienThanhToan = baseAmount,
+                            SoTienHoan = refundAmount,
+                            NgayThanhToan = now,
+                            TrangThaiThanhToan = BookingConstants.TT_CHO_XU_LY,
+                            LoaiThanhToan = BookingConstants.LOAI_HOAN_TIEN,
+                            NoiDung = $"Hoàn tiền hủy tour: {lyDoHuy} - {policy.Policy}",
+                            MaGiaoDich = $"REFUND_{booking.MaDatCho}_{DateTime.Now:yyyyMMddHHmmss}",
+                            LyDoHoanTien = lyDoHuy
+                        };
+                        _context.ThanhToans.Add(refundPayment);
+
+                        booking.TrangThaiTaiChinh = BookingConstants.TC_DANG_HOAN_TIEN;
+                    }
+                    else
+                    {
+                        booking.TrangThaiTaiChinh = BookingConstants.TC_MAT_COC;
+                    }
+                }
+                else
+                {
+                    booking.TrangThaiTaiChinh = BookingConstants.TC_CHUA_THANH_TOAN;
+                }
+
+                booking.AppendStatusHistory(oldStatus, booking.TrangThaiDon, "User hủy đơn", lyDoHuy);
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                try
+                {
+                    if (booking.TrangThaiTaiChinh == BookingConstants.TC_DANG_HOAN_TIEN)
+                    {
+                        var refund = booking.ThanhToans.LastOrDefault(t => t.LoaiThanhToan == BookingConstants.LOAI_HOAN_TIEN);
+                        await _emailService.SendRefundProcessingAsync(booking, refund);
+                    }
+                    else
+                    {
+                        await _emailService.SendCancelProcessedAsync(booking);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("========== [CancelBookingAsync] LỖI GỬI EMAIL ==========");
+                    Console.WriteLine(ex.ToString());
+                    Console.WriteLine("==========================================================");
+                }
             }
             catch
             {
                 await transaction.RollbackAsync();
                 throw;
             }
-            if (thanhToanThanhCong != null)
+
+            try
             {
-                await _emailService.SendRefundPendingAsync(booking, thanhToanThanhCong);
+                await _logService.LoggingAsync(new LogDTO
+                {
+                    LoaiTaiKhoan = AccountTypeDTO.NguoiDung,
+                    Email = _currentUserService.GetEmail(),
+                    MaTaiKhoan = userId,
+                    TenHanhDong = ActionLogDTO.YeuCauHuy,
+                    TenBangTacDong = TableNameDTO.DonDatTour,
+                    MaDoiTuong = maDonDatTour,
+                    GiaTriTruoc = new
+                    {
+                        TrangThaiDon = oldStatus,
+                        TrangThaiTaiChinh = oldFinancialStatus
+                    },
+                    GiaTriSau = new
+                    {
+                        TrangThaiDon = booking.TrangThaiDon,
+                        TrangThaiTaiChinh = booking.TrangThaiTaiChinh,
+                        LyDoHuy = lyDoHuy,
+                        SoTienHoan = refundAmount,
+                        TyLeHoan = refundRate
+                    }
+                });
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine("========== [CancelBookingAsync] LỖI GHI LOG ==========");
+                Console.WriteLine(ex.ToString());
+                Console.WriteLine("========================================================");
+            }
+
             return true;
         }
 
-        public async Task<bool> XacNhanHoanTienAsync(int maThanhToan, int maNhanVien)
+        #endregion
+
+        #region Admin Process Cancel (Không còn sử dụng - giữ để tương thích)
+
+        public async Task<bool> AdminProcessCancelAsync(int maDonDatTour, int maNhanVien, bool isRefundable, string? adminNote)
         {
-            var thanhToan = await _context.ThanhToans.FindAsync(maThanhToan);
-
-            if (thanhToan == null)
-                throw new Exception("Không tìm thấy giao dịch thanh toán.");
-
-            if (thanhToan.TrangThaiThanhToan != 4)
-                throw new Exception("Giao dịch không ở trạng thái chờ hoàn tiền.");
-
-            thanhToan.TrangThaiThanhToan = 3; // Đã hoàn tiền
-            thanhToan.NgayHoanTien = DateTime.Now;
-            thanhToan.MaNhanVienXuLyHoan = maNhanVien.ToString();
-
-            _context.ThanhToans.Update(thanhToan);
-            var order = await _context.DonDatTours
-            .Include(d => d.NguoiDung)
-            .Include(d => d.KhachHangs)
-            .Include(d => d.ChuyenKhoiHanh).ThenInclude(c => c.Tour)
-            .FirstOrDefaultAsync(d => d.MaDonDatTour == thanhToan.MaDonDatTour);
-            await _context.SaveChangesAsync();
-            if (order != null)
-            {
-                await _emailService.SendRefundCompletedAsync(order, thanhToan);
-            }
-            return true;
+            throw new NotImplementedException("User tự hủy trực tiếp, không cần admin xử lý.");
         }
-        public async Task<PageDTO<PendingRefundDTO>> GetPendingRefundsAsync(int page, int pageSize)
+
+        #endregion
+
+        #region User Reviews
+
+        public async Task<PageDTO<UserReviewDTO>> GetUserReviewsAsync(int userId, string? searchTerm, int? rating, int page, int pageSize)
         {
             if (page < 1) page = 1;
-            if (pageSize < 1) pageSize = 10;
+            if (pageSize < 1) pageSize = 5;
 
-            var query = _context.ThanhToans
-                .Include(t => t.DonDatTour).ThenInclude(d => d.NguoiDung)
-                .Include(t => t.DonDatTour).ThenInclude(d => d.ChuyenKhoiHanh).ThenInclude(c => c.Tour)
-                .Where(t => t.TrangThaiThanhToan == 4)
-                .OrderByDescending(t => t.NgayThanhToan)
+            var query = _context.DanhGias
+                .AsNoTracking()
+                .Include(d => d.Tour)
+                    .ThenInclude(t => t.HinhAnhTours)
+                .Include(d => d.Tour)
+                    .ThenInclude(t => t.ChuyenKhoiHanhs)
+                        .ThenInclude(c => c.DonDatTours)
+                .Where(d => d.MaNguoiDung == userId
+                            && d.NgayXoa == null
+                            && d.IsProcessed == true
+                            && d.TrangThai == true)
                 .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                searchTerm = searchTerm.ToLower().Trim();
+                query = query.Where(d => d.Tour.TenTour.ToLower().Contains(searchTerm));
+            }
+
+            if (rating.HasValue && rating.Value >= 1 && rating.Value <= 5)
+            {
+                query = query.Where(d => d.DiemDanhGia == rating.Value);
+            }
 
             var totalItems = await query.CountAsync();
 
             var items = await query
+                .OrderByDescending(d => d.NgayTao)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(t => new PendingRefundDTO
+                .Select(d => new UserReviewDTO
                 {
-                    MaThanhToan = t.MaThanhToan,
-                    MaDonDatTour = t.MaDonDatTour,
-                    MaDatCho = t.DonDatTour.MaDatCho,
-                    TenTour = t.DonDatTour.ChuyenKhoiHanh.Tour.TenTour,
-                    HoTenKhachHang = t.DonDatTour.NguoiDung.HoTen,
-                    SoDienThoai = t.DonDatTour.NguoiDung.SoDienThoai,
-                    TongTienThanhToan = t.TongTienThanhToan,
-                    SoTienHoan = t.SoTienHoan,
-                    LyDoHuy = t.DonDatTour.LyDoHuy,
-                    NgayThanhToan = t.NgayThanhToan
+                    MaDanhGia = d.MaDanhGia,
+                    TenTour = d.Tour.TenTour,
+                    DuongDanAnh = d.Tour.HinhAnhTours
+                        .OrderByDescending(h => h.AnhChinh)
+                        .Select(h => h.DuongDanAnh)
+                        .FirstOrDefault() ?? "",
+                    DiaDiem = d.Tour.ChuyenKhoiHanhs
+                        .Where(c => c.NgayXoa == null)
+                        .OrderByDescending(c => c.NgayKhoiHanh)
+                        .Select(c => c.DiemDen)
+                        .FirstOrDefault() ?? "",
+                    DiemDanhGia = d.DiemDanhGia,
+                    NoiDung = d.NoiDung,
+                    NgayDanhGia = d.NgayTao.ToString("dd/MM/yyyy HH:mm"),
+                    MaDatCho = d.Tour.ChuyenKhoiHanhs
+                    .Where(c => c.NgayXoa == null)
+                    .SelectMany(c => c.DonDatTours)
+                    .Where(dd => dd.MaNguoiDung == userId && dd.TrangThaiDon == BookingConstants.DON_HOAN_TAT)
+                    .OrderByDescending(dd => dd.NgayDat)
+                    .Select(dd => dd.MaDatCho)
+                    .FirstOrDefault() ?? ""
                 })
                 .ToListAsync();
 
-            return new PageDTO<PendingRefundDTO>
+            return new PageDTO<UserReviewDTO>
             {
                 Items = items,
                 PageNumber = page,
@@ -434,5 +743,7 @@ namespace travel_recommendation_and_booking_system.Services
                 PageSize = pageSize
             };
         }
+
+        #endregion
     }
-}   
+}

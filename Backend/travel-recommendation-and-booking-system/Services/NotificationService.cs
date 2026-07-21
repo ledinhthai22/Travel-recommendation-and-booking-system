@@ -228,11 +228,10 @@ namespace travel_recommendation_and_booking_system.Services
             return await query.CountAsync();
         }
 
-  
+
 
         private async Task PushRealtime(ThongBao notification, int? userId, int? staffId)
         {
-
             var dto = new NotificationDTO
             {
                 MaThongBao = notification.MaThongBao,
@@ -244,24 +243,27 @@ namespace travel_recommendation_and_booking_system.Services
                 DaDoc = false
             };
 
+            // Gửi cho user nếu có userId
             if (userId.HasValue)
             {
-              
-
                 await _hubContext.Clients
-                    .Group($"USER_{userId}")
+                    .Group($"USER_{userId.Value}")
                     .SendAsync("ReceiveNotification", dto);
+
+                // Log để debug
+                Console.WriteLine($"[PushRealtime] Sent to USER_{userId.Value}: {notification.TieuDe}");
             }
 
+            // Gửi cho staff nếu có staffId
             if (staffId.HasValue)
             {
-                
-
                 await _hubContext.Clients
-                    .Group($"STAFF_{staffId}")
+                    .Group($"STAFF_{staffId.Value}")
                     .SendAsync("ReceiveNotification", dto);
-            }
 
+                // Log để debug
+                Console.WriteLine($"[PushRealtime] Sent to STAFF_{staffId.Value}: {notification.TieuDe}");
+            }
         }
 
     }

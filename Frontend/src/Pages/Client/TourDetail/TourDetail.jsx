@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Heart, MapPin, Clock } from "lucide-react";
+import { Heart, MapPin, Clock, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 
 import TourCard from "~/components/Tours/TourCard";
@@ -23,7 +23,8 @@ import { trackDeepInterestApi, trackViewTourApi } from "~/Services/TourRecommend
 import Breadcrumb from "~/components/UI/Breadcrumbs/Breadcrumbs";
 import useAuth from "~/Hooks/useAuth";
 import { getRelatedToursApi } from "~/Services/TourService";
-const DEEP_INTEREST_DELAY_MS = 30000; // 30s ở lại trang mới tính là "quan tâm sâu"
+
+const DEEP_INTEREST_DELAY_MS = 30000;
 
 export default function TourDetail() {
     const { slug } = useParams();
@@ -33,22 +34,20 @@ export default function TourDetail() {
     const [selectedDeparture, setSelectedDeparture] = useState(null);
     const [relatedTours, setRelatedTours] = useState([]);
     const [loadingRelated, setLoadingRelated] = useState(false);
+    const [showFullDescription, setShowFullDescription] = useState(false);
     const { user } = useAuth();
     const isLoggedIn = !!user;
 
     const deepInterestTimerRef = useRef(null);
-    const trackedTourIdRef = useRef(null); // tránh track trùng nếu effect chạy lại
+    const trackedTourIdRef = useRef(null);
+
     useEffect(() => {
         if (!tour?.tourInfo?.maTour) return;
 
         const loadRelatedTours = async () => {
             try {
                 setLoadingRelated(true);
-
-                const data = await getRelatedToursApi(
-                    tour.tourInfo.maTour
-                );
-
+                const data = await getRelatedToursApi(tour.tourInfo.maTour);
                 setRelatedTours(data || []);
             }
             catch (error) {
@@ -61,6 +60,7 @@ export default function TourDetail() {
 
         loadRelatedTours();
     }, [tour?.tourInfo?.maTour]);
+
     useEffect(() => {
         if (!slug || slug === "undefined") {
             setLoading(false);
@@ -74,7 +74,6 @@ export default function TourDetail() {
 
                 setTour(res);
 
-                // Chọn chuyến khởi hành đầu tiên (còn chỗ)
                 if (res?.chuyenKhoiHanhs?.length > 0) {
                     const validDeparture = res.chuyenKhoiHanhs.find(
                         (d) =>
@@ -84,7 +83,6 @@ export default function TourDetail() {
                     setSelectedDeparture(validDeparture);
                 }
 
-                // Track hành vi xem tour — chỉ khi đã đăng nhập và xác định được maTour
                 const tourId = res?.tourInfo?.maTour;
                 if (isLoggedIn && tourId && trackedTourIdRef.current !== tourId) {
                     trackedTourIdRef.current = tourId;
@@ -109,7 +107,6 @@ export default function TourDetail() {
 
         fetchTour();
 
-        // Cleanup: huỷ timer nếu user rời trang / đổi tour trước khi đủ 30s
         return () => {
             if (deepInterestTimerRef.current) {
                 clearTimeout(deepInterestTimerRef.current);
@@ -129,8 +126,6 @@ export default function TourDetail() {
         { label: tourInfo?.tenTour || "Chi tiết Tour" },
     ];
 
-    // Thu thập khách sạn từ lịch trình (mỗi ngày có KS riêng)
-    // Thu thập khách sạn từ lịch trình (unique tự động trong component)
     const hotelsFromItinerary = lichTrinh
         .filter((day) => day.maKhachSan && day.tenKhachSan)
         .map((day) => ({
@@ -140,6 +135,14 @@ export default function TourDetail() {
             soSao: day.soSaoKhachSan || 3,
             diaChi: day.diaChiKhachSan || "Không có thông tin địa chỉ",
         }));
+
+    // Hàm xử lý mô tả (cắt ngắn nếu dài)
+    const truncateDescription = (text, maxLength = 200) => {
+        if (!text) return "";
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength) + "...";
+    };
+
     return (
         <div className="min-h-screen bg-slate-50/30">
             <div className="mx-auto mt-20 max-w-[1440px] px-4 py-8 md:px-8">
@@ -163,22 +166,44 @@ export default function TourDetail() {
                                 <Clock size={16} className="text-amber-500" />
                                 {tourInfo?.ngay} ngày {tourInfo?.dem} đêm
                             </span>
-
-                            {/* <span className="rounded-full bg-white px-4 py-2 text-sm font-medium shadow-sm">
-                                Khởi hành từ {selectedDeparture?.chuyenKhoiHanh?.diemKhoiHanh}
-                            </span> */}
                         </div>
                     </div>
-
-                    {/* <button className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500 transition-all">
-                        <Heart size={18} />
-                        Yêu thích
-                    </button> */}
                 </div>
 
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
                     <div className="flex flex-col gap-10">
                         <ImageGallery images={images} />
+
+                        {/* Phần mô tả tour */}
+                        {tourInfo?.moTa && (
+                            <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Info size={15} className="text-sky-500" />
+                                    <h2 className="text-lg font-bold text-slate-800">Giới thiệu tour</h2>
+                                </div>
+                                <div className="prose prose-slate max-w-none">
+                                    <p className={`text-sm text-slate-600 leading-relaxed ${!showFullDescription ? 'line-clamp-4' : ''}`}>
+                                        {tourInfo.moTa}
+                                    </p>
+                                </div>
+                                {tourInfo.moTa.length > 200 && (
+                                    <button
+                                        onClick={() => setShowFullDescription(!showFullDescription)}
+                                        className="mt-3 text-sm font-medium text-sky-500 hover:text-sky-600 transition flex items-center gap-1"
+                                    >
+                                        {showFullDescription ? (
+                                            <>
+                                                Thu gọn <ChevronUp size={16} />
+                                            </>
+                                        ) : (
+                                            <>
+                                                Xem thêm <ChevronDown size={16} />
+                                            </>
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                        )}
 
                         <SchedulePicker
                             schedules={chuyenKhoiHanhs}
@@ -188,7 +213,6 @@ export default function TourDetail() {
 
                         <Itinerary itinerary={lichTrinh} />
 
-                        {/* Hiển thị khách sạn theo ngày từ lịch trình */}
                         <HotelInfo
                             hotels={hotelsFromItinerary}
                             tourSlug={slug}
@@ -210,9 +234,9 @@ export default function TourDetail() {
                         />
                     </aside>
                 </div>
+
                 <section className="py-16 md:py-20">
                     <div className="mx-auto max-w-[1440px] px-4 md:px-8">
-
                         <SectionTitle
                             title="Các tour liên quan"
                             description="Những hành trình tương tự mà bạn có thể quan tâm."
@@ -263,7 +287,12 @@ export default function TourDetail() {
                         )}
                     </div>
                 </section>
-                <AuthModal open={isAuthOpen} onClose={() => setIsAuthOpen(false)} redirectAfterLogin={window.location.pathname + window.location.search} />
+
+                <AuthModal 
+                    open={isAuthOpen} 
+                    onClose={() => setIsAuthOpen(false)} 
+                    redirectAfterLogin={window.location.pathname + window.location.search} 
+                />
             </div>
         </div>
     );

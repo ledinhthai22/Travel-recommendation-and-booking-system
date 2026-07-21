@@ -6,5 +6,7 @@
         public int Count { get; set; }
         public decimal Percentage { get; set; }
         public string Color { get; set; } = "#0EA5E9";
+
+        public int StatusCode { get; set; }
     }
 }

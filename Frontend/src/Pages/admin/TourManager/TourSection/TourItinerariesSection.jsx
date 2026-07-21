@@ -508,6 +508,35 @@ export default function TourItinerariesSection({
         await onChange?.(updatedList);
     }, [safeData, currentItinerary, onChange]);
 
+    const validateBuaAn = (buaAn) => {
+        if (!buaAn || buaAn.trim() === "") {
+            return { valid: true, message: "" };
+        }
+
+        const validValues = ["Sáng, Trưa, Tối", "Sáng, Trưa", "Trưa, Tối"];
+        const normalized = buaAn.trim();
+
+        if (!validValues.includes(normalized)) {
+            return { 
+                valid: false, 
+                message: "Bữa ăn không hợp lệ. Chỉ chấp nhận: 'Sáng, Trưa, Tối', 'Sáng, Trưa', 'Trưa, Tối'" 
+            };
+        }
+
+        return { valid: true, message: "" };
+    };
+
+    const validateItineraryWithMeal = (item) => {
+        const errs = validateItinerary(item);
+        
+        const mealValidation = validateBuaAn(item.buaAn);
+        if (!mealValidation.valid) {
+            errs.buaAn = mealValidation.message;
+        }
+        
+        return errs;
+    };
+
     const handleSaveItineraryModal = async () => {
         if (modalMode === "VIEW" || isLocked || hasBooking || isViewMode) return;
         if (!checkScheduleImpact()) return;
@@ -526,7 +555,7 @@ export default function TourItinerariesSection({
             formattedItinerary.tenLichTrinh = createDayNameWithTitle(dayNumber, "");
         }
 
-        const errors = validateItinerary(formattedItinerary);
+        const errors = validateItineraryWithMeal(formattedItinerary);
         if (Object.keys(errors).length > 0) {
             setModalErrors(errors);
             toastWarning("Dữ liệu chưa hợp lệ", "Vui lòng kiểm tra lại thông tin.");
@@ -708,6 +737,9 @@ export default function TourItinerariesSection({
                                                 disabled={isModalViewOnly}
                                                 fullWidth
                                             />
+                                            {modalErrors.buaAn && (
+                                                <p className="text-red-500 text-xs font-medium mt-1">{modalErrors.buaAn}</p>
+                                            )}
                                         </div>
 
                                         <div>
@@ -739,7 +771,6 @@ export default function TourItinerariesSection({
                                     <div className="p-5 bg-slate-50/70 border-b border-slate-100 space-y-4">
                                         <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Thêm mốc thời gian & hoạt động</h4>
 
-                                        {/* Hàng 1: Giờ bắt đầu, Giờ kết thúc, Địa điểm tham quan, Loại hoạt động — 4 cột bằng nhau */}
                                         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                                             <div className="md:col-span-3">
                                                 <label className="text-[11px] font-semibold text-slate-500 mb-1 block">Giờ bắt đầu *</label>
@@ -798,7 +829,6 @@ export default function TourItinerariesSection({
                                             </div>
                                         </div>
 
-                                        {/* Hàng 2: Nội dung hoạt động */}
                                         <div className="grid grid-cols-1 gap-4">
                                             <div>
                                                 <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
@@ -816,7 +846,6 @@ export default function TourItinerariesSection({
                                             {timelineError && <p className="text-red-500 text-xs font-medium mt-1">{timelineError}</p>}
                                         </div>
 
-                                        {/* Hàng 3: Nút Thêm */}
                                         <div className="flex justify-end">
                                             <button
                                                 type="button"

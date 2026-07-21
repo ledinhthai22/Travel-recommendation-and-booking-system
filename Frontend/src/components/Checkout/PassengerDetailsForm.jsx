@@ -27,10 +27,18 @@ export default function PassengerDetailsForm({
         passengers.toddlers;
 
     const shouldScroll = totalPassengers > 1;
+    
     const isValidAutoFill = (key, passengerData) =>
         key === 'adults-0' &&
         activeTab === 'me' &&
         !!passengerData?.isAutoFilled &&
+        !!passengerData?.fullName?.trim() &&
+        !!passengerData?.dob;
+
+    const isFilledFromContact = (key, passengerData) =>
+        key === 'adults-0' &&
+        activeTab === 'other' &&
+        !!passengerData?.isFilledFromContact &&
         !!passengerData?.fullName?.trim() &&
         !!passengerData?.dob;
 
@@ -82,7 +90,8 @@ export default function PassengerDetailsForm({
                         gender: "Nam",
                         dob: contact.dob || "",
                         isSaved: true,
-                        isAutoFilled: true
+                        isAutoFilled: true,
+                        isFilledFromContact: false
                     }
                 }));
                 setAutoFilled(true);
@@ -112,7 +121,20 @@ export default function PassengerDetailsForm({
         }
     }, [activeTab, contact, passengers.adults, details, setDetails]);
 
+    // FIX: effect này chỉ có nhiệm vụ dọn dẹp các key hành khách không còn hợp lệ
+    // (khi số lượng passengers thay đổi) và auto-fill cho tab 'me'. Trước đây effect
+    // này KHÔNG loại trừ activeTab === 'other', nên mỗi lần `contact` đổi (VD: user gõ
+    // số điện thoại ở ContactForm khi đang ở tab "Đặt giúp người khác"), effect này vẫn
+    // chạy lại (vì có `contact` trong dependency array) và set lại
+    // `newDetails[key] = prev[key]` cho key 'adults-0' — tức là ghi đè bằng giá trị CŨ,
+    // đè mất giá trị phone/fullName/... mới mà CheckoutPage.fillPassengerFromContact
+    // vừa set trong cùng lượt render. Đó là lý do số điện thoại "chưa tự động fill".
+    //
+    // Sửa: bỏ qua hoàn toàn effect này khi activeTab === 'other', vì việc đồng bộ
+    // contact -> passenger cho case 'other' đã được xử lý đầy đủ ở CheckoutPage.
     useEffect(() => {
+        if (activeTab === 'other') return;
+
         const validKeys = new Set(passengerList.map(p => p.key));
 
         setDetails(prev => {
@@ -129,7 +151,8 @@ export default function PassengerDetailsForm({
                             gender: "Nam",
                             dob: contact.dob || "",
                             isSaved: true,
-                            isAutoFilled: true
+                            isAutoFilled: true,
+                            isFilledFromContact: false
                         };
                         hasChanges = true;
                         setAutoFilled(true);
@@ -149,7 +172,8 @@ export default function PassengerDetailsForm({
                     gender: "Nam",
                     dob: contact.dob || "",
                     isSaved: true,
-                    isAutoFilled: true
+                    isAutoFilled: true,
+                    isFilledFromContact: false
                 };
                 hasChanges = true;
                 setAutoFilled(true);
@@ -166,7 +190,8 @@ export default function PassengerDetailsForm({
                 ...prev[key],
                 [field]: value,
                 isSaved: true,
-                isAutoFilled: key === 'adults-0' && activeTab === 'me' ? false : (prev[key]?.isAutoFilled || false)
+                isAutoFilled: key === 'adults-0' && activeTab === 'me' ? false : (prev[key]?.isAutoFilled || false),
+                isFilledFromContact: key === 'adults-0' && activeTab === 'other' ? false : (prev[key]?.isFilledFromContact || false)
             },
         }));
 
@@ -179,6 +204,14 @@ export default function PassengerDetailsForm({
         }));
     };
 
+    const handlePhoneChange = (key, value) => {
+        const numericValue = value.replace(/\D/g, '');
+        
+        if (numericValue.length <= 11) {
+            handleChangePassenger(key, "phone", numericValue);
+        }
+    };
+
     const handleSaveAll = () => {
         const errors = {};
         let valid = true;
@@ -188,8 +221,9 @@ export default function PassengerDetailsForm({
             errors[key] = {};
 
             const isFirstAdultAutoFilled = isValidAutoFill(key, p);
+            const isFirstAdultFilledFromContact = isFilledFromContact(key, p);
 
-            if (!isFirstAdultAutoFilled) {
+            if (!isFirstAdultAutoFilled && !isFirstAdultFilledFromContact) {
                 if (!p.fullName?.trim()) {
                     errors[key].fullName = "Nhập họ tên";
                     valid = false;
@@ -201,7 +235,7 @@ export default function PassengerDetailsForm({
                 }
 
                 if (p.phone && !/^0\d{9}$/.test(p.phone)) {
-                    errors[key].phone = "SĐT không hợp lệ";
+                    errors[key].phone = "SĐT không hợp lệ (phải bắt đầu bằng 0 và có 10 số)";
                     valid = false;
                 }
             }
@@ -231,10 +265,29 @@ export default function PassengerDetailsForm({
             const key = `${type}-${index}`;
             const passenger = details[key];
             const isFirstAdultAutoFilled = isValidAutoFill(key, passenger);
+            const isFirstAdultFilledFromContact = isFilledFromContact(key, passenger);
 
-            const hasError = !isFirstAdultAutoFilled && errors[key] && Object.values(errors[key]).some(Boolean);
+            const hasError = !isFirstAdultAutoFilled && !isFirstAdultFilledFromContact && errors[key] && Object.values(errors[key]).some(Boolean);
             const isDone = passenger?.fullName && passenger?.dob;
             const isAutoFilled = isFirstAdultAutoFilled && passenger?.fullName;
+            const isFilled = isFirstAdultFilledFromContact && passenger?.fullName;
+
+            let statusText = "Nhập thông tin";
+            let statusColor = "text-orange-500";
+            
+            if (hasError) {
+                statusText = "Chưa đủ thông tin";
+                statusColor = "text-red-500";
+            } else if (isAutoFilled) {
+                statusText = "Từ tài khoản";
+                statusColor = "text-emerald-500";
+            } else if (isFilled) {
+                statusText = "Từ liên hệ";
+                statusColor = "text-blue-500";
+            } else if (isDone) {
+                statusText = "Đã nhập";
+                statusColor = "text-emerald-500";
+            }
 
             return (
                 <div key={key} className="mb-3 flex items-center gap-3" data-error={hasError ? "true" : "false"}>
@@ -249,18 +302,19 @@ export default function PassengerDetailsForm({
                                 }`}
                         >
                             <span className="font-medium text-slate-700">
-                                {isAutoFilled ? `${passenger?.fullName}` :
+                                {isAutoFilled ? `${passenger?.fullName} ` :
+                                    isFilled ? `${passenger?.fullName} ` :
                                     passenger?.fullName || `${label} (*)`}
+                                {isAutoFilled && (
+                                    <span className="ml-1.5 text-[10px] font-normal text-emerald-500">(Tự động)</span>
+                                )}
+                                {isFilled && (
+                                    <span className="ml-1.5 text-[10px] font-normal text-blue-500">(Từ liên hệ)</span>
+                                )}
                             </span>
 
-                            <span className={`text-sm font-medium ${hasError ? "text-red-500" :
-                                    isAutoFilled ? "text-emerald-500" :
-                                        isDone ? "text-emerald-500" :
-                                            "text-orange-500"
-                                }`}>
-                                {hasError ? "Chưa đủ thông tin" :
-                                    isAutoFilled ? "Đã nhập" :
-                                        isDone ? "Đã nhập" : "Nhập thông tin"}
+                            <span className={`text-sm font-medium ${statusColor}`}>
+                                {statusText}
                             </span>
                         </button>
 
@@ -359,6 +413,7 @@ export default function PassengerDetailsForm({
                             <div className="space-y-6">
                                 {passengerList.map((passenger) => {
                                     const isFirstAdultAutoFilled = isValidAutoFill(passenger.key, details[passenger.key]);
+                                    const isFirstAdultFilledFromContact = isFilledFromContact(passenger.key, details[passenger.key]);
 
                                     return (
                                         <div
@@ -372,26 +427,31 @@ export default function PassengerDetailsForm({
                                                         (Tự động từ thông tin tài khoản)
                                                     </span>
                                                 )}
+                                                {!isFirstAdultAutoFilled && isFirstAdultFilledFromContact && (
+                                                    <span className="ml-2 text-sm font-normal text-blue-500">
+                                                        (Điền từ thông tin liên lạc)
+                                                    </span>
+                                                )}
                                             </h3>
 
                                             <div className="flex flex-col gap-4">
                                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                                     <InputField
                                                         label="Họ tên"
-                                                        required={!isFirstAdultAutoFilled}
+                                                        required={!isFirstAdultAutoFilled && !isFirstAdultFilledFromContact}
                                                         type="text"
-                                                        placeholder={isFirstAdultAutoFilled ? "Tự động từ thông tin tài khoản" : "Ví dụ: Nguyễn Văn A"}
+                                                        placeholder={isFirstAdultAutoFilled ? "Tự động từ thông tin tài khoản" : isFirstAdultFilledFromContact ? "Từ thông tin liên lạc" : "Ví dụ: Nguyễn Văn A"}
                                                         value={details[passenger.key]?.fullName || ""}
                                                         onChange={(e) =>
                                                             handleChangePassenger(passenger.key, "fullName", e.target.value)
                                                         }
                                                         error={modalErrors[passenger.key]?.fullName}
-                                                        disabled={isFirstAdultAutoFilled}
+                                                        disabled={isFirstAdultAutoFilled || isFirstAdultFilledFromContact}
                                                     />
 
                                                     <DatePicker
                                                         label="Ngày sinh"
-                                                        required={!isFirstAdultAutoFilled}
+                                                        required={!isFirstAdultAutoFilled && !isFirstAdultFilledFromContact}
                                                         value={details[passenger.key]?.dob || ""}
                                                         onChange={(value) =>
                                                             handleChangePassenger(passenger.key, "dob", value)
@@ -399,7 +459,7 @@ export default function PassengerDetailsForm({
                                                         minDate={new Date(1900, 0, 1)}
                                                         maxDate={new Date()}
                                                         error={modalErrors[passenger.key]?.dob}
-                                                        disabled={isFirstAdultAutoFilled}
+                                                        disabled={isFirstAdultAutoFilled || isFirstAdultFilledFromContact}
                                                     />
                                                 </div>
 
@@ -419,7 +479,7 @@ export default function PassengerDetailsForm({
                                                             ]}
                                                             className="w-full h-[46px] rounded-xl bg-white border border-slate-200"
                                                             error={modalErrors[passenger.key]?.gender}
-                                                            disabled={isFirstAdultAutoFilled}
+                                                            disabled={isFirstAdultAutoFilled || isFirstAdultFilledFromContact}
                                                         />
                                                     </div>
 
@@ -428,13 +488,13 @@ export default function PassengerDetailsForm({
                                                             <InputField
                                                                 label="Số điện thoại"
                                                                 type="text"
-                                                                placeholder={isFirstAdultAutoFilled ? "Tự động từ thông tin tài khoản" : "Ví dụ: 0901234567"}
+                                                                placeholder={isFirstAdultAutoFilled ? "Tự động từ thông tin tài khoản" : isFirstAdultFilledFromContact ? "Từ thông tin liên lạc" : "Ví dụ: 0901234567"}
                                                                 value={details[passenger.key]?.phone || ""}
                                                                 onChange={(e) =>
-                                                                    handleChangePassenger(passenger.key, "phone", e.target.value)
+                                                                    handlePhoneChange(passenger.key, e.target.value)
                                                                 }
                                                                 error={modalErrors[passenger.key]?.phone}
-                                                                disabled={isFirstAdultAutoFilled}
+                                                                disabled={isFirstAdultAutoFilled || isFirstAdultFilledFromContact}
                                                             />
                                                         </div>
 
@@ -478,7 +538,8 @@ export default function PassengerDetailsForm({
                                             gender: "Nam",
                                             dob: contact.dob || "",
                                             isSaved: true,
-                                            isAutoFilled: true
+                                            isAutoFilled: true,
+                                            isFilledFromContact: false
                                         };
                                     }
                                     setDetails(newDetails);

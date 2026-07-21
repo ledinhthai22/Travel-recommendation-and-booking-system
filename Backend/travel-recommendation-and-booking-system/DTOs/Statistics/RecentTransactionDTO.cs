@@ -7,6 +7,7 @@
         public string TourName { get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public string Status { get; set; } = string.Empty;
+        public int StatusCode { get; set; }
         public DateTime Time { get; set; }
     }
 }

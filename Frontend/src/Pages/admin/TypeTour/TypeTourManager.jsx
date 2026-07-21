@@ -14,7 +14,7 @@ import ConfirmModal from '~/components/UI/Modal/ConfirmModal';
 export default function TypeTourManager() {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const [perPage, setPerPage] = useState(8); // Đồng bộ 8 dòng theo mặc định service
+    const [perPage, setPerPage] = useState(8);
 
     const [typeTours, setTypeTours] = useState([]);
     const [totalRows, setTotalRows] = useState(0);
@@ -94,12 +94,12 @@ export default function TypeTourManager() {
         {
             name: 'Tên loại hình tour',
             sortable: true,
+            center : 'true',
             selector: row => row.tenLoaiTour || '',
             cell: row => <span className="font-medium text-slate-900">{row.tenLoaiTour}</span>,
         },
         {
             name: 'Trạng thái',
-            width: '160px',
             center: true,
             cell: row => (
                 <span className={`px-3 py-1 text-xs font-bold rounded-full ${

@@ -7,6 +7,30 @@ namespace travel_recommendation_and_booking_system.SignalR
         public override async Task OnConnectedAsync()
         {
             Console.WriteLine($"Connected: {Context.ConnectionId}");
+
+            var role = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            var userId = Context.User?.FindFirst("MaPhien")?.Value;
+
+            Console.WriteLine($"Role: {role}, UserId: {userId}");
+
+            // Chỉ join group tương ứng với role
+            if (role == "1") // Admin
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, "ADMIN_GROUP");
+                if (!string.IsNullOrEmpty(userId))
+                    await Groups.AddToGroupAsync(Context.ConnectionId, $"STAFF_{userId}");
+            }
+            else if (role == "2") // Staff
+            {
+                if (!string.IsNullOrEmpty(userId))
+                    await Groups.AddToGroupAsync(Context.ConnectionId, $"STAFF_{userId}");
+            }
+            else // User
+            {
+                if (!string.IsNullOrEmpty(userId))
+                    await Groups.AddToGroupAsync(Context.ConnectionId, $"USER_{userId}");
+            }
+
             await base.OnConnectedAsync();
         }
 
