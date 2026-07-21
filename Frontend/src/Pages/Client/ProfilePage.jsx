@@ -34,7 +34,6 @@ import SelectField from "~/components/UI/Form/SelectField";
 import { useSearchParams, useLocation } from "react-router-dom";
 import { toastError, toastSuccess } from "~/utils/Toast";
 
-// Trạng thái đơn mới (chỉ 6 trạng thái)
 const ORDER_STATUS = {
     CHO_THANH_TOAN: 1,
     CHO_DUYET: 2,
@@ -44,7 +43,6 @@ const ORDER_STATUS = {
     DA_HUY: 6
 };
 
-// Trạng thái tài chính mới
 const FINANCIAL_STATUS = {
     CHUA_THANH_TOAN: 0,
     DA_DAT_COC: 1,
@@ -57,11 +55,9 @@ const FINANCIAL_STATUS = {
 const isOrderCancelled = (status) => status === ORDER_STATUS.DA_HUY;
 
 const getDisplayFinancialStatus = (tour) => {
-    // Nếu đã hủy, lấy trạng thái tài chính trực tiếp
     if (isOrderCancelled(tour.trangThai)) {
         return tour.trangThaiTaiChinh ?? FINANCIAL_STATUS.CHUA_THANH_TOAN;
     }
-    // Nếu đang hoạt động, kiểm tra số tiền đã thanh toán
     const daThanhToan = tour.soTienDaThanhToan || 0;
     const tongTien = tour.tongTien || 0;
     if (tongTien > 0 && daThanhToan >= tongTien) return FINANCIAL_STATUS.DA_THANH_TOAN_DU;
@@ -86,10 +82,8 @@ export default function ProfilePage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
-
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [reviewData, setReviewData] = useState({
         items: [],
@@ -189,10 +183,6 @@ export default function ProfilePage() {
         fetchOverview, selectedYear,
         fetchReviews, reviewData.pageNumber, reviewSearchTerm, filterRating
     ]);
-
-    const refreshHistory = useCallback(() => {
-        fetchHistory(historyData.pageNumber, searchTerm, filterStatus ? parseInt(filterStatus) : null);
-    }, [fetchHistory, historyData.pageNumber, searchTerm, filterStatus]);
 
     const handleViewDetail = useCallback(async (maDonDatTour) => {
         try {
@@ -321,19 +311,6 @@ export default function ProfilePage() {
                     />
                 ))}
             </div>
-        );
-    }, []);
-
-    const getReviewBadge = useCallback((rating) => {
-        const getColor = () => {
-            if (rating >= 4) return "bg-emerald-50 text-emerald-700 border-emerald-200";
-            if (rating >= 3) return "bg-amber-50 text-amber-700 border-amber-200";
-            return "bg-rose-50 text-rose-700 border-rose-200";
-        };
-        return (
-            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${getColor()}`}>
-                <span className="text-amber-400">★</span> {rating}.0
-            </span>
         );
     }, []);
 
@@ -598,10 +575,9 @@ export default function ProfilePage() {
                                             <p className="text-sm font-medium text-slate-800 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
                                                 {profileData?.gioiTinh !== undefined ? (profileData.gioiTinh ? "Nam" : "Nữ") : "Chưa cập nhật"}
                                             </p>
-                                           
                                         </div>
                                         <div className="space-y-1 md:col-span-2">
-                                             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ngày sinh</label>
+                                            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ngày sinh</label>
                                             <p className="text-sm font-medium text-slate-800 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
                                                 {profileData?.ngaySinh ? new Date(profileData.ngaySinh).toLocaleDateString("vi-VN") : "Chưa cập nhật"}
                                             </p>
@@ -722,8 +698,9 @@ export default function ProfilePage() {
                                         </div>
                                     ) : historyData.items && historyData.items.length > 0 ? (
                                         historyData.items.map((tour, index) => {
-                                            const canReview = tour.trangThai === ORDER_STATUS.HOAN_TAT && !tour.daDanhGia;
-                                            const canViewReview = tour.trangThai === ORDER_STATUS.HOAN_TAT && tour.daDanhGia;
+                                            const isHoanTat = tour.trangThai === ORDER_STATUS.HOAN_TAT;
+                                            const daDanhGia = tour.daDanhGia === true;
+                                            const canReview = isHoanTat && !daDanhGia;
                                             const isCancelled = isOrderCancelled(tour.trangThai);
                                             const financialStatus = tour.trangThaiTaiChinh ?? FINANCIAL_STATUS.CHUA_THANH_TOAN;
 
@@ -751,12 +728,6 @@ export default function ProfilePage() {
                                                                 <span className="flex items-center gap-1">
                                                                     <MapPin size={12} /> {tour.diemDen}
                                                                 </span>
-                                                                {canViewReview && (
-                                                                    <span className="flex items-center gap-1 text-emerald-500">
-                                                                        <Star size={12} className="fill-emerald-500" />
-                                                                        <span className="text-xs font-medium">Đã đánh giá</span>
-                                                                    </span>
-                                                                )}
                                                                 {isCancelled && tour.lyDoHuy && (
                                                                     <span className="flex items-center gap-1 text-red-500">
                                                                         <AlertCircle size={12} />
@@ -780,25 +751,6 @@ export default function ProfilePage() {
                                                                     className="w-full px-3 py-2 text-sm font-medium text-white bg-sky-500 rounded-xl hover:bg-sky-600 transition whitespace-nowrap flex items-center justify-center gap-1 shadow-sm shadow-sky-100"
                                                                 >
                                                                     Đánh giá
-                                                                </button>
-                                                            )}
-
-                                                            {canViewReview && (
-                                                                <button
-                                                                    onClick={() => {
-                                                                        const review = reviewData.items?.find(
-                                                                            r => r.maTour === tour.maTour
-                                                                        );
-                                                                        if (review) {
-                                                                            handleViewReview(review);
-                                                                        } else {
-                                                                            setActiveTab("reviews");
-                                                                        }
-                                                                    }}
-                                                                    className="w-full px-3 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl hover:bg-emerald-100 transition whitespace-nowrap flex items-center justify-center gap-1"
-                                                                >
-                                                                    <Star size={14} className="fill-emerald-600" />
-                                                                    Xem đánh giá
                                                                 </button>
                                                             )}
                                                         </div>
@@ -909,44 +861,61 @@ export default function ProfilePage() {
                                             </div>
                                         </div>
                                     ) : reviewData.items && reviewData.items.length > 0 ? (
-                                        reviewData.items.map((review, index) => (
-                                            <div key={review.maDanhGia || index} className="px-6 py-5 hover:bg-slate-50/50 transition">
-                                                <div className="flex flex-col md:flex-row gap-4">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-start gap-4">
-                                                            <img
-                                                                src={review.duongDanAnh ? `https://localhost:7016${review.duongDanAnh}` : "https://placehold.co/80x80?text=No+Image"}
-                                                                alt={review.tenTour}
-                                                                className="w-20 h-20 rounded-xl object-cover bg-slate-100 shrink-0"
-                                                                onError={(e) => e.target.src = "https://placehold.co/100x100?text=No+Image"}
-                                                            />
-                                                            <div className="flex-1 min-w-0">
-                                                                <h4 className="font-semibold text-slate-800 text-sm">{review.tenTour}</h4>
-                                                                <div className="flex items-center gap-3 mt-1">
-                                                                    {renderStars(review.diemDanhGia)}
-                                                                </div>
-                                                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 mt-1.5">
-                                                                    <span className="flex items-center gap-1">
-                                                                        <Calendar size={12} /> {review.ngayDanhGia}
-                                                                    </span>
-                                                                    <span className="flex items-center gap-1">
-                                                                        <MapPin size={12} /> {review.diaDiem || "N/A"}
-                                                                    </span>
+                                        reviewData.items.map((review, index) => {
+                                            const getStatusText = () => {
+                                                if (!review.isProcessed) {
+                                                    return { text: "Chờ xử lý", color: "bg-amber-50 text-amber-700 border-amber-200" };
+                                                }
+                                                if (review.trangThai === true) {
+                                                    return { text: "Đã duyệt", color: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+                                                }
+                                                return { text: "Từ chối", color: "bg-red-50 text-red-700 border-red-200" };
+                                            };
+
+                                            const status = getStatusText();
+
+                                            return (
+                                                <div key={review.maDanhGia || index} className="px-6 py-5 hover:bg-slate-50/50 transition">
+                                                    <div className="flex flex-col md:flex-row gap-4">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-start gap-4">
+                                                                <img
+                                                                    src={review.duongDanAnh ? `https://localhost:7016${review.duongDanAnh}` : "https://placehold.co/80x80?text=No+Image"}
+                                                                    alt={review.tenTour}
+                                                                    className="w-20 h-20 rounded-xl object-cover bg-slate-100 shrink-0"
+                                                                    onError={(e) => e.target.src = "https://placehold.co/100x100?text=No+Image"}
+                                                                />
+                                                                <div className="flex-1 min-w-0">
+                                                                    <h4 className="font-semibold text-slate-800 text-sm">{review.tenTour}</h4>
+                                                                    <div className="flex items-center gap-3 mt-1">
+                                                                        {renderStars(review.diemDanhGia)}
+                                                                    </div>
+                                                                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 mt-1.5">
+                                                                        <span className="flex items-center gap-1">
+                                                                            <Calendar size={12} /> {review.ngayDanhGia}
+                                                                        </span>
+                                                                        <span className="flex items-center gap-1">
+                                                                            <MapPin size={12} /> {review.diaDiem || "N/A"}
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 md:self-center">
-                                                        <button
-                                                            onClick={() => handleViewReview(review)}
-                                                            className="px-4 py-2 text-sm font-medium text-sky-600 bg-slate-50 border border-slate-400 rounded-xl hover:bg-slate-100 transition flex items-center gap-1.5"
-                                                        >
-                                                            Xem chi tiết
-                                                        </button>
+                                                        <div className="flex items-center gap-2 md:self-center">
+                                                            <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium border ${status.color}`}>
+                                                                {status.text}
+                                                            </span>
+                                                            <button
+                                                                onClick={() => handleViewReview(review)}
+                                                                className="px-4 py-2 text-sm font-medium text-sky-600 bg-slate-50 border border-slate-400 rounded-xl hover:bg-slate-100 transition flex items-center gap-1.5"
+                                                            >
+                                                                Xem chi tiết
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))
+                                            );
+                                        })
                                     ) : (
                                         <div className="px-6 py-16 text-center">
                                             <div className="flex flex-col items-center gap-3">
@@ -1003,7 +972,6 @@ export default function ProfilePage() {
                 onSuccess={refreshAllData}
             />
 
-            {/* Review Detail Modal */}
             {isReviewDetailOpen && selectedReview && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col">
@@ -1018,7 +986,7 @@ export default function ProfilePage() {
                                 <X size={20} />
                             </button>
                         </div>
-                        
+
                         {isLoadingReviewDetail ? (
                             <div className="flex-1 flex items-center justify-center p-8">
                                 <div className="flex flex-col items-center gap-3">

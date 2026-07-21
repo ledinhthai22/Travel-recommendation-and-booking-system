@@ -70,33 +70,22 @@ export function Notes() {
         {
             title: "Lưu ý về chuyển hoặc hủy tour",
             content: [
-                "Sau khi thanh toán, nếu có nhu cầu chuyển hoặc hủy tour, quý khách vui lòng mang theo Vé Du Lịch, Biên nhận và giấy tờ tùy thân của người thanh toán đến văn phòng đăng ký tour để làm thủ tục theo quy định của công ty.",
-                "Quý khách cũng có thể liên hệ nhân viên tư vấn để được hướng dẫn các thủ tục chuyển hoặc hủy tour.",
-                "Thời gian hủy tour được tính theo ngày làm việc từ thứ Hai đến thứ Sáu, không bao gồm thứ Bảy, Chủ Nhật và các ngày nghỉ Lễ, Tết."
+                "Quý khách chỉ có thể gửi yêu cầu hủy tour khi tour chưa kết thúc và chưa khởi hành quá 3 ngày; sau thời điểm này hệ thống sẽ không còn cho phép hủy đơn.",
+                "Yêu cầu hủy tour được gửi và xử lý trực tiếp trên hệ thống. Sau khi xác nhận, đơn sẽ chuyển sang trạng thái Đã hủy và không thể khôi phục.",
+                "Số tiền hoàn (nếu có) sẽ được hoàn về theo phương thức thanh toán ban đầu hoặc theo thỏa thuận với công ty, tùy vào thời điểm hủy so với ngày khởi hành.",
+                "Quý khách vui lòng liên hệ nhân viên tư vấn nếu cần hỗ trợ thêm về thủ tục hủy tour."
             ]
         },
         {
-            title: "Điều kiện hủy tour (ngày thường)",
+            title: "Chính sách hoàn tiền khi hủy tour",
             content: [
-                "Chuyển sang tour khác trước ngày khởi hành từ 20 ngày trở lên: Không mất phí.",
-                "Hủy hoặc chuyển tour từ 15 - 19 ngày trước ngày khởi hành: Phí hủy 50% tiền cọc.",
-                "Hủy hoặc chuyển tour từ 12 - 14 ngày trước ngày khởi hành: Phí hủy 100% tiền cọc.",
-                "Hủy tour từ 08 - 11 ngày trước ngày khởi hành: Phí hủy 50% giá tour.",
-                "Hủy tour từ 05 - 07 ngày trước ngày khởi hành: Phí hủy 70% giá tour.",
-                "Hủy tour từ 02 - 04 ngày trước ngày khởi hành: Phí hủy 90% giá tour.",
-                "Hủy tour trong vòng 01 ngày trước ngày khởi hành: Phí hủy 100% giá tour."
-            ]
-        },
-        {
-            title: "Điều kiện hủy tour (Lễ, Tết)",
-            content: [
-                "Chuyển sang tour khác trước ngày khởi hành từ 30 ngày trở lên: Không mất phí.",
-                "Hủy hoặc chuyển tour từ 25 - 29 ngày trước ngày khởi hành: Phí hủy 50% tiền cọc.",
-                "Hủy hoặc chuyển tour từ 20 - 24 ngày trước ngày khởi hành: Phí hủy 100% tiền cọc.",
-                "Hủy tour từ 17 - 19 ngày trước ngày khởi hành: Phí hủy 50% giá tour.",
-                "Hủy tour từ 08 - 16 ngày trước ngày khởi hành: Phí hủy 70% giá tour.",
-                "Hủy tour từ 02 - 07 ngày trước ngày khởi hành: Phí hủy 90% giá tour.",
-                "Hủy tour trong vòng 01 ngày trước ngày khởi hành: Phí hủy 100% giá tour."
+                "Hủy trước ngày khởi hành từ 30 ngày trở lên: Hoàn 100% số tiền đã thanh toán.",
+                "Hủy trước ngày khởi hành từ 15 - 29 ngày: Hoàn 70% số tiền đã thanh toán.",
+                "Hủy trước ngày khởi hành từ 7 - 14 ngày: Hoàn 50% số tiền đã thanh toán.",
+                "Hủy trước ngày khởi hành từ 3 - 6 ngày: Hoàn 30% số tiền đã thanh toán.",
+                "Hủy trong vòng 3 ngày trước ngày khởi hành: Không hoàn tiền, mất toàn bộ số tiền đã thanh toán.",
+                "Hủy sau khi tour đã khởi hành: Không hoàn tiền.",
+                "Số ngày trước khởi hành được tính từ thời điểm hệ thống ghi nhận yêu cầu hủy đến ngày khởi hành của chuyến đi."
             ]
         },
         {

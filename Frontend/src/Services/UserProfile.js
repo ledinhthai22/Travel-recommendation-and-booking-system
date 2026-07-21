@@ -119,9 +119,3 @@ export const getUserReviewsApi = async (page = 1, pageSize = 5, search = '', rat
     return response.data;
 };
 
-// ==================== ĐÃ CHUYỂN SANG refundApi.js ====================
-
-// Các API Refund đã được chuyển sang file refundApi.js:
-// - confirmRefundUserApi → /user/refund/confirm/{maThanhToan}
-// - getPendingRefundsAdminApi → /admin/refund/pending
-// - confirmRefundAdminApi → /admin/refund/confirm/{maThanhToan}

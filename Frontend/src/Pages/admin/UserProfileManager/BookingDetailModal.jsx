@@ -134,6 +134,8 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
         (trangThaiDon === ORDER_STATUS.CHO_THANH_TOAN ||
             trangThaiDon === ORDER_STATUS.CHO_DUYET ||
             trangThaiDon === ORDER_STATUS.DA_DUYET) &&
+        (trangThaiTaiChinh === FINANCIAL_STATUS.CHUA_THANH_TOAN ||
+            trangThaiTaiChinh === FINANCIAL_STATUS.DA_DAT_COC) &&
         departureDate &&
         today < departureDate &&
         diffDays >= 3 &&

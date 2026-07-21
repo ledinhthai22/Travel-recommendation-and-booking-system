@@ -21,6 +21,7 @@ export default function ReviewFormModal({ isOpen, onClose, booking, onSuccess })
                 diemDanhGia: parseInt(rating),
                 noiDung: comment
             });
+            
             toastSuccess("Gửi đánh giá thành công!");
             setRating(5);
             setComment("");

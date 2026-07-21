@@ -36,7 +36,6 @@ export function mapSearchApiTourToCard(tour) {
     };
 }
 
-// HÀM MAP CHO FILTER API (TourPage)
 export function mapApiTourToCard(tour) {
     const isLocationShape = tour.hinhAnhChinh !== undefined || Array.isArray(tour.diemDens);
 
@@ -52,8 +51,8 @@ export function mapApiTourToCard(tour) {
             ngay: tour.ngay,
             dem: tour.dem,
             price: Number(tour.giaTu ?? 0),
-            rating: 0,
-            reviewCount: 0,
+            rating: Number(tour.diemDanhGia ?? 0),
+            reviewCount: Number(tour.soDanhGia ?? 0), 
             tourType: null,
             isFavorite: false,
             featured: false,
@@ -61,7 +60,6 @@ export function mapApiTourToCard(tour) {
         };
     }
 
-    // Filter API (TourCardDTO)
     return {
         id: tour.maTour,
         maTour: tour.maTour,
@@ -74,7 +72,7 @@ export function mapApiTourToCard(tour) {
         dem: tour.dem,
         price: Number(tour.giaChuyen ?? 0),
         rating: Number(tour.diemDanhGia ?? 0),
-        reviewCount: Number(tour.soLuongDanhGia ?? 0),
+        reviewCount: Number(tour.soDanhGia ?? 0), // ⭐ Sửa thành soDanhGia (không phải soLuongDanhGia)
         tourType: tour.tenLoaiTour || null,
         maLoaiTour: tour.maLoaiTour ?? null,
         isFavorite: Boolean(tour.isFavorite),
