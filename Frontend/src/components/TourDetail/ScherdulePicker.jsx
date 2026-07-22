@@ -198,7 +198,7 @@ export function SchedulePicker({
                                                     </div>
 
                                                     <div>
-                                                        <div className="flex justify-between text-xl text-slate-700 font-semibold">
+                                                        <div className="flex justify-between text-lg text-slate-700 font-semibold">
                                                             <span>{formatTime(infoChuyen.ngayKetThuc)}</span>
                                                             <span>{formatTime(infoChuyen.gioDenNoiVe)}</span>
                                                         </div>

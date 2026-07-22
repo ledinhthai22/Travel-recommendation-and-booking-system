@@ -12,7 +12,7 @@
         public int TrangThai { get; set; }
         public string TenTrangThai { get; set; } = string.Empty;
         public decimal TongTien { get; set; }
-
+        public bool DaDanhGia { get; set; }
         // Trạng thái tài chính (thay thế TrangThaiCoc)
         public int TrangThaiTaiChinh { get; set; }
         public string TenTrangThaiTaiChinh { get; set; } = string.Empty;
@@ -25,6 +25,7 @@
         public string PhuongThucThanhToan { get; set; } = string.Empty;
         public string? LyDoHuy { get; set; }
         public DateTime? NgayHuy { get; set; }
+        public int MaTour { get; set; }
 
         // Flags hỗ trợ
         public bool IsChuaThanhToan => TrangThaiTaiChinh == 0;

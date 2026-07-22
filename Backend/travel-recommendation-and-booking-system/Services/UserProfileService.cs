@@ -282,6 +282,7 @@ namespace travel_recommendation_and_booking_system.Services
             if (pageSize < 1) pageSize = 5;
 
             var query = _context.DonDatTours
+                .Include(c => c.ChuyenKhoiHanh).ThenInclude(t => t.Tour)
                 .AsNoTracking()
                 .Where(d => d.MaNguoiDung == userId)
                 .AsQueryable();
@@ -309,6 +310,7 @@ namespace travel_recommendation_and_booking_system.Services
                 {
                     d.MaDonDatTour,
                     d.MaDatCho,
+                    d.ChuyenKhoiHanh.Tour.MaTour,
                     DuongDanAnh = d.ChuyenKhoiHanh != null && d.ChuyenKhoiHanh.Tour != null
                         ? d.ChuyenKhoiHanh.Tour.HinhAnhTours
                             .OrderByDescending(a => a.AnhChinh)
@@ -337,6 +339,7 @@ namespace travel_recommendation_and_booking_system.Services
                     d.LyDoHuy,
                     d.NgayCapNhat,
                     d.NgayHuy,
+                    d.DaDanhGia,
                     LatestPaymentStatus = d.ThanhToans
                         .OrderByDescending(p => p.NgayThanhToan)
                         .Select(p => (int?)p.TrangThaiThanhToan)
@@ -354,12 +357,14 @@ namespace travel_recommendation_and_booking_system.Services
                 MaDatCho = r.MaDatCho ?? "",
                 DuongDanAnh = r.DuongDanAnh ?? "",
                 TenTour = r.TenTour ?? "",
+                MaTour = r.MaTour,
                 NgayBatDau = r.NgayKhoiHanh != DateTime.MinValue
                     ? r.NgayKhoiHanh.ToString("dd/MM/yyyy")
                     : "",
                 NgayKetThuc = r.NgayKetThuc != DateTime.MinValue
                     ? r.NgayKetThuc.ToString("dd/MM/yyyy")
                     : "",
+                DaDanhGia = r.DaDanhGia,
                 DiemDen = r.DiemDen ?? "",
                 TongTien = r.TongTien,
                 TrangThai = r.TrangThaiDon,
@@ -687,9 +692,7 @@ namespace travel_recommendation_and_booking_system.Services
                     .ThenInclude(t => t.ChuyenKhoiHanhs)
                         .ThenInclude(c => c.DonDatTours)
                 .Where(d => d.MaNguoiDung == userId
-                            && d.NgayXoa == null
-                            && d.IsProcessed == true
-                            && d.TrangThai == true)
+                            && d.NgayXoa == null)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -725,13 +728,16 @@ namespace travel_recommendation_and_booking_system.Services
                     DiemDanhGia = d.DiemDanhGia,
                     NoiDung = d.NoiDung,
                     NgayDanhGia = d.NgayTao.ToString("dd/MM/yyyy HH:mm"),
+                    TrangThai = d.TrangThai,
+                    IsProcessed = d.IsProcessed,
+                    GhiChuKiemDuyet = d.GhiChuKiemDuyet ?? "",
                     MaDatCho = d.Tour.ChuyenKhoiHanhs
-                    .Where(c => c.NgayXoa == null)
-                    .SelectMany(c => c.DonDatTours)
-                    .Where(dd => dd.MaNguoiDung == userId && dd.TrangThaiDon == BookingConstants.DON_HOAN_TAT)
-                    .OrderByDescending(dd => dd.NgayDat)
-                    .Select(dd => dd.MaDatCho)
-                    .FirstOrDefault() ?? ""
+                        .Where(c => c.NgayXoa == null)
+                        .SelectMany(c => c.DonDatTours)
+                        .Where(dd => dd.MaNguoiDung == userId && dd.TrangThaiDon == BookingConstants.DON_HOAN_TAT)
+                        .OrderByDescending(dd => dd.NgayDat)
+                        .Select(dd => dd.MaDatCho)
+                        .FirstOrDefault() ?? ""
                 })
                 .ToListAsync();
 

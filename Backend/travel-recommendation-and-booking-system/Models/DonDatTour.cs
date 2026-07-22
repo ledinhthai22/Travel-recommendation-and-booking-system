@@ -69,6 +69,9 @@ namespace travel_recommendation_and_booking_system.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal SoTienDaThanhToan { get; set; }
 
+
+        public bool DaDanhGia { get; set; } = false;
+
         /// <summary>
         /// Trạng thái tài chính
         /// 0 = Chưa thanh toán

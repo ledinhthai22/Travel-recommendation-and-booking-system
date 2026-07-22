@@ -1,11 +1,20 @@
 import React, { useState } from "react";
-import { Bus, ChevronDown, ChevronUp } from "lucide-react";
+import { Bus, ChevronDown, ChevronUp, Plane, Train, Ship, Car } from "lucide-react";
 import { formatCurrency } from "~/Helper/FormatCurrency";
 
 const formatDate = (dateStr) => {
     if (!dateStr) return "";
     return new Date(dateStr).toLocaleDateString("vi-VN");
 };
+
+const formatTime = (dateStr) => {
+    if (!dateStr) return "--:--";
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false });
+};
+
+// Map icon theo loại phương tiện
+const iconMap = { Plane, Bus, Train, Ship, Car };
 
 export default function TourSummaryCard({
     bookingData,
@@ -15,13 +24,16 @@ export default function TourSummaryCard({
     step
 }) {
     const [showTransport, setShowTransport] = useState(true);
-    
+
     // Lấy giá từ bookingData
     const adultPrice = bookingData?.gia?.giaNguoiLon || 0;
     const childPrice = bookingData?.gia?.giaTreEm || 0;
     const toddlerPrice = bookingData?.gia?.giaEmBe || 0;
     const singleRoomPrice = bookingData?.gia?.phuThuPhongDon || 0;
     const totalPrice = bookingData?.totalPrice || 0;
+
+    // Lấy icon từ bookingData hoặc mặc định là Bus
+    const VehicleIcon = iconMap[bookingData?.icon] || Bus;
 
     return (
         <div className="sticky top-24 mb-10">
@@ -35,7 +47,7 @@ export default function TourSummaryCard({
                 <div className="flex gap-4">
                     <div className="flex-1">
                         <p className="mt-2 flex items-center gap-1 text-[14px] text-slate-500 leading-7">
-                           Tên Tour: <span className="font-bold text-slate-800"> {bookingData?.tenTour || "Không có tên tour"} </span>
+                            Tên Tour: <span className="font-bold text-slate-800"> {bookingData?.tenTour || "Không có tên tour"} </span>
                         </p>
                         <p className="mt-2 flex items-center gap-1 text-sm text-slate-500">
                             Mã chuyến: <span className="font-bold text-slate-800">{bookingData?.maChuyenCode || "---"}</span>
@@ -68,15 +80,15 @@ export default function TourSummaryCard({
                                     <span className="font-semibold text-slate-700">
                                         Ngày đi: {formatDate(bookingData?.ngayKhoiHanh)}
                                     </span>
-                                    <span className="flex items-center gap-1 text-orange-500 text-sm">
-                                        <Bus size={14} />
-                                        Xe khách
+                                    <span className="flex items-center gap-1 text-orange-500 text-sm font-medium">
+                                        <VehicleIcon size={14} /> 
+                                        {bookingData?.tenPhuongTien || "Xe khách"}
                                     </span>
                                 </div>
 
                                 <div className="flex justify-between text-[12px] text-slate-600">
-                                    <span>6:00</span>
-                                    <span>8:00</span>
+                                    <span>{formatTime(bookingData?.ngayKhoiHanh)}</span>
+                                    <span>{formatTime(bookingData?.gioDenNoiDi)}</span>
                                 </div>
 
                                 <div className="relative my-2">
@@ -97,15 +109,15 @@ export default function TourSummaryCard({
                                     <span className="font-semibold text-slate-700">
                                         Ngày về: {formatDate(bookingData?.ngayKetThuc)}
                                     </span>
-                                    <span className="flex items-center gap-1 text-orange-500 text-sm">
-                                        <Bus size={14} />
-                                        Xe khách
+                                    <span className="flex items-center gap-1 text-sm text-orange-500 font-medium">
+                                        <VehicleIcon size={14} /> 
+                                        {bookingData?.phuongTien || "Xe khách"}
                                     </span>
                                 </div>
 
                                 <div className="flex justify-between text-[12px] text-slate-600">
-                                    <span>17:30</span>
-                                    <span>19:00</span>
+                                    <span>{formatTime(bookingData?.ngayKetThuc)}</span>
+                                    <span>{formatTime(bookingData?.gioDenNoiVe)}</span>
                                 </div>
 
                                 <div className="relative my-2">
@@ -205,8 +217,8 @@ export default function TourSummaryCard({
 
                 {/* Ghi chú nhỏ */}
                 <p className="mt-3 text-center text-[11px] text-slate-400">
-                    {step === 1 
-                        ? "Vui lòng kiểm tra thông tin trước khi tiếp tục" 
+                    {step === 1
+                        ? "Vui lòng kiểm tra thông tin trước khi tiếp tục"
                         : "Nhấn thanh toán để hoàn tất đặt tour"}
                 </p>
             </div>

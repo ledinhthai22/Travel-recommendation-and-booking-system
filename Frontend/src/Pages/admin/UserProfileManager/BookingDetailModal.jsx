@@ -86,7 +86,7 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
         try {
             const d = new Date(dateStr);
             if (!isNaN(d.getTime())) return d;
-        } catch {}
+        } catch { }
         return null;
     };
 
@@ -100,7 +100,7 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
             if (!isNaN(d.getTime())) {
                 return d.toLocaleDateString("vi-VN");
             }
-        } catch {}
+        } catch { }
         return dateStr;
     };
 
@@ -114,7 +114,7 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
             if (!isNaN(d.getTime())) {
                 return d.toLocaleString("vi-VN");
             }
-        } catch {}
+        } catch { }
         return dateStr;
     };
 
@@ -131,15 +131,14 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
         : 0;
 
     const canCancel =
+        !isCancelled &&
         (trangThaiDon === ORDER_STATUS.CHO_THANH_TOAN ||
             trangThaiDon === ORDER_STATUS.CHO_DUYET ||
-            trangThaiDon === ORDER_STATUS.DA_DUYET) &&
-        (trangThaiTaiChinh === FINANCIAL_STATUS.CHUA_THANH_TOAN ||
-            trangThaiTaiChinh === FINANCIAL_STATUS.DA_DAT_COC) &&
+            trangThaiDon === ORDER_STATUS.DA_DUYET ||
+            trangThaiDon === ORDER_STATUS.DANG_DIEN_RA) && 
         departureDate &&
         today < departureDate &&
-        diffDays >= 3 &&
-        !isCancelled;
+        diffDays >= 3;
 
     const canPayRemaining =
         !isCancelled &&
@@ -659,7 +658,7 @@ export default function BookingDetailModal({ isOpen, onClose, booking, onSuccess
                             </div>
                         )}
 
-                        
+
                     </div>
                 </div>
             </div>

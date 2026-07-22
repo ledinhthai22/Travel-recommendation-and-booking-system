@@ -87,6 +87,12 @@ namespace travel_recommendation_and_booking_system.Services
         private static string GetFinancialStatusName(int status) => BookingConstants.GetFinancialStatusName(status);
         private static string GetPaymentStatusName(int status) => BookingConstants.GetPaymentStatusName(status);
 
+        private string FormatPrice(decimal price)
+        {
+            return price.ToString("#,##0", System.Globalization.CultureInfo.InvariantCulture)
+                        .Replace(",", ".");
+        }
+
         public async Task<(string PaymentUrl, string TxnRef)> CreatePaymentUrlAsync(PaymentRequestDTO request, string remoteIpAddress)
         {
             var giuCho = await _context.GiuChos
@@ -498,7 +504,7 @@ namespace travel_recommendation_and_booking_system.Services
                         uuDai.SoLuongDaDung++;
                 }
 
-                order.AppendStatusHistory(oldStatusDon, order.TrangThaiDon, "Thanh toán VNPay thành công", $"Thanh toán {vnpayAmount}đ");
+                order.AppendStatusHistory(oldStatusDon, order.TrangThaiDon, "Thanh toán VNPay thành công", $"Thanh toán {FormatPrice(vnpayAmount)}đ");
 
                 payload.DaXuLy = true;
                 _context.PaymentPayloads.Remove(payload);
@@ -506,7 +512,7 @@ namespace travel_recommendation_and_booking_system.Services
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                await SendNotificationsAfterPaymentSuccess(order);
+                await SendNotificationsAfterFirstPayment(order);
 
                 return ("00", "Confirm success");
             }
@@ -597,7 +603,7 @@ namespace travel_recommendation_and_booking_system.Services
                 }
 
                 order.NgayCapNhat = DateTime.Now;
-                order.AppendStatusHistory(oldStatusDon, order.TrangThaiDon, "Thanh toán phần còn lại", $"Thanh toán {vnpayAmount}đ qua VNPay");
+                order.AppendStatusHistory(oldStatusDon, order.TrangThaiDon, "Thanh toán phần còn lại", $"Thanh toán {FormatPrice(vnpayAmount)}đ qua VNPay");
 
                 payload.DaXuLy = true;
                 _context.PaymentPayloads.Remove(payload);
@@ -605,8 +611,7 @@ namespace travel_recommendation_and_booking_system.Services
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                await SendRemainingPaymentSuccessEmail(order);
-                await SendNotificationsAfterRemainingPayment(order);
+                await SendNotificationsAfterFullPayment(order);
 
                 return ("00", "Confirm success");
             }
@@ -623,7 +628,9 @@ namespace travel_recommendation_and_booking_system.Services
             }
         }
 
-        private async Task SendRemainingPaymentSuccessEmail(DonDatTour order)
+        #region Email Methods
+
+        private async Task SendFullPaymentConfirmationEmail(DonDatTour order)
         {
             try
             {
@@ -631,6 +638,7 @@ namespace travel_recommendation_and_booking_system.Services
                     .Include(x => x.KhachHangs)
                     .Include(x => x.NguoiDung)
                     .Include(x => x.ChuyenKhoiHanh).ThenInclude(x => x.Tour)
+                    .Include(x => x.ThanhToans)
                     .FirstOrDefaultAsync(x => x.MaDonDatTour == order.MaDonDatTour);
 
                 if (fullOrder == null) fullOrder = order;
@@ -639,36 +647,62 @@ namespace travel_recommendation_and_booking_system.Services
                     ?? throw new Exception("Không tìm thấy email người nhận");
 
                 string hoTen = fullOrder.NguoiDung?.HoTen ?? "Quý khách";
-                string subject = $"[Xác nhận thanh toán phần còn lại] Đơn {fullOrder.MaDatCho}";
+                string subject = $"[Xác nhận thanh toán đầy đủ] Đơn {fullOrder.MaDatCho}";
 
-                var remainingPayment = fullOrder.ThanhToans?
-                    .Where(t => t.LoaiThanhToan == LOAI_THANH_TOAN_PHAN_CON_LAI && t.TrangThaiThanhToan == TT_THANH_CONG)
+                var latestPayment = fullOrder.ThanhToans?
                     .OrderByDescending(t => t.NgayThanhToan)
                     .FirstOrDefault();
 
+                // Tính số tiền vừa thanh toán (lần này)
+                decimal soTienThanhToanLanNay = latestPayment?.TongTienThanhToan ?? 0;
+
                 string infoRows = $@"
-                    <tr><td width='150' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Mã đơn:</td>
+                    <tr><td width='170' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Mã đơn:</td>
                         <td style='padding:8px 12px;border-bottom:1px solid #eee;'><b style='color:#c50000;'>{fullOrder.MaDatCho}</b></td></tr>
-                    <tr><td width='150' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Tên tour:</td>
+                    <tr><td width='170' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Tên tour:</td>
                         <td style='padding:8px 12px;border-bottom:1px solid #eee;'>{fullOrder.ChuyenKhoiHanh?.Tour?.TenTour ?? "N/A"}</td></tr>
-                    <tr><td width='150' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Ngày khởi hành:</td>
+                    <tr><td width='170' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Ngày khởi hành:</td>
                         <td style='padding:8px 12px;border-bottom:1px solid #eee;'>{fullOrder.ChuyenKhoiHanh?.NgayKhoiHanh:dd/MM/yyyy HH:mm}</td></tr>
-                    <tr><td width='150' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Số tiền đã thanh toán:</td>
-                        <td style='padding:8px 12px;border-bottom:1px solid #eee;'><b style='color:#008000;'>{fullOrder.SoTienDaThanhToan:N0} đ</b></td></tr>
-                    <tr><td width='150' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Tổng giá trị đơn:</td>
-                        <td style='padding:8px 12px;border-bottom:1px solid #eee;'><b style='color:#c50000;'>{fullOrder.TongTien:N0} đ</b></td></tr>
-                    <tr><td width='150' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Trạng thái thanh toán:</td>
+                    <tr><td width='170' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Số tiền đã thanh toán trước:</td>
+                        <td style='padding:8px 12px;border-bottom:1px solid #eee;'><b style='color:#008000;'>{FormatPrice(fullOrder.SoTienDaThanhToan - soTienThanhToanLanNay)} đ</b></td></tr>
+                    <tr><td width='170' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Số tiền thanh toán lần này:</td>
+                        <td style='padding:8px 12px;border-bottom:1px solid #eee;'><b style='color:#008000;'>{FormatPrice(soTienThanhToanLanNay)} đ</b></td></tr>
+                    <tr><td width='170' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Tổng đã thanh toán:</td>
+                        <td style='padding:8px 12px;border-bottom:1px solid #eee;'><b style='color:#008000;'>{FormatPrice(fullOrder.SoTienDaThanhToan)} đ</b></td></tr>
+                    <tr><td width='170' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Tổng giá trị đơn:</td>
+                        <td style='padding:8px 12px;border-bottom:1px solid #eee;'><b style='color:#c50000;'>{FormatPrice(fullOrder.TongTien)} đ</b></td></tr>
+                    <tr><td width='170' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Trạng thái tài chính:</td>
                         <td style='padding:8px 12px;border-bottom:1px solid #eee;'><span style='color:#008000;font-weight:bold;'>Đã thanh toán đầy đủ</span></td></tr>
-                    <tr><td width='150' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Trạng thái đơn:</td>
+                    <tr><td width='170' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Trạng thái đơn:</td>
                         <td style='padding:8px 12px;border-bottom:1px solid #eee;'><span style='color:#008000;font-weight:bold;'>{GetOrderStatusName(fullOrder.TrangThaiDon)}</span></td></tr>";
 
-                if (remainingPayment != null)
+                if (latestPayment != null && !string.IsNullOrEmpty(latestPayment.MaGiaoDich))
                 {
                     infoRows += $@"
                         <tr><td width='150' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Mã giao dịch:</td>
-                            <td style='padding:8px 12px;border-bottom:1px solid #eee;'>{remainingPayment.MaGiaoDich}</td></tr>
+                            <td style='padding:8px 12px;border-bottom:1px solid #eee;'>{latestPayment.MaGiaoDich}</td></tr>
                         <tr><td width='150' align='right' valign='top' style='padding:8px 12px;background:#f8f9fa;font-weight:500;border-bottom:1px solid #eee;'>Ngày thanh toán:</td>
-                            <td style='padding:8px 12px;border-bottom:1px solid #eee;'>{remainingPayment.NgayThanhToan:dd/MM/yyyy HH:mm}</td></tr>";
+                            <td style='padding:8px 12px;border-bottom:1px solid #eee;'>{latestPayment.NgayThanhToan:dd/MM/yyyy HH:mm}</td></tr>";
+                }
+
+                // Lấy chính sách hoàn tiền từ RefundPolicyEngine
+                string refundPolicyHtml = string.Empty;
+                var policyList = RefundPolicyEngine.GetCancellationPolicy();
+                if (policyList.Any())
+                {
+                    var policyItems = string.Join("", policyList.Select(p =>
+                        $"<li>Hủy từ {p.DaysBefore} ngày trước khởi hành: Hoàn {p.RefundRate}%</li>"));
+
+                    refundPolicyHtml = $@"
+                    <tr>
+                        <td colspan='2' style='padding:8px 12px; background:#fff3cd; border:1px solid #ffeeba;'>
+                            <p style='margin:0 0 5px 0;font-weight:bold;color:#856404;'>CHÍNH SÁCH HỦY TOUR VÀ HOÀN TIỀN</p>
+                            <ul style='margin:0;padding-left:20px;font-size:9.5pt;color:#333;'>
+                                {policyItems}
+                                <li style='margin-top:5px;'><em>Chính sách hoàn tiền được áp dụng theo thời điểm hệ thống ghi nhận yêu cầu hủy tour.</em></li>
+                            </ul>
+                        </td>
+                    </tr>";
                 }
 
                 string body = $@"<!DOCTYPE html>
@@ -679,8 +713,8 @@ namespace travel_recommendation_and_booking_system.Services
                 <tbody>
                   <tr>
                     <td style='padding:0;'>
-                      <p style='margin:0;padding:12px 0 8px 0;text-align:center;font-size:16pt;font-weight:bold;color:#008000;text-transform:uppercase;'>
-                        Xác nhận thanh toán phần còn lại thành công
+                      <p style='margin:0;padding:12px 0 8px 0;text-align:center;font-size:16pt;font-weight:bold;text-transform:uppercase;'>
+                        XÁC NHẬN THANH TOÁN ĐẦY ĐỦ
                       </p>
                     </td>
                   </tr>
@@ -688,15 +722,15 @@ namespace travel_recommendation_and_booking_system.Services
                     <td style='padding:3.75pt 7.5pt;'>
                       <p style='margin:0 0 10px 0;font-size:10.5pt;'>Kính gửi Quý khách <strong>{hoTen}</strong>,</p>
                       <p style='margin:0 0 10px 0;font-size:10.5pt;'>
-                        Chúng tôi xin xác nhận Quý khách đã thanh toán thành công phần còn lại cho đơn đặt tour <strong>{fullOrder.MaDatCho}</strong>.
-                      </p>
-                      <p style='margin:0 0 10px 0;font-size:10.5pt;color:#008000;font-weight:bold;'>
-                        🎉 Đơn hàng của Quý khách đã được thanh toán đầy đủ.
+                        Chúng tôi xin xác nhận Quý khách đã hoàn tất thanh toán cho đơn đặt tour <strong>{fullOrder.MaDatCho}</strong>.
                       </p>
                     </td>
                   </tr>
                   <tr>
                     <td style='padding:0;'>
+                      <p style='margin:8px 0 4px 0;font-weight:bold;color:#c50000;text-transform:uppercase;font-size:10.5pt;'>
+                        CHI TIẾT THANH TOÁN
+                      </p>
                       <table border='0' cellpadding='0' cellspacing='0' width='100%'>
                         <tbody>
                           {infoRows}
@@ -704,6 +738,7 @@ namespace travel_recommendation_and_booking_system.Services
                       </table>
                     </td>
                   </tr>
+                  {refundPolicyHtml}
                   <tr>
                     <td style='padding:8px 0 12px 0;'>
                       <p style='margin:0;font-size:10.5pt;'>
@@ -711,6 +746,9 @@ namespace travel_recommendation_and_booking_system.Services
                       </p>
                       <p style='margin:5px 0 0 0;font-size:9pt;color:#888;'>
                         Email: support@loiriengtravel.com | Hotline: 1900 1234
+                      </p>
+                      <p style='margin:5px 0 0 0;font-size:8pt;color:#aaa;'>
+                        * Đây là email tự động, vui lòng không trả lời email này.
                       </p>
                     </td>
                   </tr>
@@ -720,23 +758,24 @@ namespace travel_recommendation_and_booking_system.Services
                 </html>";
 
                 await _emailService.SendEmailAsync(toEmail, subject, body);
-                _logger.LogInformation($"Gửi email xác nhận thanh toán phần còn lại thành công đến {toEmail}");
+                _logger.LogInformation($"Gửi email xác nhận thanh toán đầy đủ thành công đến {toEmail}");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Lỗi gửi email xác nhận thanh toán phần còn lại cho đơn {order.MaDatCho}");
+                _logger.LogError(ex, $"Lỗi gửi email xác nhận thanh toán đầy đủ cho đơn {order.MaDatCho}");
             }
         }
 
-        private async Task SendNotificationsAfterPaymentSuccess(DonDatTour order)
+        private async Task SendNotificationsAfterFirstPayment(DonDatTour order)
         {
+            // Chỉ gửi email xác nhận đặt tour khi đặt cọc (lần đầu thanh toán)
             try
             {
                 await _emailService.SendBookingConfirmationAsync(order);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Gửi mail xác nhận thất bại cho đơn {MaDatCho}", order.MaDatCho);
+                _logger.LogError(ex, "Gửi mail xác nhận đặt tour thất bại cho đơn {MaDatCho}", order.MaDatCho);
             }
 
             try
@@ -796,15 +835,16 @@ namespace travel_recommendation_and_booking_system.Services
             }
         }
 
-        private async Task SendNotificationsAfterRemainingPayment(DonDatTour order)
+        private async Task SendNotificationsAfterFullPayment(DonDatTour order)
         {
+            // Gửi email xác nhận thanh toán đầy đủ (KHÔNG gửi lại email xác nhận đặt tour)
             try
             {
-                await _emailService.SendBookingConfirmationAsync(order);
+                await SendFullPaymentConfirmationEmail(order);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Gửi mail xác nhận thanh toán phần còn lại thất bại cho đơn {MaDatCho}", order.MaDatCho);
+                _logger.LogError(ex, "Gửi mail xác nhận thanh toán đầy đủ thất bại cho đơn {MaDatCho}", order.MaDatCho);
             }
 
             try
@@ -813,8 +853,8 @@ namespace travel_recommendation_and_booking_system.Services
                     order.MaNguoiDung,
                     new CreateNotificationDTO
                     {
-                        TieuDe = "Thanh toán phần còn lại thành công",
-                        NoiDung = $"Đơn đặt tour {order.MaDatCho} đã được thanh toán đầy đủ và xác nhận.",
+                        TieuDe = "Thanh toán đầy đủ thành công",
+                        NoiDung = $"Đơn đặt tour {order.MaDatCho} đã được thanh toán đầy đủ.",
                         LoaiThongBao = (int)NotificationType.Payment,
                         LinkChiTiet = $"/Thong-Tin-Ca-Nhan"
                     });
@@ -837,8 +877,8 @@ namespace travel_recommendation_and_booking_system.Services
                     staffIds,
                     new CreateNotificationDTO
                     {
-                        TieuDe = "Khách hàng đã thanh toán phần còn lại",
-                        NoiDung = $"Đơn {order.MaDatCho} vừa được thanh toán đầy đủ và tự động duyệt.",
+                        TieuDe = "Khách hàng đã thanh toán đầy đủ",
+                        NoiDung = $"Đơn {order.MaDatCho} vừa được thanh toán đầy đủ.",
                         LoaiThongBao = (int)NotificationType.Booking,
                         LinkChiTiet = $"/Quan-ly/Don-dat-cac-chuyen-di"
                     });
@@ -862,5 +902,7 @@ namespace travel_recommendation_and_booking_system.Services
                 _logger.LogError(ex, "Tạo thông báo cho nhân viên thất bại cho đơn {MaDatCho}", order.MaDatCho);
             }
         }
+
+        #endregion
     }
 }

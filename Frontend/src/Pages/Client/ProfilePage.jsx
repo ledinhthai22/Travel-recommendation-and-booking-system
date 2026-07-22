@@ -907,7 +907,7 @@ export default function ProfilePage() {
                                                             </span>
                                                             <button
                                                                 onClick={() => handleViewReview(review)}
-                                                                className="px-4 py-2 text-sm font-medium text-sky-600 bg-slate-50 border border-slate-400 rounded-xl hover:bg-slate-100 transition flex items-center gap-1.5"
+                                                                className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50 border border-slate-400 rounded-xl hover:bg-slate-100 transition flex items-center gap-1.5"
                                                             >
                                                                 Xem chi tiết
                                                             </button>
@@ -973,84 +973,102 @@ export default function ProfilePage() {
             />
 
             {isReviewDetailOpen && selectedReview && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col">
-                        <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 shrink-0">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-600/20 p-4 transition-all">
+                    <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+
+                        {/* Header */}
+                        <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 shrink-0 bg-white">
                             <div>
                                 <h3 className="text-lg font-bold text-slate-800">Chi tiết đánh giá</h3>
+                                <p className="text-xs text-slate-400">Xem phản hồi chi tiết từ khách hàng</p>
                             </div>
                             <button
                                 onClick={handleCloseReviewDetail}
-                                className="p-2 text-slate-400 hover:bg-slate-50 rounded-xl transition"
+                                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                                aria-label="Đóng"
                             >
                                 <X size={20} />
                             </button>
                         </div>
 
+                        {/* Body */}
                         {isLoadingReviewDetail ? (
-                            <div className="flex-1 flex items-center justify-center p-8">
+                            <div className="flex-1 flex items-center justify-center p-12">
                                 <div className="flex flex-col items-center gap-3">
-                                    <div className="w-8 h-8 border-2 border-sky-200 border-t-sky-500 rounded-full animate-spin" />
-                                    <p className="text-sm text-slate-500">Đang tải chi tiết...</p>
+                                    <div className="w-9 h-9 border-3 border-sky-200 border-t-sky-500 rounded-full animate-spin" />
+                                    <p className="text-sm font-medium text-slate-500">Đang tải chi tiết...</p>
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-                                <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
-                                    <div className="flex items-center gap-1">
+                            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
+                                {/* Thông tin chung */}
+                                <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
+                                    <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100">
+                                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tour</span>
+                                        <p className="text-sm font-semibold text-slate-800 mt-1 truncate" title={selectedReview.tenTour}>
+                                            {selectedReview.tenTour || 'Chưa cập nhật'}
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100">
+                                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ngày đánh giá</span>
+                                        <p className="text-sm font-semibold text-slate-800 mt-1">
+                                            {selectedReview.ngayDanhGia || 'Chưa cập nhật'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Đánh giá sao */}
+                                <div className="bg-sky-50/50 rounded-xl p-4 border border-sky-100/60 flex items-center justify-between">
+                                    <span className="text-sm font-medium text-slate-700">Điểm đánh giá:</span>
+                                    <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-sky-100 shadow-sm">
                                         {renderStars(selectedReview.diemDanhGia)}
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-4">
-                                    <div className="bg-slate-50 rounded-xl p-3">
-                                        <p className="text-xs text-slate-400 font-medium">Tour</p>
-                                        <p className="text-sm font-semibold text-slate-700 mt-1 truncate">
-                                            {selectedReview.tenTour}
-                                        </p>
-                                    </div>
-                                    <div className="bg-slate-50 rounded-xl p-3">
-                                        <p className="text-xs text-slate-400 font-medium">Ngày đánh giá</p>
-                                        <p className="text-sm font-semibold text-slate-700 mt-1">
-                                            {selectedReview.ngayDanhGia}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {selectedReview.noiDung ? (
-                                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                                        <div className="flex items-start gap-2">
-                                            <MessageSquare size={16} className="text-slate-400 mt-0.5 shrink-0" />
-                                            <div>
-                                                <p className="text-xs text-slate-400 font-medium mb-2">Nội dung đánh giá</p>
-                                                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
-                                                    {selectedReview.noiDung}
-                                                </p>
-                                            </div>
+                                {/* Nội dung đánh giá */}
+                                <div>
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">
+                                        Nội dung đánh giá
+                                    </span>
+                                    {selectedReview.noiDung ? (
+                                        <div className="bg-slate-50/80 rounded-xl p-4 border border-slate-100">
+                                            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                                                {selectedReview.noiDung}
+                                            </p>
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-center">
-                                        <p className="text-sm text-slate-400">Không có nội dung đánh giá</p>
-                                    </div>
-                                )}
+                                    ) : (
+                                        <div className="bg-slate-50/50 rounded-xl p-6 border border-dashed border-slate-200 text-center">
+                                            <p className="text-sm text-slate-400 italic">Khách hàng không để lại nội dung nhận xét.</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
 
-                        <div className="px-6 py-4 border-t border-slate-100 shrink-0 flex justify-end gap-3">
-                            {selectedReview.maDonDatTour && (
+                        {/* Footer */}
+                        <div className="px-6 py-4 border-t border-slate-100 shrink-0 flex justify-end gap-3 bg-slate-50/50">
+                            {/* <button
+                                onClick={handleCloseReviewDetail}
+                                className="px-5 py-2.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+                            >
+                                Đóng
+                            </button> */}
+
+                            {selectedReview?.maDonDatTour && (
                                 <button
                                     onClick={() => {
                                         handleCloseReviewDetail();
                                         handleViewDetail(selectedReview.maDonDatTour);
                                     }}
-                                    className="px-6 py-2.5 text-sm font-medium text-white bg-sky-500 rounded-xl hover:bg-sky-600 transition shadow-sm shadow-sky-500/10 flex items-center gap-1.5"
+                                    className="px-5 py-2.5 text-sm font-medium text-white bg-sky-500 rounded-xl hover:bg-sky-600 transition-colors shadow-sm shadow-sky-500/20 flex items-center gap-2"
                                 >
                                     <Eye size={16} />
                                     Xem booking
                                 </button>
                             )}
                         </div>
+
                     </div>
                 </div>
             )}

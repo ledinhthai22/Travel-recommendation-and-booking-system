@@ -22,7 +22,9 @@ import { connection, ensureConnectionStarted } from '~/Services/signalRService';
 import { toastSuccess, toastError } from '~/utils/Toast';
 import Checkbox from '~/components/UI/Table/Checkbox';
 import { formatCurrency } from '~/Helper/FormatCurrency';
+import { formatDate } from '~/Helper/FormatDate';// Sử dụng helper thay vì date-fns
 
+// Constants
 export const ORDER_STATUS = {
     1: { text: 'Chờ thanh toán', color: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-amber-400' },
     2: { text: 'Chờ duyệt', color: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-400' },
@@ -54,6 +56,7 @@ export const FINANCIAL_STATUS = {
     5: { text: 'Mất cọc', color: 'bg-red-50 text-red-700 border-red-200' },
 };
 
+// Filter options
 const STATUS_OPTIONS = [
     { id: '', name: 'Trạng thái đơn' },
     { id: '1', name: 'Chờ thanh toán' },
@@ -72,6 +75,7 @@ const PAYMENT_OPTIONS = [
     { value: '3', label: 'Đã hủy' },
 ];
 
+// Helper functions
 const canPrintContract = (row) => row.trangThaiDon === 3 && row.trangThaiTaiChinh === 2;
 const isOrderCancelled = (status) => status === 6;
 const isOrderOngoing = (status) => status === 4;
@@ -96,6 +100,8 @@ const hasOverdueWarning = (row) => !!row.coCanhBaoCongNo && !isOrderCancelled(ro
 
 export default function BookingManager() {
     const navigate = useNavigate();
+    
+    // State
     const [bookings, setBookings] = useState([]);
     const [totalRows, setTotalRows] = useState(0);
     const [loading, setLoading] = useState(false);
@@ -119,6 +125,7 @@ export default function BookingManager() {
 
     const selectedRows = useMemo(() => Object.values(selectedMap), [selectedMap]);
 
+    // Fetch bookings
     const fetchBookings = useCallback(async () => {
         try {
             setLoading(true);
@@ -136,19 +143,23 @@ export default function BookingManager() {
             setTotalRows(res.totalItems ?? 0);
         } catch (err) {
             console.error('Fetch bookings error:', err);
+            toastError('Lỗi tải dữ liệu', err.message);
         } finally {
             setLoading(false);
         }
     }, [searchTerm, statusFilter, paymentFilter, fromDate, toDate, page, perPage]);
 
+    // Auto fetch
     useEffect(() => {
         fetchBookings();
     }, [fetchBookings]);
 
+    // Reset page when filters change
     useEffect(() => {
         setPage(1);
     }, [searchTerm, statusFilter, paymentFilter, fromDate, toDate]);
 
+    // SignalR for real-time updates
     useEffect(() => {
         const startSignalR = async () => {
             try {
@@ -178,6 +189,7 @@ export default function BookingManager() {
         };
     }, [fetchBookings]);
 
+    // Selection handlers
     const toggleRow = useCallback((row) => {
         if (!canPrintContract(row)) return;
         setSelectedMap(prev => {
@@ -218,6 +230,7 @@ export default function BookingManager() {
         setSelectedMap({});
     }, []);
 
+    // File download helpers
     const downloadFileBlob = useCallback((blob, fileName) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -249,6 +262,7 @@ export default function BookingManager() {
         return fallback;
     }, []);
 
+    // Print contract
     const handlePrintContract = useCallback(async () => {
         if (selectedRows.length === 0) {
             toastError('Vui lòng chọn ít nhất 1 đơn để in hợp đồng');
@@ -265,19 +279,21 @@ export default function BookingManager() {
 
             downloadFileBlob(new Blob([res.data], { type: contentType }), fileName);
             clearAllSelections();
+            toastSuccess('In hợp đồng thành công');
         } catch (err) {
             console.error(err);
             if (err.response?.data instanceof Blob) {
                 const text = await err.response.data.text();
-                toastError(text || 'In hợp đồng thất bại');
+                toastError('In hợp đồng thất bại', text);
             } else {
-                toastError('In hợp đồng thất bại');
+                toastError('In hợp đồng thất bại', err.message);
             }
         } finally {
             setPrinting(false);
         }
     }, [selectedRows, extractFileName, downloadFileBlob, clearAllSelections]);
 
+    // View detail
     const handleViewDetail = useCallback(async (row) => {
         setDetailLoading(true);
         setIsDetailOpen(true);
@@ -298,8 +314,6 @@ export default function BookingManager() {
         setSelectedBooking(null);
     }, []);
 
-    // Gọi lại API chi tiết cho đúng đơn đang mở trong modal, để tránh hiển thị dữ liệu cũ
-    // (state đóng/mở lại) sau khi có thao tác ghi nhận cọc/thanh toán/hủy/duyệt...
     const refreshSelectedBooking = useCallback(async (maDonDatTour) => {
         try {
             const res = await getTourBookingDetailAdminApi(maDonDatTour);
@@ -318,6 +332,7 @@ export default function BookingManager() {
 
     const hasActiveFilter = statusFilter || paymentFilter || fromDate || toDate;
 
+    // Table columns
     const columns = useMemo(() => [
         {
             name: (
@@ -399,6 +414,19 @@ export default function BookingManager() {
             ),
         },
         {
+            name: 'Ngày đặt',
+            sortable: true,
+            minWidth: '130px',
+            maxWidth: '150px',
+            center: true,
+            selector: r => r.ngayDat,
+            cell: r => (
+                <span className="text-sm font-medium text-slate-700 whitespace-nowrap">
+                    {r.ngayDat ? formatDate(r.ngayDat) : '—'}
+                </span>
+            ),
+        },
+        {
             name: 'Tổng tiền',
             sortable: true,
             minWidth: '120px',
@@ -412,7 +440,7 @@ export default function BookingManager() {
             ),
         },
         {
-            name: 'Số tiền đã đặt cọc',
+            name: 'Tiền cọc',
             minWidth: '120px',
             maxWidth: '140px',
             right: true,
@@ -454,7 +482,7 @@ export default function BookingManager() {
             },
         },
         {
-            name: 'Trạng thái tài chính',
+            name: 'Tài chính',
             minWidth: '150px',
             maxWidth: '170px',
             center: true,
@@ -488,7 +516,7 @@ export default function BookingManager() {
             },
         },
         {
-            name: 'Trạng thái đơn',
+            name: 'Trạng thái',
             minWidth: '140px',
             maxWidth: '150px',
             center: true,
@@ -509,6 +537,7 @@ export default function BookingManager() {
         },
     ], [selectedMap, isAllOnPageSelected, selectablePageRows, toggleRow, toggleSelectAllOnPage, handleViewDetail]);
 
+    // Conditional row styles
     const conditionalRowStyles = useMemo(() => [
         {
             when: (row) => hasOverdueWarning(row),
@@ -529,6 +558,7 @@ export default function BookingManager() {
     return (
         <div className="space-y-3 p-4">
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+                {/* Toolbar */}
                 <div className="px-5 pt-5 pb-4">
                     <ManagerToolbar
                         searchPlaceholder="Tìm tên khách hàng hoặc mã đặt chỗ..."
@@ -544,6 +574,7 @@ export default function BookingManager() {
                     />
                 </div>
 
+                {/* Filters */}
                 <div className="flex flex-wrap items-center justify-between gap-2 px-5 pb-4 border-t border-slate-50 pt-3 w-full">
                     <div className="flex flex-wrap items-center gap-2">
                         <div className="w-50">
@@ -613,6 +644,7 @@ export default function BookingManager() {
                         )}
                     </div>
 
+                    {/* Print actions */}
                     {selectedRows.length > 0 && (
                         <div className="flex items-center gap-2">
                             <button
@@ -638,6 +670,7 @@ export default function BookingManager() {
                 </div>
             </div>
 
+            {/* Table */}
             <div>
                 <CustomDataTable
                     columns={columns}
@@ -668,6 +701,7 @@ export default function BookingManager() {
                 />
             </div>
 
+            {/* Detail Modal */}
             {isDetailOpen && (
                 detailLoading ? (
                     <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[999] flex items-center justify-center">
@@ -685,6 +719,7 @@ export default function BookingManager() {
                 )
             )}
 
+            {/* Create Modal */}
             {isCreateModalOpen && (
                 <CreateBookingAdminModal
                     onClose={() => setIsCreateModalOpen(false)}

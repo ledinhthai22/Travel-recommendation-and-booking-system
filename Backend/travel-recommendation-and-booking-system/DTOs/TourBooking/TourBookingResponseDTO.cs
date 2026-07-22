@@ -54,6 +54,7 @@
         // Cảnh báo công nợ
         public bool CoCanhBaoCongNo { get; set; }
         public DateTime? NgayGanCoCanhBao { get; set; }
+        public DateTime? NgayDat { get; set; }
 
         // Flag hỗ trợ
         public bool IsCancelled => TrangThaiDon == 6;

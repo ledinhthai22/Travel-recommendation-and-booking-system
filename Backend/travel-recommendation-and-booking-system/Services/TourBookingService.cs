@@ -310,6 +310,7 @@ namespace travel_recommendation_and_booking_system.Services
                     TenTrangThaiTaiChinh = GetFinancialStatusName(x.Booking.TrangThaiTaiChinh),
                     CoCanhBaoCongNo = x.Booking.CoCanhBaoCongNo,
                     NgayGanCoCanhBao = x.Booking.NgayGanCoCanhBao,
+                    NgayDat =x.Booking.NgayDat
                 };
 
                 if (x.LastPayment != null)

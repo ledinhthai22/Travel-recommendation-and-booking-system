@@ -25,6 +25,7 @@ export default function SelectField({
     onSearch = null,
     searchDebounce = 300,
     searching = false,
+    className = "", // Nhận className từ bên ngoài truyền vào
 }) {
     const [open, setOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -170,9 +171,10 @@ export default function SelectField({
 
     return (
         <>
+            {/* Thêm className ở wrapper ngoài cùng */}
             <div
                 ref={triggerRef}
-                className="relative w-full"
+                className={`relative w-full ${className}`}
             >
                 <button
                     type="button"
@@ -194,7 +196,7 @@ export default function SelectField({
                     {IconComponent && (
                         <IconComponent
                             size={20}
-                            className="text-sky-500"
+                            className="text-sky-500 shrink-0"
                         />
                     )}
 
@@ -218,12 +220,12 @@ export default function SelectField({
                     {searching ? (
                         <Loader2
                             size={16}
-                            className="animate-spin"
+                            className="animate-spin text-gray-400 shrink-0"
                         />
                     ) : (
                         <ChevronDown
                             size={16}
-                            className={`transition ${open
+                            className={`text-gray-400 shrink-0 transition ${open
                                     ? "rotate-180"
                                     : ""
                                 }`}
@@ -273,7 +275,6 @@ export default function SelectField({
                                         placeholder={
                                             searchText
                                         }
-                                        /* Đổi sang border-gray-200 và thêm trạng thái focus mượt mà */
                                         className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm transition-all focus:border-sky-400 focus:ring-1 focus:ring-sky-100 outline-none"
                                     />
                                 </div>
@@ -316,8 +317,8 @@ export default function SelectField({
                                                 }
                                                 className={`block w-full px-4 py-2 text-left text-sm transition
                                                 ${active
-                                                        ? "bg-sky-50 text-sky-600"
-                                                        : "hover:bg-gray-50"
+                                                        ? "bg-sky-50 text-sky-600 font-medium"
+                                                        : "hover:bg-gray-50 text-gray-700"
                                                     }`}
                                             >
                                                 {

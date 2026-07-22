@@ -94,30 +94,33 @@ namespace travel_recommendation_and_booking_system.Services
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(r => r.TrangThai, trangThai)
                     .SetProperty(r => r.NgayCapNhat, DateTime.Now)
-                    .SetProperty(r => r.GhiChuKiemDuyet,ghiChu)
-                    .SetProperty(r => r.IsProcessed,true)
+                    .SetProperty(r => r.GhiChuKiemDuyet, ghiChu)
+                    .SetProperty(r => r.IsProcessed, true)
                 );
         }
 
-        // user
         public async Task AddReviewAsync(ReviewDTO dto)
         {
             if (dto.MaNguoiDung <= 0 || dto.MaTour <= 0)
             {
-                throw new Exception("Thông tin người dùng hoặc tour không hợp lệ!");
+                throw new ArgumentException("Thông tin người dùng hoặc tour không hợp lệ!");
             }
 
-            var daDanhGia = await _context.DanhGias.AnyAsync(d => d.MaNguoiDung == dto.MaNguoiDung && d.MaTour == dto.MaTour && d.NgayXoa == null);
+            var daDanhGia = await _context.DanhGias
+                .AnyAsync(d => d.MaNguoiDung == dto.MaNguoiDung
+                               && d.MaTour == dto.MaTour
+                               && d.NgayXoa == null);
 
             if (daDanhGia)
             {
-                throw new Exception("Mỗi tour bạn chỉ được phép đánh giá một lần duy nhất!");
+                throw new InvalidOperationException("Mỗi tour bạn chỉ được phép đánh giá một lần duy nhất!");
             }
+
             var newReview = new DanhGia
             {
                 MaNguoiDung = dto.MaNguoiDung,
                 MaTour = dto.MaTour,
-                NoiDung = dto.NoiDung,
+                NoiDung = dto.NoiDung ?? string.Empty,
                 DiemDanhGia = dto.DiemDanhGia,
                 TrangThai = false,
                 IsProcessed = false,
@@ -125,8 +128,20 @@ namespace travel_recommendation_and_booking_system.Services
                 NgayTao = DateTime.Now
             };
 
-             _context.DanhGias.Add(newReview);
+            _context.DanhGias.Add(newReview);
             await _context.SaveChangesAsync();
+
+            var booking = await _context.DonDatTours
+                .Include(b => b.ChuyenKhoiHanh)
+                .FirstOrDefaultAsync(b => b.MaNguoiDung == dto.MaNguoiDung
+                                          && b.ChuyenKhoiHanh!.MaTour == dto.MaTour
+                                          && b.TrangThaiDon == 5);
+
+            if (booking != null)
+            {
+                booking.DaDanhGia = true;
+                await _context.SaveChangesAsync();
+            }
         }
 
         public async Task ProcessReviewsBatchAsync()

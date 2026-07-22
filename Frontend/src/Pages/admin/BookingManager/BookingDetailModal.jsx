@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { X, Edit3, Check, User, Wallet, AlertTriangle, History, Calendar, Clock } from 'lucide-react';
+import { X, Edit3, Check, User, Wallet, Coins, AlertTriangle, History, Calendar, Clock } from 'lucide-react';
 import InputField from '~/components/UI/Form/InputField';
 import SelectField from '~/components/UI/Form/SelectField';
 import DatePicker from '~/components/UI/Form/DatePicker';
@@ -11,6 +11,7 @@ import {
 } from '~/Services/TourBookingService';
 import {
     updatePaymentStatusApi,
+    updateDepositStatusApi,
     refundDepositApi,
 } from '~/Services/refundService';
 import useAuth from '~/Hooks/useAuth';
@@ -18,6 +19,34 @@ import { toastSuccess, toastError } from '~/utils/Toast';
 import { getErrorMessage } from '~/utils/errorHelper';
 import ConfirmModal from '~/components/UI/Modal/ConfirmModal';
 import CancelReasonModal from '../UserProfileManager/CancelReasonModal';
+
+// Helper functions for date formatting
+const formatDateTime = (date) => {
+    if (!date) return '—';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '—';
+    
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const seconds = d.getSeconds().toString().padStart(2, '0');
+    
+    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+};
+
+const formatDate = (date) => {
+    if (!date) return '—';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '—';
+    
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+};
 
 const ORDER_STATUS = {
     1: { text: 'Chờ thanh toán', color: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -73,23 +102,30 @@ const getCompleteStatusMessage = (trangThaiDon, ngayKetThuc) => {
     }
     const now = new Date();
     const endDate = new Date(ngayKetThuc);
-
+    
     if (trangThaiDon !== 3 && trangThaiDon !== 4) {
-        return {
-            canComplete: false,
-            message: `Đơn đang ở trạng thái "${ORDER_STATUS[trangThaiDon]?.text || 'không xác định'}" - chỉ có thể hoàn thành khi đơn đã được duyệt hoặc đang diễn ra`
+        return { 
+            canComplete: false, 
+            message: `Đơn đang ở trạng thái "${ORDER_STATUS[trangThaiDon]?.text || 'không xác định'}" - chỉ có thể hoàn thành khi đơn đã được duyệt hoặc đang diễn ra` 
         };
     }
-
+    
     if (endDate > now) {
-        return {
-            canComplete: false,
-            message: `Tour chưa kết thúc (dự kiến: ${endDate.toLocaleDateString('vi-VN')}). Chỉ có thể hoàn thành sau ngày ${endDate.toLocaleDateString('vi-VN')}`
+        return { 
+            canComplete: false, 
+            message: `Tour chưa kết thúc (dự kiến: ${formatDate(ngayKetThuc)}). Chỉ có thể hoàn thành sau ngày ${formatDate(ngayKetThuc)}` 
         };
     }
-
+    
     return { canComplete: true, message: 'Tour đã kết thúc, có thể hoàn thành' };
 };
+
+const canRecordDeposit = (bk) =>
+    !isOrderCancelled(bk.trangThaiDon) &&
+    !isOrderCompleted(bk.trangThaiDon) &&
+    !isOrderOngoing(bk.trangThaiDon) &&
+    bk.trangThaiTaiChinh === 0 &&
+    (bk.tienCoc || 0) > 0;
 
 const canRecordPayment = (bk) =>
     !isOrderCancelled(bk.trangThaiDon) &&
@@ -138,19 +174,19 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
 
     const closeConfirm = useCallback(() => setConfirmModal(p => ({ ...p, isOpen: false, onConfirm: null })), []);
 
-    const tongKhach = useMemo(() =>
+    const tongKhach = useMemo(() => 
         (bk.soNguoiLon || 0) + (bk.soTreEm || 0) + (bk.soEmBe || 0),
         [bk.soNguoiLon, bk.soTreEm, bk.soEmBe]
     );
 
-    const depositPercentage = useMemo(() =>
+    const depositPercentage = useMemo(() => 
         bk.tienCoc > 0 && bk.tongTien > 0
             ? Math.round((bk.tienCoc / bk.tongTien) * 100)
             : 0,
         [bk.tienCoc, bk.tongTien]
     );
 
-    const sortedPayments = useMemo(() =>
+    const sortedPayments = useMemo(() => 
         bk.lichSuThanhToan && bk.lichSuThanhToan.length > 0
             ? [...bk.lichSuThanhToan].sort((a, b) => new Date(a.ngayThanhToan) - new Date(b.ngayThanhToan))
             : [],
@@ -169,16 +205,17 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
     const isRefunded = bk.trangThaiTaiChinh === 4;
     const isDepositLost = bk.trangThaiTaiChinh === 5;
 
+    const showRecordDeposit = canRecordDeposit(bk);
     const showRecordPayment = canRecordPayment(bk);
     const showDepositResolution = hasUnresolvedDeposit(bk);
-
+    
     // Kiểm tra điều kiện hoàn thành chi tiết
-    const completeStatus = useMemo(() =>
+    const completeStatus = useMemo(() => 
         getCompleteStatusMessage(bk.trangThaiDon, bk.chuyen?.ngayKetThuc),
         [bk.trangThaiDon, bk.chuyen?.ngayKetThuc]
     );
     const showComplete = completeStatus.canComplete;
-
+    
     const showOverdueWarning = !!bk.coCanhBaoCongNo && !isCancelled;
 
     const refreshOnly = useCallback(() => {
@@ -254,8 +291,8 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
             isOpen: true,
             title: 'Hoàn thành tour',
             message: `Xác nhận đánh dấu đơn #${bk.maDatCho} là HOÀN THÀNH?\n\n${
-                bk.chuyen?.ngayKetThuc
-                    ? `Tour đã kết thúc vào: ${new Date(bk.chuyen.ngayKetThuc).toLocaleDateString('vi-VN')}`
+                bk.chuyen?.ngayKetThuc 
+                    ? `Tour đã kết thúc vào: ${formatDate(bk.chuyen.ngayKetThuc)}`
                     : ''
             }\n\nHành động này không thể hoàn tác.`,
             type: 'info',
@@ -336,6 +373,36 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
         });
     }, [paymentAmount, bk, user, closeConfirm, refreshOnly]);
 
+    const handleRecordDeposit = useCallback(() => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Ghi nhận đặt cọc',
+            message: `Xác nhận đã thu tiền cọc ${(bk.tienCoc || 0).toLocaleString('vi-VN')}₫ cho đơn #${bk.maDatCho}?`,
+            type: 'info',
+            onConfirm: async () => {
+                closeConfirm();
+                setLoadingAction('deposit');
+                try {
+                    await updateDepositStatusApi(bk.maDonDatTour, 1, user?.maNhanVien);
+                    const soTienDaThanhToanMoi = (bk.soTienDaThanhToan || 0) + (bk.tienCoc || 0);
+                    const tongTien = bk.tongTien || 0;
+                    setBk(p => ({
+                        ...p,
+                        trangThaiTaiChinh: 1,
+                        soTienDaThanhToan: soTienDaThanhToanMoi,
+                        soTienConLai: Math.max(tongTien - soTienDaThanhToanMoi, 0)
+                    }));
+                    toastSuccess('Ghi nhận cọc thành công', `Đơn #${bk.maDatCho} đã chuyển sang trạng thái Đã đặt cọc.`);
+                    refreshOnly();
+                } catch (e) {
+                    toastError('Ghi nhận cọc thất bại', getErrorMessage(e));
+                } finally {
+                    setLoadingAction(null);
+                }
+            },
+        });
+    }, [bk, user, closeConfirm, refreshOnly]);
+
     const handleMarkDepositLost = useCallback(() => {
         setConfirmModal({
             isOpen: true,
@@ -346,7 +413,7 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                 closeConfirm();
                 setLoadingAction('depositLost');
                 try {
-                    await updatePaymentStatusApi(bk.maDonDatTour, 5, user?.maNhanVien);
+                    await updateDepositStatusApi(bk.maDonDatTour, 5, user?.maNhanVien);
                     setBk(p => ({ ...p, trangThaiTaiChinh: 5 }));
                     toastSuccess('Đã cập nhật', `Đơn #${bk.maDatCho} đã được đánh dấu mất cọc.`);
                     refreshOnly();
@@ -453,7 +520,7 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                                 <div>Khách đặt: <span className="font-semibold text-slate-700">{bk.tenNguoiDat}</span></div>
                                 <div>SĐT: <span className="font-semibold text-slate-700">{bk.soDienThoai}</span></div>
                                 <div>Số lượng: <span className="font-semibold text-slate-700">{tongKhach} khách</span></div>
-                                <div>Ngày đặt: <span className="font-semibold text-slate-700">{new Date(bk.ngayDat).toLocaleString('vi-VN')}</span></div>
+                                <div>Ngày đặt: <span className="font-semibold text-slate-700">{formatDateTime(bk.ngayDat)}</span></div>
                             </div>
                         </div>
                         <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 transition">
@@ -471,7 +538,7 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                                     </p>
                                     {bk.ngayGanCoCanhBao && (
                                         <p className="text-xs text-red-600 mt-1">
-                                            Hệ thống quét và cảnh báo: {new Date(bk.ngayGanCoCanhBao).toLocaleString('vi-VN')}
+                                            Hệ thống quét và cảnh báo: {formatDateTime(bk.ngayGanCoCanhBao)}
                                         </p>
                                     )}
                                 </div>
@@ -481,8 +548,8 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                         {/* Thông báo trạng thái hoàn thành tour */}
                         {bk.trangThaiDon >= 3 && !isCancelled && !isOrderCompleted(bk.trangThaiDon) && (
                             <div className={`p-4 rounded-xl border flex items-start gap-3 ${
-                                completeStatus.canComplete
-                                    ? 'bg-emerald-50 border-emerald-300'
+                                completeStatus.canComplete 
+                                    ? 'bg-emerald-50 border-emerald-300' 
                                     : 'bg-amber-50 border-amber-300'
                             }`}>
                                 {completeStatus.canComplete ? (
@@ -494,8 +561,8 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                                     <p className={`text-sm font-semibold ${
                                         completeStatus.canComplete ? 'text-emerald-700' : 'text-amber-700'
                                     }`}>
-                                        {completeStatus.canComplete
-                                            ? 'Tour đã kết thúc và sẵn sàng để hoàn thành'
+                                        {completeStatus.canComplete 
+                                            ? 'Tour đã kết thúc và sẵn sàng để hoàn thành' 
                                             : 'Tour chưa thể hoàn thành'}
                                     </p>
                                     <p className="text-xs mt-1 text-slate-600">
@@ -504,7 +571,7 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                                     {bk.chuyen?.ngayKetThuc && (
                                         <p className="text-xs mt-1 text-slate-500 flex items-center gap-1">
                                             <Calendar size={12} />
-                                            Ngày kết thúc dự kiến: {new Date(bk.chuyen.ngayKetThuc).toLocaleDateString('vi-VN')}
+                                            Ngày kết thúc dự kiến: {formatDate(bk.chuyen.ngayKetThuc)}
                                         </p>
                                     )}
                                     {!completeStatus.canComplete && bk.chuyen?.ngayKetThuc && (
@@ -542,13 +609,13 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                                 <div>
                                     <span className="text-[11px] text-slate-400 block mb-0.5">Ngày khởi hành</span>
                                     <span className="text-sm font-semibold text-slate-700">
-                                        {bk.chuyen?.ngayKhoiHanh ? new Date(bk.chuyen.ngayKhoiHanh).toLocaleDateString('vi-VN') : '—'}
+                                        {bk.chuyen?.ngayKhoiHanh ? formatDate(bk.chuyen.ngayKhoiHanh) : '—'}
                                     </span>
                                 </div>
                                 <div>
                                     <span className="text-[11px] text-slate-400 block mb-0.5">Ngày kết thúc</span>
                                     <span className="text-sm font-semibold text-slate-700">
-                                        {bk.chuyen?.ngayKetThuc ? new Date(bk.chuyen.ngayKetThuc).toLocaleDateString('vi-VN') : '—'}
+                                        {bk.chuyen?.ngayKetThuc ? formatDate(bk.chuyen.ngayKetThuc) : '—'}
                                     </span>
                                 </div>
                                 {bk.tenKhachSan && (
@@ -667,31 +734,46 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                                 </div>
                             )}
 
-                            {showDepositResolution && (
+                            {(showRecordDeposit || showDepositResolution) && (
                                 <div className="mt-4 p-4 border border-amber-200 bg-amber-50/30 rounded-xl">
                                     <h4 className="text-xs font-bold uppercase tracking-wider text-amber-700 mb-3 flex items-center gap-1.5">
-                                        <History size={14} />
+                                        <Coins size={14} />
                                         Xử lý tiền cọc
                                     </h4>
                                     <div className="flex flex-wrap gap-2">
-                                        <button
-                                            onClick={handleOpenRefundDeposit}
-                                            disabled={!!loadingAction}
-                                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold transition disabled:opacity-50"
-                                        >
-                                            {loadingAction === 'refundDeposit' ? 'Đang xử lý...' : 'Hoàn cọc cho khách'}
-                                        </button>
-                                        <button
-                                            onClick={handleMarkDepositLost}
-                                            disabled={!!loadingAction}
-                                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50/50 transition disabled:opacity-50"
-                                        >
-                                            {loadingAction === 'depositLost' ? 'Đang xử lý...' : 'Đánh dấu mất cọc'}
-                                        </button>
+                                        {showRecordDeposit && (
+                                            <button
+                                                onClick={handleRecordDeposit}
+                                                disabled={!!loadingAction}
+                                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold transition disabled:opacity-50"
+                                            >
+                                                {loadingAction === 'deposit' ? 'Đang xử lý...' : 'Ghi nhận đã đặt cọc'}
+                                            </button>
+                                        )}
+                                        {showDepositResolution && (
+                                            <>
+                                                <button
+                                                    onClick={handleOpenRefundDeposit}
+                                                    disabled={!!loadingAction}
+                                                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold transition disabled:opacity-50"
+                                                >
+                                                    {loadingAction === 'refundDeposit' ? 'Đang xử lý...' : 'Hoàn cọc cho khách'}
+                                                </button>
+                                                <button
+                                                    onClick={handleMarkDepositLost}
+                                                    disabled={!!loadingAction}
+                                                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50/50 transition disabled:opacity-50"
+                                                >
+                                                    {loadingAction === 'depositLost' ? 'Đang xử lý...' : 'Đánh dấu mất cọc'}
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
-                                    <p className="text-[11px] text-amber-700 mt-2">
-                                        Đơn đã hủy và còn khoản cọc {bk.tienCoc?.toLocaleString('vi-VN')}₫ chưa xử lý — chọn hoàn cọc cho khách hoặc đánh dấu mất cọc theo chính sách hủy tour.
-                                    </p>
+                                    {showDepositResolution && (
+                                        <p className="text-[11px] text-amber-700 mt-2">
+                                            Đơn đã hủy và còn khoản cọc {bk.tienCoc?.toLocaleString('vi-VN')}₫ chưa xử lý — chọn hoàn cọc cho khách hoặc đánh dấu mất cọc theo chính sách hủy tour.
+                                        </p>
+                                    )}
                                 </div>
                             )}
 
@@ -733,7 +815,7 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                                                     <td className="px-4 py-2 font-semibold text-slate-700">{p.soDienThoai || '—'}</td>
                                                     <td className="px-4 py-2 font-semibold text-slate-700">{p.email || '—'}</td>
                                                     <td className="px-4 py-2 font-semibold text-slate-700">
-                                                        {p.ngaySinh ? new Date(p.ngaySinh).toLocaleDateString('vi-VN') : '—'}
+                                                        {p.ngaySinh ? formatDate(p.ngaySinh) : '—'}
                                                     </td>
                                                     <td className="px-4 py-2">
                                                         {p.gioiTinh ? <span className="font-semibold">Nam</span> : <span className="font-semibold">Nữ</span>}
@@ -800,7 +882,7 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                                                         )}
                                                     </div>
                                                     <div className="text-xs text-slate-500 space-y-0.5">
-                                                        <div>Thời gian: {payment.ngayThanhToan ? new Date(payment.ngayThanhToan).toLocaleString('vi-VN') : '—'}</div>
+                                                        <div>Thời gian: {payment.ngayThanhToan ? formatDateTime(payment.ngayThanhToan) : '—'}</div>
                                                         {payment.maGiaoDich && (
                                                             <div>Mã GD: <span className="font-mono text-slate-600">{payment.maGiaoDich}</span></div>
                                                         )}
@@ -837,7 +919,7 @@ export default function BookingDetailModal({ booking, onClose, onRefresh }) {
                         {!isCancelled && bk.trangThaiDon >= 3 && bk.nhanVienDuyet && (
                             <div className="text-xs text-slate-500 bg-slate-100/80 px-4 py-3 rounded-lg flex items-center justify-between">
                                 <span>Nhân viên duyệt đơn: <strong className="text-slate-800">{bk.nhanVienDuyet}</strong></span>
-                                {bk.ngayDuyet && <span>Thời gian: <strong className="text-slate-800">{new Date(bk.ngayDuyet).toLocaleString('vi-VN')}</strong></span>}
+                                {bk.ngayDuyet && <span>Thời gian: <strong className="text-slate-800">{formatDateTime(bk.ngayDuyet)}</strong></span>}
                             </div>
                         )}
                     </div>

@@ -16,7 +16,6 @@ export function BookingCard({ tour, departure, hotel, onOpenAuthModal }) {
     const soChoToiDa = ckh?.soChoToiDa ?? 0;
     const soChoDaDat = ckh?.soChoDaDat ?? 0;
     const soLuongCho = soChoToiDa - soChoDaDat;
-
     const handleBooking = () => {
         if (!user) {
             if (typeof onOpenAuthModal === "function") {
@@ -32,13 +31,16 @@ export function BookingCard({ tour, departure, hotel, onOpenAuthModal }) {
             tenTour: tour.tenTour,
             hinhAnh: tour.hinhAnh,
             thoiGianTour: tour.thoiGianTour,
-            slug: tour.slug,
             maChuyen: ckh?.maChuyen,
             maChuyenCode: ckh?.maChuyenCode,
             ngayKhoiHanh: ckh?.ngayKhoiHanh,
             ngayKetThuc: ckh?.ngayKetThuc,
+            gioDenNoiVe:ckh?.gioDenNoiVe,
+            gioDenNoiDi:ckh?.gioDenNoiDi,
             diemKhoiHanh: ckh?.diemKhoiHanh,
             diemDen: ckh?.diemDen,
+            phuongTien:ckh?.tenPhuongTien,
+            icon:ckh?.icon,
             soLuongCho,
 
             gia: {
